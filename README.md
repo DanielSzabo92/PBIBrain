@@ -1,5 +1,7 @@
 # Power BI Brain
 
+Repository: [PBIBrain](https://github.com/DanielSzabo92/PBIBrain)
+
 Power BI Brain is a reusable semantic-understanding layer for Power BI models
 and reports. It turns model metadata, report bindings, DAX, descriptions, and
 review decisions into a canonical, provenance-aware graph.

@@ -9,6 +9,10 @@ description = "Canonical, provenance-aware Power BI semantic graph"
 requires-python = ">=3.11"
 dependencies = ["ladybug>=0.20", "antlr4-python3-runtime==4.13.2"]
 
+[project.urls]
+Homepage = "https://github.com/DanielSzabo92/PBIBrain"
+Repository = "https://github.com/DanielSzabo92/PBIBrain"
+
 [project.scripts]
 brain = "backend.cli.main:main"
 

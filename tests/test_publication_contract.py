@@ -3,10 +3,26 @@
 from __future__ import annotations
 
 from pathlib import Path
+import subprocess
 import unittest
 
 
 ROOT = Path(__file__).resolve().parents[1]
+CANONICAL_REPOSITORY = "DanielSzabo92/PBIBrain"
+STALE_REPOSITORY = "DanielSzabo92/" + "powerbi-brain"
+
+
+def _publication_files() -> list[Path]:
+    github = ROOT / ".github"
+    return [
+        ROOT / "README.md",
+        ROOT / "LICENSE",
+        ROOT / "pyproject.toml",
+        ROOT / "frontend" / "package.json",
+        ROOT / "frontend" / "package-lock.json",
+        *sorted((ROOT / "docs").rglob("*.md")),
+        *(sorted(github.rglob("*.md")) if github.is_dir() else []),
+    ]
 
 
 class PublicationContractTests(unittest.TestCase):
@@ -63,6 +79,44 @@ class PublicationContractTests(unittest.TestCase):
         for kind, pattern in protected_patterns.items():
             with self.subTest(kind=kind):
                 self.assertIn(pattern, self.gitignore)
+
+    def test_public_references_use_pbibrain_repository_identity(self):
+        readme = self.readme.casefold()
+        self.assertIn(
+            f"github.com/{CANONICAL_REPOSITORY}".casefold(),
+            readme,
+            "README must link to the renamed PBIBrain repository",
+        )
+
+        stale = f"github.com/{STALE_REPOSITORY}".casefold()
+        stale_refs = [
+            path.relative_to(ROOT)
+            for path in _publication_files()
+            if path.is_file() and stale in path.read_text(encoding="utf-8").casefold()
+        ]
+        self.assertFalse(stale_refs, f"stale public repository references: {stale_refs}")
+
+        # The import/distribution slug may remain powerbi-brain; only the public
+        # repository identity is being renamed.
+        self.assertIn('name = "powerbi-brain"', (ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+
+    def test_git_origin_uses_pbibrain_repository_when_configured(self):
+        try:
+            result = subprocess.run(
+                ["git", "config", "--get", "remote.origin.url"],
+                cwd=ROOT,
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+        except OSError as exc:
+            self.skipTest(f"git unavailable: {exc}")
+        remote = result.stdout.strip()
+        if not remote:
+            self.skipTest("no origin remote configured")
+        normalized = remote.removesuffix("/").removesuffix(".git").casefold()
+        expected = f"https://github.com/{CANONICAL_REPOSITORY}".casefold()
+        self.assertEqual(normalized, expected)
 
 
 if __name__ == "__main__":
