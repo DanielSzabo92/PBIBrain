@@ -1,0 +1,5 @@
+{
+  "version": 1,
+  "database": "data/brain.lbug",
+  "identity_map": "config/identity.json"
+}

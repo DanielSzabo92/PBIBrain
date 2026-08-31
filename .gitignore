@@ -1,0 +1,37 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+*.egg-info/
+
+# Frontend dependencies and build output
+frontend/node_modules/
+frontend/dist/
+
+# Local/runtime data
+*.lbug
+data/*-identity.json
+*.log
+*.tmp
+*.bak
+
+# Power BI/private artifacts
+*.pbix
+*.pbip
+*.pbirs
+*.pbir
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.zip
+*.7z
+*.rar
+*.dll
+*.exe
+
+data/brain.lbug
+config/identity.json

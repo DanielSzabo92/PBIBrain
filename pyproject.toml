@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "powerbi-brain"
+version = "0.1.0"
+description = "Canonical, provenance-aware Power BI semantic graph"
+requires-python = ">=3.11"
+dependencies = ["ladybug>=0.20", "antlr4-python3-runtime==4.13.2"]
+
+[project.scripts]
+brain = "backend.cli.main:main"
+
+[tool.setuptools.packages.find]
+include = ["backend*"]
