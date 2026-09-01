@@ -20,6 +20,7 @@ from unittest.mock import patch
 
 from backend.cli.main import main as cli_main
 from backend.graph.repository import GraphRepository
+from backend.scanner.pbip import read_pbip_project
 from backend.scanner.pipeline import Scanner
 
 from tests.fixtures.pbip_sources import (
@@ -80,6 +81,16 @@ def _status_map(sync_result) -> dict[str, str]:
     return {}
 
 
+def _native_ladybug_available() -> bool:
+    try:
+        with tempfile.TemporaryDirectory() as directory:
+            repository = GraphRepository(Path(directory) / "probe.lbug")
+            repository.close()
+        return True
+    except Exception:
+        return False
+
+
 class DirectPBIPIngestionContractTests(unittest.TestCase):
     def setUp(self) -> None:
         self.tempdir = tempfile.TemporaryDirectory()
@@ -135,6 +146,63 @@ class DirectPBIPIngestionContractTests(unittest.TestCase):
         }
         self.assertIn(measure.id, used_ids)
         self.assertIn(date_key.id, used_ids)
+
+    def test_scanner_reads_dataset_model_bim_and_legacy_report_json(self):
+        project = write_pbip_project(
+            self.root / "dataset-fixture",
+            model_format="tmsl",
+            model_kind="dataset",
+            report_format="legacy",
+        )
+        graph = self.scanner.scan(project)
+
+        model = _node_by_source(graph.nodes, "MODEL", MODEL_LINEAGE)
+        sales = _node_by_source(graph.nodes, "TABLE", SALES_LINEAGE)
+        measure = _node_by_source(graph.nodes, "MEASURE", NET_LINEAGE)
+        report = _node_by_name(graph.nodes, "REPORT", "Finance Legacy Report")
+        page = _node_by_name(graph.nodes, "PAGE", PAGE_OVERVIEW)
+        visual = _node_by_name(graph.nodes, "VISUAL", VISUAL_SALES)
+
+        self.assertEqual(model.name, "FinanceModel")
+        self.assertEqual(sales.name, TABLE_SALES)
+        self.assertEqual(measure.name, MEASURE_NET)
+        self.assertEqual(report.model_id, model.id)
+        self.assertEqual(page.report_id, report.id)
+        self.assertEqual(visual.report_id, report.id)
+        self.assertEqual(visual.properties.get("visual_type"), "columnChart")
+        self.assertEqual(visual.properties.get("title"), "Sales by date")
+        self.assertTrue(
+            any(
+                edge.type == "USES"
+                and edge.from_id == visual.id
+                and edge.to_id == measure.id
+                for edge in graph.edges
+            ),
+            graph.to_dict(),
+        )
+
+    def test_by_connection_report_does_not_bind_to_local_dataset(self):
+        project = write_pbip_project(
+            self.root / "remote-fixture",
+            model_format="tmsl",
+            model_kind="dataset",
+            report_format="legacy",
+            dataset_reference="byConnection",
+        )
+        bundle = read_pbip_project(project)
+
+        self.assertEqual(len(bundle["models"]), 1)
+        self.assertNotEqual(bundle["reports"][0].get("model_id"), bundle["models"][0].get("id"))
+
+    def test_scanner_ignores_pbip_sidecars_outside_definitions(self):
+        project = write_pbip_project(self.root / "ignored-fixture", include_ignored=True)
+        graph = self.scanner.scan(project)
+        names = {node.name for node in graph.nodes}
+
+        self.assertNotIn("IgnoredSemanticScript", names)
+        self.assertNotIn("Ignored semantic settings", names)
+        self.assertNotIn("Ignored mobile state", names)
+        self.assertNotIn("Ignored report resource", names)
 
     def test_cli_scan_project_path_uses_direct_project_ingestion(self):
         output = io.StringIO()
@@ -222,6 +290,46 @@ class DirectPBIPIngestionContractTests(unittest.TestCase):
         statuses = _status_map(self.scanner.last_sync)
         self.assertEqual(statuses.get(gross.id), "NEW", statuses)
         self.assertEqual(statuses.get(gross_visual.id), "NEW", statuses)
+
+
+@unittest.skipUnless(_native_ladybug_available(), "Ladybug C API shared library is unavailable")
+class NativePBIPLadybugIngestionTests(unittest.TestCase):
+    def test_pbip_model_and_report_persist_after_native_database_reopen(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            project = write_pbip_project(root / "fixture")
+            database = root / "brain.lbug"
+            repository = GraphRepository(database)
+
+            graph = Scanner(repository, identity_path=root / "identity.json").scan(project)
+            expected_node_ids = {node.id for node in graph.nodes}
+            expected_edge_ids = {edge.id for edge in graph.edges}
+            repository.close()
+
+            reopened = GraphRepository(database)
+            self.assertEqual(reopened.storage, "ladybug")
+            self.assertEqual({node.id for node in reopened.all_nodes()}, expected_node_ids)
+            self.assertEqual({edge.id for edge in reopened.all_edges()}, expected_edge_ids)
+
+            model = _node_by_source(reopened.all_nodes(), "MODEL", MODEL_LINEAGE)
+            report = _node_by_name(reopened.all_nodes(), "REPORT", "Finance Report")
+            visual = _node_by_name(reopened.all_nodes(), "VISUAL", VISUAL_SALES)
+            measure = _node_by_source(reopened.all_nodes(), "MEASURE", NET_LINEAGE)
+            self.assertTrue(
+                reopened.get_edges(
+                    from_id=report.id,
+                    to_id=model.id,
+                    edge_types="USES_MODEL",
+                )
+            )
+            self.assertTrue(
+                reopened.get_edges(
+                    from_id=visual.id,
+                    to_id=measure.id,
+                    edge_types="USES",
+                )
+            )
+            reopened.close()
 
 
 if __name__ == "__main__":

@@ -43,12 +43,17 @@ def _write(path: Path, value: str | dict) -> None:
         path.write_text(value, encoding="utf-8")
 
 
-def _project_file() -> dict:
+def _project_file(*, model_name: str = MODEL_NAME, dataset_artifact: bool = False) -> dict:
+    model_artifact = (
+        {"type": "dataset", "path": model_name}
+        if dataset_artifact
+        else {"semanticModel": {"path": model_name}}
+    )
     return {
         "version": "1.0.0",
         "artifacts": [
             {"report": {"path": REPORT_NAME}},
-            {"semanticModel": {"path": MODEL_NAME}},
+            model_artifact,
         ],
     }
 
@@ -101,6 +106,77 @@ def _date_tmdl() -> str:
         f"        lineageTag: {DATE_KEY_LINEAGE}\n"
         "        sourceColumn: DateKey\n"
     )
+
+
+def _model_bim(*, include_gross: bool) -> dict:
+    sales = {
+        "id": SALES_LINEAGE,
+        "name": TABLE_SALES,
+        "columns": [
+            {
+                "id": AMOUNT_LINEAGE,
+                "name": "Amount",
+                "dataType": "decimal",
+                "sourceColumn": "Amount",
+            },
+            {
+                "id": SALES_DATE_LINEAGE,
+                "name": "DateKey",
+                "dataType": "int64",
+                "sourceColumn": "DateKey",
+            },
+        ],
+        "measures": [
+            {
+                "id": NET_LINEAGE,
+                "name": MEASURE_NET,
+                "expression": "SUM(Sales[Amount])",
+                "formatString": "#,##0",
+            }
+        ],
+    }
+    if include_gross:
+        sales["measures"].append(
+            {
+                "id": GROSS_LINEAGE,
+                "name": MEASURE_GROSS,
+                "expression": "[Net Sales] * 1.1",
+                "formatString": "#,##0",
+            }
+        )
+    return {
+        "id": MODEL_LINEAGE,
+        "name": "FinanceModel",
+        "compatibilityLevel": 1567,
+        "model": {
+            "culture": "en-US",
+            "defaultPowerBIDataSourceVersion": "powerBI_V3",
+            "tables": [
+                sales,
+                {
+                    "id": DATE_LINEAGE,
+                    "name": TABLE_DATE,
+                    "columns": [
+                        {
+                            "id": DATE_KEY_LINEAGE,
+                            "name": "DateKey",
+                            "dataType": "int64",
+                            "sourceColumn": "DateKey",
+                        }
+                    ],
+                },
+            ],
+            "relationships": [
+                {
+                    "id": RELATIONSHIP_LINEAGE,
+                    "fromTable": TABLE_SALES,
+                    "fromColumn": "DateKey",
+                    "toTable": TABLE_DATE,
+                    "toColumn": "DateKey",
+                }
+            ],
+        },
+    }
 
 
 def _relationships_tmdl() -> str:
@@ -156,46 +232,171 @@ def _visual_file(*, name: str, visual_type: str, title: str, measure: str) -> di
     }
 
 
-def write_pbip_project(root: Path, *, include_extra: bool = False) -> Path:
+def _legacy_visual(*, name: str, visual_type: str, title: str, measure: str) -> dict:
+    config = {
+        "name": name,
+        "singleVisual": {
+            "visualType": visual_type,
+            "vcObjects": {
+                "title": [
+                    {"properties": {"text": {"expr": {"Literal": {"Value": f"'{title}'"}}}}}
+                ]
+            },
+        },
+    }
+    query = {
+        "Commands": [
+            {
+                "SemanticQueryDataShapeCommand": {
+                    "Query": {
+                        "Version": 2,
+                        "From": [
+                            {"Name": "d", "Entity": "Date", "Type": 0},
+                            {"Name": "s", "Entity": "Sales", "Type": 0},
+                        ],
+                        "Select": [
+                            {
+                                "Column": {
+                                    "Expression": {"SourceRef": {"Source": "d"}},
+                                    "Property": "DateKey",
+                                },
+                                "Name": "Date.DateKey",
+                            },
+                            {
+                                "Measure": {
+                                    "Expression": {"SourceRef": {"Source": "s"}},
+                                    "Property": measure,
+                                },
+                                "Name": f"Sales.{measure}",
+                            },
+                        ],
+                    }
+                }
+            }
+        ]
+    }
+    return {
+        "id": name,
+        "config": json.dumps(config),
+        "query": json.dumps(query),
+        "filters": json.dumps([]),
+    }
+
+
+def _legacy_report(*, include_extra: bool) -> dict:
+    visuals = [
+        _legacy_visual(
+            name=VISUAL_SALES,
+            visual_type="columnChart",
+            title="Sales by date",
+            measure=MEASURE_NET,
+        )
+    ]
+    if include_extra:
+        visuals.append(
+            _legacy_visual(
+                name=VISUAL_GROSS,
+                visual_type="card",
+                title="Gross sales",
+                measure=MEASURE_GROSS,
+            )
+        )
+    return {
+        "name": "Finance Legacy Report",
+        "sections": [
+            {
+                "id": PAGE_OVERVIEW,
+                "name": PAGE_OVERVIEW,
+                "displayName": PAGE_OVERVIEW,
+                "ordinal": 0,
+                "visualContainers": visuals,
+            }
+        ],
+    }
+
+
+def write_pbip_project(
+    root: Path,
+    *,
+    include_extra: bool = False,
+    model_format: str = "tmdl",
+    report_format: str = "pbir",
+    model_kind: str = "semanticmodel",
+    dataset_reference: str = "byPath",
+    include_ignored: bool = False,
+) -> Path:
     """Write a tiny standard PBIP project and return its ``.pbip`` path."""
 
     root.mkdir(parents=True, exist_ok=True)
     project = root / f"{PROJECT_NAME}.pbip"
-    model_root = root / MODEL_NAME
+    model_name = f"{PROJECT_NAME}.Dataset" if model_kind == "dataset" else MODEL_NAME
+    model_root = root / model_name
     model_definition = model_root / "definition"
     report_root = root / REPORT_NAME
     report_definition = report_root / "definition"
     page_root = report_definition / "pages" / PAGE_OVERVIEW
 
-    _write(project, _project_file())
-    _write(model_root / "definition.pbism", {"version": "4.0.0"})
-    _write(model_definition / "model.tmdl", _model_tmdl())
-    _write(model_definition / "tables" / "Sales.tmdl", _sales_tmdl(include_gross=include_extra))
-    _write(model_definition / "tables" / "Date.tmdl", _date_tmdl())
-    _write(model_definition / "relationships.tmdl", _relationships_tmdl())
+    _write(project, _project_file(model_name=model_name, dataset_artifact=model_kind == "dataset"))
+    if model_format == "tmsl":
+        _write(model_root / "definition.pbism", {"version": "1.0"})
+        _write(model_root / "model.bim", _model_bim(include_gross=include_extra))
+    else:
+        _write(model_root / "definition.pbism", {"version": "4.0.0"})
+        _write(model_definition / "model.tmdl", _model_tmdl())
+        _write(model_definition / "tables" / "Sales.tmdl", _sales_tmdl(include_gross=include_extra))
+        _write(model_definition / "tables" / "Date.tmdl", _date_tmdl())
+        _write(model_definition / "relationships.tmdl", _relationships_tmdl())
 
-    _write(
-        report_root / "definition.pbir",
-        {
-            "version": "1.0.0",
-            "datasetReference": {"byPath": {"path": f"../{MODEL_NAME}"}},
-        },
+    reference = (
+        {"byConnection": {"connectionString": "semanticmodelid=remote-finance-model"}}
+        if dataset_reference == "byConnection"
+        else {"byPath": {"path": f"../{model_name}"}}
     )
-    _write(report_definition / "report.json", {"name": "Finance Report"})
-    _write(page_root / "page.json", {"name": PAGE_OVERVIEW, "displayName": "Overview", "ordinal": 0})
-    _write(
-        page_root / "visuals" / VISUAL_SALES / "visual.json",
-        _visual_file(name=VISUAL_SALES, visual_type="columnChart", title="Sales by date", measure=MEASURE_NET),
-    )
-    if include_extra:
+    if report_format == "legacy":
         _write(
-            page_root / "visuals" / VISUAL_GROSS / "visual.json",
-            _visual_file(
-                name=VISUAL_GROSS,
-                visual_type="card",
-                title="Gross sales",
-                measure=MEASURE_GROSS,
-            ),
+            report_root / "definition.pbir",
+            {
+                "version": "1.0",
+                "datasetReference": reference,
+            },
+        )
+        _write(report_root / "report.json", _legacy_report(include_extra=include_extra))
+    else:
+        _write(
+            report_root / "definition.pbir",
+            {
+                "version": "4.0",
+                "datasetReference": reference,
+            },
+        )
+        _write(report_definition / "report.json", {"name": "Finance Report"})
+        _write(page_root / "page.json", {"name": PAGE_OVERVIEW, "displayName": "Overview", "ordinal": 0})
+        _write(
+            page_root / "visuals" / VISUAL_SALES / "visual.json",
+            _visual_file(name=VISUAL_SALES, visual_type="columnChart", title="Sales by date", measure=MEASURE_NET),
+        )
+        if include_extra:
+            _write(
+                page_root / "visuals" / VISUAL_GROSS / "visual.json",
+                _visual_file(
+                    name=VISUAL_GROSS,
+                    visual_type="card",
+                    title="Gross sales",
+                    measure=MEASURE_GROSS,
+                ),
+            )
+    if include_ignored:
+        _write(model_root / ".pbi" / "localSettings.json", {"name": "Ignored semantic settings"})
+        _write(model_root / ".pbi" / "cache.abf", "ignored semantic cache")
+        _write(model_root / "TMDLScripts" / "Ignored.tmdl", "table IgnoredSemanticScript\n")
+        _write(model_root / "DAXQueries" / "Ignored.dax", "EVALUATE ROW(\"ignored\", 1)\n")
+        _write(model_root / "diagramLayout.json", {"name": "Ignored semantic diagram"})
+        _write(report_root / ".pbi" / "localSettings.json", {"name": "Ignored report settings"})
+        _write(report_root / "mobileState.json", {"name": "Ignored mobile state"})
+        _write(report_root / "semanticModelDiagramLayout.json", {"name": "Ignored report diagram"})
+        _write(
+            report_root / "StaticResources" / "RegisteredResources" / "Ignored.json",
+            {"name": "Ignored report resource"},
         )
     return project
 

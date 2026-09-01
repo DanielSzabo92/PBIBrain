@@ -58,6 +58,14 @@ def _read_json(path: Path) -> dict[str, Any]:
 def _artifact_dirs(root: Path, payload: Mapping[str, Any]) -> tuple[list[Path], list[Path]]:
     models: list[Path] = []
     reports: list[Path] = []
+
+    def add(target: list[Path], value: Any) -> None:
+        if not isinstance(value, str):
+            return
+        path = (root / value).resolve()
+        if path.is_dir() and not any(item == path for item in target):
+            target.append(path)
+
     artifacts = payload.get("artifacts", [])
     if not isinstance(artifacts, list):
         artifacts = []
@@ -66,17 +74,29 @@ def _artifact_dirs(root: Path, payload: Mapping[str, Any]) -> tuple[list[Path], 
             continue
         for key, target in (("semanticModel", models), ("semantic_model", models), ("model", models), ("report", reports)):
             item = artifact.get(key)
-            if not isinstance(item, Mapping):
-                continue
-            path_value = item.get("path")
-            if isinstance(path_value, str):
-                path = (root / path_value).resolve()
-                if path.is_dir() and path not in target:
-                    target.append(path)
+            add(target, item.get("path") if isinstance(item, Mapping) else None)
+        kind = str(artifact.get("type", "")).casefold()
+        target = reports if kind == "report" else models if kind in {"model", "semanticmodel", "semantic_model", "dataset"} else None
+        if target is not None:
+            add(target, artifact.get("path"))
     if not models:
-        models = sorted((path for path in root.glob("*.SemanticModel") if path.is_dir()), key=lambda p: p.name.casefold())
+        models = sorted(
+            (
+                path
+                for path in root.iterdir()
+                if path.is_dir() and path.suffix.casefold() in {".semanticmodel", ".dataset"}
+            ),
+            key=lambda p: p.name.casefold(),
+        )
     if not reports:
-        reports = sorted((path for path in root.glob("*.Report") if path.is_dir()), key=lambda p: p.name.casefold())
+        reports = sorted(
+            (path for path in root.iterdir() if path.is_dir() and path.suffix.casefold() == ".report"),
+            key=lambda p: p.name.casefold(),
+        )
+    for report in reports:
+        reference = _report_model_ref(report)
+        if reference:
+            add(models, reference)
     return models, reports
 
 
@@ -259,7 +279,35 @@ def _parse_model_meta(path: Path) -> dict[str, Any]:
     return {key: value for key, value in model.items() if value not in (None, [], {})}
 
 
+def _parse_model_bim(path: Path) -> dict[str, Any]:
+    payload = _read_json(path / "model.bim")
+    value = payload.get("model", payload)
+    model = dict(value) if isinstance(value, Mapping) else {}
+    platform_name = _platform_name(path)
+    name = model.get("name") or payload.get("name") or platform_name or path.stem
+    source = model.get("id") or payload.get("id") or _platform_id(path)
+    source = source or "pbip-model-" + hashlib.sha256(str(path.resolve()).encode("utf-8")).hexdigest()[:24]
+    compatibility = (
+        model.get("compatibility_level")
+        or model.get("compatibilityLevel")
+        or payload.get("compatibilityLevel")
+    )
+    model.update(
+        {
+            "id": source,
+            "name": name,
+            "source_path": str(path),
+            "compatibility_level": compatibility,
+        }
+    )
+    return {key: value for key, value in model.items() if value not in (None, [], {})}
+
+
 def _read_model(path: Path) -> dict[str, Any]:
+    if (path / "definition" / "model.tmdl").is_file():
+        return _parse_model_meta(path)
+    if (path / "model.bim").is_file():
+        return _parse_model_bim(path)
     return _parse_model_meta(path)
 
 
@@ -336,6 +384,8 @@ def _parse_expressions(path: Path) -> list[dict[str, Any]]:
 def _read_report(path: Path, models: Mapping[Path, Mapping[str, Any]], root: Path) -> dict[str, Any]:
     platform_name = _platform_name(path)
     report_json = path / "definition" / "report.json"
+    if not report_json.is_file():
+        report_json = path / "report.json"
     report_payload = _read_json(report_json) if report_json.is_file() else {}
     report_id = _platform_id(path) or path.name
     model_ref = _report_model_ref(path)
@@ -404,15 +454,26 @@ def _report_model_ref(path: Path) -> str | None:
     by_path = reference.get("byPath")
     if isinstance(by_path, Mapping) and by_path.get("path"):
         return str((path / str(by_path["path"])).resolve())
+    by_connection = reference.get("byConnection")
+    if isinstance(by_connection, Mapping):
+        connection_id = (
+            by_connection.get("semanticmodelid")
+            or by_connection.get("pbiModelDatabaseName")
+            or by_connection.get("connectionString")
+        )
+        if connection_id:
+            return f"byConnection:{connection_id}"
+        return "byConnection"
     return None
 
 
 def _model_for_ref(ref: str | None, models: Mapping[Path, Mapping[str, Any]], report: Path, root: Path) -> Mapping[str, Any] | None:
-    if ref:
+    if ref is not None:
         target = Path(ref)
         for path, model in models.items():
             if path.resolve() == target.resolve():
                 return model
+        return None
     if len(models) == 1:
         return next(iter(models.values()))
     return None
