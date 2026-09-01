@@ -9,6 +9,160 @@ review decisions into a canonical, provenance-aware graph.
 The Brain is infrastructure. It does not generate natural-language queries,
 compile DAX, or edit Power BI models and reports.
 
+## Setup guide
+
+This guide is for running Power BI Brain on a Windows PC. The PBIBrain folder
+and the Power BI project are separate. A Power BI project can be anywhere on
+your computer; it does not need to be inside the PBIBrain folder.
+
+### 1. Install the prerequisites
+
+Install:
+
+- Python 3.11 or newer.
+- Node.js and npm for the Inspector web interface.
+- The LadybugDB Python package and its matching native library. Installing
+  PBIBrain installs the Python package, but Windows also needs
+  `lbug_shared.dll`.
+- Optional: Power BI Desktop if you want to use the Desktop Bridge.
+
+The Desktop Bridge CLI requires Node.js 20 or newer. It is optional for
+scanning PBIP files.
+
+### 2. Open PowerShell in the PBIBrain folder
+
+Use the folder where this repository is installed:
+
+```powershell
+cd C:\path\to\PBIBrain
+```
+
+Run the commands below from this folder. The default database is
+`data/brain.lbug`, and the default identity file is
+`config/identity.json`.
+
+### 3. Install the Python backend
+
+```powershell
+python -m pip install -e .
+```
+
+Editable install means Python runs the code from this folder. Changes to the
+repository are immediately available without reinstalling.
+
+Check that the command is available:
+
+```powershell
+brain --help
+```
+
+If `brain` is not found, use the module form instead:
+
+```powershell
+python -m backend.cli.main --help
+```
+
+### 4. Configure the LadybugDB Windows library
+
+Find `lbug_shared.dll` on a PC where LadybugDB is already configured:
+
+```powershell
+where.exe /R C:\ lbug_shared.dll
+```
+
+If it is not available, download the matching Windows shared library from the
+[LadybugDB releases](https://github.com/LadybugDB/ladybug/releases). Use the
+version that matches the installed Python package.
+
+Set the DLL path in the current PowerShell window:
+
+```powershell
+$env:LBUG_C_API_LIB_PATH = 'C:\path\to\lbug_shared.dll'
+$env:PATH = "$(Split-Path $env:LBUG_C_API_LIB_PATH);$env:PATH"
+```
+
+These environment variables apply only to the current PowerShell window. Set
+them again in every new window, or add them to your Windows user environment.
+
+Verify the backend and native library:
+
+```powershell
+brain status --json
+```
+
+If this reports that `lbug_shared.dll` is missing, the DLL path is wrong or
+the DLL does not match the installed LadybugDB package.
+
+### 5. Put the PBIP project anywhere
+
+The normal Power BI project layout is:
+
+```text
+C:\models\Finance\
+├── Finance.pbip
+├── Finance.SemanticModel\
+└── Finance.Report\
+```
+
+The `.pbip` file, `.SemanticModel` folder, and `.Report` folder normally sit
+beside each other. They do not need to be beside or inside PBIBrain.
+
+When Brain receives the path to `Finance.pbip`, it reads that project file and
+follows its declared artifact paths. If no paths are declared, it looks for
+`.SemanticModel` and `.Report` folders directly beside the `.pbip` file.
+
+### 6. Scan the PBIP project
+
+From the PBIBrain folder, provide the full path to the `.pbip` file:
+
+```powershell
+brain scan 'C:\models\Finance\Finance.pbip'
+```
+
+Do not use `model.json` for a PBIP project. That is a separate input mode for
+standalone JSON metadata files.
+
+After scanning, inspect the graph:
+
+```powershell
+brain status --json
+brain search "net sales"
+```
+
+### 7. Start the Inspector web interface
+
+Keep the first PowerShell window running and open a second one.
+
+In the first window, start the API from the PBIBrain folder:
+
+```powershell
+cd C:\path\to\PBIBrain
+python -m backend.api --db data/brain.lbug --overrides config/overrides.json
+```
+
+In the second window, install and start the frontend:
+
+```powershell
+cd C:\path\to\PBIBrain\frontend
+npm install
+npm run dev
+```
+
+Open `http://127.0.0.1:5173/` in your browser. The frontend proxies API
+requests to `http://127.0.0.1:8000`.
+
+### 8. Preserve project data when moving to another PC
+
+Copy these files if you want to keep the existing graph and stable object
+identities:
+
+- `data/brain.lbug`
+- `config/identity.json`
+- `config/overrides.json`, if you have made review decisions
+
+Keep the Power BI project files together. PBIX files are not parsed directly;
+use the companion PBIP project and its `.SemanticModel` and `.Report` folders.
+
 ## What is implemented
 
 The V1 pipeline is:
@@ -58,7 +212,7 @@ Generated facts are never replaced by human overrides. Effective API payloads
 apply overrides over generated records while the generated graph remains
 inspectable.
 
-## Requirements
+## Technical requirements
 
 - Python 3.11 or newer.
 - LadybugDB Python package (`ladybug >= 0.20`) and its native shared library.
@@ -85,12 +239,16 @@ $env:PATH = "$(Split-Path $env:LBUG_C_API_LIB_PATH);$env:PATH"
 The native graph store is the production path. The JSON repository is only an
 explicit test double: `GraphRepository(..., use_native=False)`.
 
-## Quick start
+## Command reference
 
 Run from the repository root. The defaults are `data/brain.lbug` and
 `config/identity.json`.
 
-### Scan JSON metadata
+### Optional: scan standalone JSON metadata
+
+This mode is for standalone JSON metadata files or test fixtures. The files
+must already exist at the paths provided. These are not the files inside a
+PBIP project.
 
 ```powershell
 brain scan .\model.json --report .\report.json
