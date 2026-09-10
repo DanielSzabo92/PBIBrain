@@ -474,7 +474,11 @@ class Phase4FrontendContractTests(unittest.TestCase):
             any(name in dependencies for name in ("reactflow", "@xyflow/react")),
             "React Flow dependency missing",
         )
-        self.assertRegex(app_source, r"ReactFlow|reactflow|@xyflow/react")
+        graph_source = (ROOT / "frontend" / "src" / "components" / "GraphView.jsx").read_text(encoding="utf-8")
+        self.assertIn('import GraphView from "./components/GraphView"', app_source)
+        self.assertIn('from "@xyflow/react"', graph_source)
+        self.assertIn("<ReactFlow", graph_source)
+        self.assertNotIn("<svg", graph_source, "The graph must render through React Flow")
         self.assertNotIn("<svg", app_source, "Graph view must use React Flow, not custom SVG persistence/rendering")
         for label in ("Overview", "Graph", "Inspector", "Review queue"):
             self.assertIn(label, app_source)
@@ -518,7 +522,7 @@ if (staleSnapshot.review_items.length !== 1 || staleSnapshot.review_items[0].iss
 }
 const appSource = readFileSync("./src/App.jsx", "utf8");
 const itemImpactStart = appSource.indexOf("function itemImpact");
-const itemImpactEnd = appSource.indexOf("\n\nfunction relatedNodeIds", itemImpactStart);
+const itemImpactEnd = appSource.indexOf("\n\nfunction dataCounts", itemImpactStart);
 const numberOr = (value, fallback = 0) => {
   const number = Number(value);
   return Number.isFinite(number) ? number : fallback;

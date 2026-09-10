@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "skills": {
+    "design-artifact": {
+      "source": "plannotator/effective-html",
+      "sourceType": "github",
+      "skillPath": "skills/design-artifact/SKILL.md",
+      "computedHash": "f50724c622b7df3d561dd24f6af11ed5bb50110007270dbeae3f9faf63982625"
+    },
+    "html": {
+      "source": "plannotator/effective-html",
+      "sourceType": "github",
+      "skillPath": "skills/html/SKILL.md",
+      "computedHash": "8deb96a6fb6092850eb82fcdb680a779d44d4848fbf920e7b9254befcb12c8e0"
+    },
+    "html-diagram": {
+      "source": "plannotator/effective-html",
+      "sourceType": "github",
+      "skillPath": "skills/html-diagram/SKILL.md",
+      "computedHash": "5b416575caefa8d655831790b61414d21b28328627589833b67f358e9b11fd31"
+    },
+    "html-plan": {
+      "source": "plannotator/effective-html",
+      "sourceType": "github",
+      "skillPath": "skills/html-plan/SKILL.md",
+      "computedHash": "d8eac897c3c70ec6d1017e937797ac9c745cc9a414be48c7c86d401f6ef777e0"
+    },
+    "html-prototype": {
+      "source": "plannotator/effective-html",
+      "sourceType": "github",
+      "skillPath": "skills/html-prototype/SKILL.md",
+      "computedHash": "604995f6e47730482cb7d5665aa55eab17f60b816677f00659a963f8daa49f3c"
+    },
+    "html-wireframe": {
+      "source": "plannotator/effective-html",
+      "sourceType": "github",
+      "skillPath": "skills/html-wireframe/SKILL.md",
+      "computedHash": "04a0317e209c63a9bda3a7a68cf61c55c0de1585fc8784e8df127d60b836719f"
+    }
+  }
+}

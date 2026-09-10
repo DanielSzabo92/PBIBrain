@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import mimetypes
 from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
@@ -41,19 +42,6 @@ def _last_scan(repository: GraphRepository) -> Any:
         value = getattr(repository, name, None)
         if value:
             return value
-    path = getattr(repository, "path", None)
-    if path is not None:
-        try:
-            return datetime.fromtimestamp(Path(path).stat().st_mtime, tz=timezone.utc).isoformat()
-        except OSError:
-            pass
-    if getattr(repository, "nodes", None):
-        value = datetime.now(timezone.utc).isoformat()
-        try:
-            repository.last_scan = value
-        except AttributeError:
-            pass
-        return value
     return None
 
 
@@ -82,12 +70,16 @@ def get_overview(repository: GraphRepository, *, store: OverrideStore | None = N
         "reports": sum(1 for node in nodes if node.type == "REPORT"),
         "model_ids": sorted(node.id for node in nodes if node.type == "MODEL"),
         "report_ids": sorted(node.id for node in nodes if node.type == "REPORT"),
+        "model_objects": [{"id": node.id, "name": node.name} for node in nodes if node.type == "MODEL"],
+        "report_objects": [{"id": node.id, "name": node.name} for node in nodes if node.type == "REPORT"],
+        "storage": repository.storage,
         "last_scan": _last_scan(repository),
         "scan_state": "ready" if nodes else "empty",
         "state": "ready" if nodes else "empty",
         "object_counts": dict(sorted(counts.items())),
         "counts": {"nodes": len(nodes), "edges": len(edges)},
         "candidate_count": candidate_count,
+        "approved_count": sum(edge.status == "approved" for edge in edges),
         "warning_count": warning_count,
         "validation_state": str(validation_state),
     }
@@ -363,8 +355,10 @@ class BrainAPI:
 class BrainApp:
     """Minimal WSGI app; no web framework is needed for local Inspector use."""
 
-    def __init__(self, api: BrainAPI) -> None:
+    def __init__(self, api: BrainAPI, *, project: Any = None, static_dir: str | Path | None = None) -> None:
         self.api = api
+        self.project = project
+        self.static_dir = Path(static_dir).resolve() if static_dir else None
 
     @staticmethod
     def _json_body(body: bytes | str | Mapping[str, Any] | None) -> dict[str, Any]:
@@ -405,6 +399,30 @@ class BrainApp:
         try:
             if method == "OPTIONS":
                 return 204, None
+            if parts == ["config"] and self.project is not None:
+                if method == "GET":
+                    return 200, self.project.get_config()
+                if method == "POST":
+                    payload = self._json_body(body)
+                    current = self.project.get_config()
+                    if any(payload.get(key, current[key]) != current[key] for key in ("database", "identity_map")):
+                        raise ValueError("Storage paths cannot change while the server is open; edit the config file and restart")
+                    return 200, self.project.save_config(payload)
+            if method == "POST" and parts == ["scan"] and self.project is not None:
+                result = self.project.scan(self.api.repository)
+                return 200, {"overview": self.api.get_overview(), "source_count": result.source_count}
+            if method == "GET" and parts == ["search"]:
+                from .retrieval import retrieve_objects
+                return 200, retrieve_objects(
+                    self.api.repository,
+                    str(self._query_values(query, "q") or self._query_values(query, "query") or ""),
+                    model_id=self._query_values(query, "model_id"),
+                    report_id=self._query_values(query, "report_id"),
+                    object_type=self._query_values(query, "object_type") or self._query_values(query, "type"),
+                    limit=int(str(self._query_values(query, "limit") or "50")),
+                    offset=int(str(self._query_values(query, "offset") or "0")),
+                    store=self.api.overrides,
+                )
             if method == "GET" and parts == ["overview"]:
                 return 200, self.api.get_overview()
             if method == "GET" and parts == ["brain"]:
@@ -451,6 +469,11 @@ class BrainApp:
                     "object_types": self._query_values(query, "object_type") or self._query_values(query, "type"),
                     "edge_types": self._query_values(query, "edge_type") or self._query_values(query, "edge_types"),
                     "center_id": self._query_values(query, "center_id"),
+                    "artifact": self._query_values(query, "artifact"),
+                    "status": self._query_values(query, "status"),
+                    "model_id": self._query_values(query, "model_id"),
+                    "report_id": self._query_values(query, "report_id"),
+                    "limit": 100,
                 }
                 if len(parts) > 1:
                     params["center_id"] = "/".join(parts[1:])
@@ -482,6 +505,11 @@ class BrainApp:
                 if not target:
                     raise ValueError("context target is required")
                 return 200, self.api.get_context(target, task=self._query_values(query, "task"))
+            if method == "POST" and parts == ["context"]:
+                payload = self._json_body(body)
+                if not isinstance(payload.get("target"), str) or not payload["target"]:
+                    raise ValueError("context target is required")
+                return 200, self.api.get_context(payload["target"], task=payload.get("task"))
             if method == "POST" and len(parts) >= 3 and parts[0] == "review":
                 item_id = "/".join(parts[1:-1])
                 return 200, self.api.apply_review(item_id, parts[-1], self._json_body(body))
@@ -502,18 +530,55 @@ class BrainApp:
             return 404, {"error": str(exc).strip("'")}
         except (TypeError, ValueError) as exc:
             return 400, {"error": str(exc)}
+        except (OSError, RuntimeError) as exc:
+            return 503, {"error": str(exc)}
 
     def __call__(self, environ: Mapping[str, Any], start_response: Any) -> list[bytes]:
         method = str(environ.get("REQUEST_METHOD", "GET"))
         path = str(environ.get("PATH_INFO", "/"))
         query = str(environ.get("QUERY_STRING", ""))
-        length = int(environ.get("CONTENT_LENGTH") or 0)
-        stream = environ.get("wsgi.input")
-        body = stream.read(length) if stream is not None and length else b""
-        status, payload = self.handle(method, f"{path}?{query}" if query else path, body)
-        status_text = {200: "OK", 204: "No Content", 400: "Bad Request", 404: "Not Found", 405: "Method Not Allowed"}.get(status, "Error")
+        host = str(environ.get("HTTP_HOST") or "127.0.0.1")
+        origin = str(environ.get("HTTP_ORIGIN") or "")
+        local_hosts = {"127.0.0.1", "localhost", "::1"}
+        status, payload = 200, None
+        try:
+            parsed_host = urlsplit(f"http://{host}")
+            if parsed_host.hostname not in local_hosts or parsed_host.username or parsed_host.path:
+                raise PermissionError("Only local requests are supported")
+            allowed_origins = {f"http://{host}", "http://127.0.0.1:5173", "http://localhost:5173"}
+            if origin and origin not in allowed_origins:
+                raise PermissionError("Origin is not allowed")
+            length = int(environ.get("CONTENT_LENGTH") or 0)
+            if length < 0:
+                raise ValueError("Invalid content length")
+            if length > 1024 * 1024:
+                status, payload = 413, {"error": "Request body exceeds 1 MiB"}
+            elif method == "POST" and str(environ.get("CONTENT_TYPE", "")).split(";")[0].strip() != "application/json":
+                status, payload = 415, {"error": "POST requests require application/json"}
+            else:
+                stream = environ.get("wsgi.input")
+                body = stream.read(length) if stream is not None and length else b""
+                if method == "GET" and self.static_dir and not path.startswith("/api"):
+                    asset = (self.static_dir / unquote(path).lstrip("/")).resolve()
+                    if not asset.is_relative_to(self.static_dir):
+                        raise PermissionError("Path is not allowed")
+                    if path == "/":
+                        asset = self.static_dir / "index.html"
+                    if asset.is_file():
+                        raw = asset.read_bytes()
+                        mime = mimetypes.guess_type(asset.name)[0] or "application/octet-stream"
+                        start_response("200 OK", [("Content-Type", mime), ("Content-Length", str(len(raw))), ("X-Content-Type-Options", "nosniff")])
+                        return [raw]
+                status, payload = self.handle(method, f"{path}?{query}" if query else path, body)
+        except PermissionError as exc:
+            status, payload = 403, {"error": str(exc)}
+        except (ValueError, OSError) as exc:
+            status, payload = 400, {"error": str(exc)}
+        status_text = {200: "OK", 204: "No Content", 400: "Bad Request", 403: "Forbidden", 404: "Not Found", 405: "Method Not Allowed", 413: "Payload Too Large", 415: "Unsupported Media Type", 503: "Service Unavailable"}.get(status, "Error")
         raw = b"" if payload is None else json.dumps(payload, ensure_ascii=False, sort_keys=True).encode("utf-8")
-        headers = [("Content-Type", "application/json"), ("Content-Length", str(len(raw))), ("Access-Control-Allow-Origin", "*")]
+        headers = [("Content-Type", "application/json"), ("Content-Length", str(len(raw))), ("Cache-Control", "no-store"), ("X-Content-Type-Options", "nosniff")]
+        if origin and status != 403:
+            headers.extend([("Access-Control-Allow-Origin", origin), ("Vary", "Origin")])
         if method == "OPTIONS":
             headers.extend([("Access-Control-Allow-Methods", "GET, POST, OPTIONS"), ("Access-Control-Allow-Headers", "Content-Type")])
         start_response(f"{status} {status_text}", headers)
@@ -547,16 +612,24 @@ def serve(
     database_path: str | Path = "data/brain.lbug",
     overrides_path: str | Path | None = None,
     use_native: bool | None = None,
+    config_path: str | Path | None = None,
+    static_dir: str | Path | None = None,
 ) -> None:
     """Serve the local API directly with the Python standard library."""
 
     from wsgiref.simple_server import make_server
 
+    if host not in {"127.0.0.1", "localhost"}:
+        raise ValueError("PBIBrain is local-only; use 127.0.0.1 or localhost")
     application = create_app(
         database_path=database_path,
         overrides_path=overrides_path,
         use_native=use_native,
     )
+    if config_path is not None:
+        from backend.projects import ProjectService
+        application.project = ProjectService(config_path)
+    application.static_dir = Path(static_dir).resolve() if static_dir else None
     try:
         with make_server(host, int(port), application) as server:
             server.serve_forever()

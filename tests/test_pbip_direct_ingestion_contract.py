@@ -294,6 +294,33 @@ class DirectPBIPIngestionContractTests(unittest.TestCase):
 
 @unittest.skipUnless(_native_ladybug_available(), "Ladybug C API shared library is unavailable")
 class NativePBIPLadybugIngestionTests(unittest.TestCase):
+    def test_committed_pbip_rescan_survives_abrupt_process_exit(self):
+        import subprocess
+        import sys
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            project = write_pbip_project(root / "fixture")
+            database = root / "brain.lbug"
+            script = """
+import os, sys
+from backend.graph.repository import GraphRepository
+from backend.scanner.pipeline import Scanner
+repository = GraphRepository(sys.argv[1])
+scanner = Scanner(repository, identity_path=sys.argv[3])
+scanner.scan(sys.argv[2])
+scanner.scan(sys.argv[2])
+os._exit(0)
+"""
+            result = subprocess.run(
+                [sys.executable, "-c", script, str(database), str(project), str(root / "identity.json")],
+                capture_output=True, text=True, timeout=60,
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            with GraphRepository(database) as reopened:
+                self.assertIsNotNone(_node_by_source(reopened.all_nodes(), "MEASURE", NET_LINEAGE))
+                self.assertIsNotNone(_node_by_name(reopened.all_nodes(), "REPORT", "Finance Report"))
+                self.assertTrue(reopened.all_edges())
+
     def test_pbip_model_and_report_persist_after_native_database_reopen(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

@@ -155,15 +155,15 @@ class InspectorCleanupContractTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
     def test_flow_nodes_are_keyboard_operable_and_semantically_focusable(self):
-        source = (ROOT / "frontend" / "src" / "App.jsx").read_text(encoding="utf-8")
-        start = source.index("function BrainFlowNode")
-        end = source.index("\n\nfunction nodeColor", start)
-        body = source[start:end]
-        self.assertRegex(body, r'role\s*=\s*["\']button["\']')
-        self.assertRegex(body, r"onKeyDown|onKeyUp")
-        self.assertRegex(body, r"Enter")
-        self.assertTrue("Space" in body or '" "' in body or "' '" in body)
-        self.assertIn("aria-label", body)
+        source = (ROOT / "frontend" / "src" / "components" / "GraphView.jsx").read_text(encoding="utf-8")
+        # React Flow owns the one focusable wrapper and its Enter/Space handler.
+        # Browser acceptance also exercises both keys against the rendered nodes.
+        self.assertRegex(source, r'ariaRole\s*:\s*["\']button["\']')
+        self.assertIn("ariaLabel:", source)
+        self.assertIn("onNodesChange=", source)
+        self.assertIn('change.type === "select"', source)
+        self.assertNotIn("disableKeyboardA11y={true}", source)
+        self.assertNotIn("nodesFocusable={false}", source)
 
 
 if __name__ == "__main__":

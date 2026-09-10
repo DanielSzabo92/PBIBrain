@@ -9,6 +9,93 @@ review decisions into a canonical, provenance-aware graph.
 The Brain is infrastructure. It does not generate natural-language queries,
 compile DAX, or edit Power BI models and reports.
 
+## Windows app
+
+Open **PBIBrain.exe**, enter a project name, choose your Power BI project folder,
+then click **Scan project**. The desktop package includes Python, the graph
+engine, and the Inspector. No Python, Node.js, or database setup is needed.
+
+Generated files stay in the selected folder under **.pbibrain**. Reopen that
+folder to continue with the saved graph and review decisions. Power BI source
+files remain untouched.
+
+See [Desktop distribution and build guide](docs/DESKTOP.md) for package details.
+The command-line instructions below are for developers and agents.
+
+## Developer project workflow
+
+PBIBrain now groups multiple PBIP/model sources in one project, with ranked
+agent retrieval and a local Configuration, Search, and Graph interface.
+No AI provider, API key, or embedding service is required.
+
+After installing the prerequisites below and configuring LadybugDB:
+
+```powershell
+cd frontend
+npm ci
+npm run build
+cd ..
+brain serve
+```
+
+Open `http://127.0.0.1:8000/`. In **Configuration**, add full Windows paths to
+your `.pbip` or model JSON files, save, then **Scan saved sources**. The built
+UI and API run in one Python process. Node.js is needed to build the UI, not to
+serve an already built UI.
+
+Each Brain project has one JSON configuration. Relative paths resolve from
+that file's folder. Use a separate config, database, and identity map for
+separate projects:
+
+```json
+{
+  "version": 1,
+  "name": "Finance reporting",
+  "sources": ["C:\\Reports\\Finance\\Finance.pbip", "C:\\Reports\\Sales\\Sales.pbip"],
+  "database": "brain.lbug",
+  "identity_map": "identity.json"
+}
+```
+
+```powershell
+brain --config C:\Reports\brain.json project-scan
+brain --config C:\Reports\brain.json serve
+brain --config C:\Reports\brain.json retrieve Revenue --limit 20
+brain --config C:\Reports\brain.json context "<exact object ID>"
+brain --config C:\Reports\brain.json export-markdown
+brain --config C:\Reports\brain.json export-markdown --output C:\Reports\finance-doc.md
+```
+
+`project-scan` stages all configured sources and publishes them together.
+Removing a source from the manifest removes its objects on the next successful
+scan. A failed source leaves the previous graph available. `brain scan` remains
+the single-source synchronization command; use `project-scan` for grouped inputs.
+The server owns the open native database: use HTTP/MCP for reads while it runs,
+and stop it before running direct database CLI commands.
+
+`export-markdown` renders deterministic Markdown from the canonical project
+snapshot. Without `--output`, it writes to stdout. With `--output`, the target
+must be a new file; existing files and protected project paths are rejected.
+The export preserves model/report inventories, exact stored expressions, fact
+versus inference and observation classes, source evidence, unresolved
+bindings, unknown scan metadata, and a deterministic snapshot identity without
+inventing a scan ID. Stop `brain serve` before running this direct database
+command. The export is canonical-snapshot only; review overrides are excluded.
+
+Agent integration and response contracts: [Agent guide](docs/AGENT_GUIDE.md).
+Review and future documentation/visualization plan: [Product review](docs/PRODUCT_REVIEW.md).
+
+## Requirements
+
+Windows, Python 3.11+, matching LadybugDB native library, and Node.js/npm to build
+the optional GUI. No Power BI installation is needed for file-based PBIP scans.
+
+<p align="center">
+  <a href="docs/project-diagram.html" target="_blank" rel="noopener"><strong>Open the full interactive project map ↗</strong></a>
+</p>
+
+<iframe src="docs/project-diagram.html" title="Interactive Power BI Brain project map" width="100%" height="840" loading="lazy" style="border: 1px solid #d6dee0;"></iframe>
+
 ## Setup guide
 
 This guide is for running Power BI Brain on a Windows PC. The PBIBrain folder

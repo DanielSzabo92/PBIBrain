@@ -9,12 +9,20 @@ description = "Canonical, provenance-aware Power BI semantic graph"
 requires-python = ">=3.11"
 dependencies = ["ladybug>=0.20", "antlr4-python3-runtime==4.13.2"]
 
+[project.optional-dependencies]
+mcp = ["mcp>=1.9,<2"]
+desktop = ["pywebview==6.2.1"]
+
 [project.urls]
 Homepage = "https://github.com/DanielSzabo92/PBIBrain"
 Repository = "https://github.com/DanielSzabo92/PBIBrain"
 
 [project.scripts]
 brain = "backend.cli.main:main"
+brain-agent = "backend.agent:main"
+
+[project.gui-scripts]
+pbibrain = "backend.desktop:run"
 
 [tool.setuptools.packages.find]
 include = ["backend*"]

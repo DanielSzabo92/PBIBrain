@@ -1,0 +1,6 @@
+# Pinned Windows x64 desktop build environment.
+ladybug==0.20.0
+antlr4-python3-runtime==4.13.2
+mcp==1.30.0
+pywebview==6.2.1
+pyinstaller==6.22.2

@@ -8,6 +8,7 @@ from backend.graph.repository import GraphRepository
 from backend.graph.schema import Edge, Node
 
 from .review import OverrideStore, apply_overrides_to_dict
+from .retrieval import ranked_object_list
 
 
 def _payload(value: Any, store: OverrideStore | None = None) -> dict[str, Any]:
@@ -27,16 +28,14 @@ def search_objects(
     report_id: str | None = None,
     store: OverrideStore | None = None,
 ) -> list[dict[str, Any]]:
-    values = repository.search_objects(query)
-    if object_type:
-        wanted_values = object_type if isinstance(object_type, (list, tuple, set, frozenset)) else [object_type]
-        wanted = {str(value).upper() for value in wanted_values}
-        values = [value for value in values if value.type in wanted]
-    if model_id is not None:
-        values = [value for value in values if value.model_id == str(model_id)]
-    if report_id is not None:
-        values = [value for value in values if value.report_id == str(report_id)]
-    return [_payload(value, store) for value in values]
+    return ranked_object_list(
+        repository,
+        query,
+        object_type=object_type,
+        model_id=model_id,
+        report_id=report_id,
+        store=store,
+    )
 
 
 def get_object(

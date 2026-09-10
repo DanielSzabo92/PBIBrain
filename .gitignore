@@ -10,6 +10,8 @@ venv/
 # Frontend dependencies and build output
 frontend/node_modules/
 frontend/dist/
+frontend/test-results/
+frontend/playwright-report/
 
 # Local/runtime data
 *.lbug
@@ -35,3 +37,17 @@ data/*-identity.json
 
 data/brain.lbug
 config/identity.json
+
+# Windows application build and generated project state
+.venv-build/
+build/
+dist/
+runtime/native/
+.cache/
+.pbibrain/
+
+# graft's local graph cache — regenerable, not committed (run `graft build`).
+/graft/
+
+# graphify's generated analysis output — regenerable, not committed.
+/graphify-out/

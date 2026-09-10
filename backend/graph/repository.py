@@ -60,6 +60,9 @@ class GraphRepository:
         return self._native is not None
 
     def _try_open_native(self) -> None:
+        from backend.native_runtime import configure_native_runtime
+
+        configure_native_runtime()
         try:
             import ladybug as lb  # type: ignore[import-not-found]
         except ImportError:
@@ -173,13 +176,27 @@ class GraphRepository:
         if self._native is None:
             return
         _, connection = self._native
-        # ponytail: rebuild the tiny canonical tables per write; incremental
-        # mutation belongs to Phase 5 and this keeps the native path reliable.
         try:
-            connection.execute("MATCH (n:BrainNode) DETACH DELETE n")
+            connection.execute("BEGIN TRANSACTION")
+            self._write_native_graph(connection)
+            connection.execute("COMMIT")
         except Exception as exc:
+            try:
+                connection.execute("ROLLBACK")
+            except Exception:
+                LOGGER.debug("Native rollback unavailable", exc_info=True)
             LOGGER.error("LadybugDB graph replacement failed", exc_info=True)
             raise RuntimeError(f"LadybugDB graph replacement failed: {exc}") from exc
+        # Consolidate the committed snapshot: replaying complex replacement
+        # transactions after abrupt process exit can fail in the native WAL.
+        # A checkpoint failure cannot undo COMMIT, so keep the published index.
+        try:
+            connection.execute("CHECKPOINT")
+        except Exception:
+            LOGGER.warning("Graph committed, but native checkpoint failed; close the database cleanly", exc_info=True)
+
+    def _write_native_graph(self, connection: Any) -> None:
+        connection.execute("MATCH (n:BrainNode) DETACH DELETE n")
         for node in self.nodes.values():
             props = json.dumps(node.properties, ensure_ascii=False, sort_keys=True, default=_json_default)
             query = (
@@ -233,15 +250,12 @@ class GraphRepository:
 
     def upsert_node(self, node: Node | Mapping[str, Any]) -> Node:
         value = node_from_dict(node)
-        self.nodes[value.id] = value
-        self._persist()
+        self.replace([*self.nodes.values(), value], self.edges.values())
         return value
 
     def upsert_nodes(self, nodes: Iterable[Node | Mapping[str, Any]]) -> list[Node]:
         values = [node_from_dict(node) for node in nodes]
-        for value in values:
-            self.nodes[value.id] = value
-        self._persist()
+        self.replace([*self.nodes.values(), *values], self.edges.values())
         return values
 
     add_node = upsert_node
@@ -249,15 +263,12 @@ class GraphRepository:
 
     def upsert_edge(self, edge: Edge | Mapping[str, Any]) -> Edge:
         value = edge_from_dict(edge)
-        self.edges[value.id] = value
-        self._persist()
+        self.replace(self.nodes.values(), [*self.edges.values(), value])
         return value
 
     def upsert_edges(self, edges: Iterable[Edge | Mapping[str, Any]]) -> list[Edge]:
         values = [edge_from_dict(edge) for edge in edges]
-        for value in values:
-            self.edges[value.id] = value
-        self._persist()
+        self.replace(self.nodes.values(), [*self.edges.values(), *values])
         return values
 
     add_edge = upsert_edge
@@ -266,14 +277,17 @@ class GraphRepository:
     def replace(self, nodes: Iterable[Node | Mapping[str, Any]], edges: Iterable[Edge | Mapping[str, Any]]) -> None:
         node_values = [node_from_dict(value) for value in nodes]
         edge_values = [edge_from_dict(value) for value in edges]
+        previous_nodes, previous_edges = self.nodes, self.edges
         self.nodes = {value.id: value for value in node_values}
         self.edges = {value.id: value for value in edge_values}
-        self._persist()
+        try:
+            self._persist()
+        except Exception:
+            self.nodes, self.edges = previous_nodes, previous_edges
+            raise
 
     def clear(self) -> None:
-        self.nodes.clear()
-        self.edges.clear()
-        self._persist()
+        self.replace([], [])
 
     def set_validation_result(self, result: Any) -> Any:
         """Publish the latest validation result without changing graph facts."""

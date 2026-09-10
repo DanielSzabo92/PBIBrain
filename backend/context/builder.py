@@ -332,10 +332,18 @@ class ContextBuilder:
         context["target"] = _apply_overrides(target_node.to_dict(), self.store)
         context["scope"] = {
             "model_ids": sorted(
-                {str(nodes[item].model_id) for item in relevant if nodes[item].model_id is not None}
+                {
+                    str(nodes[item].id if nodes[item].type == "MODEL" else nodes[item].model_id)
+                    for item in relevant
+                    if nodes[item].type == "MODEL" or nodes[item].model_id is not None
+                }
             ),
             "report_ids": sorted(
-                {str(nodes[item].report_id) for item in relevant if nodes[item].report_id is not None}
+                {
+                    str(nodes[item].id if nodes[item].type == "REPORT" else nodes[item].report_id)
+                    for item in relevant
+                    if nodes[item].type == "REPORT" or nodes[item].report_id is not None
+                }
             ),
         }
 
@@ -363,13 +371,40 @@ class ContextBuilder:
         for node_id in sorted(relevant):
             properties = nodes[node_id].properties
             if isinstance(properties, Mapping):
+                evidence_properties: list[str] = []
+                evidence_count = 0
+                scalar_values: list[Any] = []
                 for key in ("evidence", "candidate_evidence"):
                     value = properties.get(key)
                     if isinstance(value, (list, tuple, set, frozenset)):
-                        evidence.extend(_safe(item) for item in value)
+                        evidence_properties.append(key)
+                        evidence_count += len(value)
+                        scalar_values.extend(item for item in value if not isinstance(item, Mapping))
+                if evidence_count:
+                    record: dict[str, Any] = {
+                        "subject_id": node_id,
+                        "subject_kind": "node",
+                        "properties": evidence_properties,
+                        "evidence_count": evidence_count,
+                    }
+                    if len(scalar_values) == 1:
+                        record["value"] = _safe(scalar_values[0])
+                    evidence.append(record)
         for category in selected.values():
             for edge in category.values():
-                evidence.extend(_safe(item) for item in edge.evidence)
+                if not edge.evidence:
+                    continue
+                record = {
+                    "subject_id": edge.id,
+                    "subject_kind": "edge",
+                    "edge_type": edge.type,
+                    "source": edge.source,
+                    "evidence_class": edge.evidence_class,
+                    "evidence_count": len(edge.evidence),
+                }
+                if len(edge.evidence) == 1 and not isinstance(edge.evidence[0], Mapping):
+                    record["value"] = _safe(edge.evidence[0])
+                evidence.append(record)
         context["evidence"] = evidence
 
         confidence: dict[str, float] = {}
