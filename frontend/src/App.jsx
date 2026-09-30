@@ -1,8 +1,11 @@
 import VisualBindings from "./components/VisualBindings";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ArrowLeft, ArrowRight, ArrowUpRight, Boxes, Check, ChartColumn, ChevronRight, CircleCheck, Copy, Database, FileText, FolderOpen, Moon, Plus, RefreshCw, ScanLine, ShieldAlert, ShieldCheck, Sparkles, Sun, TriangleAlert, Waypoints, X } from "lucide-react";
 import { brainTransport, normalizeSnapshot } from "./transport";
 import { desktopRequest, subscribeToDesktopBridge } from "./desktop";
 import NavIcon from "./NavIcon";
+import BrandMark from "./components/BrandMark";
+import { highlightDax } from "./dax";
 import { objectName, objectScope, readableText, publicProperties, scopeChoices, statusLabel, suggestionLabel } from "./presentation";
 import { Button } from "./components/ui/button";
 import { Input } from "./components/ui/input";
@@ -24,6 +27,15 @@ const VIEWS = [
   ["review", "Review queue"],
   ["config", "Settings"],
 ];
+
+const VIEW_HINTS = {
+  overview: "Project health at a glance",
+  search: "Names, formulas and descriptions",
+  graph: "How objects depend on each other",
+  inspector: "One object, fully explained",
+  review: "Confirm what PBIBrain inferred",
+  config: "Appearance, sources and agent context",
+};
 
 const EDGE_COLORS = {
   DEPENDS_ON: "#8cb9ff",
@@ -107,11 +119,30 @@ function searchObject(item) {
 function searchMatch(item) {
   const match = item?.match || {};
   const field = match.evidence?.[0]?.field || match.field || item?.match_field || "";
-  return /expression/i.test(field) ? "In formula" : /description/i.test(field) ? "In description" : "Open →";
+  return /expression/i.test(field) ? "In formula" : /description/i.test(field) ? "In description" : "";
+}
+
+const THEME_KEY = "pbibrain-theme";
+
+function readTheme() {
+  try { return globalThis.localStorage?.getItem(THEME_KEY) === "light" ? "light" : "dark"; } catch { return "dark"; }
+}
+
+function useTheme() {
+  const [theme, setTheme] = useState(readTheme);
+  useEffect(() => {
+    const root = document.documentElement;
+    root.classList.toggle("dark", theme === "dark");
+    if (theme === "light") root.dataset.theme = "light";
+    else delete root.dataset.theme;
+    try { globalThis.localStorage?.setItem(THEME_KEY, theme); } catch { /* Storage can be unavailable. */ }
+  }, [theme]);
+  return [theme, () => setTheme((current) => current === "dark" ? "light" : "dark")];
 }
 
 function App({ transport = brainTransport }) {
   const desktopHost = Boolean(globalThis.__PBIBRAIN_DESKTOP__);
+  const [theme, toggleTheme] = useTheme();
   const [snapshot, setSnapshot] = useState(() => normalizeSnapshot(null));
   const [snapshotLoaded, setSnapshotLoaded] = useState(false);
   const [overview, setOverview] = useState({});
@@ -372,6 +403,25 @@ function App({ transport = brainTransport }) {
     [transport, loadSnapshot, load],
   );
 
+  const navigate = useCallback((key) => {
+    setView(key);
+    if (key === "review") loadSnapshot().catch(() => {});
+  }, [loadSnapshot]);
+
+  // Ctrl/Cmd+K (or "/" outside a text field) jumps straight to search.
+  useEffect(() => {
+    const onKey = (event) => {
+      const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(event.target?.tagName) || event.target?.isContentEditable;
+      if (((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") || (event.key === "/" && !typing && !event.ctrlKey && !event.metaKey)) {
+        event.preventDefault();
+        setView("search");
+        requestAnimationFrame(() => document.querySelector(".search-field input")?.focus());
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
   if (desktopHost && desktopState !== "ready") {
     return <DesktopConnecting error={desktopError} onRetry={() => setBridgeAttempt((attempt) => attempt + 1)} />;
   }
@@ -381,52 +431,71 @@ function App({ transport = brainTransport }) {
   }
 
   const activeProject = desktopSession?.project;
+  const projectName = activeProject?.name || config?.name || "PBIBrain";
+  const pending = counts.candidates + counts.warnings;
+  const connection = loading ? "loading" : error ? "error" : "ready";
+  const reloadBrain = () => { setInspectorSession((current) => ({ ...current, result: null, revision: (current.revision || 0) + 1 })); setSearchSession((current) => ({ ...current, result: null, revision: (current.revision || 0) + 1 })); load(); if (view === "inspector" && selectedId) selectNode(selectedId); };
+  const failedNotice = /failed/i.test(String(notice));
   return (
     <div className="app-shell">
-      <header className="topbar">
-        <div className="brand-mark" aria-hidden="true">PB</div>
-        <div>
-          <p className="eyebrow">PBIBRAIN</p>
-          <h1>{activeProject?.name || config?.name || "PBIBrain"}</h1>
+      <aside className="sidebar">
+        <div className="sidebar-brand">
+          <BrandMark size={28} />
+          <span className="sidebar-wordmark">PBIBrain</span>
         </div>
-        <div className="topbar-spacer" />
-        <span className={`connection-dot ${loading ? "is-loading" : error ? "is-error" : "is-ready"}`} />
-        <span className="connection-label">{loading ? "Loading" : error ? "Offline" : "Connected"}</span>
-        {activeProject ? <Button variant="ghost" className="project-switch" onClick={closeDesktopProject} disabled={scanning}>Change project</Button> : null}
-        <Button variant="ghost" size="icon" onClick={() => { setInspectorSession((current) => ({ ...current, result: null, revision: (current.revision || 0) + 1 })); setSearchSession((current) => ({ ...current, result: null, revision: (current.revision || 0) + 1 })); load(); if (view === "inspector" && selectedId) selectNode(selectedId); }} title="Reload Brain" aria-label="Reload Brain">↻</Button>
-      </header>
+        <nav aria-label="Main navigation" className="sidebar-nav">
+          {VIEWS.map(([key, label]) => (
+            <Button variant="ghost" key={key} aria-current={view === key ? "page" : undefined} className={`nav-button ${view === key ? "active" : ""} ${key === "config" ? "nav-settings" : ""}`} onClick={() => navigate(key)}>
+              <NavIcon name={key} />
+              <span className="nav-label">{label}</span>
+              {key === "review" && pending > 0 ? <span className="nav-count">{pending > 99 ? "99+" : pending}</span> : null}
+              {key === "search" ? <kbd className="nav-kbd" aria-hidden="true">Ctrl K</kbd> : null}
+            </Button>
+          ))}
+        </nav>
+        <div className="sidebar-footer">
+          <span className={`connection connection-${connection}`} title={loading ? "Loading" : error ? "Offline" : "Connected"}><i />{loading ? "Loading" : error ? "Offline" : "Connected"}</span>
+          <Button variant="ghost" size="icon-sm" className="theme-toggle" onClick={toggleTheme} aria-label={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"} title={theme === "dark" ? "Light theme" : "Dark theme"}>{theme === "dark" ? <Sun /> : <Moon />}</Button>
+        </div>
+      </aside>
 
-      <div className="workspace">
-        <aside className="sidebar">
-          <nav aria-label="Main navigation">
-            {VIEWS.map(([key, label]) => (
-              <Button variant="ghost" key={key} aria-current={view === key ? "page" : undefined} className={`nav-button ${view === key ? "active" : ""}`} onClick={() => { setView(key); if (key === "review") loadSnapshot().catch(() => {}); }}>
-                <NavIcon name={key} />
-                {label}
-                {key === "review" && counts.candidates + counts.warnings > 0 ? <span className="nav-pending" aria-label="Pending reviews" /> : null}
-              </Button>
-            ))}
-          </nav>
-        </aside>
+      <div className="main-column">
+        <header className="topbar">
+          <div className="breadcrumb">
+            <span className="project-avatar" aria-hidden="true">{projectName.trim().slice(0, 1).toUpperCase() || "P"}</span>
+            <span className="breadcrumb-project" title={projectName}>{projectName}</span>
+            <ChevronRight className="breadcrumb-sep" aria-hidden="true" />
+            <span className="breadcrumb-view">{VIEWS.find(([key]) => key === view)?.[1]}</span>
+            <span className="breadcrumb-hint">{VIEW_HINTS[view]}</span>
+          </div>
+          <div className="topbar-actions">
+            {scanning ? <span className="topbar-scanning"><RefreshCw className="spin" aria-hidden="true" />Scanning</span> : null}
+            {activeProject ? <Button variant="ghost" size="sm" className="project-switch" onClick={closeDesktopProject} disabled={scanning}><FolderOpen />Change project</Button> : null}
+            <Button variant="ghost" size="icon-sm" onClick={reloadBrain} title="Reload Brain" aria-label="Reload Brain"><RefreshCw className={loading ? "spin" : ""} /></Button>
+          </div>
+        </header>
 
-        <main className={`content ${view === "graph" ? "content-graph" : ""}`}>
-          {notice ? <div className="toast" role="status">{notice}</div> : null}
+        <main className={`content content-${view}`}>
+          {notice ? <div className={`toast ${failedNotice ? "toast-error" : ""}`} role="status">{failedNotice ? <TriangleAlert aria-hidden="true" /> : <CircleCheck aria-hidden="true" />}{notice}</div> : null}
           {error || operationError || desktopError ? (
             <div className="error-banner" role="alert">
+              <TriangleAlert aria-hidden="true" />
               <span>{readableText(error || operationError || desktopError)}</span>
-              {error ? <Button variant="link" onClick={load}>Retry</Button> : null}
+              {error ? <Button variant="outline" size="sm" onClick={load}>Retry</Button> : null}
             </div>
           ) : null}
-          {view === "overview" ? <Overview onSelect={selectNode} overview={overview} config={config} counts={counts} loading={loading} onView={setView} onSearch={(query) => { setSearchSession({ query, modelId: "", reportId: "", result: null }); setView("search"); }} onSources={() => { setSettingsTab("project"); setView("config"); }} onScan={applyScan} scanning={scanning} scanLabel={activeProject ? "Scan project" : "Scan sources"} onReview={() => { setView("review"); loadSnapshot().catch(() => {}); }} /> : null}
-          {view === "search" ? <SearchView session={searchSession} onSession={setSearchSession} colors={graphColors} transport={transport} overview={overview} onSelect={selectNode} /> : null}
-          {view === "graph" ? <GraphView colors={graphColors} transport={transport} overview={overview} snapshot={snapshot} selectedId={selectedId} onSelect={selectNode} /> : null}
-          {view === "inspector" ? selectedId ? <><Button variant="ghost" className="inspector-back" onClick={() => { if (inspectorOrigin === "inspector") { setSelectedId(null); setInspectedObject(null); } else setView(inspectorOrigin); }}><span aria-hidden="true">←</span>{inspectorOrigin === "search" ? "Back to results" : inspectorOrigin === "inspector" ? "Browse objects" : `Back to ${VIEWS.find(([key]) => key === inspectorOrigin)?.[1]?.toLowerCase() || "overview"}`}</Button><Inspector key={selectedId} colors={graphColors} node={selected} details={inspectedDetails} loading={Boolean(selectedId && !inspectedDetails && !inspectorError)} error={inspectorError} snapshot={snapshot} snapshotLoaded={snapshotLoaded} overview={overview} onSelect={selectNode} onRetry={() => selectNode(selectedId)} onReview={review} onGraph={() => setView("graph")} /></> : <SearchView browse session={inspectorSession} onSession={setInspectorSession} colors={graphColors} transport={transport} overview={overview} onSelect={(id) => { setInspectorOrigin("inspector"); selectNode(id); }} /> : null}
-          {view === "review" ? <ReviewQueue snapshot={snapshot} loading={!snapshotLoaded} overview={overview} onSelect={selectNode} onReview={review} /> : null}
-          {view === "config" ? <Tabs value={settingsTab} onValueChange={setSettingsTab} className="settings-tabs">
-            <TabsList aria-label="Settings sections"><TabsTrigger value="colors">Graph colors</TabsTrigger><TabsTrigger value="project">Project</TabsTrigger><TabsTrigger value="summary">Model summary</TabsTrigger></TabsList>
-            <TabsContent value="colors"><GraphColors config={config} transport={transport} overview={overview} onSaved={setConfig} /></TabsContent>
-            <TabsContent value="summary"><ModelSummary overview={overview} transport={transport} scanning={scanning} /></TabsContent>
-            <TabsContent value="project">{activeProject ? <DesktopProjectView api={desktopApi} project={activeProject} overview={overview} config={config} transport={transport} scanning={scanning} onScan={applyScan} onChange={closeDesktopProject} onRefresh={load} onSaved={setConfig} /> : <ConfigView transport={transport} config={config} onSaved={setConfig} onScan={applyScan} />}</TabsContent></Tabs> : null}
+          <div className="view-frame" key={view}>
+            {view === "overview" ? <Overview onSelect={selectNode} overview={overview} config={config} counts={counts} loading={loading} projectName={projectName} onView={navigate} onSearch={(query) => { setSearchSession({ query, modelId: "", reportId: "", result: null }); setView("search"); }} onSources={() => { setSettingsTab("project"); setView("config"); }} onSummary={() => { setSettingsTab("summary"); setView("config"); }} onScan={applyScan} scanning={scanning} scanLabel={activeProject ? "Scan project" : "Scan sources"} onReview={() => navigate("review")} /> : null}
+            {view === "search" ? <div className="page page-narrow"><SearchView session={searchSession} onSession={setSearchSession} colors={graphColors} transport={transport} overview={overview} onSelect={selectNode} /></div> : null}
+            {view === "graph" ? <GraphView colors={graphColors} transport={transport} overview={overview} snapshot={snapshot} selectedId={selectedId} onSelect={selectNode} /> : null}
+            {view === "inspector" ? <div className="page page-wide">{selectedId ? <><Button variant="ghost" size="sm" className="inspector-back" onClick={() => { if (inspectorOrigin === "inspector") { setSelectedId(null); setInspectedObject(null); } else setView(inspectorOrigin); }}><ArrowLeft aria-hidden="true" />{inspectorOrigin === "search" ? "Back to results" : inspectorOrigin === "inspector" ? "Browse objects" : `Back to ${VIEWS.find(([key]) => key === inspectorOrigin)?.[1]?.toLowerCase() || "overview"}`}</Button><Inspector key={selectedId} colors={graphColors} node={selected} details={inspectedDetails} loading={Boolean(selectedId && !inspectedDetails && !inspectorError)} error={inspectorError} snapshot={snapshot} snapshotLoaded={snapshotLoaded} overview={overview} onSelect={selectNode} onRetry={() => selectNode(selectedId)} onReview={review} onGraph={() => setView("graph")} /></> : <SearchView browse session={inspectorSession} onSession={setInspectorSession} colors={graphColors} transport={transport} overview={overview} onSelect={(id) => { setInspectorOrigin("inspector"); selectNode(id); }} />}</div> : null}
+            {view === "review" ? <div className="page page-wide"><ReviewQueue snapshot={snapshot} loading={!snapshotLoaded} overview={overview} onSelect={selectNode} onReview={review} /></div> : null}
+            {view === "config" ? <div className="page page-narrow"><Tabs value={settingsTab} onValueChange={setSettingsTab} className="settings-tabs">
+              <TabsList aria-label="Settings sections"><TabsTrigger value="colors">Graph colors</TabsTrigger><TabsTrigger value="project">Project</TabsTrigger><TabsTrigger value="summary">Model summary</TabsTrigger></TabsList>
+              <TabsContent value="colors"><GraphColors config={config} transport={transport} overview={overview} onSaved={setConfig} /></TabsContent>
+              <TabsContent value="summary"><ModelSummary overview={overview} transport={transport} scanning={scanning} /></TabsContent>
+              <TabsContent value="project">{activeProject ? <DesktopProjectView api={desktopApi} project={activeProject} overview={overview} config={config} transport={transport} scanning={scanning} onScan={applyScan} onChange={closeDesktopProject} onRefresh={load} onSaved={setConfig} /> : <ConfigView transport={transport} config={config} onSaved={setConfig} onScan={applyScan} scanning={scanning} />}</TabsContent></Tabs></div> : null}
+          </div>
         </main>
       </div>
     </div>
@@ -434,7 +503,7 @@ function App({ transport = brainTransport }) {
 }
 
 function DesktopConnecting({ error, onRetry }) {
-  return <main className="onboarding-shell"><Card className="block gap-0 p-0 shadow-none onboarding-card connecting-card" aria-live="polite"><div className="brand-mark onboarding-mark" aria-hidden="true">PB</div><p className="eyebrow">PBIBRAIN</p><h1>{error ? "Desktop connection needed" : "Opening PBIBrain"}</h1><p className="onboarding-copy">{error || "Preparing your private project workspace."}</p>{error ? <Button onClick={onRetry}>Retry connection</Button> : <span className="connecting-indicator"><i />Connecting</span>}</Card></main>;
+  return <main className="onboarding-shell"><Card className="onboarding-card connecting-card" aria-live="polite"><BrandMark size={44} className="onboarding-mark" /><p className="eyebrow">PBIBrain</p><h1>{error ? "Desktop connection needed" : "Opening PBIBrain"}</h1><p className="onboarding-copy">{error || "Preparing your private project workspace."}</p>{error ? <Button onClick={onRetry}><RefreshCw />Retry connection</Button> : <span className="connecting-indicator"><i /><i /><i /><span>Connecting</span></span>}</Card></main>;
 }
 
 function DesktopOnboarding({ api, error, onOpen }) {
@@ -460,18 +529,18 @@ function DesktopOnboarding({ api, error, onOpen }) {
     finally { setWorking(false); }
   };
   return <main className="onboarding-shell">
-    <Card className="block gap-0 p-0 shadow-none onboarding-card" aria-labelledby="onboarding-title">
-      <div className="brand-mark onboarding-mark" aria-hidden="true">PB</div>
-      <p className="eyebrow">PBIBRAIN</p>
+    <Card className="onboarding-card" aria-labelledby="onboarding-title">
+      <BrandMark size={44} className="onboarding-mark" />
+      <p className="eyebrow">PBIBrain</p>
       <h1 id="onboarding-title">Start a project brain</h1>
       <p className="onboarding-copy">Choose one folder. PBIBrain keeps the project, scan results, and agent-ready context together.</p>
       <form onSubmit={open} className="onboarding-form">
         <Label className="config-field"><span>Project name</span><Input autoFocus value={name} onChange={(event) => setName(event.target.value)} placeholder="Finance reporting" disabled={working} /></Label>
-        <div className="config-field"><Label htmlFor="project-folder">Project folder</Label><div className="folder-picker"><Input id="project-folder" value={folder} onChange={(event) => setFolder(event.target.value)} placeholder="Paste a folder path or browse" title={folder || "Project folder path"} disabled={working} /><Button variant="ghost" type="button" className="secondary-button" onClick={chooseFolder} disabled={working}>{folder ? "Change folder" : "Choose folder"}</Button></div></div>
-        {message ? <p className="onboarding-error" role="alert">{message}</p> : null}
-        <Button variant="ghost" className="primary-button onboarding-submit" disabled={working}>{working ? "Opening…" : "Open project"} <span>→</span></Button>
+        <div className="config-field"><Label htmlFor="project-folder">Project folder</Label><div className="folder-picker"><Input id="project-folder" value={folder} onChange={(event) => setFolder(event.target.value)} placeholder="Paste a folder path or browse" title={folder || "Project folder path"} disabled={working} /><Button variant="outline" type="button" onClick={chooseFolder} disabled={working}><FolderOpen />{folder ? "Change folder" : "Choose folder"}</Button></div></div>
+        {message ? <p className="onboarding-error" role="alert"><TriangleAlert aria-hidden="true" />{message}</p> : null}
+        <Button size="lg" className="onboarding-submit" disabled={working}>{working ? "Opening…" : "Open project"} <ArrowRight aria-hidden="true" /></Button>
       </form>
-      <p className="onboarding-note">Scan when the project opens.</p>
+      <p className="onboarding-note">Your Power BI files are only read, never changed.</p>
     </Card>
   </main>;
 }
@@ -499,29 +568,30 @@ function DesktopProjectView({ api, project, overview, config, transport, scannin
     finally { setSourceWorking(false); }
   };
   return <>
-    <PageHeading kicker="Desktop project" title={project.name} description="Everything PBIBrain creates stays with this project folder." action={<Button variant="outline" onClick={onChange} disabled={scanning}>Change project</Button>} />
-    <Card className="block gap-0 p-0 shadow-none panel desktop-project-panel">
-      <div className="project-location"><span className="project-location-icon" aria-hidden="true">⌂</span><div><p className="eyebrow">Project folder</p><strong title={project.folder}>{project.folder}</strong></div></div>
-      <div className="desktop-sources"><div className="panel-heading"><div><p className="eyebrow">Power BI inputs</p><h3>Source files</h3></div><Button variant="outline" onClick={addSources} disabled={sourceWorking || scanning}>{sourceWorking ? "Adding…" : "Add source files"}</Button></div>{sources.length ? <div className="source-list">{sources.map((source) => <div className="desktop-source-row" key={source}><span title={source}>{source}</span><Button variant="ghost" size="icon" onClick={() => removeSource(source)} disabled={sourceWorking || scanning} aria-label={`Remove ${source}`}>×</Button></div>)}</div> : <p className="muted-copy">Add PBIP projects or model JSON files to scan them with this project.</p>}{sourceError ? <p className="onboarding-error" role="alert">{sourceError}</p> : null}</div>
-      <div className="config-actions"><Button onClick={onScan} disabled={scanning}>{scanning ? "Scanning…" : "Scan project"}</Button></div>
+    <PageHeading kicker="Desktop project" title={project.name} description="Everything PBIBrain creates stays with this project folder." action={<Button variant="outline" onClick={onChange} disabled={scanning}><FolderOpen />Change project</Button>} />
+    <Card className="panel desktop-project-panel">
+      <div className="project-location"><span className="icon-tile" aria-hidden="true"><FolderOpen /></span><div><p className="eyebrow">Project folder</p><strong title={project.folder}>{project.folder}</strong></div></div>
+      <div className="desktop-sources"><div className="panel-heading"><div><p className="eyebrow">Power BI inputs</p><h3>Source files</h3></div><Button variant="outline" onClick={addSources} disabled={sourceWorking || scanning}><Plus />{sourceWorking ? "Adding…" : "Add source files"}</Button></div>{sources.length ? <div className="source-list">{sources.map((source) => <div className="desktop-source-row" key={source}><FileText className="source-icon" aria-hidden="true" /><span title={source}>{source}</span><Button variant="ghost" size="icon-sm" onClick={() => removeSource(source)} disabled={sourceWorking || scanning} aria-label={`Remove ${source}`}><X /></Button></div>)}</div> : <EmptyState icon={<FileText />} title="No source files yet" detail="Add PBIP projects or model JSON files to scan them with this project." />}{sourceError ? <p className="onboarding-error" role="alert">{sourceError}</p> : null}</div>
+      <div className="config-actions"><Button onClick={onScan} disabled={scanning}><ScanLine />{scanning ? "Scanning…" : "Scan project"}</Button></div>
     </Card>
   </>;
 }
 
-function PageHeading({ kicker, title, description, action }) {
+function PageHeading({ kicker, title, description, action, children }) {
   return (
     <div className="page-heading">
-      <div>
+      <div className="page-heading-copy">
         {kicker ? <p className="eyebrow">{kicker}</p> : null}
+        {children}
         <h2>{title}</h2>
         {description ? <p className="page-description">{description}</p> : null}
       </div>
-      {action}
+      {action ? <div className="page-heading-action">{action}</div> : null}
     </div>
   );
 }
 
-function Overview({ overview, config, counts, loading, onView, onSearch, onSources, onScan, onReview, onSelect, scanning, scanLabel }) {
+function Overview({ overview, config, counts, loading, projectName, onView, onSearch, onSources, onSummary, onScan, onReview, onSelect, scanning, scanLabel }) {
   const [query, setQuery] = useState("");
   const hasObjects = counts.objects > 0;
   const hasSources = Boolean(config?.sources?.length);
@@ -530,40 +600,65 @@ function Overview({ overview, config, counts, loading, onView, onSearch, onSourc
   const validationState = overview.validation_state || "not_run";
   const validationLabel = { valid: "Graph validation passed", invalid: "Graph validation failed", warning: "Graph validation warnings", not_run: "Graph validation not run" }[validationState] || "Graph validation unavailable";
   const issues = overview.validation_issues || [];
-  return <>
-    <Card className="project-start mb-5" role={validationState === "invalid" ? "alert" : "status"}>
-      <h3>{validationLabel}</h3>
-      <p className="muted-copy">{validationState === "not_run" ? "Scan sources to check graph validity." : validationState === "invalid" ? "Sources were extracted, but graph issues need attention." : "Graph validity is checked separately from source extraction and review decisions."}</p>
-      {issues.length ? <details><summary>View validation issues ({issues.length})</summary><ul>{issues.map((item, index) => <li key={`${item.code}-${index}`}><strong>{item.severity}</strong>: {item.message}{item.object_id || item.from_id || item.to_id ? <Button variant="link" onClick={() => onSelect(item.object_id || item.from_id || item.to_id, "inspector")}>Inspect affected object</Button> : null}</li>)}</ul></details> : null}
-    </Card>
-    {loading && !hasObjects ? <p role="status" className="muted-copy">{scanning ? "Scanning sources…" : "Loading project…"}</p> : !hasObjects ?
-      <Card className="project-start">
-        <NavIcon name="config" />
-        <h3>{hasSources ? "Ready for the first scan" : "Add your project sources"}</h3>
-        <p>{hasSources ? "Scan your files to find models, reports, and their dependencies." : "Choose your PBIP project or exported model and report files."}</p>
-        <Button onClick={hasSources ? onScan : onSources} disabled={!config || scanning}>{hasSources ? scanLabel : "Add sources"}</Button>
-      </Card> : <>
+  const pending = counts.candidates + counts.warnings;
+  const ValidationIcon = validationState === "valid" ? ShieldCheck : ShieldAlert;
+  const validation = <Card className={`overview-card validation-card tone-${validationState}`} role={validationState === "invalid" ? "alert" : "status"}>
+    <div className="overview-card-head"><span className="icon-tile" aria-hidden="true"><ValidationIcon /></span><h3>{validationLabel}</h3></div>
+    <p className="muted-copy">{validationState === "not_run" ? "Scan sources to check graph validity." : validationState === "invalid" ? "Sources were extracted, but graph issues need attention." : "Graph validity is checked separately from source extraction and review decisions."}</p>
+    {issues.length ? <details className="validation-issues"><summary>View validation issues ({issues.length})</summary><ul>{issues.map((item, index) => <li key={`${item.code}-${index}`}><span className={`severity severity-${String(item.severity).toLowerCase()}`}>{item.severity}</span><span className="issue-message">{item.message}</span>{item.object_id || item.from_id || item.to_id ? <Button variant="link" size="sm" onClick={() => onSelect(item.object_id || item.from_id || item.to_id, "inspector")}>Inspect affected object</Button> : null}</li>)}</ul></details> : null}
+  </Card>;
+  const sourcesCard = <Card className="overview-card project-scan-bar">
+    <div className="overview-card-head"><span className="icon-tile" aria-hidden="true"><Database /></span><div><strong>{scanning ? "Scanning sources…" : hasObjects ? "Sources indexed" : "Sources"}</strong><span className="scan-meta">{sourceCount === undefined ? "Source settings unavailable" : `${sourceCount} ${sourceCount === 1 ? "source" : "sources"}`}{hasObjects ? ` · ${lastScan ? `Last scan ${formatDate(lastScan)}` : "Last scan time unavailable"}` : ""}</span></div></div>
+    <div className="project-scan-actions"><Button variant="ghost" size="sm" onClick={onSources}>Manage sources</Button>{hasObjects ? <Button variant="outline" size="sm" onClick={onScan} disabled={scanning || !hasSources}><RefreshCw className={scanning ? "spin" : ""} />{scanning ? "Scanning…" : scanLabel}</Button> : null}</div>
+  </Card>;
+  return <div className="page page-overview">
+    <header className="overview-hero">
+      <p className="eyebrow">Project overview</p>
+      <h1>{projectName}</h1>
+      <p className="hero-meta">{hasObjects ? <>{counts.objects.toLocaleString()} objects indexed{lastScan ? <> · last scan {formatDate(lastScan)}</> : null}</> : "Connect your Power BI sources to build the project brain."}</p>
+    </header>
+    {loading && !hasObjects ? <div className="overview-loading"><div className="skeleton skeleton-search" /><div className="skeleton-row">{[0, 1, 2, 3].map((index) => <div className="skeleton skeleton-stat" key={index} />)}</div><p role="status" className="sr-only">{scanning ? "Scanning sources…" : "Loading project…"}</p></div> : !hasObjects ?
+      <div className="overview-grid">
+        <Card className="project-start">
+          <span className="icon-tile icon-tile-lg" aria-hidden="true">{hasSources ? <ScanLine /> : <Plus />}</span>
+          <h3>{hasSources ? "Ready for the first scan" : "Add your project sources"}</h3>
+          <p>{hasSources ? "Scan your files to find models, reports, and their dependencies." : "Choose your PBIP project or exported model and report files."}</p>
+          <ol className="start-steps" aria-label="Getting started">
+            <li className={hasSources ? "done" : "current"}><span>{hasSources ? <Check aria-hidden="true" /> : "1"}</span>Add PBIP or model files</li>
+            <li className={hasSources ? "current" : ""}><span>2</span>Scan to index objects</li>
+            <li><span>3</span>Explore, review, export context</li>
+          </ol>
+          <Button size="lg" onClick={hasSources ? onScan : onSources} disabled={!config || scanning}>{hasSources ? <ScanLine /> : <Plus />}{hasSources ? scanLabel : "Add sources"}</Button>
+        </Card>
+        <div className="overview-side">{validation}{sourcesCard}</div>
+      </div> : <>
         <Card className="project-search-card">
-          <Label htmlFor="project-search">Find an object</Label>
+          <Label htmlFor="project-search" className="project-search-label">Find an object</Label>
           <form className="project-search-form" onSubmit={(event) => { event.preventDefault(); if (query.trim()) onSearch(query.trim()); }}>
-            <Input type="search" id="project-search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Measure, table, column, or visual…" />
-            <Button type="submit" aria-label="Search project" disabled={!query.trim()}>Search <span aria-hidden="true">→</span></Button>
+            <div className="command-input"><NavIcon name="search" size={18} /><Input type="search" id="project-search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Measure, table, column, or visual…" /><kbd aria-hidden="true">Enter</kbd></div>
+            <Button type="submit" aria-label="Search project" disabled={!query.trim()}>Search <ArrowRight aria-hidden="true" /></Button>
           </form>
-          <Button variant="link" className="project-graph-link" onClick={() => onView("graph")}><NavIcon name="graph" />Explore relationships in the graph <span aria-hidden="true">→</span></Button>
         </Card>
         <dl className="project-counts" aria-label="Project counts">
-          {[["Models", counts.models], ["Reports", counts.reports], ["Objects", counts.objects], ["Relationships", counts.edges]].map(([label, count]) => <div key={label}><dt>{label}</dt><dd>{count.toLocaleString()}</dd></div>)}
+          {[["Models", counts.models, Database], ["Reports", counts.reports, ChartColumn], ["Objects", counts.objects, Boxes], ["Relationships", counts.edges, Waypoints]].map(([label, count, Icon]) => <div key={label} className="stat-tile"><dt><Icon aria-hidden="true" />{label}</dt><dd>{count.toLocaleString()}</dd></div>)}
         </dl>
-        <Card className="project-review-card">
-          <div><h3>{validationState === "invalid" ? "Resolve graph issues before review" : counts.candidates || counts.warnings ? "Ready for review" : "No pending reviews"}</h3><p>{counts.candidates || counts.warnings ? "Check suggested meanings and resolve uncertain matches." : "All suggestions have been reviewed."}</p></div>
-          <Button variant="outline" onClick={onReview}>Open review queue <span aria-hidden="true">→</span></Button>
-        </Card>
+        <div className="overview-grid">
+          <div className="overview-main">
+            <Card className={`project-review-card ${pending ? "has-pending" : ""}`}>
+              <div className="review-card-count" aria-hidden="true"><strong>{pending}</strong><span>{pending === 1 ? "open item" : "open items"}</span></div>
+              <div className="review-card-copy"><h3>{validationState === "invalid" ? "Resolve graph issues before review" : counts.candidates || counts.warnings ? "Ready for review" : "No pending reviews"}</h3><p>{counts.candidates || counts.warnings ? "Check suggested meanings and resolve uncertain matches." : "All suggestions have been reviewed."}</p>{counts.warnings ? <p className="review-card-split"><span>{counts.candidates} suggestions</span><span>{counts.warnings} conflicts</span></p> : null}</div>
+              <Button variant={pending ? "default" : "outline"} onClick={onReview}>Open review queue <ArrowRight aria-hidden="true" /></Button>
+            </Card>
+            <div className="quick-actions">
+              <Button variant="ghost" className="quick-action project-graph-link" onClick={() => onView("graph")}><span className="icon-tile" aria-hidden="true"><Waypoints /></span><span><strong>Explore relationships in the graph</strong><small>Trace lineage from model to visual</small></span><ArrowUpRight className="quick-arrow" aria-hidden="true" /></Button>
+              <Button variant="ghost" className="quick-action" onClick={() => onView("inspector")}><span className="icon-tile" aria-hidden="true"><NavIcon name="inspector" /></span><span><strong>Browse measures</strong><small>Formulas, dependencies and usage</small></span><ArrowUpRight className="quick-arrow" aria-hidden="true" /></Button>
+              <Button variant="ghost" className="quick-action" onClick={onSummary}><span className="icon-tile" aria-hidden="true"><Sparkles /></span><span><strong>Export agent context</strong><small>One Markdown file per model</small></span><ArrowUpRight className="quick-arrow" aria-hidden="true" /></Button>
+            </div>
+          </div>
+          <div className="overview-side">{validation}{sourcesCard}</div>
+        </div>
       </>}
-    <div className="project-scan-bar">
-      <div><strong>{scanning ? "Scanning sources…" : hasObjects ? "Sources indexed" : "Sources"}</strong><span>{sourceCount === undefined ? "Source settings unavailable" : `${sourceCount} ${sourceCount === 1 ? "source" : "sources"}`}{hasObjects ? ` · ${lastScan ? `Last scan ${formatDate(lastScan)}` : "Last scan time unavailable"}` : ""}</span></div>
-      <div className="project-scan-actions"><Button variant="ghost" onClick={onSources}>Manage sources</Button>{hasObjects ? <Button variant="outline" onClick={onScan} disabled={scanning || !hasSources}>{scanning ? "Scanning…" : scanLabel}</Button> : null}</div>
-    </div>
-  </>;
+  </div>;
 }
 
 function SearchView({ transport, overview, onSelect, colors, session, onSession, browse = false }) {
@@ -621,26 +716,29 @@ function SearchView({ transport, overview, onSelect, colors, session, onSession,
   const models = scopeOptions(overview, "model");
   const reports = scopeOptions(overview, "report");
   const scopeName = (object) => [...models, ...reports].find((item) => item.id === (object.report_id || object.model_id))?.name;
+  const active = browse || query.trim();
   return <div ref={panel}>
-    <Card className="block gap-0 p-0 shadow-none panel search-panel" aria-busy={loading}>
-      <div className="graph-toolbar search-toolbar">
-        <Label className="search-field"><NavIcon name="search" /><Input type="search" value={query} onChange={(event) => change({ query: event.target.value })} onKeyDown={(event) => { if (event.key === "Enter") runSearch(); }} placeholder="Measure, table, column, or visual…" aria-label="Search the brain" /></Label>
-        <Label className="select-field"><span>Model</span><NativeSelect aria-label="Model" value={modelId} onChange={(event) => change({ modelId: event.target.value, reportId: "" })}><option value="">All models</option>{models.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</NativeSelect></Label>
-        <Label className="select-field"><span>Report</span><NativeSelect aria-label="Report" value={reportId} onChange={(event) => change({ reportId: event.target.value, modelId: "" })}><option value="">All reports</option>{reports.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</NativeSelect></Label>
-        <Label className="select-field"><span>Type</span><NativeSelect aria-label="Search object type" value={objectType} onChange={(event) => change({ objectType: event.target.value })}><option value="">All types</option>{Object.keys(overview.object_counts || {}).sort().map((type) => <option key={type} value={type}>{typeLabel(type)}</option>)}</NativeSelect></Label>
-        {modelId || reportId || objectType ? <Button variant="ghost" onClick={() => change({ modelId: "", reportId: "", objectType: "" })}>Clear filters</Button> : null}
+    <Card className="panel search-panel" aria-busy={loading}>
+      <div className="search-toolbar">
+        <Label className="search-field"><NavIcon name="search" size={18} /><Input type="search" value={query} onChange={(event) => change({ query: event.target.value })} onKeyDown={(event) => { if (event.key === "Enter") runSearch(); }} placeholder={browse ? "Filter objects by name…" : "Measure, table, column, or visual…"} aria-label="Search the brain" />{loading && active ? <RefreshCw className="search-spinner spin" aria-hidden="true" /> : null}</Label>
+        <div className="search-filters">
+          <Label className="select-field"><span>Model</span><NativeSelect aria-label="Model" value={modelId} onChange={(event) => change({ modelId: event.target.value, reportId: "" })}><option value="">All models</option>{models.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</NativeSelect></Label>
+          <Label className="select-field"><span>Report</span><NativeSelect aria-label="Report" value={reportId} onChange={(event) => change({ reportId: event.target.value, modelId: "" })}><option value="">All reports</option>{reports.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</NativeSelect></Label>
+          <Label className="select-field"><span>Type</span><NativeSelect aria-label="Search object type" value={objectType} onChange={(event) => change({ objectType: event.target.value })}><option value="">All types</option>{Object.keys(overview.object_counts || {}).sort().map((type) => <option key={type} value={type}>{typeLabel(type)}</option>)}</NativeSelect></Label>
+          {modelId || reportId || objectType ? <Button variant="ghost" size="sm" className="clear-filters" onClick={() => change({ modelId: "", reportId: "", objectType: "" })}><X />Clear filters</Button> : null}
+        </div>
       </div>
-      <div className="search-status" role="status" aria-live="polite">{browse || query.trim() ? loading ? "Searching…" : result ? `${result.items.length} of ${result.total} ${browse && !query.trim() ? "objects" : "matches"}` : "" : "Search by name or paste part of a formula."}</div>
-      {error ? <div className="search-error" role="alert"><span>{readableText(error.message)}</span><Button variant="outline" onClick={() => runSearch(error.offset)}>Retry search</Button></div> : null}
-      {!browse && !query.trim() ? <EmptyState title="What are you looking for?" detail="Find a measure to inspect its formula and dependencies." /> : null}
-      {(browse || query.trim()) && !loading && !result?.items?.length && !error ? <EmptyState title="No matches" detail="Try a shorter name or clear the filters." /> : null}
-      {(browse || query.trim()) && result?.items?.length ? <div className="search-results">{result.items.map((item) => { const object = searchObject(item); return <Button variant="ghost" key={object.id} data-result-id={object.id} className="search-result" onClick={() => { onSession((current) => ({ ...current, selectedId: object.id, scrollY: window.scrollY })); onSelect(object.id, "inspector"); }}><span className="result-type" style={{ borderColor: artifactColor(object, colors), color: artifactColor(object, colors) }}>{typeLabel(object.type)}</span><span><strong>{labelFor(object)}</strong><small>{scopeName(object) || readableText(object.description) || typeLabel(object.type)}</small></span><span className="result-match">{browse && !query.trim() ? "Open →" : searchMatch(item)}</span></Button>; })}</div> : null}
-      {(browse || query.trim()) && result?.has_more ? <div className="search-footer"><Button variant="outline" disabled={loading} onClick={() => runSearch(Number(result.offset || 0) + Number(result.limit || 50))}>{pending ? "Loading…" : "More results"}</Button></div> : null}
+      <div className="search-status" role="status" aria-live="polite">{active ? loading ? "Searching…" : result ? `${result.items.length} of ${result.total} ${browse && !query.trim() ? "objects" : "matches"}` : "" : "Search by name or paste part of a formula."}</div>
+      {error ? <div className="search-error" role="alert"><TriangleAlert aria-hidden="true" /><span>{readableText(error.message)}</span><Button variant="outline" size="sm" onClick={() => runSearch(error.offset)}>Retry search</Button></div> : null}
+      {!active ? <EmptyState icon={<NavIcon name="search" size={20} />} title="What are you looking for?" detail="Find a measure to inspect its formula and dependencies." action={<p className="empty-hint"><kbd>Ctrl</kbd><kbd>K</kbd> jumps here from anywhere</p>} /> : null}
+      {active && !loading && !result?.items?.length && !error ? <EmptyState icon={<NavIcon name="search" size={20} />} title="No matches" detail="Try a shorter name or clear the filters." /> : null}
+      {active && result?.items?.length ? <div className="search-results">{result.items.map((item) => { const object = searchObject(item); const color = artifactColor(object, colors); const match = browse && !query.trim() ? "" : searchMatch(item); return <Button variant="ghost" key={object.id} data-result-id={object.id} className="search-result" style={{ "--artifact-color": color }} onClick={() => { onSession((current) => ({ ...current, selectedId: object.id, scrollY: window.scrollY })); onSelect(object.id, "inspector"); }}><span className="result-type"><span className="artifact-dot" />{typeLabel(object.type)}</span><span className="result-copy"><strong>{labelFor(object)}</strong><small>{scopeName(object) || readableText(object.description) || typeLabel(object.type)}</small></span>{match ? <span className="result-match">{match}</span> : null}<ChevronRight className="result-chevron" aria-hidden="true" /></Button>; })}</div> : null}
+      {active && result?.has_more ? <div className="search-footer"><Button variant="outline" size="sm" disabled={loading} onClick={() => runSearch(Number(result.offset || 0) + Number(result.limit || 50))}>{pending ? "Loading…" : "More results"}</Button></div> : null}
     </Card>
   </div>;
 }
 
-function ConfigView({ transport, config, onSaved, onScan }) {
+function ConfigView({ transport, config, onSaved, onScan, scanning }) {
   const [draft, setDraft] = useState(null);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
@@ -650,7 +748,7 @@ function ConfigView({ transport, config, onSaved, onScan }) {
     const next = { ...defaults, ...loaded };
     setDraft({ ...next, sources: Array.isArray(loaded.sources) ? loaded.sources : [] });
   }, [config]);
-  if (!draft) return <div className="panel"><EmptyState title="Loading configuration" detail="Reading the local project settings." /></div>;
+  if (!draft) return <Card className="panel"><EmptyState title="Loading configuration" detail="Reading the local project settings." /></Card>;
   const updateSource = (index, value) => setDraft((current) => ({ ...current, sources: current.sources.map((source, sourceIndex) => sourceIndex === index ? value : source) }));
   const save = async () => {
     setSaving(true); setMessage("");
@@ -659,17 +757,26 @@ function ConfigView({ transport, config, onSaved, onScan }) {
     finally { setSaving(false); }
   };
   return <>
-    <Card className="block gap-0 p-0 shadow-none panel config-panel">
-      <Label className="config-field"><span>Project name</span><Input value={draft.name || ""} onChange={(event) => setDraft({ ...draft, name: event.target.value })} placeholder="Finance reporting" /></Label>
-      <div className="config-section"><div className="panel-heading"><div><p className="eyebrow">Sources</p><h3>Power BI inputs</h3></div><Button variant="outline" onClick={() => setDraft({ ...draft, sources: [...draft.sources, ""] })}>Add source</Button></div><p className="muted-copy">Use full Windows paths for PBIP projects or model JSON files.</p>{draft.sources.length ? <div className="source-list">{draft.sources.map((source, index) => <div className="source-row" key={index}><Input value={source} onChange={(event) => updateSource(index, event.target.value)} placeholder="C:\\Reports\\Finance\\Finance.pbip" aria-label={`Source ${index + 1}`} /><Button variant="ghost" size="icon" onClick={() => setDraft({ ...draft, sources: draft.sources.filter((_, sourceIndex) => sourceIndex !== index) })} aria-label={`Remove source ${index + 1}`}>×</Button></div>)}</div> : <EmptyState title="No sources" detail="Add a PBIP project or model JSON file." />}</div>
-      <div className="config-actions"><Button onClick={save} disabled={saving}>{saving ? "Saving…" : "Save configuration"}</Button><Button variant="outline" onClick={onScan}>Scan saved sources</Button>{message ? <span className={message === "Saved" ? "success-text" : "error-copy"}>{message}</span> : null}</div>
+    <Card className="panel config-panel">
+      <div className="settings-section">
+        <div className="settings-section-copy"><h3>Project</h3><p>Shown in the header and in exported context.</p></div>
+        <Label className="config-field"><span>Project name</span><Input value={draft.name || ""} onChange={(event) => setDraft({ ...draft, name: event.target.value })} placeholder="Finance reporting" /></Label>
+      </div>
+      <div className="settings-section config-section">
+        <div className="settings-section-copy"><h3>Power BI inputs</h3><p>Use full Windows paths for PBIP projects or model JSON files.</p></div>
+        <div className="source-editor">
+          {draft.sources.length ? <div className="source-list">{draft.sources.map((source, index) => <div className="source-row" key={index}><FileText className="source-icon" aria-hidden="true" /><Input value={source} onChange={(event) => updateSource(index, event.target.value)} placeholder="C:\\Reports\\Finance\\Finance.pbip" aria-label={`Source ${index + 1}`} /><Button variant="ghost" size="icon-sm" onClick={() => setDraft({ ...draft, sources: draft.sources.filter((_, sourceIndex) => sourceIndex !== index) })} aria-label={`Remove source ${index + 1}`}><X /></Button></div>)}</div> : <EmptyState icon={<FileText />} title="No sources" detail="Add a PBIP project or model JSON file." />}
+          <Button variant="outline" size="sm" className="add-source" onClick={() => setDraft({ ...draft, sources: [...draft.sources, ""] })}><Plus />Add source</Button>
+        </div>
+      </div>
+      <div className="config-actions"><Button onClick={save} disabled={saving}>{saving ? "Saving…" : "Save configuration"}</Button><Button variant="outline" onClick={onScan} disabled={scanning}><ScanLine />Scan saved sources</Button>{message ? <span className={message === "Saved" ? "success-text" : "error-copy"}>{message === "Saved" ? <Check aria-hidden="true" /> : null}{message}</span> : null}</div>
     </Card>
   </>;
 }
 
 function Inspector({ node, details, loading, error, snapshot, snapshotLoaded, overview, onSelect, onRetry, onReview, onGraph, colors }) {
-  if (error) return <><PageHeading title="Object unavailable" description={readableText(error)} /><Button variant="outline" onClick={onRetry}>Retry object</Button></>;
-  if (loading) return <div className="inspector-loading" role="status">Loading object details…</div>;
+  if (error) return <Card className="panel inspector-state"><div className="empty-state tone-bad"><span className="empty-icon" aria-hidden="true"><TriangleAlert /></span><h2>Object unavailable</h2><p>{readableText(error)}</p><Button variant="outline" onClick={onRetry}><RefreshCw />Retry object</Button></div></Card>;
+  if (loading) return <div className="inspector-loading"><div className="skeleton skeleton-title" /><div className="skeleton-grid"><div className="skeleton skeleton-block" /><div className="skeleton skeleton-block" /></div><p role="status" className="loading-label">Loading object details…</p></div>;
   if (!node) return <><PageHeading title="Select an object" description="Choose an object from Search or the graph." action={<Button onClick={onGraph}>Open graph</Button>} /></>;
   const connected = details?.edges || [];
   const outgoing = connected.filter((edge) => edge.from_id === node.id);
@@ -684,43 +791,55 @@ function Inspector({ node, details, loading, error, snapshot, snapshotLoaded, ov
   const properties = node.properties || {};
   const expression = node.expression ?? properties.expression;
   const fields = publicProperties(node);
+  const color = artifactColor(node, colors);
+  const scopeTrail = [node.model_id, node.report_id, properties.table_id].filter((id) => id && id !== node.id).map(scopeName).filter(Boolean);
   return <>
-    <PageHeading title={labelFor(node)} description={[node.model_id, node.report_id, properties.table_id].filter((id) => id && id !== node.id).map(scopeName).filter(Boolean).join(" · ")} action={<Button variant="outline" onClick={onGraph}>Show in graph <span aria-hidden="true">↗</span></Button>} />
+    <PageHeading title={labelFor(node)} description={scopeTrail.join(" · ")} action={<Button variant="outline" onClick={onGraph}><Waypoints />Show in graph</Button>}>
+      <div className="object-summary-state" style={{ "--artifact-color": color }}><span className="type-chip"><span className="artifact-dot" />{typeLabel(node.type)}</span><StatusBadge value={node.status} /></div>
+    </PageHeading>
     <div className="object-workspace">
-      <Card className="block gap-0 p-0 shadow-none panel object-summary">
-        <div className="object-summary-state"><span className="artifact-dot" style={{ backgroundColor: artifactColor(node, colors) }} /><span>{typeLabel(node.type)}</span><StatusBadge value={node.status} /></div>
-        {node.description ? <p className="description-copy">{formatValue(node.description)}</p> : null}
-        {expression ? <ExpressionBlock expression={formatValue(expression)} /> : !node.description ? <p className="muted-copy">No description recorded.</p> : null}
-      </Card>
-      <Card className="block gap-0 p-0 shadow-none panel object-lineage">
+      <div className="object-main">
+        <Card className="panel object-summary">
+          <h3 className="panel-title">Definition</h3>
+          {node.description ? <p className="description-copy">{formatValue(node.description)}</p> : null}
+          {expression ? <ExpressionBlock expression={formatValue(expression)} /> : !node.description ? <p className="muted-copy">No description recorded.</p> : null}
+          {fields.length ? <dl className="metadata-grid">{fields.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl> : null}
+        </Card>
+        {candidates.length || warnings.length ? <details className="object-metadata object-review panel" open><summary><span>Review &amp; evidence</span><span className="summary-count">{candidates.length} suggestions{warnings.length ? ` · ${warnings.length} warnings` : ""}</span></summary>{candidates.map((item) => <div className="object-review-item" key={item.id || item.target}><CandidateActions item={item} onReview={onReview} /><EvidenceCard item={item} /></div>)}{warnings.map((warning) => <div className="warning-card" key={warning.id || formatEvidence(warning.reason)}><strong><TriangleAlert aria-hidden="true" />Conflict</strong><p>{formatEvidence(warning.reason || warning.message || warning.description || "Conflicting evidence needs review.")}</p></div>)}</details> : null}
+        {!snapshotLoaded ? <p className="muted-copy object-review" role="status">Review evidence has not loaded yet.</p> : null}
+        {connected.some((edge) => !usageTypes.has(edge.type) && edge.type !== "OBSERVED_WITH") ? <details className="object-metadata object-other panel"><summary><span>Other relationships</span></summary><RelationshipGroup title="Connected objects" nodeId={node.id} edges={connected.filter((edge) => !usageTypes.has(edge.type) && edge.type !== "OBSERVED_WITH")} nodes={relatedNodes} onSelect={onSelect} empty="No other relationships." /></details> : null}
+        {observations.length ? <details className="object-metadata object-observed panel"><summary><span>Observed report usage</span><span className="summary-count">{observations.length}</span></summary>{observations.map((edge) => <div className="usage-row" key={edge.id}><span>{scopeName(edge.from_id === node.id ? edge.to_id : edge.from_id)}</span><strong>{formatValue(edge.properties?.count || edge.count || "observed")}</strong></div>)}<p className="footnote">Co-occurrence does not establish compatibility.</p></details> : null}
+      </div>
+      <Card className="panel object-lineage">
+        <h3 className="panel-title">Lineage</h3>
         <VisualBindings bindings={details?.visual_bindings} onSelect={(item) => onSelect(item.id, "inspector")} />
         <RelationshipGroup title="Used by" nodeId={node.id} edges={incoming.filter((edge) => usageTypes.has(edge.type))} nodes={relatedNodes} onSelect={onSelect} empty="No direct uses recorded." />
         <RelationshipGroup title="Dependencies" nodeId={node.id} edges={outgoing.filter((edge) => usageTypes.has(edge.type))} nodes={relatedNodes} onSelect={onSelect} empty="No direct dependencies recorded." />
         <p className="footnote">Direct links from the latest scan.</p>
       </Card>
-      {candidates.length || warnings.length ? <details className="object-metadata object-review panel"><summary>Review &amp; evidence <span>{candidates.length} suggestions{warnings.length ? ` · ${warnings.length} warnings` : ""}</span></summary>{candidates.map((item) => <div className="object-review-item" key={item.id || item.target}><CandidateActions item={item} onReview={onReview} /><EvidenceCard item={item} /></div>)}{warnings.map((warning) => <div className="warning-card" key={warning.id || formatEvidence(warning.reason)}><strong>Conflict</strong><p>{formatEvidence(warning.reason || warning.message || warning.description || "Conflicting evidence needs review.")}</p></div>)}</details> : null}
-      {!snapshotLoaded ? <p className="muted-copy object-review" role="status">Review evidence has not loaded yet.</p> : null}
-      {fields.length ? <details className="object-metadata object-identity panel"><summary>Object details</summary><dl className="metadata-table">{fields.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl></details> : null}
-      {connected.some((edge) => !usageTypes.has(edge.type) && edge.type !== "OBSERVED_WITH") ? <details className="object-metadata object-other panel"><summary>Other relationships</summary><RelationshipGroup title="Connected objects" nodeId={node.id} edges={connected.filter((edge) => !usageTypes.has(edge.type) && edge.type !== "OBSERVED_WITH")} nodes={relatedNodes} onSelect={onSelect} empty="No other relationships." /></details> : null}
-      {observations.length ? <details className="object-metadata object-observed panel"><summary>Observed report usage <span>{observations.length}</span></summary>{observations.map((edge) => <div className="usage-row" key={edge.id}><span>{scopeName(edge.from_id === node.id ? edge.to_id : edge.from_id)}</span><strong>{formatValue(edge.properties?.count || edge.count || "observed")}</strong></div>)}<p className="footnote">Co-occurrence does not establish compatibility.</p></details> : null}
     </div>
   </>;
 }
 
 function ExpressionBlock({ expression }) {
   const [message, setMessage] = useState("");
+  useEffect(() => {
+    if (message !== "Copied") return undefined;
+    const timer = setTimeout(() => setMessage(""), 1800);
+    return () => clearTimeout(timer);
+  }, [message]);
   const copy = async () => {
     try { await navigator.clipboard.writeText(expression); setMessage("Copied"); }
     catch { setMessage("Select the formula to copy it."); }
   };
-  return <section className="object-expression" aria-label="DAX formula"><div><h3>DAX formula</h3><Button variant="ghost" size="sm" onClick={copy}>Copy formula</Button></div><pre tabIndex={0}><code>{expression}</code></pre>{message ? <p role="status">{message}</p> : null}</section>;
+  return <section className="object-expression" aria-label="DAX formula"><div className="code-head"><h3><span className="code-lang">DAX</span>formula</h3><Button variant="ghost" size="xs" onClick={copy} className={message === "Copied" ? "is-copied" : ""}>{message === "Copied" ? <Check /> : <Copy />}{message === "Copied" ? "Copied" : "Copy formula"}</Button></div><pre tabIndex={0}><code>{highlightDax(expression)}</code></pre>{message && message !== "Copied" ? <p role="status">{message}</p> : null}</section>;
 }
 
 function RelationshipGroup({ title, nodeId, edges, nodes, onSelect, empty }) {
   const [expanded, setExpanded] = useState(false);
   const unique = [...new Map(edges.map((edge) => [edge.from_id === nodeId ? edge.to_id : edge.from_id, edge])).values()];
   const shown = expanded ? unique : unique.slice(0, 10);
-  return <section className="relationship-group" aria-label={title}><h3 className="relationship-title">{title}<span>{unique.length}</span></h3>{unique.length ? <div className="relationship-list">{shown.map((edge) => { const targetId = edge.from_id === nodeId ? edge.to_id : edge.from_id; const resolved = nodes.find((node) => node.id === targetId); return <Button variant="ghost" className="relationship-row" key={targetId} onClick={() => onSelect(targetId, "inspector")}><span className="edge-chip" style={{ background: EDGE_COLORS[edge.type] || "#738294" }} /><span><strong>{resolved ? labelFor(resolved) : "Related object"}</strong><small>{typeLabel(resolved?.type || edge.type)}</small></span><span aria-hidden="true">→</span></Button>; })}</div> : <p className="muted-copy compact">{empty}</p>}{unique.length > 10 ? <Button variant="link" className="relationship-more" onClick={() => setExpanded((current) => !current)}>{expanded ? "Show fewer" : `Show all ${unique.length}`}</Button> : null}</section>;
+  return <section className="relationship-group" aria-label={title}><h3 className="relationship-title">{title}<span className="count-pill">{unique.length}</span></h3>{unique.length ? <div className="relationship-list">{shown.map((edge) => { const targetId = edge.from_id === nodeId ? edge.to_id : edge.from_id; const resolved = nodes.find((node) => node.id === targetId); return <Button variant="ghost" className="relationship-row" key={targetId} onClick={() => onSelect(targetId, "inspector")}><span className="edge-chip" style={{ background: EDGE_COLORS[edge.type] || "#738294" }} /><span className="relationship-copy"><strong>{resolved ? labelFor(resolved) : "Related object"}</strong><small>{typeLabel(resolved?.type || edge.type)}</small></span><ChevronRight className="row-chevron" aria-hidden="true" /></Button>; })}</div> : <p className="muted-copy compact">{empty}</p>}{unique.length > 10 ? <Button variant="link" size="sm" className="relationship-more" onClick={() => setExpanded((current) => !current)}>{expanded ? "Show fewer" : `Show all ${unique.length}`}</Button> : null}</section>;
 }
 
 function reviewIssue(item) {
@@ -777,19 +896,19 @@ function ReviewQueue({ snapshot, loading, overview, onSelect, onReview }) {
   const scopes = [...scopeOptions(overview, "model"), ...scopeOptions(overview, "report"), ...snapshot.nodes];
   const scopeName = (id, kind, index) => scopes.find((node) => node.id === id)?.name || `${kind} ${index + 1}`;
   return <>
-    <div className="review-purpose"><p>Confirm the meanings PBIBrain inferred. Approval saves a trusted label for search and context; rejection excludes it. Your Power BI files stay unchanged.</p><span className="queue-count">{loading ? "Loading…" : `${filtered.length} to review`}</span></div>
+    <div className="review-purpose"><span className="icon-tile" aria-hidden="true"><ShieldCheck /></span><p>Confirm the meanings PBIBrain inferred. Approval saves a trusted label for search and context; rejection excludes it. Your Power BI files stay unchanged.</p><span className="queue-count"><strong>{loading ? "…" : filtered.length}</strong>{loading ? "Loading…" : " to review"}</span></div>
     <div className="queue-toolbar">
       <Label className="select-field"><span>Issue</span><NativeSelect value={issue} onChange={(event) => setIssue(event.target.value)}><option value="ALL">All issues</option><option value="candidate">Suggestions</option><option value="conflict">Conflicts</option><option value="stale">Outdated decisions</option></NativeSelect></Label>
       <Label className="select-field"><span>Object</span><NativeSelect value={objectType} onChange={(event) => setObjectType(event.target.value)}><option value="ALL">All types</option>{types.map((type) => <option key={type} value={type}>{typeLabel(type)}</option>)}</NativeSelect></Label>
       {models.length > 1 ? <Label className="select-field"><span>Model</span><NativeSelect value={modelId} onChange={(event) => setModelId(event.target.value)}><option value="ALL">All models</option>{models.map((value, index) => <option key={value} value={value}>{scopeName(value, "Model", index)}</option>)}</NativeSelect></Label> : null}
       {reports.length > 1 ? <Label className="select-field"><span>Report</span><NativeSelect value={reportId} onChange={(event) => setReportId(event.target.value)}><option value="ALL">All reports</option>{reports.map((value, index) => <option key={value} value={value}>{scopeName(value, "Report", index)}</option>)}</NativeSelect></Label> : null}
-      <Label className="select-field"><span>Sort</span><NativeSelect value={sort} onChange={(event) => setSort(event.target.value)}><option value="confidence-high">Most certain first</option><option value="confidence-low">Least certain first</option><option value="impact-high">Highest impact first</option><option value="impact-low">Lowest impact first</option></NativeSelect></Label>
+      <Label className="select-field select-sort"><span>Sort</span><NativeSelect value={sort} onChange={(event) => setSort(event.target.value)}><option value="confidence-high">Most certain first</option><option value="confidence-low">Least certain first</option><option value="impact-high">Highest impact first</option><option value="impact-low">Lowest impact first</option></NativeSelect></Label>
     </div>
-    <Card className="block gap-0 p-0 shadow-none panel queue-panel" aria-busy={loading}>
-      {loading ? <p className="empty-state" role="status">Loading suggestions…</p> : filtered.length ? <>
+    <Card className="panel queue-panel" aria-busy={loading}>
+      {loading ? <div className="queue-loading">{[0, 1, 2].map((index) => <div className="skeleton skeleton-row-item" key={index} />)}<p className="sr-only" role="status">Loading suggestions…</p></div> : filtered.length ? <>
         <div className="review-columns" aria-hidden="true"><span>Object &amp; suggestion</span><span>Why review this?</span><span>Confidence</span><span>Decision</span></div>
         <div className="queue-list">{filtered.map((item) => <ReviewItem key={item.id || `${item.issue}-${itemTarget(item)}`} item={item} nodes={snapshot.nodes} onSelect={onSelect} onReview={onReview} />)}</div>
-      </> : <EmptyState title="Queue is clear" detail="No unresolved suggestions match these filters." />}
+      </> : <EmptyState icon={<CircleCheck />} tone="ok" title="Queue is clear" detail="No unresolved suggestions match these filters." />}
     </Card>
   </>;
 }
@@ -800,11 +919,13 @@ function ReviewItem({ item, nodes, onSelect, onReview }) {
   const decide = async (action) => { if (pending) return; setPending(true); try { await onReview(action, item); } finally { setPending(false); } };
   const evidence = readableText(item.evidence?.length ? item.evidence : item.item?.evidence, nodes);
   const reason = item.reason || (item.source === "object_name" ? "Only the object name supports this meaning; no description confirms it." : item.source === "description" ? "The source description suggests this meaning. Confirm that the label fits." : "An inference rule proposed this meaning. Confirm it using the recorded evidence.");
-  return <div className="review-item" aria-busy={pending}>
-    <Button variant="ghost" className="review-target" disabled={!targetNode} onClick={() => onSelect(targetNode.id, "inspector")}><span className={`review-dot ${item.issue}`} /><span><strong>{targetNode ? labelFor(targetNode) : "Source object unavailable"}</strong><small>{objectScope(targetNode, nodes)}</small><small>{item.issue === "conflict" ? "Conflicting suggestions" : item.issue === "stale" ? "Outdated saved decision" : suggestionLabel(item)}</small>{targetNode ? <small>{typeLabel(targetNode.type)}</small> : null}</span></Button>
+  const score = confidence(item.confidence ?? item.properties?.confidence);
+  const level = score === null ? "none" : score >= 80 ? "high" : score >= 50 ? "mid" : "low";
+  return <div className={`review-item issue-${item.issue}`} aria-busy={pending}>
+    <Button variant="ghost" className="review-target" disabled={!targetNode} onClick={() => onSelect(targetNode.id, "inspector")}><span className={`review-dot ${item.issue}`} /><span className="review-target-copy"><strong>{targetNode ? labelFor(targetNode) : "Source object unavailable"}</strong><small className="review-scope">{objectScope(targetNode, nodes)}</small><small className="review-suggestion">{item.issue === "conflict" ? "Conflicting suggestions" : item.issue === "stale" ? "Outdated saved decision" : suggestionLabel(item)}</small>{targetNode ? <small className="review-type">{typeLabel(targetNode.type)}</small> : null}</span></Button>
     <div className="review-evidence"><p>{readableText(reason, nodes)}</p>{evidence ? <small>{evidence}</small> : null}</div>
-    <div className="review-score"><strong>{confidence(item.confidence ?? item.properties?.confidence) === null ? "—" : `${confidence(itemConfidence(item))}%`}</strong><small>{item.issue === "conflict" ? "Conflict" : item.issue === "stale" ? "Outdated" : "Suggested"}</small></div>
-    <div className="review-actions">{item.issue === "stale" ? <Button variant="outline" disabled={pending} onClick={() => decide("remove")}>Remove decision</Button> : <><Button variant="outline" disabled={pending} onClick={() => decide("approve")}>Approve</Button><Button variant="ghost" disabled={pending} onClick={() => decide("reject")}>Reject</Button></>}</div>
+    <div className={`review-score level-${level}`}><strong>{score === null ? "—" : `${confidence(itemConfidence(item))}%`}</strong><span className="meter" aria-hidden="true"><i style={{ width: `${score ?? 0}%` }} /></span><small>{item.issue === "conflict" ? "Conflict" : item.issue === "stale" ? "Outdated" : "Suggested"}</small></div>
+    <div className="review-actions">{item.issue === "stale" ? <Button variant="outline" size="sm" disabled={pending} onClick={() => decide("remove")}>Remove decision</Button> : <><Button variant="outline" size="sm" className="approve-button" disabled={pending} onClick={() => decide("approve")}><Check aria-hidden="true" />Approve</Button><Button variant="ghost" size="sm" className="reject-button" disabled={pending} onClick={() => decide("reject")}><X aria-hidden="true" />Reject</Button></>}</div>
   </div>;
 }
 
@@ -822,8 +943,8 @@ function CandidateActions({ item, onReview }) {
   };
   const score = confidence(item.confidence ?? item.properties?.confidence);
   return <fieldset className="candidate-actions" disabled={pending}>
-    <div className="candidate-action-title"><span>{suggestionLabel(item)}</span><span>{score === null ? "" : `${score}%`}</span></div>
-    {editingAction ? <div className="edit-row"><Input value={value} onChange={(event) => setValue(event.target.value)} aria-label={`${editingAction} semantic value`} /><Button variant="outline" disabled={!value.trim()} onClick={() => decide(editingAction, value)}>Save meaning</Button><Button variant="link" onClick={() => setEditingAction("")}>Cancel</Button></div> : <div className="action-buttons"><Button variant="outline" onClick={() => decide("approve")}>Approve</Button><Button variant="ghost" onClick={() => beginEdit("edit")}>Edit</Button><Button variant="ghost" onClick={() => decide("reject")}>Reject</Button><Button variant="link" onClick={() => beginEdit("override")}>Set meaning</Button></div>}
+    <div className="candidate-action-title"><span>{suggestionLabel(item)}</span><span className="count-pill">{score === null ? "" : `${score}%`}</span></div>
+    {editingAction ? <div className="edit-row"><Input value={value} onChange={(event) => setValue(event.target.value)} aria-label={`${editingAction} semantic value`} /><Button variant="outline" size="sm" disabled={!value.trim()} onClick={() => decide(editingAction, value)}>Save meaning</Button><Button variant="link" size="sm" onClick={() => setEditingAction("")}>Cancel</Button></div> : <div className="action-buttons"><Button variant="outline" size="sm" onClick={() => decide("approve")}>Approve</Button><Button variant="ghost" size="sm" onClick={() => beginEdit("edit")}>Edit</Button><Button variant="ghost" size="sm" onClick={() => decide("reject")}>Reject</Button><Button variant="link" size="sm" onClick={() => beginEdit("override")}>Set meaning</Button></div>}
   </fieldset>;
 }
 
@@ -832,7 +953,7 @@ function EvidenceCard({ item }) {
 }
 
 function StatusBadge({ value, large = false }) { return <Badge variant="outline" className={`status-badge ${large ? "large" : ""} ${statusClass(value)}`}><i />{statusLabel(value)}</Badge>; }
-function EmptyState({ title, detail, action }) { return <div className="empty-state"><strong>{title}</strong><p>{detail}</p>{action}</div>; }
+function EmptyState({ title, detail, action, icon, tone }) { return <div className={`empty-state ${tone ? `tone-${tone}` : ""}`}>{icon ? <span className="empty-icon" aria-hidden="true">{icon}</span> : null}<strong>{title}</strong><p>{detail}</p>{action}</div>; }
 function formatDate(value) { if (!value || value === "Not scanned") return value || "Not scanned"; const date = new Date(value); return Number.isNaN(date.valueOf()) ? String(value) : date.toLocaleString([], { dateStyle: "medium", timeStyle: "short" }); }
 function formatValue(value) { return readableText(value) || "—"; }
 

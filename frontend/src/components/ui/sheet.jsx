@@ -1,7 +1,7 @@
 import { Button } from "./button";
 import * as React from "react"
 import { cn } from "@/lib/utils"
-import { Cross2Icon as XIcon } from "@radix-ui/react-icons"
+import { X as XIcon } from "lucide-react"
 import { Dialog as SheetPrimitive } from "radix-ui"
 
 function Sheet({
@@ -28,21 +28,6 @@ function SheetPortal({
   return <SheetPrimitive.Portal data-slot="sheet-portal" {...props} />;
 }
 
-function SheetOverlay({
-  className,
-  ...props
-}) {
-  return (
-    <SheetPrimitive.Overlay
-      data-slot="sheet-overlay"
-      className={cn(
-        "fixed inset-0 z-50 bg-black/50 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0",
-        className
-      )}
-      {...props} />
-  );
-}
-
 function SheetContent({
   className,
   children,
@@ -50,27 +35,17 @@ function SheetContent({
   showCloseButton = true,
   ...props
 }) {
+  // Non-modal: the sheet floats over the canvas without a scrim so the graph stays readable.
   return (
     <SheetPortal>
-      <SheetOverlay />
       <SheetPrimitive.Content
         data-slot="sheet-content"
-        className={cn(
-          "fixed z-50 flex flex-col gap-4 bg-background shadow-lg transition ease-in-out data-[state=closed]:animate-out data-[state=closed]:duration-300 data-[state=open]:animate-in data-[state=open]:duration-500",
-          side === "right" &&
-            "inset-y-0 right-0 h-full w-3/4 border-l data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right sm:max-w-sm",
-          side === "left" &&
-            "inset-y-0 left-0 h-full w-3/4 border-r data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left sm:max-w-sm",
-          side === "top" &&
-            "inset-x-0 top-0 h-auto border-b data-[state=closed]:slide-out-to-top data-[state=open]:slide-in-from-top",
-          side === "bottom" &&
-            "inset-x-0 bottom-0 h-auto border-t data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom",
-          className
-        )}
+        data-side={side}
+        className={cn("ui-sheet fixed z-50 flex flex-col", className)}
         {...props}>
         {children}
         {showCloseButton && (
-          <div className="absolute top-4 right-4"><SheetPrimitive.Close asChild><Button variant="ghost" size="icon-sm">
+          <div className="ui-sheet-close"><SheetPrimitive.Close asChild><Button variant="ghost" size="icon-sm">
             <XIcon className="size-4" />
             <span className="sr-only">Close</span>
           </Button></SheetPrimitive.Close></div>
@@ -87,7 +62,7 @@ function SheetHeader({
   return (
     <div
       data-slot="sheet-header"
-      className={cn("flex flex-col gap-1.5 p-4", className)}
+      className={cn("flex flex-col gap-1.5", className)}
       {...props} />
   );
 }
@@ -99,7 +74,7 @@ function SheetFooter({
   return (
     <div
       data-slot="sheet-footer"
-      className={cn("mt-auto flex flex-col gap-2 p-4", className)}
+      className={cn("mt-auto flex flex-col gap-2", className)}
       {...props} />
   );
 }
@@ -123,7 +98,7 @@ function SheetDescription({
   return (
     <SheetPrimitive.Description
       data-slot="sheet-description"
-      className={cn("text-sm text-muted-foreground", className)}
+      className={cn("text-[13px] text-muted-foreground", className)}
       {...props} />
   );
 }

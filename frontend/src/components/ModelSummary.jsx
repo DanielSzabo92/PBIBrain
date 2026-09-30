@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { Copy, Download, RefreshCw, Sparkles, TriangleAlert } from "lucide-react";
 import { Button } from "./ui/button";
 import { Card } from "./ui/card";
 import { Label } from "./ui/label";
@@ -47,27 +48,26 @@ export default function ModelSummary({ overview, transport, scanning }) {
     setTimeout(() => URL.revokeObjectURL(url), 1000);
     setNotice("Context file prepared.");
   };
+  const lines = ready ? result.markdown.split("\n").length : 0;
 
-  return <>
-    <div className="page-heading"><div><p className="eyebrow">Agent context</p><h2>Model summary</h2><p className="muted-copy">Model overview, exact formulas, relationships, and reviewed meanings in one Markdown file.</p></div></div>
-    <Card className="panel model-summary-panel">
-      {models.length ? <>
-        <div className="model-summary-toolbar">
-          <div className="model-summary-choice"><Label htmlFor="summary-model">Semantic model</Label><NativeSelect id="summary-model" value={modelId} onChange={(event) => setSelectedId(event.target.value)} disabled={scanning}>
-            {models.map((item) => <option key={item.id} value={item.id}>{item.name || item.id}</option>)}
-          </NativeSelect></div>
-          <div className="model-summary-actions">
-            <Button variant="ghost" onClick={() => setRevision((value) => value + 1)} disabled={loading || scanning}>Refresh</Button>
-            <Button variant="outline" onClick={copy} disabled={!ready}>Copy context</Button>
-            <Button variant="outline" onClick={save} disabled={!ready}>Save Markdown</Button>
-          </div>
+  return <Card className="panel model-summary-panel">
+    <div className="settings-panel-head"><span className="icon-tile" aria-hidden="true"><Sparkles /></span><div><p className="eyebrow">Agent context</p><h2>Model summary</h2><p className="muted-copy">Model overview, exact formulas, relationships, and reviewed meanings in one Markdown file.</p></div></div>
+    {models.length ? <>
+      <div className="model-summary-toolbar">
+        <div className="model-summary-choice"><Label htmlFor="summary-model">Semantic model</Label><NativeSelect id="summary-model" value={modelId} onChange={(event) => setSelectedId(event.target.value)} disabled={scanning}>
+          {models.map((item) => <option key={item.id} value={item.id}>{item.name || item.id}</option>)}
+        </NativeSelect></div>
+        <div className="model-summary-actions">
+          <Button variant="ghost" size="sm" onClick={() => setRevision((value) => value + 1)} disabled={loading || scanning}><RefreshCw className={loading ? "spin" : ""} />Refresh</Button>
+          <Button variant="outline" size="sm" onClick={copy} disabled={!ready}><Copy />Copy context</Button>
+          <Button size="sm" onClick={save} disabled={!ready}><Download />Save Markdown</Button>
         </div>
-        <p className="muted-copy">Uses the last scan. Rescan after editing source files. Unknowns and inferred meanings stay labelled.</p>
-        {loading || scanning ? <p role="status">{scanning ? "Waiting for scan…" : "Loading summary…"}</p> : null}
-        {error ? <div role="alert"><p>{error}</p><Button variant="outline" onClick={() => setRevision((value) => value + 1)}>Retry summary</Button></div> : null}
-        {ready ? <><Label htmlFor="model-summary-preview">Markdown preview</Label><textarea ref={preview} id="model-summary-preview" className="model-summary-preview" value={result.markdown} readOnly spellCheck={false} /></> : null}
-        {notice ? <p role="status">{notice}</p> : null}
-      </> : <p className="muted-copy">Scan a semantic model to create its context file.</p>}
-    </Card>
-  </>;
+      </div>
+      <p className="muted-copy compact">Uses the last scan. Rescan after editing source files. Unknowns and inferred meanings stay labelled.</p>
+      {loading || scanning ? <p role="status" className="loading-label">{scanning ? "Waiting for scan…" : "Loading summary…"}</p> : null}
+      {error ? <div role="alert" className="inline-error"><TriangleAlert aria-hidden="true" /><p>{error}</p><Button variant="outline" size="sm" onClick={() => setRevision((value) => value + 1)}>Retry summary</Button></div> : null}
+      {ready ? <div className="code-window"><div className="code-window-bar"><Label htmlFor="model-summary-preview">Markdown preview</Label><span className="code-window-meta">model-context.md · {lines.toLocaleString()} lines</span></div><textarea ref={preview} id="model-summary-preview" className="model-summary-preview" value={result.markdown} readOnly spellCheck={false} /></div> : null}
+      {notice ? <p role="status" className="success-text">{notice}</p> : null}
+    </> : <p className="muted-copy">Scan a semantic model to create its context file.</p>}
+  </Card>;
 }

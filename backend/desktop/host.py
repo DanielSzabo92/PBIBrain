@@ -548,7 +548,7 @@ def run() -> int:
             width=1440,
             height=900,
             min_size=(1024, 680),
-            background_color="#0b1018",
+            background_color="#0b0c0f",
         )
         webview.start(debug=False)
         return 0

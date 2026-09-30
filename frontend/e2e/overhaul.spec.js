@@ -170,7 +170,7 @@ test("dark default and flat selection remain clear during keyboard navigation", 
   await page.goto("/");
   await expect(page.locator("html")).toHaveClass("dark");
   await expect(page.locator("html")).toHaveCSS("color-scheme", "dark");
-  await expect(page.locator("body")).toHaveCSS("background-color", "rgb(21, 24, 29)");
+  await expect(page.locator("body")).toHaveCSS("background-color", "rgb(11, 12, 15)");
   const background = (control) => control.evaluate((node) => getComputedStyle(node).backgroundColor);
   const navigation = page.getByRole("navigation");
   expect(await background(navigation.locator('[aria-current="page"]'))).not.toBe(await background(navigation.getByRole("button", { name: "Graph", exact: true })));
@@ -212,8 +212,8 @@ test("native scan exposes full report hierarchy and matching visual bindings", a
     await page.getByRole("tab", { name: "Report", exact: true }).click();
     await expect(page.locator(".flow-node-name").filter({ hasText: /^Unused/ })).toHaveCount(0);
     await card.click();
-    await expect(page.locator(".react-flow__edge-textbg").first()).toHaveCSS("fill", "rgb(28, 32, 39)");
-    await expect(page.locator(".react-flow__edge-text").first()).toHaveCSS("fill", "rgb(230, 231, 232)");
+    await expect(page.locator(".react-flow__edge-textbg").first()).toHaveCSS("fill", "rgb(24, 26, 31)");
+    await expect(page.locator(".react-flow__edge-text").first()).toHaveCSS("fill", "rgb(237, 237, 240)");
     const sheet = page.locator(".graph-detail-sheet");
     await expect(sheet.locator(".visual-bindings .detail-section")).toHaveCount(6);
     await expect(sheet.locator(".graph-detail-body")).toHaveCSS("overflow-x", "hidden");
