@@ -93,6 +93,33 @@ snapshot identity without inventing a scan ID. Stop `brain serve` before direct
 database CLI access. Export is canonical-snapshot only; review overrides are
 excluded.
 
+## Model context file
+
+In the app, open **Settings → Model summary**, select a semantic model, then
+**Copy context** or **Save Markdown**. The standalone `model-context.md` starts
+with identity, coverage, and a model overview, followed by columns,
+relationships, exact stored expressions, dependency edges, special behavior,
+report usage, reviewed meanings, and diagnostics. Hidden objects are included.
+
+The read-only endpoint `GET /api/model-summary?model_id=<exact ID>` returns
+`model_id`, `model_name`, `snapshot_id`, `object_counts`, and `markdown`.
+Select IDs from `/api/overview`; the endpoint requires one explicit model.
+It reads the running app's existing repository, including effective review
+decisions, without opening another database connection or modifying sources.
+
+This export differs from canonical `export-markdown`: it is scoped to one
+model and includes human decisions. Shared meanings retain each assertion's
+own status. Reviewed interpretations remain INFERRED, not FACT.
+
+No LLM or external service generates the file. Table roles and grain are never
+guessed; missing values remain unknown. Cardinality and filter direction are
+separate. Unrecorded security metadata does not prove the absence of RLS/OLS.
+Files are not reread during export, so rescan after source edits. Large models
+produce large files: definitions are not silently truncated to a token limit.
+Windows desktop downloads use the native Save dialog; clipboard failures leave
+the preview selected for Ctrl+C or file saving. Clipboard line endings follow
+Windows conventions; downloaded files preserve the UTF-8 Markdown text.
+
 ## Trust and completeness
 
 - FACT means extracted evidence; INFERRED means interpretation; OBSERVED means

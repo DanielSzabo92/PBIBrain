@@ -43,6 +43,7 @@ gui = EXE(
     console=False,
     icon=str(ROOT / "branding" / "pbibrain.ico"),
     disable_windowed_traceback=False,
+    manifest=str(ROOT / "packaging" / "windows.manifest"),
 )
 
 agent = EXE(
@@ -52,6 +53,7 @@ agent = EXE(
     exclude_binaries=True,
     name="PBIBrain-Agent",
     console=True,
+    manifest=str(ROOT / "packaging" / "windows.manifest"),
 )
 
 coll = COLLECT(

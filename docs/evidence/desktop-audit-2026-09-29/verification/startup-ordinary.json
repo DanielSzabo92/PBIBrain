@@ -1,0 +1,100 @@
+{
+  "label": "ordinary",
+  "sanitized": false,
+  "started_at": "2026-09-30T00:42:18.8404274+02:00",
+  "working_directory": "C:\\Users\\Daniel\\Desktop\\PBIBrain\\docs\\evidence\\desktop-audit-2026-09-29",
+  "executable": "C:\\Users\\Daniel\\AppData\\Local\\Programs\\PBIBrain\\PBIBrain.exe",
+  "pid": 2512,
+  "exit_code": 0,
+  "checkpoints": [
+    {
+      "target_ms": 1000,
+      "elapsed_ms": 1360,
+      "pid": 2512,
+      "exited": false,
+      "tree": [
+        2512,
+        27644
+      ],
+      "listeners": [
+        {
+          "LocalAddress": "127.0.0.1",
+          "LocalPort": 63788,
+          "OwningProcess": 2512,
+          "State": 2
+        }
+      ]
+    },
+    {
+      "target_ms": 5000,
+      "elapsed_ms": 5371,
+      "pid": 2512,
+      "exited": false,
+      "tree": [
+        2512,
+        16216,
+        20592,
+        24056,
+        27644,
+        29964,
+        38924
+      ],
+      "listeners": [
+        {
+          "LocalAddress": "127.0.0.1",
+          "LocalPort": 63788,
+          "OwningProcess": 2512,
+          "State": 2
+        }
+      ]
+    },
+    {
+      "target_ms": 10000,
+      "elapsed_ms": 10347,
+      "pid": 2512,
+      "exited": false,
+      "tree": [
+        2512,
+        16216,
+        20592,
+        24056,
+        27644,
+        29964,
+        38924
+      ],
+      "listeners": [
+        {
+          "LocalAddress": "127.0.0.1",
+          "LocalPort": 63788,
+          "OwningProcess": 2512,
+          "State": 2
+        }
+      ]
+    }
+  ],
+  "probes_after_10s": [
+    {
+      "port": 63788,
+      "root": {
+        "status": 200,
+        "length": 514,
+        "prefix": "<!doctype html>\r\n<html lang=\"en\" class=\"dark\">\r\n  <head><script src=\"/desktop/bootstrap.js\"></script>\r\n    <meta charset=\"UTF-8\" />\r\n    <meta name=\"viewport\" c"
+      },
+      "session": {
+        "status": 200,
+        "length": 79,
+        "prefix": "{\"ok\": true, \"project\": null, \"session_id\": \"85fa4d8720664e91b3f74137c519dad5\"}"
+      },
+      "bootstrap": {
+        "status": 200,
+        "length": 33,
+        "prefix": "window.__PBIBRAIN_DESKTOP__=true;"
+      }
+    }
+  ],
+  "close_main_window_result": true,
+  "close_wait_ms": 1892,
+  "exited_after_close": true,
+  "stdout": "",
+  "stderr": "127.0.0.1 - - [30/Sep/2026 00:42:21] \"GET / HTTP/1.1\" 200 514\r\n127.0.0.1 - - [30/Sep/2026 00:42:21] \"GET /desktop/bootstrap.js HTTP/1.1\" 200 33\r\n127.0.0.1 - - [30/Sep/2026 00:42:21] \"GET /assets/index-Cv3ickgH.css HTTP/1.1\" 200 107310\r\n127.0.0.1 - - [30/Sep/2026 00:42:21] \"GET /assets/index-mC6nK879.js HTTP/1.1\" 200 733696\r\n127.0.0.1 - - [30/Sep/2026 00:42:21] \"GET /favicon.ico HTTP/1.1\" 404 41\r\n127.0.0.1 - - [30/Sep/2026 00:42:29] \"GET / HTTP/1.1\" 200 514\r\n127.0.0.1 - - [30/Sep/2026 00:42:29] \"GET /desktop/session HTTP/1.1\" 200 79\r\n127.0.0.1 - - [30/Sep/2026 00:42:29] \"GET /desktop/bootstrap.js HTTP/1.1\" 200 33\r\n"
+}

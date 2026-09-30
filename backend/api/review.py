@@ -37,6 +37,9 @@ def _item_matches(item: Mapping[str, Any], target: str) -> bool:
     if str(item.get("id", "")) == target:
         return True
     properties = _properties(item)
+    if properties.get("candidate_ids"):
+        # Shared meaning nodes are not individual assertions. Their edges are.
+        return False
     return any(
         str(properties.get(key, "")) == target
         for key in ("candidate_id", "candidateId", "target", "target_id", "object_id")
@@ -244,6 +247,8 @@ def _queue_item(
     result = {
         "id": str(value.get("id", "")),
         "review_id": str(value.get("id", "")),
+        "candidate_id": properties.get("candidate_id"),
+        "assertion_type": assertion_type or item_type,
         "target_id": target_id,
         "object_id": target_id,
         "model_id": target_model_id,
@@ -251,7 +256,7 @@ def _queue_item(
         "object_type": target.get("type") if target else None,
         "type": item_type,
         "issue_type": issue_type,
-        "value": value.get("value", value.get("meaning")),
+        "value": value.get("value", value.get("meaning", properties.get("meaning", properties.get("value")))),
         "confidence": float(value.get("confidence", _properties(value).get("confidence", 0.0)) or 0.0),
         "status": value.get("status", "candidate"),
         "evidence_class": value.get("evidence_class", "INFERRED"),
@@ -260,6 +265,17 @@ def _queue_item(
         "impact": _impact(value, target),
         "item": value,
     }
+    source = str(properties.get("candidate_source") or value.get("source", ""))
+    if issue_type == "conflict":
+        result["reason"] = "Recorded evidence suggests incompatible meanings for this object. Choose which meaning to keep."
+    elif source == "object_name":
+        result["reason"] = f'Only the name “{target.get("name", "") if target else ""}” supports this meaning; no description confirms it.'
+    elif source == "description":
+        result["reason"] = f'The source description says “{target.get("description", "") if target else ""}”. Confirm that the suggested label captures its meaning.'
+    elif source in {"dax_ast", "dax_analysis"}:
+        result["reason"] = "DAX analysis suggests this behavior. Confirm that it describes the object's intended use."
+    else:
+        result["reason"] = "An inference rule proposed this meaning from the evidence below. It needs your confirmation."
     return result
 
 
@@ -283,6 +299,8 @@ def get_review_queue(
     records: list[dict[str, Any]] = []
     seen_candidates: set[str] = set()
     for node in nodes:
+        if node.properties.get("candidate_ids"):
+            continue
         if node.type not in _SEMANTIC_TYPES and node.status == "factual":
             continue
         effective = apply_overrides_to_dict(node.to_dict(), store)
@@ -405,6 +423,8 @@ def _set_status(repository: GraphRepository, item_id: str, status: str) -> dict[
     changed_nodes: list[Node] = []
     changed_edges: list[Edge] = []
     for node in nodes:
+        if node.properties.get("candidate_ids") and node.id == target:
+            raise ValueError("Choose an individual suggestion for this shared meaning")
         if _item_matches(node.to_dict(), target) and node.status != "factual":
             node.status = status
             changed_nodes.append(node)
@@ -414,6 +434,10 @@ def _set_status(repository: GraphRepository, item_id: str, status: str) -> dict[
             changed_edges.append(edge)
     if not changed_nodes and not changed_edges:
         raise KeyError(f"review item not found: {item_id}")
+    for node in nodes:
+        if node.properties.get("candidate_ids"):
+            statuses = {edge.status for edge in edges if edge.to_id == node.id and edge.properties.get("candidate_id")}
+            node.status = next(iter(statuses)) if len(statuses) == 1 else "candidate"
     repository.replace(nodes, edges)
     return {
         "item_id": target,

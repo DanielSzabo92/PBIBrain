@@ -1,0 +1,111 @@
+Window: "PBIBrain", App: PBIBrain.exe.
+	0 ablak PBIBrain Secondary Actions: Raise
+		1 tábla ID: 21629912
+			2 tábla PBIBrain – [InPrivate]
+				3 tábla (disabled)
+				4 terület PBIBrain – Webes tartalom (InPrivate)
+					5 terület
+						6 terület
+						7 terület
+							8 terület
+								9 terület
+								10 terület
+									11 terület
+										12 terület
+											13 terület
+												14 terület
+												15 dokumentum PBIBrain Value: http://127.0.0.1:51917/ ID: RootWebArea
+													16 csoport
+														17 csoport ID: root
+															40 fejléc
+																41 fejléc Empty audit
+																42 szöveg Connected
+																43 kép
+																44 gomb Change project
+																45 kép
+																46 gomb Reload Brain Description: Reload Brain
+															47 kiegészítő
+																48 navigáció Main navigation
+																	49 kép
+																	50 gomb Overview
+																	51 kép
+																	52 gomb Search
+																	53 kép
+																	54 gomb Graph
+																	55 kép
+																	56 gomb Inspector
+																	57 kép
+																	58 gomb Review queue
+																	59 kép
+																	60 gomb Settings
+															61 elsődleges
+																84 riasztás
+																	85 szöveg Project has no configured sources
+																64 TAB Settings sections
+																	65 kép
+																	66 lapelem (selectable) Graph colors ID: radix-:r2:-trigger-colors
+																	67 kép
+																	68 lapelem (selectable) Project ID: radix-:r2:-trigger-project
+																69 panellap Project ID: radix-:r2:-content-project
+																	70 szöveg DESKTOP PROJECT
+																	71 fejléc Empty audit
+																	72 szöveg Everything PBIBrain creates stays with this project folder.
+																	73 kép
+																	74 gomb Change project
+																	75 szöveg PROJECT FOLDER
+																	76 szöveg C:\Users\Daniel\Desktop\PBIBrain\docs\evidence\desktop-audit-2026-09-29\projects\Empty
+																	77 szöveg POWER BI INPUTS
+																	78 fejléc Source files
+																	79 kép
+																	80 gomb Add source files
+																	81 szöveg Add PBIP projects or model JSON files to scan them with this project.
+																	82 kép
+																	83 gomb Scan project
+								32 terület
+						33 terület
+		34 címsor (settable, string) Value: PBIBrain
+			35 menüsor Rendszer ID: MenuBar
+				36 menüelem Rendszer
+			37 gomb Kis méret
+			38 gomb Teljes méret
+			39 gomb Bezárás
+
+Document text: ```
+Empty audit
+Connected
+￼
+Change project
+￼
+↻
+￼
+Overview
+￼
+Search
+￼
+Graph
+￼
+Inspector
+￼
+Review queue
+￼
+Settings
+Project has no configured sources
+￼
+Graph colors
+￼
+Project
+DESKTOP PROJECT
+Empty audit
+Everything PBIBrain creates stays with this project folder.
+￼
+Change project
+PROJECT FOLDER
+C:\Users\Daniel\Desktop\PBIBrain\docs\evidence\desktop-audit-2026-09-29\projects\Empty
+POWER BI INPUTS
+Source files
+￼
+Add source files
+Add PBIP projects or model JSON files to scan them with this project.
+￼
+Scan project
+```

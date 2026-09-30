@@ -1,0 +1,14 @@
+[
+  {
+    "ProcessId": 11180,
+    "ParentProcessId": 5268,
+    "Name": "PBIBrain.exe",
+    "ExecutablePath": "C:\\Users\\Daniel\\AppData\\Local\\Programs\\PBIBrain\\PBIBrain.exe"
+  },
+  {
+    "ProcessId": 11288,
+    "ParentProcessId": 11180,
+    "Name": "msedgewebview2.exe",
+    "ExecutablePath": "C:\\Program Files (x86)\\Microsoft\\EdgeWebView\\Application\\154.0.4258.37\\msedgewebview2.exe"
+  }
+]

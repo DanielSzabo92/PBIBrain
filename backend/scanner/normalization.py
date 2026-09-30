@@ -142,7 +142,7 @@ def _visual_title(raw: Mapping[str, Any]) -> str | None:
         value = pick(part, "title", "displayTitle", "display_title")
         if value is not None and not isinstance(value, Mapping):
             return _literal_text(value)
-        for key in ("vcObjects", "objects"):
+        for key in ("visualContainerObjects", "vcObjects", "objects"):
             objects = pick(part, key)
             if not isinstance(objects, Mapping):
                 continue
@@ -157,6 +157,39 @@ def _visual_title(raw: Mapping[str, Any]) -> str | None:
                 if candidate:
                     return candidate
     return None
+
+
+def _report_filters(raw: Mapping[str, Any], *keys: str) -> list[Any]:
+    """Read both legacy JSON-string filters and PBIR filterConfig."""
+    value = _decode_json_field(pick(raw, *keys))
+    if isinstance(value, list):
+        return value
+    config = pick(raw, "filterConfig")
+    return collection(config, "filters") if isinstance(config, Mapping) else []
+
+
+def _visual_calculations(raw: Mapping[str, Any]) -> list[dict[str, Any]]:
+    calculations: dict[str, dict[str, Any]] = {}
+
+    def visit(value: Any) -> None:
+        if isinstance(value, Mapping):
+            field = pick(value, "field")
+            calc = pick(field, "NativeVisualCalculation") if isinstance(field, Mapping) else None
+            calc = calc or pick(value, "NativeVisualCalculation")
+            if isinstance(calc, Mapping) and pick(calc, "Expression") is not None:
+                name = str(pick(calc, "Name") or pick(value, "queryRef") or "Calculation")
+                # The same field can occur in projections and sorting metadata.
+                record = calculations.setdefault(name, dict(calc))
+                if pick(value, "displayName"):
+                    record["display_name"] = pick(value, "displayName")
+            for child in value.values():
+                visit(child)
+        elif isinstance(value, list):
+            for child in value:
+                visit(child)
+
+    visit(raw)
+    return list(calculations.values())
 
 
 def _source_entities(value: Any) -> dict[str, str]:
@@ -823,9 +856,9 @@ class Normalizer:
                 if not isinstance(visual_raw, Mapping):
                     continue
                 self._normalize_visual(visual_raw, visual_index, page, model_id)
-            self._normalize_filters(collection(page_raw, "filters", "page_filters", "pageFilters"), "PAGE_FILTER", page, model_id)
+            self._normalize_filters(_report_filters(page_raw, "filters", "page_filters", "pageFilters"), "PAGE_FILTER", page, model_id)
 
-        self._normalize_filters(collection(raw, "filters", "report_filters", "reportFilters"), "REPORT_FILTER", report, model_id)
+        self._normalize_filters(_report_filters(raw, "filters", "report_filters", "reportFilters"), "REPORT_FILTER", report, model_id)
         self.identity.save()
         return NormalizationResult(list(self.nodes.values()), self.model_ids, self.report_ids)
 
@@ -836,7 +869,7 @@ class Normalizer:
         raw = _prepare_visual(raw)
         visual_source = source_id(raw)
         visual_title = _visual_title(raw)
-        raw_name = pick(raw, "name", "displayName", "display_name")
+        raw_name = pick(raw, "displayName", "display_name", "name")
         visual_name = str(raw_name) if raw_name is not None else f"visual_{visual_index}"
         visual_id, effective_source = self.identity.object_id(
             "VISUAL", visual_source, parent_id=page.id, fallback=f"visual:{visual_source or visual_index}:{visual_name}"
@@ -890,7 +923,7 @@ class Normalizer:
         visual = Node(
             id=visual_id,
             type="VISUAL",
-            name=visual_name or effective_source,
+            name=visual_title or visual_name or effective_source,
             description=description(raw),
             model_id=model_id,
             report_id=page.report_id,
@@ -916,12 +949,22 @@ class Normalizer:
         )
         self._add(visual, aliases=(visual_source, visual_name))
         self._normalize_filters(
-            collection(raw, "filters", "visual_filters", "visualFilters"),
+            _report_filters(raw, "filters", "visual_filters", "visualFilters"),
             "VISUAL_FILTER",
             visual,
             model_id,
             source_entities=source_entities,
         )
+        for calculation in _visual_calculations(raw):
+            calc_name = str(pick(calculation, "Name") or "Calculation")
+            calc_id, calc_source = self.identity.object_id("VISUAL_CALCULATION", calc_name, parent_id=visual.id)
+            self._add(Node(
+                id=calc_id, type="VISUAL_CALCULATION",
+                name=str(pick(calculation, "display_name") or calc_name),
+                model_id=model_id, report_id=page.report_id, source_id=calc_source,
+                source="report_metadata",
+                properties=_raw_properties(calculation, parent_id=visual.id, expression=str(pick(calculation, "Expression")), language=pick(calculation, "Language")),
+            ))
         return visual
 
     def _normalize_filters(
@@ -940,7 +983,8 @@ class Normalizer:
             target_raw = pick(filter_raw, "target", "field", "column", "measure", "object")
             if target_raw is None:
                 target_raw = pick(filter_raw, "expression")
-            target_binding = _semantic_binding(target_raw, source_entities)
+            entities = {**source_entities, **_source_entities(pick(filter_raw, "filter") or {})}
+            target_binding = _semantic_binding(target_raw, entities)
             target_kind, target_ref = target_binding if target_binding else (None, target_raw)
             target_id = self._resolve_ref(target_ref, [target_kind] if target_kind else None, model_id)
             filter_source = source_id(filter_raw)
@@ -953,7 +997,8 @@ class Normalizer:
             node = Node(
                 id=filter_id,
                 type=object_type,
-                name=display_name(filter_raw, default=f"{object_type.casefold()}_{filter_index}"),
+                name=str(pick(filter_raw, "displayName", "display_name") or
+                         (self.nodes[target_id].name if target_id else display_name(filter_raw, default=f"{object_type.casefold()}_{filter_index}"))),
                 description=description(filter_raw),
                 model_id=model_id,
                 report_id=parent.report_id,
@@ -1008,6 +1053,12 @@ def _collect_bindings(raw: Mapping[str, Any]) -> list[tuple[str | None, Any]]:
 
     def visit(value: Any, hinted: str | None = None) -> None:
         if isinstance(value, Mapping):
+            field = pick(value, "field")
+            if pick(value, "NativeVisualCalculation") is not None or (
+                isinstance(field, Mapping) and pick(field, "NativeVisualCalculation") is not None
+            ):
+                # Explicit visual calculations belong to the visual, not the model.
+                return
             object_ref = pick(value, "object_id", "objectId")
             binding_kind = pick(value, "kind", "field_type", "fieldType")
             if object_ref is not None and (binding_kind is not None or hinted is not None):

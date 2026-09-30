@@ -37,23 +37,24 @@ const buttonVariants = cva(
   }
 )
 
-function Button({
+const Button = React.forwardRef(function Button({
   className,
   variant = "default",
   size = "default",
   asChild = false,
   ...props
-}) {
+}, ref) {
   const Comp = asChild ? Slot.Root : "button"
-
-  return (
+  const content = (
     <Comp
+      ref={ref}
       data-slot="button"
       data-variant={variant}
       data-size={size}
       className={cn(buttonVariants({ variant, size, className }))}
       {...props} />
   );
-}
+  return content;
+});
 
 export { Button, buttonVariants }

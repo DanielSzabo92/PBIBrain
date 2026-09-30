@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "name": "Audit á (test)",
+  "sources": [
+    "../Finance.pbip"
+  ],
+  "database": "\\\\?\\C:\\Users\\Daniel\\Desktop\\PBIBrain\\docs\\evidence\\desktop-audit-2026-09-29\\verification\\fixtures\\Audit á (test)\\.pbibrain\\brain-prefix.lbug",
+  "identity_map": "\\\\?\\C:\\Users\\Daniel\\Desktop\\PBIBrain\\docs\\evidence\\desktop-audit-2026-09-29\\verification\\fixtures\\Audit á (test)\\.pbibrain\\identity-prefix.json"
+}

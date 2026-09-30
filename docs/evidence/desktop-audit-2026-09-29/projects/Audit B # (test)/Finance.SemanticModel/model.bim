@@ -1,0 +1,64 @@
+{
+  "id": "11111111-1111-1111-1111-111111111111",
+  "name": "FinanceModel",
+  "compatibilityLevel": 1567,
+  "model": {
+    "culture": "en-US",
+    "defaultPowerBIDataSourceVersion": "powerBI_V3",
+    "tables": [
+      {
+        "id": "22222222-2222-2222-2222-222222222222",
+        "name": "Sales",
+        "columns": [
+          {
+            "id": "44444444-4444-4444-4444-444444444444",
+            "name": "Amount",
+            "dataType": "decimal",
+            "sourceColumn": "Amount"
+          },
+          {
+            "id": "55555555-5555-5555-5555-555555555555",
+            "name": "DateKey",
+            "dataType": "int64",
+            "sourceColumn": "DateKey"
+          }
+        ],
+        "measures": [
+          {
+            "id": "77777777-7777-7777-7777-777777777777",
+            "name": "Net Sales",
+            "expression": "SUM(Sales[Amount])",
+            "formatString": "#,##0"
+          },
+          {
+            "id": "88888888-8888-8888-8888-888888888888",
+            "name": "Gross Sales",
+            "expression": "[Net Sales] * 1.1",
+            "formatString": "#,##0"
+          }
+        ]
+      },
+      {
+        "id": "33333333-3333-3333-3333-333333333333",
+        "name": "Date",
+        "columns": [
+          {
+            "id": "66666666-6666-6666-6666-666666666666",
+            "name": "DateKey",
+            "dataType": "int64",
+            "sourceColumn": "DateKey"
+          }
+        ]
+      }
+    ],
+    "relationships": [
+      {
+        "id": "99999999-9999-9999-9999-999999999999",
+        "fromTable": "Sales",
+        "fromColumn": "DateKey",
+        "toTable": "Date",
+        "toColumn": "DateKey"
+      }
+    ]
+  }
+}

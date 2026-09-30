@@ -537,6 +537,7 @@ def run() -> int:
             raise RuntimeError("The PBIBrain interface is missing. Reinstall PBIBrain.")
         import webview  # type: ignore[import-not-found]
 
+        webview.settings["ALLOW_DOWNLOADS"] = True
         controller = DesktopController(static_dir=static_dir)
         server = DesktopServer(controller)
         server.start()

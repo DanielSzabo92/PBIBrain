@@ -9,5 +9,5 @@ export default function NavIcon({ name }) {
     review: "M9 6h12 M9 12h12 M9 18h12 M2 6l2 2 3-4 M2 12l2 2 3-4 M2 18l2 2 3-4",
     config: "M3 6h18 M3 12h18 M3 18h18 M8 3v6 M16 9v6 M8 15v6",
   };
-  return <svg className="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={paths[name]} /></svg>;
+  return <svg className="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={paths[name]} /></svg>;
 }

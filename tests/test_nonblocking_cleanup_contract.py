@@ -123,7 +123,7 @@ class InspectorCleanupContractTests(unittest.TestCase):
         ]
         source = (ROOT / "frontend" / "src" / "App.jsx").read_text(encoding="utf-8")
         start = source.index("function dataCounts")
-        end = source.index("\n\nfunction App", start)
+        end = source.index("\n\nconst scopeOptions", start)
         # Extracting the pure function keeps this test independent of a DOM or
         # a React test runner.
         function_source = source[start:end]

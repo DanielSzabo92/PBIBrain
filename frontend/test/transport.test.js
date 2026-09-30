@@ -52,3 +52,10 @@ test("API errors expose the backend error field", async () => {
   const transport = createBrainTransport({ baseUrl: "/api", fetcher: async () => ({ ok: false, status: 422, statusText: "Unprocessable", json: async () => ({ error: "Source path is invalid" }) }) });
   await assert.rejects(transport.scan(), /Source path is invalid/);
 });
+
+test("model summary requires an explicit encoded model scope", async () => {
+  const fake = fakeFetch({ model_id: "model/Finance á", markdown: "# Model" });
+  const result = await createBrainTransport({ baseUrl: "/api", fetcher: fake.fetch }).getModelSummary("model/Finance á");
+  assert.equal(fake.calls[0].url, "/api/model-summary?model_id=model%2FFinance+%C3%A1");
+  assert.equal(result.markdown, "# Model");
+});

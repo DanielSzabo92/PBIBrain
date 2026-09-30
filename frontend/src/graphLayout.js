@@ -2,26 +2,36 @@ import dagre from "@dagrejs/dagre";
 import { ARTIFACT_GROUPS, artifactGroup } from "./graphPresentation.js";
 
 export const NODE_WIDTH = 224;
-export const NODE_HEIGHT = 84;
+export const NODE_HEIGHT = 88;
+
+// Reports use a model, but sit after that model in the containment hierarchy.
+// Reverse only the layout constraint; the canonical arrow still points back.
+function layoutEndpoints(edge) {
+  return edge.type === "USES_MODEL" ? { v: edge.to_id, w: edge.from_id, name: edge.id } : { v: edge.from_id, w: edge.to_id, name: edge.id };
+}
+function edgePoints(graph, edge) {
+  const points = graph.edge(layoutEndpoints(edge)).points;
+  return edge.type === "USES_MODEL" ? [...points].reverse() : points;
+}
 
 // Stable ordering keeps refreshes predictable. Canonical edge direction is preserved,
 // including cycles and parallel relationships; Dagre only chooses visual positions.
 export function layoutGraph(nodes, edges, direction = "LR") {
   const graph = new dagre.graphlib.Graph({ multigraph: true });
-  graph.setGraph({ rankdir: direction, ranksep: 100, nodesep: 36, edgesep: 20, marginx: 32, marginy: 32 });
+  graph.setGraph({ rankdir: direction, ranksep: 56, nodesep: 24, edgesep: 16, marginx: 32, marginy: 32 });
   graph.setDefaultEdgeLabel(() => ({}));
   const ordered = [...nodes].sort((a, b) => a.id.localeCompare(b.id));
   const ids = new Set(ordered.map((node) => node.id));
   ordered.forEach((node) => graph.setNode(node.id, { width: NODE_WIDTH, height: NODE_HEIGHT }));
   const validEdges = edges.filter((edge) => ids.has(edge.from_id) && ids.has(edge.to_id)).sort((a, b) => a.id.localeCompare(b.id));
-  validEdges.forEach((edge) => graph.setEdge(edge.from_id, edge.to_id, {}, edge.id));
+  validEdges.forEach((edge) => graph.setEdge(layoutEndpoints(edge), { weight: edge.type === "CONTAINS" ? 4 : 1 }));
   if (ordered.length) dagre.layout(graph);
   return {
     nodes: ordered.map((node) => {
       const { x, y } = graph.node(node.id);
       return { node, position: { x: x - NODE_WIDTH / 2, y: y - NODE_HEIGHT / 2 } };
     }),
-    edges: validEdges.map((edge) => ({ edge, points: graph.edge({ v: edge.from_id, w: edge.to_id, name: edge.id }).points })),
+    edges: validEdges.map((edge) => ({ edge, points: edgePoints(graph, edge) })),
   };
 }
 
@@ -48,7 +58,7 @@ export function routePath(points) {
 export function layoutArtifactGraph(nodes, edges, direction = "LR") {
   if (!nodes.length) return { nodes: [], edges: [], groups: [] };
   const graph = new dagre.graphlib.Graph({ multigraph: true, compound: true });
-  graph.setGraph({ rankdir: direction, ranksep: 100, nodesep: 72, edgesep: 24, marginx: 40, marginy: 60 });
+  graph.setGraph({ rankdir: direction, ranksep: 64, nodesep: 60, edgesep: 16, marginx: 40, marginy: 60 });
   graph.setDefaultEdgeLabel(() => ({}));
   const ordered = [...nodes].sort((a, b) => a.id.localeCompare(b.id));
   const ids = new Set(ordered.map((node) => node.id));
@@ -65,14 +75,14 @@ export function layoutArtifactGraph(nodes, edges, direction = "LR") {
     graph.setParent(node.id, groupIds.get(artifactGroup(node)));
   });
   const validEdges = edges.filter((edge) => ids.has(edge.from_id) && ids.has(edge.to_id)).sort((a, b) => a.id.localeCompare(b.id));
-  validEdges.forEach((edge) => graph.setEdge(edge.from_id, edge.to_id, {}, edge.id));
+  validEdges.forEach((edge) => graph.setEdge(layoutEndpoints(edge), { weight: edge.type === "CONTAINS" ? 4 : 1 }));
   dagre.layout(graph);
   return {
     nodes: ordered.map((node) => {
       const { x, y } = graph.node(node.id);
       return { node, position: { x: x - NODE_WIDTH / 2, y: y - NODE_HEIGHT / 2 } };
     }),
-    edges: validEdges.map((edge) => ({ edge, points: graph.edge({ v: edge.from_id, w: edge.to_id, name: edge.id }).points })),
+    edges: validEdges.map((edge) => ({ edge, points: edgePoints(graph, edge) })),
     groups: groups.map((key) => {
       const { x, y, width, height } = graph.node(groupIds.get(key));
       return { id: groupIds.get(key), key, position: { x: x - width / 2, y: y - height / 2 }, width, height, count: ordered.filter((node) => artifactGroup(node) === key).length };

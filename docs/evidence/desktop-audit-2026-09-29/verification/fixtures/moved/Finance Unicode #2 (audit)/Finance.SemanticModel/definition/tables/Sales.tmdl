@@ -1,0 +1,20 @@
+table SalesRenamed
+    lineageTag: 22222222-2222-2222-2222-222222222222
+
+    column Amount
+        dataType: decimal
+        lineageTag: 44444444-4444-4444-4444-444444444444
+        sourceColumn: Amount
+
+    column DateKey
+        dataType: int64
+        lineageTag: 55555555-5555-5555-5555-555555555555
+        sourceColumn: DateKey
+
+    measure 'Net Sales' = SUM(SalesRenamed[Amount])
+        lineageTag: 77777777-7777-7777-7777-777777777777
+        formatString: #,##0
+
+    measure 'Gross Sales' = [Net Sales] * 1.1
+        lineageTag: 88888888-8888-8888-8888-888888888888
+        formatString: #,##0

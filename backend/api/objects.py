@@ -115,13 +115,18 @@ def _semantic_records(repository: GraphRepository, object_id: str, store: Overri
         other_id = edge.to_id if edge.from_id == str(object_id) else edge.from_id
         other = repository.get_object(other_id)
         if other is not None and (other.type in {"BUSINESS_CONCEPT", "SELECTOR", "SELECTOR_OPTION", "CONFLICT", "SEMANTIC_ASSERTION"}):
-            values.append(_payload(other, store))
+            payload = other.to_dict()
+            if other.properties.get("candidate_ids") and edge.properties.get("candidate_id"):
+                # Render the meaning in this assertion's context, not another target's decision.
+                payload["properties"] = {**other.properties, **edge.properties, "candidate_ids": []}
+                payload.update(status=edge.status, confidence=edge.confidence, evidence=edge.evidence)
+            values.append(_payload(payload, store))
     direct = repository.get_object(str(object_id))
-    if direct is not None and direct.type in {"BUSINESS_CONCEPT", "SELECTOR", "SELECTOR_OPTION", "CONFLICT", "SEMANTIC_ASSERTION"}:
+    if direct is not None and not direct.properties.get("candidate_ids") and direct.type in {"BUSINESS_CONCEPT", "SELECTOR", "SELECTOR_OPTION", "CONFLICT", "SEMANTIC_ASSERTION"}:
         values.insert(0, _payload(direct, store))
     unique: dict[str, dict[str, Any]] = {}
     for value in values:
-        marker = f"{value.get('id')}|{value.get('type')}|{value.get('from_id', '')}|{value.get('to_id', '')}"
+        marker = f"{value.get('id')}|{value.get('type')}|{value.get('from_id', '')}|{value.get('to_id', '')}|{value.get('properties', {}).get('candidate_id', '')}"
         unique[marker] = value
     return [unique[key] for key in sorted(unique)]
 
@@ -140,6 +145,35 @@ def get_semantics(
     """
 
     return _semantic_records(repository, str(object_id), store)
+
+
+def visual_bindings(repository: GraphRepository, node: Node, edges: list[Edge], store: OverrideStore | None) -> dict[str, list[dict[str, Any]]]:
+    """Use canonical edges for fields, calculations and inherited filters."""
+    groups: dict[str, list[dict[str, Any]]] = {key: [] for key in ("columns", "measures", "calculations", "visual_filters", "page_filters", "report_filters")}
+    owners = {node.id}
+    frontier = [node.id]
+    while frontier:
+        current = frontier.pop()
+        for edge in edges:
+            if edge.type == "CONTAINS" and edge.to_id == current and edge.from_id not in owners:
+                owners.add(edge.from_id)
+                frontier.append(edge.from_id)
+    group_types = {"COLUMN": "columns", "MEASURE": "measures", "VISUAL_CALCULATION": "calculations", "VISUAL_FILTER": "visual_filters", "PAGE_FILTER": "page_filters", "REPORT_FILTER": "report_filters"}
+    seen: set[str] = set()
+    for edge in edges:
+        if not (edge.from_id == node.id and edge.type in {"USES", "CONTAINS"}
+                or edge.from_id in owners and edge.type == "CONTAINS"):
+            continue
+        target = repository.get_object(edge.to_id)
+        if target is None or target.id in seen or target.type not in group_types:
+            continue
+        if target.type in {"COLUMN", "MEASURE", "VISUAL_CALCULATION"} and edge.from_id != node.id:
+            continue
+        seen.add(target.id)
+        groups[group_types[target.type]].append(_payload(target, store))
+    for values in groups.values():
+        values.sort(key=lambda value: (value["name"].casefold(), value["id"]))
+    return groups
 
 
 def inspect_object(
@@ -186,6 +220,7 @@ def inspect_object(
 
     return {
         "object": object_payload,
+        "visual_bindings": visual_bindings(repository, node, all_edges, store) if node.type == "VISUAL" else None,
         "identity": {
             key: object_payload.get(key)
             for key in ("id", "type", "name", "model_id", "report_id", "source_id", "status")

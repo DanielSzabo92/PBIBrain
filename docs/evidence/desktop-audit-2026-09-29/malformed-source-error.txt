@@ -1,0 +1,86 @@
+Window: "PBIBrain", App: PBIBrain.exe.
+	0 ablak PBIBrain Secondary Actions: Raise
+		1 tábla ID: 10552810
+			8 tábla PBIBrain – [InPrivate]
+				9 tábla (disabled)
+				10 terület PBIBrain – Webes tartalom (InPrivate)
+					11 terület
+						12 terület
+						13 terület
+							14 terület
+								15 terület
+								16 terület
+									17 terület
+										18 terület
+											19 terület
+												20 terület
+												24 dokumentum PBIBrain Value: http://127.0.0.1:58939/ ID: RootWebArea
+													32 csoport
+														25 csoport ID: root
+															47 fejléc
+																48 fejléc Audit A
+																49 szöveg Connected
+																50 kép
+																51 gomb Change project
+																52 kép
+																53 gomb Reload Brain Description: Reload Brain
+															54 kiegészítő
+																55 navigáció Main navigation
+																	56 kép
+																	57 gomb Overview
+																	58 kép
+																	59 gomb Search
+																	60 kép
+																	61 gomb Graph
+																	62 kép
+																	63 gomb Inspector
+																	64 kép
+																	65 gomb Review queue Pending reviews
+																		77 csoport Pending reviews
+																	66 kép
+																	67 gomb Settings
+															68 elsődleges
+																106 riasztás
+																	107 szöveg Cannot read project source C:\Users\Daniel\Desktop\PBIBrain\docs\evidence\desktop-audit-2026-09-29\projects\Audit A\Finance.pbip: Expecting property name enclosed in double quotes: line 1 column 2 (char 1)
+																78 szöveg Find an object
+																79 szerkesztés (settable, string) Find an object Description: Measure, table, column, or visual… ID: project-search
+																80 kép
+																81 gomb (disabled) Search project
+																82 kép
+																83 gomb Explore relationships in the graph
+																84 lista Project counts
+																	85 kifejezés Models
+																		86 szöveg Models
+																	87 szöveg 1
+																	88 kifejezés Reports
+																		89 szöveg Reports
+																	90 szöveg 1
+																	91 kifejezés Objects
+																		92 szöveg Objects
+																	93 szöveg 17
+																	94 kifejezés Relationships
+																		95 szöveg Relationships
+																	96 szöveg 24
+																97 fejléc Ready for review
+																98 szöveg Check suggested meanings and resolve uncertain matches.
+																99 kép
+																100 gomb Open review queue
+																73 szöveg Sources indexed
+																74 szöveg 1 source
+																101 szöveg · Last scan 2026. szept. 30. 0:25
+																75 kép
+																76 gomb Manage sources
+																102 kép
+																103 gomb Scan project
+								22 terület
+						23 terület
+		2 címsor (settable, string) Value: PBIBrain
+			3 menüsor Rendszer ID: MenuBar
+				4 menüelem Rendszer
+			5 gomb Kis méret
+			6 gomb Teljes méret
+			7 gomb Bezárás
+
+Document text: ```
+￼
+```

@@ -25,6 +25,7 @@ OBJECT_TYPES = frozenset(
         "REPORT",
         "PAGE",
         "VISUAL",
+        "VISUAL_CALCULATION",
         "VISUAL_FILTER",
         "PAGE_FILTER",
         "REPORT_FILTER",

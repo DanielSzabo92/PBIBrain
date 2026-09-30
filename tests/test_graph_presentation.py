@@ -36,8 +36,9 @@ class GraphPresentationTests(unittest.TestCase):
 
     def test_report_filter_uses_report_ownership_even_with_model_ids(self):
         result = get_graph(self.repository, artifact="report")
-        self.assertEqual({node["id"] for node in result["nodes"]}, {"r", "v", "future"})
-        self.assertEqual([edge["id"] for edge in result["edges"]], ["contains"])
+        self.assertEqual({node["id"] for node in result["nodes"]}, {"r", "v", "future", "measure"})
+        self.assertEqual({edge["id"] for edge in result["edges"]}, {"contains", "uses"})
+        self.assertEqual(next(node for node in result["nodes"] if node["id"] == "measure")["artifact_group"], "model")
         self.assertEqual(artifact_group({"type": "MEASURE", "report_id": "r"}), "model")
         self.assertEqual(artifact_group({"type": "NEW"}), "other")
         self.assertEqual(artifact_group({"type": "ALIAS", "model_id": "m"}), "other")

@@ -44,6 +44,10 @@ export function createBrainTransport({ baseUrl = API_ROOT, fetcher = globalThis.
     getOverview() {
       return request("/overview");
     },
+    getModelSummary(modelId) {
+      const params = new URLSearchParams({ model_id: modelId });
+      return request(`/model-summary?${params}`);
+    },
     getConfig() {
       return request("/config");
     },
@@ -61,10 +65,11 @@ export function createBrainTransport({ baseUrl = API_ROOT, fetcher = globalThis.
         body: "{}",
       });
     },
-    search({ query = "", modelId = "", reportId = "", limit = 50, offset = 0 } = {}) {
+    search({ query = "", modelId = "", reportId = "", objectType = "", limit = 50, offset = 0 } = {}) {
       const params = new URLSearchParams({ q: query, limit: String(limit), offset: String(offset) });
       if (modelId) params.set("model_id", modelId);
       if (reportId) params.set("report_id", reportId);
+      if (objectType) params.set("object_type", objectType);
       return request(`/search?${params}`);
     },
     getGraph({ centerId = "", modelId = "", reportId = "", depth = 1, limit = 100, query = "", artifact = "", objectType = "", status = "", edgeType = "" } = {}) {

@@ -1,0 +1,66 @@
+{
+  "name": "GrossSalesCard",
+  "position": {
+    "x": 0,
+    "y": 0,
+    "z": 0,
+    "width": 320,
+    "height": 240
+  },
+  "visual": {
+    "visualType": "card",
+    "objects": {
+      "title": [
+        {
+          "properties": {
+            "text": {
+              "expr": {
+                "Literal": {
+                  "Value": "'Gross sales'"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "query": {
+      "queryState": {
+        "Category": {
+          "projections": [
+            {
+              "queryRef": "Date.DateKey",
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Date"
+                    }
+                  },
+                  "Property": "DateKey"
+                }
+              }
+            }
+          ]
+        },
+        "Y": {
+          "projections": [
+            {
+              "queryRef": "SalesRenamed.Gross Sales",
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "SalesRenamed"
+                    }
+                  },
+                  "Property": "Gross Sales"
+                }
+              }
+            }
+          ]
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "name": "Finance Legacy Report",
+  "sections": [
+    {
+      "id": "Overview",
+      "name": "Overview",
+      "displayName": "Overview",
+      "ordinal": 0,
+      "visualContainers": [
+        {
+          "id": "SalesByDate",
+          "config": "{\"name\": \"SalesByDate\", \"singleVisual\": {\"visualType\": \"columnChart\", \"vcObjects\": {\"title\": [{\"properties\": {\"text\": {\"expr\": {\"Literal\": {\"Value\": \"'Sales by date'\"}}}}}]}}}",
+          "query": "{\"Commands\": [{\"SemanticQueryDataShapeCommand\": {\"Query\": {\"Version\": 2, \"From\": [{\"Name\": \"d\", \"Entity\": \"Date\", \"Type\": 0}, {\"Name\": \"s\", \"Entity\": \"Sales\", \"Type\": 0}], \"Select\": [{\"Column\": {\"Expression\": {\"SourceRef\": {\"Source\": \"d\"}}, \"Property\": \"DateKey\"}, \"Name\": \"Date.DateKey\"}, {\"Measure\": {\"Expression\": {\"SourceRef\": {\"Source\": \"s\"}}, \"Property\": \"Net Sales\"}, \"Name\": \"Sales.Net Sales\"}]}}}]}",
+          "filters": "[]"
+        },
+        {
+          "id": "GrossSalesCard",
+          "config": "{\"name\": \"GrossSalesCard\", \"singleVisual\": {\"visualType\": \"card\", \"vcObjects\": {\"title\": [{\"properties\": {\"text\": {\"expr\": {\"Literal\": {\"Value\": \"'Gross sales'\"}}}}}]}}}",
+          "query": "{\"Commands\": [{\"SemanticQueryDataShapeCommand\": {\"Query\": {\"Version\": 2, \"From\": [{\"Name\": \"d\", \"Entity\": \"Date\", \"Type\": 0}, {\"Name\": \"s\", \"Entity\": \"Sales\", \"Type\": 0}], \"Select\": [{\"Column\": {\"Expression\": {\"SourceRef\": {\"Source\": \"d\"}}, \"Property\": \"DateKey\"}, \"Name\": \"Date.DateKey\"}, {\"Measure\": {\"Expression\": {\"SourceRef\": {\"Source\": \"s\"}}, \"Property\": \"Gross Sales\"}, \"Name\": \"Sales.Gross Sales\"}]}}}]}",
+          "filters": "[]"
+        }
+      ]
+    }
+  ]
+}

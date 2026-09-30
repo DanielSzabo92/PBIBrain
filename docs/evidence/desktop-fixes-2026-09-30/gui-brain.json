@@ -1,0 +1,4222 @@
+{
+  "conflicts": [],
+  "diagnostics": [],
+  "edges": [
+    {
+      "confidence": 1.0,
+      "evidence": [
+        "visual field binding"
+      ],
+      "evidence_class": "FACT",
+      "from_id": "report:Finance.Report/page:Overview/visual:SalesByDate",
+      "id": "edge:0866852cdd996b8cd1ae25c9bb271c14",
+      "properties": {},
+      "source": "report_metadata",
+      "status": "factual",
+      "to_id": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/measure:77777777-7777-7777-7777-777777777777",
+      "type": "USES"
+    },
+    {
+      "confidence": 1.0,
+      "evidence": [
+        "visual field binding"
+      ],
+      "evidence_class": "FACT",
+      "from_id": "report:Finance.Report/page:Overview/visual:GrossSalesCard",
+      "id": "edge:0e7aeff71f58b0bd543db7d7606408f1",
+      "properties": {},
+      "source": "report_metadata",
+      "status": "factual",
+      "to_id": "model:11111111-1111-1111-1111-111111111111/table:33333333-3333-3333-3333-333333333333/column:66666666-6666-6666-6666-666666666666",
+      "type": "USES"
+    },
+    {
+      "confidence": 1.0,
+      "evidence": [
+        "model membership"
+      ],
+      "evidence_class": "FACT",
+      "from_id": "model:11111111-1111-1111-1111-111111111111",
+      "id": "edge:25968dddc53abee1e4aeba1d6b7537e2",
+      "properties": {},
+      "source": "model_metadata",
+      "status": "factual",
+      "to_id": "model:11111111-1111-1111-1111-111111111111/relationship:99999999-9999-9999-9999-999999999999",
+      "type": "CONTAINS"
+    },
+    {
+      "confidence": 1.0,
+      "evidence": [
+        "relationship endpoint"
+      ],
+      "evidence_class": "FACT",
+      "from_id": "model:11111111-1111-1111-1111-111111111111/relationship:99999999-9999-9999-9999-999999999999",
+      "id": "edge:41a42d496f84bc9520a4e7f3d82b4282",
+      "properties": {},
+      "source": "model_metadata",
+      "status": "factual",
+      "to_id": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/column:55555555-5555-5555-5555-555555555555",
+      "type": "RELATES_TO"
+    },
+    {
+      "confidence": 1.0,
+      "evidence": [
+        "table membership"
+      ],
+      "evidence_class": "FACT",
+      "from_id": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222",
+      "id": "edge:5487c8e4f92fa1e8984c47b9e09431ba",
+      "properties": {},
+      "source": "model_metadata",
+      "status": "factual",
+      "to_id": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/column:44444444-4444-4444-4444-444444444444",
+      "type": "CONTAINS"
+    },
+    {
+      "confidence": 1.0,
+      "evidence": [
+        "report model reference"
+      ],
+      "evidence_class": "FACT",
+      "from_id": "report:Finance.Report",
+      "id": "edge:560f4d56731052fd3930082817885adf",
+      "properties": {},
+      "source": "report_metadata",
+      "status": "factual",
+      "to_id": "model:11111111-1111-1111-1111-111111111111",
+      "type": "USES_MODEL"
+    },
+    {
+      "confidence": 1.0,
+      "evidence": [
+        "model membership"
+      ],
+      "evidence_class": "FACT",
+      "from_id": "model:11111111-1111-1111-1111-111111111111",
+      "id": "edge:691aaf50a0b12681478dc39450faebdb",
+      "properties": {},
+      "source": "model_metadata",
+      "status": "factual",
+      "to_id": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222",
+      "type": "CONTAINS"
+    },
+    {
+      "confidence": 1.0,
+      "evidence": [
+        "table membership"
+      ],
+      "evidence_class": "FACT",
+      "from_id": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222",
+      "id": "edge:6e1cd5c43c5ab17adac3ddb76b606797",
+      "properties": {},
+      "source": "model_metadata",
+      "status": "factual",
+      "to_id": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/measure:77777777-7777-7777-7777-777777777777",
+      "type": "CONTAINS"
+    },
+    {
+      "confidence": 1.0,
+      "evidence": [
+        {
+          "confidence": 1.0,
+          "evidence": "visual contains both model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/measure:77777777-7777-7777-7777-777777777777 and model:11111111-1111-1111-1111-111111111111/table:33333333-3333-3333-3333-333333333333/column:66666666-6666-6666-6666-666666666666",
+          "evidence_class": "OBSERVED",
+          "extractor": "visual_cooccurrence",
+          "source": "report_usage",
+          "source_object": "report:Finance.Report/page:Overview/visual:SalesByDate",
+          "status": "factual",
+          "target": "model:11111111-1111-1111-1111-111111111111/table:33333333-3333-3333-3333-333333333333/column:66666666-6666-6666-6666-666666666666",
+          "type": "OBSERVED_WITH"
+        }
+      ],
+      "evidence_class": "OBSERVED",
+      "from_id": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/measure:77777777-7777-7777-7777-777777777777",
+      "id": "edge:724e299fb44e0542f128215758d78eaa",
+      "properties": {
+        "occurrences": 1,
+        "report_ids": [
+          "report:Finance.Report"
+        ],
+        "symmetric": true,
+        "visual_ids": [
+          "report:Finance.Report/page:Overview/visual:SalesByDate"
+        ]
+      },
+      "source": "report_usage",
+      "status": "factual",
+      "to_id": "model:11111111-1111-1111-1111-111111111111/table:33333333-3333-3333-3333-333333333333/column:66666666-6666-6666-6666-666666666666",
+      "type": "OBSERVED_WITH"
+    },
+    {
+      "confidence": 1.0,
+      "evidence": [
+        "visual field binding"
+      ],
+      "evidence_class": "FACT",
+      "from_id": "report:Finance.Report/page:Overview/visual:SalesByDate",
+      "id": "edge:757b9962a6230ff8213a1f00b545e9be",
+      "properties": {},
+      "source": "report_metadata",
+      "status": "factual",
+      "to_id": "model:11111111-1111-1111-1111-111111111111/table:33333333-3333-3333-3333-333333333333/column:66666666-6666-6666-6666-666666666666",
+      "type": "USES"
+    },
+    {
+      "confidence": 1.0,
+      "evidence": [
+        {
+          "ast_location": {
+            "end_column": 11,
+            "end_line": 1,
+            "end_offset": 11,
+            "start_column": 0,
+            "start_line": 1,
+            "start_offset": 0
+          },
+          "confidence": 1.0,
+          "evidence": [
+            "[Net Sales]"
+          ],
+          "evidence_class": "FACT",
+          "extractor": "measure_reference",
+          "source": "dax_ast",
+          "source_object": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/measure:88888888-8888-8888-8888-888888888888",
+          "status": "factual",
+          "target": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/measure:77777777-7777-7777-7777-777777777777",
+          "type": "DEPENDS_ON"
+        }
+      ],
+      "evidence_class": "FACT",
+      "from_id": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/measure:88888888-8888-8888-8888-888888888888",
+      "id": "edge:7dfb85ae0ee781e95f35785df29717fb",
+      "properties": {},
+      "source": "dax_analysis",
+      "status": "factual",
+      "to_id": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/measure:77777777-7777-7777-7777-777777777777",
+      "type": "DEPENDS_ON"
+    },
+    {
+      "confidence": 1.0,
+      "evidence": [
+        "report containment"
+      ],
+      "evidence_class": "FACT",
+      "from_id": "report:Finance.Report/page:Overview",
+      "id": "edge:8709e9f304be5ad3d6a216057f29d255",
+      "properties": {},
+      "source": "report_metadata",
+      "status": "factual",
+      "to_id": "report:Finance.Report/page:Overview/visual:SalesByDate",
+      "type": "CONTAINS"
+    },
+    {
+      "confidence": 1.0,
+      "evidence": [
+        "report containment"
+      ],
+      "evidence_class": "FACT",
+      "from_id": "report:Finance.Report",
+      "id": "edge:88954616a1c78830ee355298438eefe7",
+      "properties": {},
+      "source": "report_metadata",
+      "status": "factual",
+      "to_id": "report:Finance.Report/page:Overview",
+      "type": "CONTAINS"
+    },
+    {
+      "confidence": 1.0,
+      "evidence": [
+        "table membership"
+      ],
+      "evidence_class": "FACT",
+      "from_id": "model:11111111-1111-1111-1111-111111111111/table:33333333-3333-3333-3333-333333333333",
+      "id": "edge:89d2179326ea195f0a1395ddb2b6925b",
+      "properties": {},
+      "source": "model_metadata",
+      "status": "factual",
+      "to_id": "model:11111111-1111-1111-1111-111111111111/table:33333333-3333-3333-3333-333333333333/column:66666666-6666-6666-6666-666666666666",
+      "type": "CONTAINS"
+    },
+    {
+      "confidence": 1.0,
+      "evidence": [
+        "relationship endpoint"
+      ],
+      "evidence_class": "FACT",
+      "from_id": "model:11111111-1111-1111-1111-111111111111/relationship:99999999-9999-9999-9999-999999999999",
+      "id": "edge:89fd5b9035a82f86c838893f28d566ee",
+      "properties": {},
+      "source": "model_metadata",
+      "status": "factual",
+      "to_id": "model:11111111-1111-1111-1111-111111111111/table:33333333-3333-3333-3333-333333333333/column:66666666-6666-6666-6666-666666666666",
+      "type": "RELATES_TO"
+    },
+    {
+      "confidence": 1.0,
+      "evidence": [
+        "table membership"
+      ],
+      "evidence_class": "FACT",
+      "from_id": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222",
+      "id": "edge:9494d1d95a1457d80f93ebb9f949314d",
+      "properties": {},
+      "source": "model_metadata",
+      "status": "factual",
+      "to_id": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/column:55555555-5555-5555-5555-555555555555",
+      "type": "CONTAINS"
+    },
+    {
+      "confidence": 1.0,
+      "evidence": [
+        "report containment"
+      ],
+      "evidence_class": "FACT",
+      "from_id": "report:Finance.Report/page:Overview",
+      "id": "edge:c79606a24f4c95161dbb752d7f444f6f",
+      "properties": {},
+      "source": "report_metadata",
+      "status": "factual",
+      "to_id": "report:Finance.Report/page:Overview/visual:GrossSalesCard",
+      "type": "CONTAINS"
+    },
+    {
+      "confidence": 1.0,
+      "evidence": [
+        "table membership"
+      ],
+      "evidence_class": "FACT",
+      "from_id": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222",
+      "id": "edge:d4d647f5d50ede9882c65fd9548fcef0",
+      "properties": {},
+      "source": "model_metadata",
+      "status": "factual",
+      "to_id": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/measure:88888888-8888-8888-8888-888888888888",
+      "type": "CONTAINS"
+    },
+    {
+      "confidence": 1.0,
+      "evidence": [
+        "visual field binding"
+      ],
+      "evidence_class": "FACT",
+      "from_id": "report:Finance.Report/page:Overview/visual:GrossSalesCard",
+      "id": "edge:e18972d2ba6507c5c05a85ac53a518d7",
+      "properties": {},
+      "source": "report_metadata",
+      "status": "factual",
+      "to_id": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/measure:88888888-8888-8888-8888-888888888888",
+      "type": "USES"
+    },
+    {
+      "confidence": 1.0,
+      "evidence": [
+        "model membership"
+      ],
+      "evidence_class": "FACT",
+      "from_id": "model:11111111-1111-1111-1111-111111111111",
+      "id": "edge:e5e13bdad45e6a72eec00690894d2666",
+      "properties": {},
+      "source": "model_metadata",
+      "status": "factual",
+      "to_id": "model:11111111-1111-1111-1111-111111111111/table:33333333-3333-3333-3333-333333333333",
+      "type": "CONTAINS"
+    },
+    {
+      "confidence": 1.0,
+      "evidence": [
+        {
+          "confidence": 1.0,
+          "evidence": "visual contains both model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/measure:88888888-8888-8888-8888-888888888888 and model:11111111-1111-1111-1111-111111111111/table:33333333-3333-3333-3333-333333333333/column:66666666-6666-6666-6666-666666666666",
+          "evidence_class": "OBSERVED",
+          "extractor": "visual_cooccurrence",
+          "source": "report_usage",
+          "source_object": "report:Finance.Report/page:Overview/visual:GrossSalesCard",
+          "status": "factual",
+          "target": "model:11111111-1111-1111-1111-111111111111/table:33333333-3333-3333-3333-333333333333/column:66666666-6666-6666-6666-666666666666",
+          "type": "OBSERVED_WITH"
+        }
+      ],
+      "evidence_class": "OBSERVED",
+      "from_id": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/measure:88888888-8888-8888-8888-888888888888",
+      "id": "edge:e8abf170810dcaadbee4a373f03a10b2",
+      "properties": {
+        "occurrences": 1,
+        "report_ids": [
+          "report:Finance.Report"
+        ],
+        "symmetric": true,
+        "visual_ids": [
+          "report:Finance.Report/page:Overview/visual:GrossSalesCard"
+        ]
+      },
+      "source": "report_usage",
+      "status": "factual",
+      "to_id": "model:11111111-1111-1111-1111-111111111111/table:33333333-3333-3333-3333-333333333333/column:66666666-6666-6666-6666-666666666666",
+      "type": "OBSERVED_WITH"
+    },
+    {
+      "confidence": 1.0,
+      "evidence": [
+        {
+          "ast_location": {
+            "end_column": 17,
+            "end_line": 1,
+            "end_offset": 17,
+            "start_column": 4,
+            "start_line": 1,
+            "start_offset": 4
+          },
+          "confidence": 1.0,
+          "evidence": [
+            "Sales[Amount]"
+          ],
+          "evidence_class": "FACT",
+          "extractor": "column_reference",
+          "source": "dax_ast",
+          "source_object": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/measure:77777777-7777-7777-7777-777777777777",
+          "status": "factual",
+          "target": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/column:44444444-4444-4444-4444-444444444444",
+          "type": "REFERENCES"
+        }
+      ],
+      "evidence_class": "FACT",
+      "from_id": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/measure:77777777-7777-7777-7777-777777777777",
+      "id": "edge:f4f575e01149f9f0b217d78acf4d4668",
+      "properties": {},
+      "source": "dax_analysis",
+      "status": "factual",
+      "to_id": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/column:44444444-4444-4444-4444-444444444444",
+      "type": "REFERENCES"
+    },
+    {
+      "confidence": 0.3,
+      "evidence": [
+        {
+          "evidence": "Object name: DateKey",
+          "evidence_class": "INFERRED",
+          "extractor": "name_interpretation",
+          "source": "object_name",
+          "status": "candidate",
+          "target": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/column:55555555-5555-5555-5555-555555555555"
+        }
+      ],
+      "evidence_class": "INFERRED",
+      "from_id": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/column:55555555-5555-5555-5555-555555555555",
+      "id": "edge:semantic:11f6ac0e1bf08048a2e2bef1a8b3c1bc",
+      "properties": {
+        "assertion_type": "BUSINESS_CONCEPT",
+        "candidate_id": "semantic:candidate:e3a8d731103c5e5f56eb90f8ea4a6ad6",
+        "candidate_source": "object_name",
+        "priority": 5,
+        "value": "DateKey"
+      },
+      "source": "semantic_inference",
+      "status": "candidate",
+      "to_id": "semantic:business-concept:5c841239c25046033f76df275dbc2455",
+      "type": "SEMANTICALLY_MAPS_TO"
+    },
+    {
+      "confidence": 0.3,
+      "evidence": [
+        {
+          "evidence": "Object name: FinanceModel",
+          "evidence_class": "INFERRED",
+          "extractor": "name_interpretation",
+          "source": "object_name",
+          "status": "candidate",
+          "target": "model:11111111-1111-1111-1111-111111111111"
+        }
+      ],
+      "evidence_class": "INFERRED",
+      "from_id": "model:11111111-1111-1111-1111-111111111111",
+      "id": "edge:semantic:23e32802034d0ac3e7f2ab4ff1d39733",
+      "properties": {
+        "assertion_type": "BUSINESS_CONCEPT",
+        "candidate_id": "semantic:candidate:a7d3ff47bd3a4c76b3bb6a46682180b8",
+        "candidate_source": "object_name",
+        "priority": 5,
+        "value": "FinanceModel"
+      },
+      "source": "semantic_inference",
+      "status": "candidate",
+      "to_id": "semantic:business-concept:2fce5ce5bc0bac8099418b27f60cd6d9",
+      "type": "SEMANTICALLY_MAPS_TO"
+    },
+    {
+      "confidence": 0.3,
+      "evidence": [
+        {
+          "evidence": "Object name: Sales",
+          "evidence_class": "INFERRED",
+          "extractor": "name_interpretation",
+          "source": "object_name",
+          "status": "candidate",
+          "target": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222"
+        }
+      ],
+      "evidence_class": "INFERRED",
+      "from_id": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222",
+      "id": "edge:semantic:3260f425df0fabc591ee1c9e9b646c59",
+      "properties": {
+        "assertion_type": "BUSINESS_CONCEPT",
+        "candidate_id": "semantic:candidate:c0afd4fdce7d4289897369cf17a47c1f",
+        "candidate_source": "object_name",
+        "priority": 5,
+        "value": "Sales"
+      },
+      "source": "semantic_inference",
+      "status": "candidate",
+      "to_id": "semantic:business-concept:1c239a8ac4a447efcf1db26d4825bfa6",
+      "type": "SEMANTICALLY_MAPS_TO"
+    },
+    {
+      "confidence": 0.3,
+      "evidence": [
+        {
+          "evidence": "Object name: Date",
+          "evidence_class": "INFERRED",
+          "extractor": "name_interpretation",
+          "source": "object_name",
+          "status": "candidate",
+          "target": "model:11111111-1111-1111-1111-111111111111/table:33333333-3333-3333-3333-333333333333"
+        }
+      ],
+      "evidence_class": "INFERRED",
+      "from_id": "model:11111111-1111-1111-1111-111111111111/table:33333333-3333-3333-3333-333333333333",
+      "id": "edge:semantic:3f3c01bc93b5c941d25bd5afa23ad109",
+      "properties": {
+        "assertion_type": "BUSINESS_CONCEPT",
+        "candidate_id": "semantic:candidate:d4a6998ea2020f9f579e54a292d385f1",
+        "candidate_source": "object_name",
+        "priority": 5,
+        "value": "Date"
+      },
+      "source": "semantic_inference",
+      "status": "candidate",
+      "to_id": "semantic:business-concept:e9a1b6946539eafb0979c6151fc2848d",
+      "type": "SEMANTICALLY_MAPS_TO"
+    },
+    {
+      "confidence": 0.3,
+      "evidence": [
+        {
+          "evidence": "Object name: DateKey",
+          "evidence_class": "INFERRED",
+          "extractor": "name_interpretation",
+          "source": "object_name",
+          "status": "candidate",
+          "target": "model:11111111-1111-1111-1111-111111111111/table:33333333-3333-3333-3333-333333333333/column:66666666-6666-6666-6666-666666666666"
+        }
+      ],
+      "evidence_class": "INFERRED",
+      "from_id": "model:11111111-1111-1111-1111-111111111111/table:33333333-3333-3333-3333-333333333333/column:66666666-6666-6666-6666-666666666666",
+      "id": "edge:semantic:717b755b4c74468d87fb258760c8e5d1",
+      "properties": {
+        "assertion_type": "BUSINESS_CONCEPT",
+        "candidate_id": "semantic:candidate:37b830d447b6246c03b191d95a1c28f5",
+        "candidate_source": "object_name",
+        "priority": 5,
+        "value": "DateKey"
+      },
+      "source": "semantic_inference",
+      "status": "candidate",
+      "to_id": "semantic:business-concept:5c841239c25046033f76df275dbc2455",
+      "type": "SEMANTICALLY_MAPS_TO"
+    },
+    {
+      "confidence": 0.3,
+      "evidence": [
+        {
+          "evidence": "Object name: Gross Sales",
+          "evidence_class": "INFERRED",
+          "extractor": "name_interpretation",
+          "source": "object_name",
+          "status": "candidate",
+          "target": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/measure:88888888-8888-8888-8888-888888888888"
+        }
+      ],
+      "evidence_class": "INFERRED",
+      "from_id": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/measure:88888888-8888-8888-8888-888888888888",
+      "id": "edge:semantic:84ed57ddcebde21efabb3a7f7492a2f1",
+      "properties": {
+        "assertion_type": "BUSINESS_CONCEPT",
+        "candidate_id": "semantic:candidate:67e3ebc745ac0000ba57cea3d2e17275",
+        "candidate_source": "object_name",
+        "priority": 5,
+        "value": "Gross Sales"
+      },
+      "source": "semantic_inference",
+      "status": "candidate",
+      "to_id": "semantic:business-concept:c129d115955092a9fac23da0b6d3ae6a",
+      "type": "SEMANTICALLY_MAPS_TO"
+    },
+    {
+      "confidence": 0.3,
+      "evidence": [
+        {
+          "evidence": "Object name: Amount",
+          "evidence_class": "INFERRED",
+          "extractor": "name_interpretation",
+          "source": "object_name",
+          "status": "candidate",
+          "target": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/column:44444444-4444-4444-4444-444444444444"
+        }
+      ],
+      "evidence_class": "INFERRED",
+      "from_id": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/column:44444444-4444-4444-4444-444444444444",
+      "id": "edge:semantic:dfee6a08424df95b260720dfc327a2c7",
+      "properties": {
+        "assertion_type": "BUSINESS_CONCEPT",
+        "candidate_id": "semantic:candidate:2ac4f71f975f0c4d7c144b74e77b226f",
+        "candidate_source": "object_name",
+        "priority": 5,
+        "value": "Amount"
+      },
+      "source": "semantic_inference",
+      "status": "candidate",
+      "to_id": "semantic:business-concept:bf8be0777c7b38dfae01bc3f63a8b0a6",
+      "type": "SEMANTICALLY_MAPS_TO"
+    },
+    {
+      "confidence": 0.3,
+      "evidence": [
+        {
+          "evidence": "Object name: Net Sales",
+          "evidence_class": "INFERRED",
+          "extractor": "name_interpretation",
+          "source": "object_name",
+          "status": "candidate",
+          "target": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/measure:77777777-7777-7777-7777-777777777777"
+        }
+      ],
+      "evidence_class": "INFERRED",
+      "from_id": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/measure:77777777-7777-7777-7777-777777777777",
+      "id": "edge:semantic:e06777fb67af29fe58d4ea3d2e026867",
+      "properties": {
+        "assertion_type": "BUSINESS_CONCEPT",
+        "candidate_id": "semantic:candidate:8c14fce66476105909b9963bb34227ef",
+        "candidate_source": "object_name",
+        "priority": 5,
+        "value": "Net Sales"
+      },
+      "source": "semantic_inference",
+      "status": "candidate",
+      "to_id": "semantic:business-concept:522cab8a63bd3da1fd8e1ff1cdde1baf",
+      "type": "SEMANTICALLY_MAPS_TO"
+    }
+  ],
+  "nodes": [
+    {
+      "description": null,
+      "id": "model:11111111-1111-1111-1111-111111111111",
+      "model_id": null,
+      "name": "FinanceModel",
+      "properties": {
+        "raw_source": {
+          "id": "11111111-1111-1111-1111-111111111111",
+          "name": "FinanceModel",
+          "source_path": "C:\\Users\\Daniel\\Desktop\\PBIBrain\\docs\\evidence\\desktop-fixes-2026-09-30\\Audit á (test)\\Finance.SemanticModel"
+        },
+        "source_fingerprint": "7aeb9b81dee00710f18f80bcfa006cc4f498fe050c7c1d1b544432125ce6baa6",
+        "source_hash": "7aeb9b81dee00710f18f80bcfa006cc4f498fe050c7c1d1b544432125ce6baa6"
+      },
+      "raw_source": {
+        "id": "11111111-1111-1111-1111-111111111111",
+        "name": "FinanceModel",
+        "source_path": "C:\\Users\\Daniel\\Desktop\\PBIBrain\\docs\\evidence\\desktop-fixes-2026-09-30\\Audit á (test)\\Finance.SemanticModel"
+      },
+      "report_id": null,
+      "source": "model_metadata",
+      "source_fingerprint": "7aeb9b81dee00710f18f80bcfa006cc4f498fe050c7c1d1b544432125ce6baa6",
+      "source_hash": "7aeb9b81dee00710f18f80bcfa006cc4f498fe050c7c1d1b544432125ce6baa6",
+      "source_id": "11111111-1111-1111-1111-111111111111",
+      "status": "factual",
+      "type": "MODEL"
+    },
+    {
+      "description": null,
+      "from_column_id": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/column:55555555-5555-5555-5555-555555555555",
+      "from_ref": {
+        "column": "DateKey",
+        "table": "Sales"
+      },
+      "id": "model:11111111-1111-1111-1111-111111111111/relationship:99999999-9999-9999-9999-999999999999",
+      "model_id": "model:11111111-1111-1111-1111-111111111111",
+      "name": "99999999-9999-9999-9999-999999999999",
+      "properties": {
+        "from_column_id": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/column:55555555-5555-5555-5555-555555555555",
+        "from_ref": {
+          "column": "DateKey",
+          "table": "Sales"
+        },
+        "raw_source": {
+          "from_column": {
+            "column": "DateKey",
+            "table": "Sales"
+          },
+          "id": "99999999-9999-9999-9999-999999999999",
+          "to_column": {
+            "column": "DateKey",
+            "table": "Date"
+          }
+        },
+        "source_fingerprint": "6b64a8f2763377115954216bf53ea3378566f9f47087ddcd497aab51277036f7",
+        "source_hash": "6b64a8f2763377115954216bf53ea3378566f9f47087ddcd497aab51277036f7",
+        "to_column_id": "model:11111111-1111-1111-1111-111111111111/table:33333333-3333-3333-3333-333333333333/column:66666666-6666-6666-6666-666666666666",
+        "to_ref": {
+          "column": "DateKey",
+          "table": "Date"
+        }
+      },
+      "raw_source": {
+        "from_column": {
+          "column": "DateKey",
+          "table": "Sales"
+        },
+        "id": "99999999-9999-9999-9999-999999999999",
+        "to_column": {
+          "column": "DateKey",
+          "table": "Date"
+        }
+      },
+      "report_id": null,
+      "source": "model_metadata",
+      "source_fingerprint": "6b64a8f2763377115954216bf53ea3378566f9f47087ddcd497aab51277036f7",
+      "source_hash": "6b64a8f2763377115954216bf53ea3378566f9f47087ddcd497aab51277036f7",
+      "source_id": "99999999-9999-9999-9999-999999999999",
+      "status": "factual",
+      "to_column_id": "model:11111111-1111-1111-1111-111111111111/table:33333333-3333-3333-3333-333333333333/column:66666666-6666-6666-6666-666666666666",
+      "to_ref": {
+        "column": "DateKey",
+        "table": "Date"
+      },
+      "type": "RELATIONSHIP"
+    },
+    {
+      "description": null,
+      "hidden": false,
+      "id": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222",
+      "model_id": "model:11111111-1111-1111-1111-111111111111",
+      "name": "Sales",
+      "properties": {
+        "hidden": false,
+        "raw_source": {
+          "description": null,
+          "hidden": false,
+          "id": "22222222-2222-2222-2222-222222222222",
+          "name": "Sales"
+        },
+        "source_fingerprint": "de8eec749684f7c87526341060ed0b24bdf5d823e50570a06d384e05e20f5efb",
+        "source_hash": "de8eec749684f7c87526341060ed0b24bdf5d823e50570a06d384e05e20f5efb"
+      },
+      "raw_source": {
+        "description": null,
+        "hidden": false,
+        "id": "22222222-2222-2222-2222-222222222222",
+        "name": "Sales"
+      },
+      "report_id": null,
+      "source": "model_metadata",
+      "source_fingerprint": "de8eec749684f7c87526341060ed0b24bdf5d823e50570a06d384e05e20f5efb",
+      "source_hash": "de8eec749684f7c87526341060ed0b24bdf5d823e50570a06d384e05e20f5efb",
+      "source_id": "22222222-2222-2222-2222-222222222222",
+      "status": "factual",
+      "type": "TABLE"
+    },
+    {
+      "datatype": "decimal",
+      "description": null,
+      "hidden": false,
+      "id": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/column:44444444-4444-4444-4444-444444444444",
+      "model_id": "model:11111111-1111-1111-1111-111111111111",
+      "name": "Amount",
+      "properties": {
+        "datatype": "decimal",
+        "hidden": false,
+        "raw_source": {
+          "datatype": "decimal",
+          "hidden": false,
+          "id": "44444444-4444-4444-4444-444444444444",
+          "name": "Amount",
+          "sourceColumn": "Amount"
+        },
+        "source_fingerprint": "decde963f655a3d9364a64714c3122c5ceba2e844623306896a288ead630db2f",
+        "source_hash": "decde963f655a3d9364a64714c3122c5ceba2e844623306896a288ead630db2f",
+        "table_id": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222"
+      },
+      "raw_source": {
+        "datatype": "decimal",
+        "hidden": false,
+        "id": "44444444-4444-4444-4444-444444444444",
+        "name": "Amount",
+        "sourceColumn": "Amount"
+      },
+      "report_id": null,
+      "source": "model_metadata",
+      "source_fingerprint": "decde963f655a3d9364a64714c3122c5ceba2e844623306896a288ead630db2f",
+      "source_hash": "decde963f655a3d9364a64714c3122c5ceba2e844623306896a288ead630db2f",
+      "source_id": "44444444-4444-4444-4444-444444444444",
+      "status": "factual",
+      "table_id": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222",
+      "type": "COLUMN"
+    },
+    {
+      "datatype": "int64",
+      "description": null,
+      "hidden": false,
+      "id": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/column:55555555-5555-5555-5555-555555555555",
+      "model_id": "model:11111111-1111-1111-1111-111111111111",
+      "name": "DateKey",
+      "properties": {
+        "datatype": "int64",
+        "hidden": false,
+        "raw_source": {
+          "datatype": "int64",
+          "hidden": false,
+          "id": "55555555-5555-5555-5555-555555555555",
+          "name": "DateKey",
+          "sourceColumn": "DateKey"
+        },
+        "source_fingerprint": "15723913c6992acb4c9c233c1b01109c2076ba6de8a625bbd20a539f39be89bc",
+        "source_hash": "15723913c6992acb4c9c233c1b01109c2076ba6de8a625bbd20a539f39be89bc",
+        "table_id": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222"
+      },
+      "raw_source": {
+        "datatype": "int64",
+        "hidden": false,
+        "id": "55555555-5555-5555-5555-555555555555",
+        "name": "DateKey",
+        "sourceColumn": "DateKey"
+      },
+      "report_id": null,
+      "source": "model_metadata",
+      "source_fingerprint": "15723913c6992acb4c9c233c1b01109c2076ba6de8a625bbd20a539f39be89bc",
+      "source_hash": "15723913c6992acb4c9c233c1b01109c2076ba6de8a625bbd20a539f39be89bc",
+      "source_id": "55555555-5555-5555-5555-555555555555",
+      "status": "factual",
+      "table_id": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222",
+      "type": "COLUMN"
+    },
+    {
+      "dax_ast": {
+        "arguments": [
+          {
+            "column": "Amount",
+            "kind": "reference",
+            "name": "Amount",
+            "object_type": "COLUMN",
+            "qualification": "Sales[Amount]",
+            "span": {
+              "end_column": 17,
+              "end_line": 1,
+              "end_offset": 17,
+              "start_column": 4,
+              "start_line": 1,
+              "start_offset": 4
+            },
+            "table": "Sales",
+            "text": "Sales[Amount]"
+          }
+        ],
+        "kind": "function_call",
+        "name": "SUM",
+        "span": {
+          "end_column": 18,
+          "end_line": 1,
+          "end_offset": 18,
+          "start_column": 0,
+          "start_line": 1,
+          "start_offset": 0
+        },
+        "text": "SUM(Sales[Amount])"
+      },
+      "dax_behaviors": [],
+      "dax_evidence": [
+        {
+          "ast_location": {
+            "end_column": 17,
+            "end_line": 1,
+            "end_offset": 17,
+            "start_column": 4,
+            "start_line": 1,
+            "start_offset": 4
+          },
+          "confidence": 1.0,
+          "evidence": [
+            "Sales[Amount]"
+          ],
+          "evidence_class": "FACT",
+          "extractor": "column_reference",
+          "source": "dax_ast",
+          "source_object": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/measure:77777777-7777-7777-7777-777777777777",
+          "status": "factual",
+          "target": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/column:44444444-4444-4444-4444-444444444444",
+          "type": "REFERENCES"
+        }
+      ],
+      "description": null,
+      "expression": "SUM(Sales[Amount])",
+      "format_string": "#,##0",
+      "hidden": false,
+      "id": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/measure:77777777-7777-7777-7777-777777777777",
+      "model_id": "model:11111111-1111-1111-1111-111111111111",
+      "name": "Net Sales",
+      "properties": {
+        "dax_ast": {
+          "arguments": [
+            {
+              "column": "Amount",
+              "kind": "reference",
+              "name": "Amount",
+              "object_type": "COLUMN",
+              "qualification": "Sales[Amount]",
+              "span": {
+                "end_column": 17,
+                "end_line": 1,
+                "end_offset": 17,
+                "start_column": 4,
+                "start_line": 1,
+                "start_offset": 4
+              },
+              "table": "Sales",
+              "text": "Sales[Amount]"
+            }
+          ],
+          "kind": "function_call",
+          "name": "SUM",
+          "span": {
+            "end_column": 18,
+            "end_line": 1,
+            "end_offset": 18,
+            "start_column": 0,
+            "start_line": 1,
+            "start_offset": 0
+          },
+          "text": "SUM(Sales[Amount])"
+        },
+        "dax_behaviors": [],
+        "dax_evidence": [
+          {
+            "ast_location": {
+              "end_column": 17,
+              "end_line": 1,
+              "end_offset": 17,
+              "start_column": 4,
+              "start_line": 1,
+              "start_offset": 4
+            },
+            "confidence": 1.0,
+            "evidence": [
+              "Sales[Amount]"
+            ],
+            "evidence_class": "FACT",
+            "extractor": "column_reference",
+            "source": "dax_ast",
+            "source_object": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/measure:77777777-7777-7777-7777-777777777777",
+            "status": "factual",
+            "target": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/column:44444444-4444-4444-4444-444444444444",
+            "type": "REFERENCES"
+          }
+        ],
+        "expression": "SUM(Sales[Amount])",
+        "format_string": "#,##0",
+        "hidden": false,
+        "raw_source": {
+          "expression": "SUM(Sales[Amount])",
+          "expression_language": "DAX",
+          "formatString": "#,##0",
+          "hidden": false,
+          "id": "77777777-7777-7777-7777-777777777777",
+          "name": "Net Sales"
+        },
+        "source_fingerprint": "146b95570f4f50845e9561faa8452a7ea46865e90c54a9ccf78513ace8056640",
+        "source_hash": "146b95570f4f50845e9561faa8452a7ea46865e90c54a9ccf78513ace8056640",
+        "table_id": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222"
+      },
+      "raw_source": {
+        "expression": "SUM(Sales[Amount])",
+        "expression_language": "DAX",
+        "formatString": "#,##0",
+        "hidden": false,
+        "id": "77777777-7777-7777-7777-777777777777",
+        "name": "Net Sales"
+      },
+      "report_id": null,
+      "source": "model_metadata",
+      "source_fingerprint": "146b95570f4f50845e9561faa8452a7ea46865e90c54a9ccf78513ace8056640",
+      "source_hash": "146b95570f4f50845e9561faa8452a7ea46865e90c54a9ccf78513ace8056640",
+      "source_id": "77777777-7777-7777-7777-777777777777",
+      "status": "factual",
+      "table_id": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222",
+      "type": "MEASURE"
+    },
+    {
+      "dax_ast": {
+        "kind": "binary_operator",
+        "left": {
+          "column": null,
+          "kind": "reference",
+          "name": "Net Sales",
+          "object_type": "MEASURE",
+          "qualification": "[Net Sales]",
+          "span": {
+            "end_column": 11,
+            "end_line": 1,
+            "end_offset": 11,
+            "start_column": 0,
+            "start_line": 1,
+            "start_offset": 0
+          },
+          "table": null,
+          "text": "[Net Sales]"
+        },
+        "operator": "*",
+        "right": {
+          "kind": "literal",
+          "literal_type": "NUMBER",
+          "span": {
+            "end_column": 17,
+            "end_line": 1,
+            "end_offset": 17,
+            "start_column": 14,
+            "start_line": 1,
+            "start_offset": 14
+          },
+          "text": "1.1",
+          "value": 1.1
+        },
+        "span": {
+          "end_column": 17,
+          "end_line": 1,
+          "end_offset": 17,
+          "start_column": 0,
+          "start_line": 1,
+          "start_offset": 0
+        },
+        "text": "[Net Sales] * 1.1"
+      },
+      "dax_behaviors": [],
+      "dax_evidence": [
+        {
+          "ast_location": {
+            "end_column": 11,
+            "end_line": 1,
+            "end_offset": 11,
+            "start_column": 0,
+            "start_line": 1,
+            "start_offset": 0
+          },
+          "confidence": 1.0,
+          "evidence": [
+            "[Net Sales]"
+          ],
+          "evidence_class": "FACT",
+          "extractor": "measure_reference",
+          "source": "dax_ast",
+          "source_object": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/measure:88888888-8888-8888-8888-888888888888",
+          "status": "factual",
+          "target": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/measure:77777777-7777-7777-7777-777777777777",
+          "type": "DEPENDS_ON"
+        }
+      ],
+      "description": null,
+      "expression": "[Net Sales] * 1.1",
+      "format_string": "#,##0",
+      "hidden": false,
+      "id": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/measure:88888888-8888-8888-8888-888888888888",
+      "model_id": "model:11111111-1111-1111-1111-111111111111",
+      "name": "Gross Sales",
+      "properties": {
+        "dax_ast": {
+          "kind": "binary_operator",
+          "left": {
+            "column": null,
+            "kind": "reference",
+            "name": "Net Sales",
+            "object_type": "MEASURE",
+            "qualification": "[Net Sales]",
+            "span": {
+              "end_column": 11,
+              "end_line": 1,
+              "end_offset": 11,
+              "start_column": 0,
+              "start_line": 1,
+              "start_offset": 0
+            },
+            "table": null,
+            "text": "[Net Sales]"
+          },
+          "operator": "*",
+          "right": {
+            "kind": "literal",
+            "literal_type": "NUMBER",
+            "span": {
+              "end_column": 17,
+              "end_line": 1,
+              "end_offset": 17,
+              "start_column": 14,
+              "start_line": 1,
+              "start_offset": 14
+            },
+            "text": "1.1",
+            "value": 1.1
+          },
+          "span": {
+            "end_column": 17,
+            "end_line": 1,
+            "end_offset": 17,
+            "start_column": 0,
+            "start_line": 1,
+            "start_offset": 0
+          },
+          "text": "[Net Sales] * 1.1"
+        },
+        "dax_behaviors": [],
+        "dax_evidence": [
+          {
+            "ast_location": {
+              "end_column": 11,
+              "end_line": 1,
+              "end_offset": 11,
+              "start_column": 0,
+              "start_line": 1,
+              "start_offset": 0
+            },
+            "confidence": 1.0,
+            "evidence": [
+              "[Net Sales]"
+            ],
+            "evidence_class": "FACT",
+            "extractor": "measure_reference",
+            "source": "dax_ast",
+            "source_object": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/measure:88888888-8888-8888-8888-888888888888",
+            "status": "factual",
+            "target": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/measure:77777777-7777-7777-7777-777777777777",
+            "type": "DEPENDS_ON"
+          }
+        ],
+        "expression": "[Net Sales] * 1.1",
+        "format_string": "#,##0",
+        "hidden": false,
+        "raw_source": {
+          "expression": "[Net Sales] * 1.1",
+          "expression_language": "DAX",
+          "formatString": "#,##0",
+          "hidden": false,
+          "id": "88888888-8888-8888-8888-888888888888",
+          "name": "Gross Sales"
+        },
+        "source_fingerprint": "09da9b7d735f96809c05df08367f2a3c3409168deec010535dc3a04b386d22d0",
+        "source_hash": "09da9b7d735f96809c05df08367f2a3c3409168deec010535dc3a04b386d22d0",
+        "table_id": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222"
+      },
+      "raw_source": {
+        "expression": "[Net Sales] * 1.1",
+        "expression_language": "DAX",
+        "formatString": "#,##0",
+        "hidden": false,
+        "id": "88888888-8888-8888-8888-888888888888",
+        "name": "Gross Sales"
+      },
+      "report_id": null,
+      "source": "model_metadata",
+      "source_fingerprint": "09da9b7d735f96809c05df08367f2a3c3409168deec010535dc3a04b386d22d0",
+      "source_hash": "09da9b7d735f96809c05df08367f2a3c3409168deec010535dc3a04b386d22d0",
+      "source_id": "88888888-8888-8888-8888-888888888888",
+      "status": "factual",
+      "table_id": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222",
+      "type": "MEASURE"
+    },
+    {
+      "description": null,
+      "hidden": false,
+      "id": "model:11111111-1111-1111-1111-111111111111/table:33333333-3333-3333-3333-333333333333",
+      "model_id": "model:11111111-1111-1111-1111-111111111111",
+      "name": "Date",
+      "properties": {
+        "hidden": false,
+        "raw_source": {
+          "description": null,
+          "hidden": false,
+          "id": "33333333-3333-3333-3333-333333333333",
+          "name": "Date"
+        },
+        "source_fingerprint": "ecc98c13d61e4685b1c33d7875a525162d01d04554cab8bc3d19eae8686b8a0e",
+        "source_hash": "ecc98c13d61e4685b1c33d7875a525162d01d04554cab8bc3d19eae8686b8a0e"
+      },
+      "raw_source": {
+        "description": null,
+        "hidden": false,
+        "id": "33333333-3333-3333-3333-333333333333",
+        "name": "Date"
+      },
+      "report_id": null,
+      "source": "model_metadata",
+      "source_fingerprint": "ecc98c13d61e4685b1c33d7875a525162d01d04554cab8bc3d19eae8686b8a0e",
+      "source_hash": "ecc98c13d61e4685b1c33d7875a525162d01d04554cab8bc3d19eae8686b8a0e",
+      "source_id": "33333333-3333-3333-3333-333333333333",
+      "status": "factual",
+      "type": "TABLE"
+    },
+    {
+      "datatype": "int64",
+      "description": null,
+      "hidden": false,
+      "id": "model:11111111-1111-1111-1111-111111111111/table:33333333-3333-3333-3333-333333333333/column:66666666-6666-6666-6666-666666666666",
+      "model_id": "model:11111111-1111-1111-1111-111111111111",
+      "name": "DateKey",
+      "properties": {
+        "datatype": "int64",
+        "hidden": false,
+        "raw_source": {
+          "datatype": "int64",
+          "hidden": false,
+          "id": "66666666-6666-6666-6666-666666666666",
+          "name": "DateKey",
+          "sourceColumn": "DateKey"
+        },
+        "source_fingerprint": "49051d48048394a7ddcbf1d211f9651ab6d2279c767d5e357b0643762416ebca",
+        "source_hash": "49051d48048394a7ddcbf1d211f9651ab6d2279c767d5e357b0643762416ebca",
+        "table_id": "model:11111111-1111-1111-1111-111111111111/table:33333333-3333-3333-3333-333333333333"
+      },
+      "raw_source": {
+        "datatype": "int64",
+        "hidden": false,
+        "id": "66666666-6666-6666-6666-666666666666",
+        "name": "DateKey",
+        "sourceColumn": "DateKey"
+      },
+      "report_id": null,
+      "source": "model_metadata",
+      "source_fingerprint": "49051d48048394a7ddcbf1d211f9651ab6d2279c767d5e357b0643762416ebca",
+      "source_hash": "49051d48048394a7ddcbf1d211f9651ab6d2279c767d5e357b0643762416ebca",
+      "source_id": "66666666-6666-6666-6666-666666666666",
+      "status": "factual",
+      "table_id": "model:11111111-1111-1111-1111-111111111111/table:33333333-3333-3333-3333-333333333333",
+      "type": "COLUMN"
+    },
+    {
+      "description": null,
+      "id": "report:Finance.Report",
+      "model_id": "model:11111111-1111-1111-1111-111111111111",
+      "model_ref": "11111111-1111-1111-1111-111111111111",
+      "name": "Finance Report",
+      "properties": {
+        "model_ref": "11111111-1111-1111-1111-111111111111",
+        "raw_source": {
+          "id": "Finance.Report",
+          "model_id": "11111111-1111-1111-1111-111111111111",
+          "name": "Finance Report",
+          "source_path": "C:\\Users\\Daniel\\Desktop\\PBIBrain\\docs\\evidence\\desktop-fixes-2026-09-30\\Audit á (test)\\Finance.Report"
+        },
+        "source_fingerprint": "0f2303d858811cacb4fe778f3acb7c464cf41fe6bee3d8a394a39202c956a138",
+        "source_hash": "0f2303d858811cacb4fe778f3acb7c464cf41fe6bee3d8a394a39202c956a138"
+      },
+      "raw_source": {
+        "id": "Finance.Report",
+        "model_id": "11111111-1111-1111-1111-111111111111",
+        "name": "Finance Report",
+        "source_path": "C:\\Users\\Daniel\\Desktop\\PBIBrain\\docs\\evidence\\desktop-fixes-2026-09-30\\Audit á (test)\\Finance.Report"
+      },
+      "report_id": "report:Finance.Report",
+      "source": "report_metadata",
+      "source_fingerprint": "0f2303d858811cacb4fe778f3acb7c464cf41fe6bee3d8a394a39202c956a138",
+      "source_hash": "0f2303d858811cacb4fe778f3acb7c464cf41fe6bee3d8a394a39202c956a138",
+      "source_id": "Finance.Report",
+      "status": "factual",
+      "type": "REPORT"
+    },
+    {
+      "description": null,
+      "display_name": "Overview",
+      "id": "report:Finance.Report/page:Overview",
+      "model_id": "model:11111111-1111-1111-1111-111111111111",
+      "name": "Overview",
+      "order": 0,
+      "parent_id": "report:Finance.Report",
+      "properties": {
+        "display_name": "Overview",
+        "order": 0,
+        "parent_id": "report:Finance.Report",
+        "raw_source": {
+          "displayName": "Overview",
+          "display_name": "Overview",
+          "id": "Overview",
+          "name": "Overview",
+          "order": 0,
+          "ordinal": 0
+        },
+        "source_fingerprint": "16a348e6b98608b4abca4f76eae56b87c85125852d21e9e70d4661887a117f5d",
+        "source_hash": "16a348e6b98608b4abca4f76eae56b87c85125852d21e9e70d4661887a117f5d"
+      },
+      "raw_source": {
+        "displayName": "Overview",
+        "display_name": "Overview",
+        "id": "Overview",
+        "name": "Overview",
+        "order": 0,
+        "ordinal": 0
+      },
+      "report_id": "report:Finance.Report",
+      "source": "report_metadata",
+      "source_fingerprint": "16a348e6b98608b4abca4f76eae56b87c85125852d21e9e70d4661887a117f5d",
+      "source_hash": "16a348e6b98608b4abca4f76eae56b87c85125852d21e9e70d4661887a117f5d",
+      "source_id": "Overview",
+      "status": "factual",
+      "type": "PAGE"
+    },
+    {
+      "binding_evidence": [
+        {
+          "kind": "COLUMN",
+          "reference": {
+            "column": "DateKey",
+            "table": "Date"
+          }
+        },
+        {
+          "kind": "MEASURE",
+          "reference": "Gross Sales"
+        }
+      ],
+      "column_ids": [
+        "model:11111111-1111-1111-1111-111111111111/table:33333333-3333-3333-3333-333333333333/column:66666666-6666-6666-6666-666666666666"
+      ],
+      "description": null,
+      "field_ids": [
+        "model:11111111-1111-1111-1111-111111111111/table:33333333-3333-3333-3333-333333333333/column:66666666-6666-6666-6666-666666666666",
+        "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/measure:88888888-8888-8888-8888-888888888888"
+      ],
+      "field_refs": [
+        {
+          "column": "DateKey",
+          "table": "Date"
+        },
+        "Gross Sales"
+      ],
+      "id": "report:Finance.Report/page:Overview/visual:GrossSalesCard",
+      "measure_ids": [
+        "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/measure:88888888-8888-8888-8888-888888888888"
+      ],
+      "model_id": "model:11111111-1111-1111-1111-111111111111",
+      "name": "Gross sales",
+      "parent_id": "report:Finance.Report/page:Overview",
+      "properties": {
+        "binding_evidence": [
+          {
+            "kind": "COLUMN",
+            "reference": {
+              "column": "DateKey",
+              "table": "Date"
+            }
+          },
+          {
+            "kind": "MEASURE",
+            "reference": "Gross Sales"
+          }
+        ],
+        "column_ids": [
+          "model:11111111-1111-1111-1111-111111111111/table:33333333-3333-3333-3333-333333333333/column:66666666-6666-6666-6666-666666666666"
+        ],
+        "field_ids": [
+          "model:11111111-1111-1111-1111-111111111111/table:33333333-3333-3333-3333-333333333333/column:66666666-6666-6666-6666-666666666666",
+          "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/measure:88888888-8888-8888-8888-888888888888"
+        ],
+        "field_refs": [
+          {
+            "column": "DateKey",
+            "table": "Date"
+          },
+          "Gross Sales"
+        ],
+        "measure_ids": [
+          "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/measure:88888888-8888-8888-8888-888888888888"
+        ],
+        "parent_id": "report:Finance.Report/page:Overview",
+        "query": {
+          "queryState": {
+            "Category": {
+              "projections": [
+                {
+                  "field": {
+                    "Column": {
+                      "Expression": {
+                        "SourceRef": {
+                          "Entity": "Date"
+                        }
+                      },
+                      "Property": "DateKey"
+                    }
+                  },
+                  "queryRef": "Date.DateKey"
+                }
+              ]
+            },
+            "Y": {
+              "projections": [
+                {
+                  "field": {
+                    "Measure": {
+                      "Expression": {
+                        "SourceRef": {
+                          "Entity": "Sales"
+                        }
+                      },
+                      "Property": "Gross Sales"
+                    }
+                  },
+                  "queryRef": "Sales.Gross Sales"
+                }
+              ]
+            }
+          }
+        },
+        "raw_source": {
+          "id": "GrossSalesCard",
+          "name": "GrossSalesCard",
+          "position": {
+            "height": 240,
+            "width": 320,
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "visual": {
+            "objects": {
+              "title": [
+                {
+                  "properties": {
+                    "text": {
+                      "expr": {
+                        "Literal": {
+                          "Value": "'Gross sales'"
+                        }
+                      }
+                    }
+                  }
+                }
+              ]
+            },
+            "query": {
+              "queryState": {
+                "Category": {
+                  "projections": [
+                    {
+                      "field": {
+                        "Column": {
+                          "Expression": {
+                            "SourceRef": {
+                              "Entity": "Date"
+                            }
+                          },
+                          "Property": "DateKey"
+                        }
+                      },
+                      "queryRef": "Date.DateKey"
+                    }
+                  ]
+                },
+                "Y": {
+                  "projections": [
+                    {
+                      "field": {
+                        "Measure": {
+                          "Expression": {
+                            "SourceRef": {
+                              "Entity": "Sales"
+                            }
+                          },
+                          "Property": "Gross Sales"
+                        }
+                      },
+                      "queryRef": "Sales.Gross Sales"
+                    }
+                  ]
+                }
+              }
+            },
+            "visualType": "card"
+          }
+        },
+        "source_fingerprint": "03520b064309392034599b12cee386b159646b0ff32b140e62447c3eb1ea9538",
+        "source_hash": "03520b064309392034599b12cee386b159646b0ff32b140e62447c3eb1ea9538",
+        "title": "Gross sales",
+        "unresolved_field_refs": [],
+        "visual_type": "card"
+      },
+      "query": {
+        "queryState": {
+          "Category": {
+            "projections": [
+              {
+                "field": {
+                  "Column": {
+                    "Expression": {
+                      "SourceRef": {
+                        "Entity": "Date"
+                      }
+                    },
+                    "Property": "DateKey"
+                  }
+                },
+                "queryRef": "Date.DateKey"
+              }
+            ]
+          },
+          "Y": {
+            "projections": [
+              {
+                "field": {
+                  "Measure": {
+                    "Expression": {
+                      "SourceRef": {
+                        "Entity": "Sales"
+                      }
+                    },
+                    "Property": "Gross Sales"
+                  }
+                },
+                "queryRef": "Sales.Gross Sales"
+              }
+            ]
+          }
+        }
+      },
+      "raw_source": {
+        "id": "GrossSalesCard",
+        "name": "GrossSalesCard",
+        "position": {
+          "height": 240,
+          "width": 320,
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "visual": {
+          "objects": {
+            "title": [
+              {
+                "properties": {
+                  "text": {
+                    "expr": {
+                      "Literal": {
+                        "Value": "'Gross sales'"
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          "query": {
+            "queryState": {
+              "Category": {
+                "projections": [
+                  {
+                    "field": {
+                      "Column": {
+                        "Expression": {
+                          "SourceRef": {
+                            "Entity": "Date"
+                          }
+                        },
+                        "Property": "DateKey"
+                      }
+                    },
+                    "queryRef": "Date.DateKey"
+                  }
+                ]
+              },
+              "Y": {
+                "projections": [
+                  {
+                    "field": {
+                      "Measure": {
+                        "Expression": {
+                          "SourceRef": {
+                            "Entity": "Sales"
+                          }
+                        },
+                        "Property": "Gross Sales"
+                      }
+                    },
+                    "queryRef": "Sales.Gross Sales"
+                  }
+                ]
+              }
+            }
+          },
+          "visualType": "card"
+        }
+      },
+      "report_id": "report:Finance.Report",
+      "source": "report_metadata",
+      "source_fingerprint": "03520b064309392034599b12cee386b159646b0ff32b140e62447c3eb1ea9538",
+      "source_hash": "03520b064309392034599b12cee386b159646b0ff32b140e62447c3eb1ea9538",
+      "source_id": "GrossSalesCard",
+      "status": "factual",
+      "title": "Gross sales",
+      "type": "VISUAL",
+      "unresolved_field_refs": [],
+      "visual_type": "card"
+    },
+    {
+      "binding_evidence": [
+        {
+          "kind": "COLUMN",
+          "reference": {
+            "column": "DateKey",
+            "table": "Date"
+          }
+        },
+        {
+          "kind": "MEASURE",
+          "reference": "Net Sales"
+        }
+      ],
+      "column_ids": [
+        "model:11111111-1111-1111-1111-111111111111/table:33333333-3333-3333-3333-333333333333/column:66666666-6666-6666-6666-666666666666"
+      ],
+      "description": null,
+      "field_ids": [
+        "model:11111111-1111-1111-1111-111111111111/table:33333333-3333-3333-3333-333333333333/column:66666666-6666-6666-6666-666666666666",
+        "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/measure:77777777-7777-7777-7777-777777777777"
+      ],
+      "field_refs": [
+        {
+          "column": "DateKey",
+          "table": "Date"
+        },
+        "Net Sales"
+      ],
+      "id": "report:Finance.Report/page:Overview/visual:SalesByDate",
+      "measure_ids": [
+        "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/measure:77777777-7777-7777-7777-777777777777"
+      ],
+      "model_id": "model:11111111-1111-1111-1111-111111111111",
+      "name": "Sales by date",
+      "parent_id": "report:Finance.Report/page:Overview",
+      "properties": {
+        "binding_evidence": [
+          {
+            "kind": "COLUMN",
+            "reference": {
+              "column": "DateKey",
+              "table": "Date"
+            }
+          },
+          {
+            "kind": "MEASURE",
+            "reference": "Net Sales"
+          }
+        ],
+        "column_ids": [
+          "model:11111111-1111-1111-1111-111111111111/table:33333333-3333-3333-3333-333333333333/column:66666666-6666-6666-6666-666666666666"
+        ],
+        "field_ids": [
+          "model:11111111-1111-1111-1111-111111111111/table:33333333-3333-3333-3333-333333333333/column:66666666-6666-6666-6666-666666666666",
+          "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/measure:77777777-7777-7777-7777-777777777777"
+        ],
+        "field_refs": [
+          {
+            "column": "DateKey",
+            "table": "Date"
+          },
+          "Net Sales"
+        ],
+        "measure_ids": [
+          "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/measure:77777777-7777-7777-7777-777777777777"
+        ],
+        "parent_id": "report:Finance.Report/page:Overview",
+        "query": {
+          "queryState": {
+            "Category": {
+              "projections": [
+                {
+                  "field": {
+                    "Column": {
+                      "Expression": {
+                        "SourceRef": {
+                          "Entity": "Date"
+                        }
+                      },
+                      "Property": "DateKey"
+                    }
+                  },
+                  "queryRef": "Date.DateKey"
+                }
+              ]
+            },
+            "Y": {
+              "projections": [
+                {
+                  "field": {
+                    "Measure": {
+                      "Expression": {
+                        "SourceRef": {
+                          "Entity": "Sales"
+                        }
+                      },
+                      "Property": "Net Sales"
+                    }
+                  },
+                  "queryRef": "Sales.Net Sales"
+                }
+              ]
+            }
+          }
+        },
+        "raw_source": {
+          "id": "SalesByDate",
+          "name": "SalesByDate",
+          "position": {
+            "height": 240,
+            "width": 320,
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "visual": {
+            "objects": {
+              "title": [
+                {
+                  "properties": {
+                    "text": {
+                      "expr": {
+                        "Literal": {
+                          "Value": "'Sales by date'"
+                        }
+                      }
+                    }
+                  }
+                }
+              ]
+            },
+            "query": {
+              "queryState": {
+                "Category": {
+                  "projections": [
+                    {
+                      "field": {
+                        "Column": {
+                          "Expression": {
+                            "SourceRef": {
+                              "Entity": "Date"
+                            }
+                          },
+                          "Property": "DateKey"
+                        }
+                      },
+                      "queryRef": "Date.DateKey"
+                    }
+                  ]
+                },
+                "Y": {
+                  "projections": [
+                    {
+                      "field": {
+                        "Measure": {
+                          "Expression": {
+                            "SourceRef": {
+                              "Entity": "Sales"
+                            }
+                          },
+                          "Property": "Net Sales"
+                        }
+                      },
+                      "queryRef": "Sales.Net Sales"
+                    }
+                  ]
+                }
+              }
+            },
+            "visualType": "columnChart"
+          }
+        },
+        "source_fingerprint": "3c26ffb5b7662bdba5adcea33739c2c3dc7dba4495947c7e548282bcd085221f",
+        "source_hash": "3c26ffb5b7662bdba5adcea33739c2c3dc7dba4495947c7e548282bcd085221f",
+        "title": "Sales by date",
+        "unresolved_field_refs": [],
+        "visual_type": "columnChart"
+      },
+      "query": {
+        "queryState": {
+          "Category": {
+            "projections": [
+              {
+                "field": {
+                  "Column": {
+                    "Expression": {
+                      "SourceRef": {
+                        "Entity": "Date"
+                      }
+                    },
+                    "Property": "DateKey"
+                  }
+                },
+                "queryRef": "Date.DateKey"
+              }
+            ]
+          },
+          "Y": {
+            "projections": [
+              {
+                "field": {
+                  "Measure": {
+                    "Expression": {
+                      "SourceRef": {
+                        "Entity": "Sales"
+                      }
+                    },
+                    "Property": "Net Sales"
+                  }
+                },
+                "queryRef": "Sales.Net Sales"
+              }
+            ]
+          }
+        }
+      },
+      "raw_source": {
+        "id": "SalesByDate",
+        "name": "SalesByDate",
+        "position": {
+          "height": 240,
+          "width": 320,
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "visual": {
+          "objects": {
+            "title": [
+              {
+                "properties": {
+                  "text": {
+                    "expr": {
+                      "Literal": {
+                        "Value": "'Sales by date'"
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          "query": {
+            "queryState": {
+              "Category": {
+                "projections": [
+                  {
+                    "field": {
+                      "Column": {
+                        "Expression": {
+                          "SourceRef": {
+                            "Entity": "Date"
+                          }
+                        },
+                        "Property": "DateKey"
+                      }
+                    },
+                    "queryRef": "Date.DateKey"
+                  }
+                ]
+              },
+              "Y": {
+                "projections": [
+                  {
+                    "field": {
+                      "Measure": {
+                        "Expression": {
+                          "SourceRef": {
+                            "Entity": "Sales"
+                          }
+                        },
+                        "Property": "Net Sales"
+                      }
+                    },
+                    "queryRef": "Sales.Net Sales"
+                  }
+                ]
+              }
+            }
+          },
+          "visualType": "columnChart"
+        }
+      },
+      "report_id": "report:Finance.Report",
+      "source": "report_metadata",
+      "source_fingerprint": "3c26ffb5b7662bdba5adcea33739c2c3dc7dba4495947c7e548282bcd085221f",
+      "source_hash": "3c26ffb5b7662bdba5adcea33739c2c3dc7dba4495947c7e548282bcd085221f",
+      "source_id": "SalesByDate",
+      "status": "factual",
+      "title": "Sales by date",
+      "type": "VISUAL",
+      "unresolved_field_refs": [],
+      "visual_type": "columnChart"
+    },
+    {
+      "assertion_type": "BUSINESS_CONCEPT",
+      "candidate_confidence": 0.3,
+      "candidate_evidence": [
+        {
+          "evidence": "Object name: Sales",
+          "evidence_class": "INFERRED",
+          "extractor": "name_interpretation",
+          "source": "object_name",
+          "status": "candidate",
+          "target": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222"
+        }
+      ],
+      "candidate_id": "semantic:candidate:c0afd4fdce7d4289897369cf17a47c1f",
+      "candidate_source": "object_name",
+      "confidence": 0.3,
+      "description": "Sales",
+      "evidence": [
+        {
+          "evidence": "Object name: Sales",
+          "evidence_class": "INFERRED",
+          "extractor": "name_interpretation",
+          "source": "object_name",
+          "status": "candidate",
+          "target": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222"
+        }
+      ],
+      "id": "semantic:business-concept:1c239a8ac4a447efcf1db26d4825bfa6",
+      "meaning": "Sales",
+      "model_id": "model:11111111-1111-1111-1111-111111111111",
+      "name": "Sales",
+      "priority": 5,
+      "properties": {
+        "assertion_type": "BUSINESS_CONCEPT",
+        "candidate_confidence": 0.3,
+        "candidate_evidence": [
+          {
+            "evidence": "Object name: Sales",
+            "evidence_class": "INFERRED",
+            "extractor": "name_interpretation",
+            "source": "object_name",
+            "status": "candidate",
+            "target": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222"
+          }
+        ],
+        "candidate_id": "semantic:candidate:c0afd4fdce7d4289897369cf17a47c1f",
+        "candidate_source": "object_name",
+        "confidence": 0.3,
+        "evidence": [
+          {
+            "evidence": "Object name: Sales",
+            "evidence_class": "INFERRED",
+            "extractor": "name_interpretation",
+            "source": "object_name",
+            "status": "candidate",
+            "target": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222"
+          }
+        ],
+        "meaning": "Sales",
+        "priority": 5,
+        "source_fingerprint": "42f846c0c3140d9ae22f0206ef64e0d5efb205d7aaa5bac4686d037edfdbb7f9",
+        "source_hash": "42f846c0c3140d9ae22f0206ef64e0d5efb205d7aaa5bac4686d037edfdbb7f9"
+      },
+      "report_id": null,
+      "source": "object_name",
+      "source_fingerprint": "42f846c0c3140d9ae22f0206ef64e0d5efb205d7aaa5bac4686d037edfdbb7f9",
+      "source_hash": "42f846c0c3140d9ae22f0206ef64e0d5efb205d7aaa5bac4686d037edfdbb7f9",
+      "source_id": "1c239a8ac4a447efcf1db26d4825bfa6",
+      "status": "candidate",
+      "type": "BUSINESS_CONCEPT"
+    },
+    {
+      "assertion_type": "BUSINESS_CONCEPT",
+      "candidate_confidence": 0.3,
+      "candidate_evidence": [
+        {
+          "evidence": "Object name: FinanceModel",
+          "evidence_class": "INFERRED",
+          "extractor": "name_interpretation",
+          "source": "object_name",
+          "status": "candidate",
+          "target": "model:11111111-1111-1111-1111-111111111111"
+        }
+      ],
+      "candidate_id": "semantic:candidate:a7d3ff47bd3a4c76b3bb6a46682180b8",
+      "candidate_source": "object_name",
+      "confidence": 0.3,
+      "description": "FinanceModel",
+      "evidence": [
+        {
+          "evidence": "Object name: FinanceModel",
+          "evidence_class": "INFERRED",
+          "extractor": "name_interpretation",
+          "source": "object_name",
+          "status": "candidate",
+          "target": "model:11111111-1111-1111-1111-111111111111"
+        }
+      ],
+      "id": "semantic:business-concept:2fce5ce5bc0bac8099418b27f60cd6d9",
+      "meaning": "FinanceModel",
+      "model_id": null,
+      "name": "FinanceModel",
+      "priority": 5,
+      "properties": {
+        "assertion_type": "BUSINESS_CONCEPT",
+        "candidate_confidence": 0.3,
+        "candidate_evidence": [
+          {
+            "evidence": "Object name: FinanceModel",
+            "evidence_class": "INFERRED",
+            "extractor": "name_interpretation",
+            "source": "object_name",
+            "status": "candidate",
+            "target": "model:11111111-1111-1111-1111-111111111111"
+          }
+        ],
+        "candidate_id": "semantic:candidate:a7d3ff47bd3a4c76b3bb6a46682180b8",
+        "candidate_source": "object_name",
+        "confidence": 0.3,
+        "evidence": [
+          {
+            "evidence": "Object name: FinanceModel",
+            "evidence_class": "INFERRED",
+            "extractor": "name_interpretation",
+            "source": "object_name",
+            "status": "candidate",
+            "target": "model:11111111-1111-1111-1111-111111111111"
+          }
+        ],
+        "meaning": "FinanceModel",
+        "priority": 5,
+        "source_fingerprint": "9248b28a748fef3579550dacf5098c568933bbe48489819d83ce7d57f37a3ce3",
+        "source_hash": "9248b28a748fef3579550dacf5098c568933bbe48489819d83ce7d57f37a3ce3"
+      },
+      "report_id": null,
+      "source": "object_name",
+      "source_fingerprint": "9248b28a748fef3579550dacf5098c568933bbe48489819d83ce7d57f37a3ce3",
+      "source_hash": "9248b28a748fef3579550dacf5098c568933bbe48489819d83ce7d57f37a3ce3",
+      "source_id": "2fce5ce5bc0bac8099418b27f60cd6d9",
+      "status": "candidate",
+      "type": "BUSINESS_CONCEPT"
+    },
+    {
+      "assertion_type": "BUSINESS_CONCEPT",
+      "candidate_confidence": 0.3,
+      "candidate_evidence": [
+        {
+          "evidence": "Object name: Net Sales",
+          "evidence_class": "INFERRED",
+          "extractor": "name_interpretation",
+          "source": "object_name",
+          "status": "candidate",
+          "target": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/measure:77777777-7777-7777-7777-777777777777"
+        }
+      ],
+      "candidate_id": "semantic:candidate:8c14fce66476105909b9963bb34227ef",
+      "candidate_source": "object_name",
+      "confidence": 0.3,
+      "description": "Net Sales",
+      "evidence": [
+        {
+          "evidence": "Object name: Net Sales",
+          "evidence_class": "INFERRED",
+          "extractor": "name_interpretation",
+          "source": "object_name",
+          "status": "candidate",
+          "target": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/measure:77777777-7777-7777-7777-777777777777"
+        }
+      ],
+      "id": "semantic:business-concept:522cab8a63bd3da1fd8e1ff1cdde1baf",
+      "meaning": "Net Sales",
+      "model_id": "model:11111111-1111-1111-1111-111111111111",
+      "name": "Net Sales",
+      "priority": 5,
+      "properties": {
+        "assertion_type": "BUSINESS_CONCEPT",
+        "candidate_confidence": 0.3,
+        "candidate_evidence": [
+          {
+            "evidence": "Object name: Net Sales",
+            "evidence_class": "INFERRED",
+            "extractor": "name_interpretation",
+            "source": "object_name",
+            "status": "candidate",
+            "target": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/measure:77777777-7777-7777-7777-777777777777"
+          }
+        ],
+        "candidate_id": "semantic:candidate:8c14fce66476105909b9963bb34227ef",
+        "candidate_source": "object_name",
+        "confidence": 0.3,
+        "evidence": [
+          {
+            "evidence": "Object name: Net Sales",
+            "evidence_class": "INFERRED",
+            "extractor": "name_interpretation",
+            "source": "object_name",
+            "status": "candidate",
+            "target": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/measure:77777777-7777-7777-7777-777777777777"
+          }
+        ],
+        "meaning": "Net Sales",
+        "priority": 5,
+        "source_fingerprint": "8bb0fe17f163f1e1691f06b933cbd33b21ac8b520f474ee98072342842a3e090",
+        "source_hash": "8bb0fe17f163f1e1691f06b933cbd33b21ac8b520f474ee98072342842a3e090"
+      },
+      "report_id": null,
+      "source": "object_name",
+      "source_fingerprint": "8bb0fe17f163f1e1691f06b933cbd33b21ac8b520f474ee98072342842a3e090",
+      "source_hash": "8bb0fe17f163f1e1691f06b933cbd33b21ac8b520f474ee98072342842a3e090",
+      "source_id": "522cab8a63bd3da1fd8e1ff1cdde1baf",
+      "status": "candidate",
+      "type": "BUSINESS_CONCEPT"
+    },
+    {
+      "assertion_type": "BUSINESS_CONCEPT",
+      "candidate_confidence": 0.3,
+      "candidate_evidence": [
+        {
+          "evidence": "Object name: DateKey",
+          "evidence_class": "INFERRED",
+          "extractor": "name_interpretation",
+          "source": "object_name",
+          "status": "candidate",
+          "target": "model:11111111-1111-1111-1111-111111111111/table:33333333-3333-3333-3333-333333333333/column:66666666-6666-6666-6666-666666666666"
+        },
+        {
+          "evidence": "Object name: DateKey",
+          "evidence_class": "INFERRED",
+          "extractor": "name_interpretation",
+          "source": "object_name",
+          "status": "candidate",
+          "target": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/column:55555555-5555-5555-5555-555555555555"
+        }
+      ],
+      "candidate_id": "semantic:candidate:37b830d447b6246c03b191d95a1c28f5",
+      "candidate_ids": [
+        "semantic:candidate:e3a8d731103c5e5f56eb90f8ea4a6ad6"
+      ],
+      "candidate_source": "object_name",
+      "confidence": 0.3,
+      "description": "DateKey",
+      "evidence": [
+        {
+          "evidence": "Object name: DateKey",
+          "evidence_class": "INFERRED",
+          "extractor": "name_interpretation",
+          "source": "object_name",
+          "status": "candidate",
+          "target": "model:11111111-1111-1111-1111-111111111111/table:33333333-3333-3333-3333-333333333333/column:66666666-6666-6666-6666-666666666666"
+        }
+      ],
+      "id": "semantic:business-concept:5c841239c25046033f76df275dbc2455",
+      "meaning": "DateKey",
+      "model_id": "model:11111111-1111-1111-1111-111111111111",
+      "name": "DateKey",
+      "priority": 5,
+      "properties": {
+        "assertion_type": "BUSINESS_CONCEPT",
+        "candidate_confidence": 0.3,
+        "candidate_evidence": [
+          {
+            "evidence": "Object name: DateKey",
+            "evidence_class": "INFERRED",
+            "extractor": "name_interpretation",
+            "source": "object_name",
+            "status": "candidate",
+            "target": "model:11111111-1111-1111-1111-111111111111/table:33333333-3333-3333-3333-333333333333/column:66666666-6666-6666-6666-666666666666"
+          },
+          {
+            "evidence": "Object name: DateKey",
+            "evidence_class": "INFERRED",
+            "extractor": "name_interpretation",
+            "source": "object_name",
+            "status": "candidate",
+            "target": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/column:55555555-5555-5555-5555-555555555555"
+          }
+        ],
+        "candidate_id": "semantic:candidate:37b830d447b6246c03b191d95a1c28f5",
+        "candidate_ids": [
+          "semantic:candidate:e3a8d731103c5e5f56eb90f8ea4a6ad6"
+        ],
+        "candidate_source": "object_name",
+        "confidence": 0.3,
+        "evidence": [
+          {
+            "evidence": "Object name: DateKey",
+            "evidence_class": "INFERRED",
+            "extractor": "name_interpretation",
+            "source": "object_name",
+            "status": "candidate",
+            "target": "model:11111111-1111-1111-1111-111111111111/table:33333333-3333-3333-3333-333333333333/column:66666666-6666-6666-6666-666666666666"
+          }
+        ],
+        "meaning": "DateKey",
+        "priority": 5,
+        "source_fingerprint": "3c81083061feabda9dba39d8ea9370d098284f1e6d82d7680709bbe815d38f5a",
+        "source_hash": "3c81083061feabda9dba39d8ea9370d098284f1e6d82d7680709bbe815d38f5a"
+      },
+      "report_id": null,
+      "source": "object_name",
+      "source_fingerprint": "3c81083061feabda9dba39d8ea9370d098284f1e6d82d7680709bbe815d38f5a",
+      "source_hash": "3c81083061feabda9dba39d8ea9370d098284f1e6d82d7680709bbe815d38f5a",
+      "source_id": "5c841239c25046033f76df275dbc2455",
+      "status": "candidate",
+      "type": "BUSINESS_CONCEPT"
+    },
+    {
+      "assertion_type": "BUSINESS_CONCEPT",
+      "candidate_confidence": 0.3,
+      "candidate_evidence": [
+        {
+          "evidence": "Object name: Amount",
+          "evidence_class": "INFERRED",
+          "extractor": "name_interpretation",
+          "source": "object_name",
+          "status": "candidate",
+          "target": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/column:44444444-4444-4444-4444-444444444444"
+        }
+      ],
+      "candidate_id": "semantic:candidate:2ac4f71f975f0c4d7c144b74e77b226f",
+      "candidate_source": "object_name",
+      "confidence": 0.3,
+      "description": "Amount",
+      "evidence": [
+        {
+          "evidence": "Object name: Amount",
+          "evidence_class": "INFERRED",
+          "extractor": "name_interpretation",
+          "source": "object_name",
+          "status": "candidate",
+          "target": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/column:44444444-4444-4444-4444-444444444444"
+        }
+      ],
+      "id": "semantic:business-concept:bf8be0777c7b38dfae01bc3f63a8b0a6",
+      "meaning": "Amount",
+      "model_id": "model:11111111-1111-1111-1111-111111111111",
+      "name": "Amount",
+      "priority": 5,
+      "properties": {
+        "assertion_type": "BUSINESS_CONCEPT",
+        "candidate_confidence": 0.3,
+        "candidate_evidence": [
+          {
+            "evidence": "Object name: Amount",
+            "evidence_class": "INFERRED",
+            "extractor": "name_interpretation",
+            "source": "object_name",
+            "status": "candidate",
+            "target": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/column:44444444-4444-4444-4444-444444444444"
+          }
+        ],
+        "candidate_id": "semantic:candidate:2ac4f71f975f0c4d7c144b74e77b226f",
+        "candidate_source": "object_name",
+        "confidence": 0.3,
+        "evidence": [
+          {
+            "evidence": "Object name: Amount",
+            "evidence_class": "INFERRED",
+            "extractor": "name_interpretation",
+            "source": "object_name",
+            "status": "candidate",
+            "target": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/column:44444444-4444-4444-4444-444444444444"
+          }
+        ],
+        "meaning": "Amount",
+        "priority": 5,
+        "source_fingerprint": "3edba159add4c1a5bdf9e580e86dc55509c278cc4f4f11e389d2e4377592f257",
+        "source_hash": "3edba159add4c1a5bdf9e580e86dc55509c278cc4f4f11e389d2e4377592f257"
+      },
+      "report_id": null,
+      "source": "object_name",
+      "source_fingerprint": "3edba159add4c1a5bdf9e580e86dc55509c278cc4f4f11e389d2e4377592f257",
+      "source_hash": "3edba159add4c1a5bdf9e580e86dc55509c278cc4f4f11e389d2e4377592f257",
+      "source_id": "bf8be0777c7b38dfae01bc3f63a8b0a6",
+      "status": "candidate",
+      "type": "BUSINESS_CONCEPT"
+    },
+    {
+      "assertion_type": "BUSINESS_CONCEPT",
+      "candidate_confidence": 0.3,
+      "candidate_evidence": [
+        {
+          "evidence": "Object name: Gross Sales",
+          "evidence_class": "INFERRED",
+          "extractor": "name_interpretation",
+          "source": "object_name",
+          "status": "candidate",
+          "target": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/measure:88888888-8888-8888-8888-888888888888"
+        }
+      ],
+      "candidate_id": "semantic:candidate:67e3ebc745ac0000ba57cea3d2e17275",
+      "candidate_source": "object_name",
+      "confidence": 0.3,
+      "description": "Gross Sales",
+      "evidence": [
+        {
+          "evidence": "Object name: Gross Sales",
+          "evidence_class": "INFERRED",
+          "extractor": "name_interpretation",
+          "source": "object_name",
+          "status": "candidate",
+          "target": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/measure:88888888-8888-8888-8888-888888888888"
+        }
+      ],
+      "id": "semantic:business-concept:c129d115955092a9fac23da0b6d3ae6a",
+      "meaning": "Gross Sales",
+      "model_id": "model:11111111-1111-1111-1111-111111111111",
+      "name": "Gross Sales",
+      "priority": 5,
+      "properties": {
+        "assertion_type": "BUSINESS_CONCEPT",
+        "candidate_confidence": 0.3,
+        "candidate_evidence": [
+          {
+            "evidence": "Object name: Gross Sales",
+            "evidence_class": "INFERRED",
+            "extractor": "name_interpretation",
+            "source": "object_name",
+            "status": "candidate",
+            "target": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/measure:88888888-8888-8888-8888-888888888888"
+          }
+        ],
+        "candidate_id": "semantic:candidate:67e3ebc745ac0000ba57cea3d2e17275",
+        "candidate_source": "object_name",
+        "confidence": 0.3,
+        "evidence": [
+          {
+            "evidence": "Object name: Gross Sales",
+            "evidence_class": "INFERRED",
+            "extractor": "name_interpretation",
+            "source": "object_name",
+            "status": "candidate",
+            "target": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/measure:88888888-8888-8888-8888-888888888888"
+          }
+        ],
+        "meaning": "Gross Sales",
+        "priority": 5,
+        "source_fingerprint": "f03a7a6744043a19ce569f55b60ff73d791c5700a408ab63b3bc7179501e8a4c",
+        "source_hash": "f03a7a6744043a19ce569f55b60ff73d791c5700a408ab63b3bc7179501e8a4c"
+      },
+      "report_id": null,
+      "source": "object_name",
+      "source_fingerprint": "f03a7a6744043a19ce569f55b60ff73d791c5700a408ab63b3bc7179501e8a4c",
+      "source_hash": "f03a7a6744043a19ce569f55b60ff73d791c5700a408ab63b3bc7179501e8a4c",
+      "source_id": "c129d115955092a9fac23da0b6d3ae6a",
+      "status": "candidate",
+      "type": "BUSINESS_CONCEPT"
+    },
+    {
+      "assertion_type": "BUSINESS_CONCEPT",
+      "candidate_confidence": 0.3,
+      "candidate_evidence": [
+        {
+          "evidence": "Object name: Date",
+          "evidence_class": "INFERRED",
+          "extractor": "name_interpretation",
+          "source": "object_name",
+          "status": "candidate",
+          "target": "model:11111111-1111-1111-1111-111111111111/table:33333333-3333-3333-3333-333333333333"
+        }
+      ],
+      "candidate_id": "semantic:candidate:d4a6998ea2020f9f579e54a292d385f1",
+      "candidate_source": "object_name",
+      "confidence": 0.3,
+      "description": "Date",
+      "evidence": [
+        {
+          "evidence": "Object name: Date",
+          "evidence_class": "INFERRED",
+          "extractor": "name_interpretation",
+          "source": "object_name",
+          "status": "candidate",
+          "target": "model:11111111-1111-1111-1111-111111111111/table:33333333-3333-3333-3333-333333333333"
+        }
+      ],
+      "id": "semantic:business-concept:e9a1b6946539eafb0979c6151fc2848d",
+      "meaning": "Date",
+      "model_id": "model:11111111-1111-1111-1111-111111111111",
+      "name": "Date",
+      "priority": 5,
+      "properties": {
+        "assertion_type": "BUSINESS_CONCEPT",
+        "candidate_confidence": 0.3,
+        "candidate_evidence": [
+          {
+            "evidence": "Object name: Date",
+            "evidence_class": "INFERRED",
+            "extractor": "name_interpretation",
+            "source": "object_name",
+            "status": "candidate",
+            "target": "model:11111111-1111-1111-1111-111111111111/table:33333333-3333-3333-3333-333333333333"
+          }
+        ],
+        "candidate_id": "semantic:candidate:d4a6998ea2020f9f579e54a292d385f1",
+        "candidate_source": "object_name",
+        "confidence": 0.3,
+        "evidence": [
+          {
+            "evidence": "Object name: Date",
+            "evidence_class": "INFERRED",
+            "extractor": "name_interpretation",
+            "source": "object_name",
+            "status": "candidate",
+            "target": "model:11111111-1111-1111-1111-111111111111/table:33333333-3333-3333-3333-333333333333"
+          }
+        ],
+        "meaning": "Date",
+        "priority": 5,
+        "source_fingerprint": "b1dcca5ca36afd5d81116b60f596a49cdcfd0f92b47d074f32264ac96fc67a63",
+        "source_hash": "b1dcca5ca36afd5d81116b60f596a49cdcfd0f92b47d074f32264ac96fc67a63"
+      },
+      "report_id": null,
+      "source": "object_name",
+      "source_fingerprint": "b1dcca5ca36afd5d81116b60f596a49cdcfd0f92b47d074f32264ac96fc67a63",
+      "source_hash": "b1dcca5ca36afd5d81116b60f596a49cdcfd0f92b47d074f32264ac96fc67a63",
+      "source_id": "e9a1b6946539eafb0979c6151fc2848d",
+      "status": "candidate",
+      "type": "BUSINESS_CONCEPT"
+    }
+  ],
+  "observations": [
+    {
+      "confidence": 1.0,
+      "evidence": [
+        {
+          "confidence": 1.0,
+          "evidence": "visual contains both model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/measure:77777777-7777-7777-7777-777777777777 and model:11111111-1111-1111-1111-111111111111/table:33333333-3333-3333-3333-333333333333/column:66666666-6666-6666-6666-666666666666",
+          "evidence_class": "OBSERVED",
+          "extractor": "visual_cooccurrence",
+          "source": "report_usage",
+          "source_object": "report:Finance.Report/page:Overview/visual:SalesByDate",
+          "status": "factual",
+          "target": "model:11111111-1111-1111-1111-111111111111/table:33333333-3333-3333-3333-333333333333/column:66666666-6666-6666-6666-666666666666",
+          "type": "OBSERVED_WITH"
+        }
+      ],
+      "evidence_class": "OBSERVED",
+      "from_id": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/measure:77777777-7777-7777-7777-777777777777",
+      "id": "edge:724e299fb44e0542f128215758d78eaa",
+      "properties": {
+        "occurrences": 1,
+        "report_ids": [
+          "report:Finance.Report"
+        ],
+        "symmetric": true,
+        "visual_ids": [
+          "report:Finance.Report/page:Overview/visual:SalesByDate"
+        ]
+      },
+      "source": "report_usage",
+      "status": "factual",
+      "to_id": "model:11111111-1111-1111-1111-111111111111/table:33333333-3333-3333-3333-333333333333/column:66666666-6666-6666-6666-666666666666",
+      "type": "OBSERVED_WITH"
+    },
+    {
+      "confidence": 1.0,
+      "evidence": [
+        {
+          "confidence": 1.0,
+          "evidence": "visual contains both model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/measure:88888888-8888-8888-8888-888888888888 and model:11111111-1111-1111-1111-111111111111/table:33333333-3333-3333-3333-333333333333/column:66666666-6666-6666-6666-666666666666",
+          "evidence_class": "OBSERVED",
+          "extractor": "visual_cooccurrence",
+          "source": "report_usage",
+          "source_object": "report:Finance.Report/page:Overview/visual:GrossSalesCard",
+          "status": "factual",
+          "target": "model:11111111-1111-1111-1111-111111111111/table:33333333-3333-3333-3333-333333333333/column:66666666-6666-6666-6666-666666666666",
+          "type": "OBSERVED_WITH"
+        }
+      ],
+      "evidence_class": "OBSERVED",
+      "from_id": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/measure:88888888-8888-8888-8888-888888888888",
+      "id": "edge:e8abf170810dcaadbee4a373f03a10b2",
+      "properties": {
+        "occurrences": 1,
+        "report_ids": [
+          "report:Finance.Report"
+        ],
+        "symmetric": true,
+        "visual_ids": [
+          "report:Finance.Report/page:Overview/visual:GrossSalesCard"
+        ]
+      },
+      "source": "report_usage",
+      "status": "factual",
+      "to_id": "model:11111111-1111-1111-1111-111111111111/table:33333333-3333-3333-3333-333333333333/column:66666666-6666-6666-6666-666666666666",
+      "type": "OBSERVED_WITH"
+    }
+  ],
+  "overrides": [],
+  "overview": {
+    "approved_count": 0,
+    "candidate_count": 15,
+    "counts": {
+      "edges": 30,
+      "nodes": 20
+    },
+    "last_scan": "2026-09-30T01:01:32.274059+02:00",
+    "model_ids": [
+      "model:11111111-1111-1111-1111-111111111111"
+    ],
+    "model_objects": [
+      {
+        "id": "model:11111111-1111-1111-1111-111111111111",
+        "name": "FinanceModel"
+      }
+    ],
+    "models": 1,
+    "object_counts": {
+      "BUSINESS_CONCEPT": 7,
+      "COLUMN": 3,
+      "MEASURE": 2,
+      "MODEL": 1,
+      "PAGE": 1,
+      "RELATIONSHIP": 1,
+      "REPORT": 1,
+      "TABLE": 2,
+      "VISUAL": 2
+    },
+    "report_ids": [
+      "report:Finance.Report"
+    ],
+    "report_objects": [
+      {
+        "id": "report:Finance.Report",
+        "name": "Finance Report"
+      }
+    ],
+    "reports": 1,
+    "scan_state": "ready",
+    "state": "ready",
+    "storage": "ladybug",
+    "validation_issues": [],
+    "validation_state": "valid",
+    "warning_count": 0
+  },
+  "review_items": [
+    {
+      "assertion_type": "BUSINESS_CONCEPT",
+      "candidate_id": "semantic:candidate:e3a8d731103c5e5f56eb90f8ea4a6ad6",
+      "confidence": 0.3,
+      "evidence": [
+        {
+          "evidence": "Object name: DateKey",
+          "evidence_class": "INFERRED",
+          "extractor": "name_interpretation",
+          "source": "object_name",
+          "status": "candidate",
+          "target": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/column:55555555-5555-5555-5555-555555555555"
+        }
+      ],
+      "evidence_class": "INFERRED",
+      "id": "edge:semantic:11f6ac0e1bf08048a2e2bef1a8b3c1bc",
+      "impact": "high",
+      "issue_type": "candidate",
+      "item": {
+        "confidence": 0.3,
+        "evidence": [
+          {
+            "evidence": "Object name: DateKey",
+            "evidence_class": "INFERRED",
+            "extractor": "name_interpretation",
+            "source": "object_name",
+            "status": "candidate",
+            "target": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/column:55555555-5555-5555-5555-555555555555"
+          }
+        ],
+        "evidence_class": "INFERRED",
+        "from_id": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/column:55555555-5555-5555-5555-555555555555",
+        "id": "edge:semantic:11f6ac0e1bf08048a2e2bef1a8b3c1bc",
+        "properties": {
+          "assertion_type": "BUSINESS_CONCEPT",
+          "candidate_id": "semantic:candidate:e3a8d731103c5e5f56eb90f8ea4a6ad6",
+          "candidate_source": "object_name",
+          "priority": 5,
+          "value": "DateKey"
+        },
+        "source": "semantic_inference",
+        "status": "candidate",
+        "to_id": "semantic:business-concept:5c841239c25046033f76df275dbc2455",
+        "type": "SEMANTICALLY_MAPS_TO"
+      },
+      "model_id": "model:11111111-1111-1111-1111-111111111111",
+      "object_id": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/column:55555555-5555-5555-5555-555555555555",
+      "object_type": "COLUMN",
+      "reason": "Only the name “DateKey” supports this meaning; no description confirms it.",
+      "report_id": null,
+      "review_id": "edge:semantic:11f6ac0e1bf08048a2e2bef1a8b3c1bc",
+      "source": "semantic_inference",
+      "status": "candidate",
+      "target_id": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/column:55555555-5555-5555-5555-555555555555",
+      "type": "SEMANTICALLY_MAPS_TO",
+      "value": "DateKey"
+    },
+    {
+      "assertion_type": "BUSINESS_CONCEPT",
+      "candidate_id": "semantic:candidate:37b830d447b6246c03b191d95a1c28f5",
+      "confidence": 0.3,
+      "evidence": [
+        {
+          "evidence": "Object name: DateKey",
+          "evidence_class": "INFERRED",
+          "extractor": "name_interpretation",
+          "source": "object_name",
+          "status": "candidate",
+          "target": "model:11111111-1111-1111-1111-111111111111/table:33333333-3333-3333-3333-333333333333/column:66666666-6666-6666-6666-666666666666"
+        }
+      ],
+      "evidence_class": "INFERRED",
+      "id": "edge:semantic:717b755b4c74468d87fb258760c8e5d1",
+      "impact": "high",
+      "issue_type": "candidate",
+      "item": {
+        "confidence": 0.3,
+        "evidence": [
+          {
+            "evidence": "Object name: DateKey",
+            "evidence_class": "INFERRED",
+            "extractor": "name_interpretation",
+            "source": "object_name",
+            "status": "candidate",
+            "target": "model:11111111-1111-1111-1111-111111111111/table:33333333-3333-3333-3333-333333333333/column:66666666-6666-6666-6666-666666666666"
+          }
+        ],
+        "evidence_class": "INFERRED",
+        "from_id": "model:11111111-1111-1111-1111-111111111111/table:33333333-3333-3333-3333-333333333333/column:66666666-6666-6666-6666-666666666666",
+        "id": "edge:semantic:717b755b4c74468d87fb258760c8e5d1",
+        "properties": {
+          "assertion_type": "BUSINESS_CONCEPT",
+          "candidate_id": "semantic:candidate:37b830d447b6246c03b191d95a1c28f5",
+          "candidate_source": "object_name",
+          "priority": 5,
+          "value": "DateKey"
+        },
+        "source": "semantic_inference",
+        "status": "candidate",
+        "to_id": "semantic:business-concept:5c841239c25046033f76df275dbc2455",
+        "type": "SEMANTICALLY_MAPS_TO"
+      },
+      "model_id": "model:11111111-1111-1111-1111-111111111111",
+      "object_id": "model:11111111-1111-1111-1111-111111111111/table:33333333-3333-3333-3333-333333333333/column:66666666-6666-6666-6666-666666666666",
+      "object_type": "COLUMN",
+      "reason": "Only the name “DateKey” supports this meaning; no description confirms it.",
+      "report_id": null,
+      "review_id": "edge:semantic:717b755b4c74468d87fb258760c8e5d1",
+      "source": "semantic_inference",
+      "status": "candidate",
+      "target_id": "model:11111111-1111-1111-1111-111111111111/table:33333333-3333-3333-3333-333333333333/column:66666666-6666-6666-6666-666666666666",
+      "type": "SEMANTICALLY_MAPS_TO",
+      "value": "DateKey"
+    },
+    {
+      "assertion_type": "BUSINESS_CONCEPT",
+      "candidate_id": "semantic:candidate:c0afd4fdce7d4289897369cf17a47c1f",
+      "confidence": 0.3,
+      "evidence": [
+        {
+          "evidence": "Object name: Sales",
+          "evidence_class": "INFERRED",
+          "extractor": "name_interpretation",
+          "source": "object_name",
+          "status": "candidate",
+          "target": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222"
+        }
+      ],
+      "evidence_class": "INFERRED",
+      "id": "semantic:business-concept:1c239a8ac4a447efcf1db26d4825bfa6",
+      "impact": "high",
+      "issue_type": "candidate",
+      "item": {
+        "assertion_type": "BUSINESS_CONCEPT",
+        "candidate_confidence": 0.3,
+        "candidate_evidence": [
+          {
+            "evidence": "Object name: Sales",
+            "evidence_class": "INFERRED",
+            "extractor": "name_interpretation",
+            "source": "object_name",
+            "status": "candidate",
+            "target": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222"
+          }
+        ],
+        "candidate_id": "semantic:candidate:c0afd4fdce7d4289897369cf17a47c1f",
+        "candidate_source": "object_name",
+        "confidence": 0.3,
+        "description": "Sales",
+        "evidence": [
+          {
+            "evidence": "Object name: Sales",
+            "evidence_class": "INFERRED",
+            "extractor": "name_interpretation",
+            "source": "object_name",
+            "status": "candidate",
+            "target": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222"
+          }
+        ],
+        "id": "semantic:business-concept:1c239a8ac4a447efcf1db26d4825bfa6",
+        "meaning": "Sales",
+        "model_id": "model:11111111-1111-1111-1111-111111111111",
+        "name": "Sales",
+        "priority": 5,
+        "properties": {
+          "assertion_type": "BUSINESS_CONCEPT",
+          "candidate_confidence": 0.3,
+          "candidate_evidence": [
+            {
+              "evidence": "Object name: Sales",
+              "evidence_class": "INFERRED",
+              "extractor": "name_interpretation",
+              "source": "object_name",
+              "status": "candidate",
+              "target": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222"
+            }
+          ],
+          "candidate_id": "semantic:candidate:c0afd4fdce7d4289897369cf17a47c1f",
+          "candidate_source": "object_name",
+          "confidence": 0.3,
+          "evidence": [
+            {
+              "evidence": "Object name: Sales",
+              "evidence_class": "INFERRED",
+              "extractor": "name_interpretation",
+              "source": "object_name",
+              "status": "candidate",
+              "target": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222"
+            }
+          ],
+          "meaning": "Sales",
+          "priority": 5,
+          "source_fingerprint": "42f846c0c3140d9ae22f0206ef64e0d5efb205d7aaa5bac4686d037edfdbb7f9",
+          "source_hash": "42f846c0c3140d9ae22f0206ef64e0d5efb205d7aaa5bac4686d037edfdbb7f9"
+        },
+        "report_id": null,
+        "source": "object_name",
+        "source_fingerprint": "42f846c0c3140d9ae22f0206ef64e0d5efb205d7aaa5bac4686d037edfdbb7f9",
+        "source_hash": "42f846c0c3140d9ae22f0206ef64e0d5efb205d7aaa5bac4686d037edfdbb7f9",
+        "source_id": "1c239a8ac4a447efcf1db26d4825bfa6",
+        "status": "candidate",
+        "type": "BUSINESS_CONCEPT"
+      },
+      "model_id": "model:11111111-1111-1111-1111-111111111111",
+      "object_id": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222",
+      "object_type": "TABLE",
+      "reason": "Only the name “Sales” supports this meaning; no description confirms it.",
+      "report_id": null,
+      "review_id": "semantic:business-concept:1c239a8ac4a447efcf1db26d4825bfa6",
+      "source": "object_name",
+      "status": "candidate",
+      "target_id": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222",
+      "type": "BUSINESS_CONCEPT",
+      "value": "Sales"
+    },
+    {
+      "assertion_type": "BUSINESS_CONCEPT",
+      "candidate_id": "semantic:candidate:a7d3ff47bd3a4c76b3bb6a46682180b8",
+      "confidence": 0.3,
+      "evidence": [
+        {
+          "evidence": "Object name: FinanceModel",
+          "evidence_class": "INFERRED",
+          "extractor": "name_interpretation",
+          "source": "object_name",
+          "status": "candidate",
+          "target": "model:11111111-1111-1111-1111-111111111111"
+        }
+      ],
+      "evidence_class": "INFERRED",
+      "id": "semantic:business-concept:2fce5ce5bc0bac8099418b27f60cd6d9",
+      "impact": "high",
+      "issue_type": "candidate",
+      "item": {
+        "assertion_type": "BUSINESS_CONCEPT",
+        "candidate_confidence": 0.3,
+        "candidate_evidence": [
+          {
+            "evidence": "Object name: FinanceModel",
+            "evidence_class": "INFERRED",
+            "extractor": "name_interpretation",
+            "source": "object_name",
+            "status": "candidate",
+            "target": "model:11111111-1111-1111-1111-111111111111"
+          }
+        ],
+        "candidate_id": "semantic:candidate:a7d3ff47bd3a4c76b3bb6a46682180b8",
+        "candidate_source": "object_name",
+        "confidence": 0.3,
+        "description": "FinanceModel",
+        "evidence": [
+          {
+            "evidence": "Object name: FinanceModel",
+            "evidence_class": "INFERRED",
+            "extractor": "name_interpretation",
+            "source": "object_name",
+            "status": "candidate",
+            "target": "model:11111111-1111-1111-1111-111111111111"
+          }
+        ],
+        "id": "semantic:business-concept:2fce5ce5bc0bac8099418b27f60cd6d9",
+        "meaning": "FinanceModel",
+        "model_id": null,
+        "name": "FinanceModel",
+        "priority": 5,
+        "properties": {
+          "assertion_type": "BUSINESS_CONCEPT",
+          "candidate_confidence": 0.3,
+          "candidate_evidence": [
+            {
+              "evidence": "Object name: FinanceModel",
+              "evidence_class": "INFERRED",
+              "extractor": "name_interpretation",
+              "source": "object_name",
+              "status": "candidate",
+              "target": "model:11111111-1111-1111-1111-111111111111"
+            }
+          ],
+          "candidate_id": "semantic:candidate:a7d3ff47bd3a4c76b3bb6a46682180b8",
+          "candidate_source": "object_name",
+          "confidence": 0.3,
+          "evidence": [
+            {
+              "evidence": "Object name: FinanceModel",
+              "evidence_class": "INFERRED",
+              "extractor": "name_interpretation",
+              "source": "object_name",
+              "status": "candidate",
+              "target": "model:11111111-1111-1111-1111-111111111111"
+            }
+          ],
+          "meaning": "FinanceModel",
+          "priority": 5,
+          "source_fingerprint": "9248b28a748fef3579550dacf5098c568933bbe48489819d83ce7d57f37a3ce3",
+          "source_hash": "9248b28a748fef3579550dacf5098c568933bbe48489819d83ce7d57f37a3ce3"
+        },
+        "report_id": null,
+        "source": "object_name",
+        "source_fingerprint": "9248b28a748fef3579550dacf5098c568933bbe48489819d83ce7d57f37a3ce3",
+        "source_hash": "9248b28a748fef3579550dacf5098c568933bbe48489819d83ce7d57f37a3ce3",
+        "source_id": "2fce5ce5bc0bac8099418b27f60cd6d9",
+        "status": "candidate",
+        "type": "BUSINESS_CONCEPT"
+      },
+      "model_id": null,
+      "object_id": "model:11111111-1111-1111-1111-111111111111",
+      "object_type": "MODEL",
+      "reason": "Only the name “FinanceModel” supports this meaning; no description confirms it.",
+      "report_id": null,
+      "review_id": "semantic:business-concept:2fce5ce5bc0bac8099418b27f60cd6d9",
+      "source": "object_name",
+      "status": "candidate",
+      "target_id": "model:11111111-1111-1111-1111-111111111111",
+      "type": "BUSINESS_CONCEPT",
+      "value": "FinanceModel"
+    },
+    {
+      "assertion_type": "BUSINESS_CONCEPT",
+      "candidate_id": "semantic:candidate:8c14fce66476105909b9963bb34227ef",
+      "confidence": 0.3,
+      "evidence": [
+        {
+          "evidence": "Object name: Net Sales",
+          "evidence_class": "INFERRED",
+          "extractor": "name_interpretation",
+          "source": "object_name",
+          "status": "candidate",
+          "target": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/measure:77777777-7777-7777-7777-777777777777"
+        }
+      ],
+      "evidence_class": "INFERRED",
+      "id": "semantic:business-concept:522cab8a63bd3da1fd8e1ff1cdde1baf",
+      "impact": "high",
+      "issue_type": "candidate",
+      "item": {
+        "assertion_type": "BUSINESS_CONCEPT",
+        "candidate_confidence": 0.3,
+        "candidate_evidence": [
+          {
+            "evidence": "Object name: Net Sales",
+            "evidence_class": "INFERRED",
+            "extractor": "name_interpretation",
+            "source": "object_name",
+            "status": "candidate",
+            "target": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/measure:77777777-7777-7777-7777-777777777777"
+          }
+        ],
+        "candidate_id": "semantic:candidate:8c14fce66476105909b9963bb34227ef",
+        "candidate_source": "object_name",
+        "confidence": 0.3,
+        "description": "Net Sales",
+        "evidence": [
+          {
+            "evidence": "Object name: Net Sales",
+            "evidence_class": "INFERRED",
+            "extractor": "name_interpretation",
+            "source": "object_name",
+            "status": "candidate",
+            "target": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/measure:77777777-7777-7777-7777-777777777777"
+          }
+        ],
+        "id": "semantic:business-concept:522cab8a63bd3da1fd8e1ff1cdde1baf",
+        "meaning": "Net Sales",
+        "model_id": "model:11111111-1111-1111-1111-111111111111",
+        "name": "Net Sales",
+        "priority": 5,
+        "properties": {
+          "assertion_type": "BUSINESS_CONCEPT",
+          "candidate_confidence": 0.3,
+          "candidate_evidence": [
+            {
+              "evidence": "Object name: Net Sales",
+              "evidence_class": "INFERRED",
+              "extractor": "name_interpretation",
+              "source": "object_name",
+              "status": "candidate",
+              "target": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/measure:77777777-7777-7777-7777-777777777777"
+            }
+          ],
+          "candidate_id": "semantic:candidate:8c14fce66476105909b9963bb34227ef",
+          "candidate_source": "object_name",
+          "confidence": 0.3,
+          "evidence": [
+            {
+              "evidence": "Object name: Net Sales",
+              "evidence_class": "INFERRED",
+              "extractor": "name_interpretation",
+              "source": "object_name",
+              "status": "candidate",
+              "target": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/measure:77777777-7777-7777-7777-777777777777"
+            }
+          ],
+          "meaning": "Net Sales",
+          "priority": 5,
+          "source_fingerprint": "8bb0fe17f163f1e1691f06b933cbd33b21ac8b520f474ee98072342842a3e090",
+          "source_hash": "8bb0fe17f163f1e1691f06b933cbd33b21ac8b520f474ee98072342842a3e090"
+        },
+        "report_id": null,
+        "source": "object_name",
+        "source_fingerprint": "8bb0fe17f163f1e1691f06b933cbd33b21ac8b520f474ee98072342842a3e090",
+        "source_hash": "8bb0fe17f163f1e1691f06b933cbd33b21ac8b520f474ee98072342842a3e090",
+        "source_id": "522cab8a63bd3da1fd8e1ff1cdde1baf",
+        "status": "candidate",
+        "type": "BUSINESS_CONCEPT"
+      },
+      "model_id": "model:11111111-1111-1111-1111-111111111111",
+      "object_id": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/measure:77777777-7777-7777-7777-777777777777",
+      "object_type": "MEASURE",
+      "reason": "Only the name “Net Sales” supports this meaning; no description confirms it.",
+      "report_id": null,
+      "review_id": "semantic:business-concept:522cab8a63bd3da1fd8e1ff1cdde1baf",
+      "source": "object_name",
+      "status": "candidate",
+      "target_id": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/measure:77777777-7777-7777-7777-777777777777",
+      "type": "BUSINESS_CONCEPT",
+      "value": "Net Sales"
+    },
+    {
+      "assertion_type": "BUSINESS_CONCEPT",
+      "candidate_id": "semantic:candidate:2ac4f71f975f0c4d7c144b74e77b226f",
+      "confidence": 0.3,
+      "evidence": [
+        {
+          "evidence": "Object name: Amount",
+          "evidence_class": "INFERRED",
+          "extractor": "name_interpretation",
+          "source": "object_name",
+          "status": "candidate",
+          "target": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/column:44444444-4444-4444-4444-444444444444"
+        }
+      ],
+      "evidence_class": "INFERRED",
+      "id": "semantic:business-concept:bf8be0777c7b38dfae01bc3f63a8b0a6",
+      "impact": "high",
+      "issue_type": "candidate",
+      "item": {
+        "assertion_type": "BUSINESS_CONCEPT",
+        "candidate_confidence": 0.3,
+        "candidate_evidence": [
+          {
+            "evidence": "Object name: Amount",
+            "evidence_class": "INFERRED",
+            "extractor": "name_interpretation",
+            "source": "object_name",
+            "status": "candidate",
+            "target": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/column:44444444-4444-4444-4444-444444444444"
+          }
+        ],
+        "candidate_id": "semantic:candidate:2ac4f71f975f0c4d7c144b74e77b226f",
+        "candidate_source": "object_name",
+        "confidence": 0.3,
+        "description": "Amount",
+        "evidence": [
+          {
+            "evidence": "Object name: Amount",
+            "evidence_class": "INFERRED",
+            "extractor": "name_interpretation",
+            "source": "object_name",
+            "status": "candidate",
+            "target": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/column:44444444-4444-4444-4444-444444444444"
+          }
+        ],
+        "id": "semantic:business-concept:bf8be0777c7b38dfae01bc3f63a8b0a6",
+        "meaning": "Amount",
+        "model_id": "model:11111111-1111-1111-1111-111111111111",
+        "name": "Amount",
+        "priority": 5,
+        "properties": {
+          "assertion_type": "BUSINESS_CONCEPT",
+          "candidate_confidence": 0.3,
+          "candidate_evidence": [
+            {
+              "evidence": "Object name: Amount",
+              "evidence_class": "INFERRED",
+              "extractor": "name_interpretation",
+              "source": "object_name",
+              "status": "candidate",
+              "target": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/column:44444444-4444-4444-4444-444444444444"
+            }
+          ],
+          "candidate_id": "semantic:candidate:2ac4f71f975f0c4d7c144b74e77b226f",
+          "candidate_source": "object_name",
+          "confidence": 0.3,
+          "evidence": [
+            {
+              "evidence": "Object name: Amount",
+              "evidence_class": "INFERRED",
+              "extractor": "name_interpretation",
+              "source": "object_name",
+              "status": "candidate",
+              "target": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/column:44444444-4444-4444-4444-444444444444"
+            }
+          ],
+          "meaning": "Amount",
+          "priority": 5,
+          "source_fingerprint": "3edba159add4c1a5bdf9e580e86dc55509c278cc4f4f11e389d2e4377592f257",
+          "source_hash": "3edba159add4c1a5bdf9e580e86dc55509c278cc4f4f11e389d2e4377592f257"
+        },
+        "report_id": null,
+        "source": "object_name",
+        "source_fingerprint": "3edba159add4c1a5bdf9e580e86dc55509c278cc4f4f11e389d2e4377592f257",
+        "source_hash": "3edba159add4c1a5bdf9e580e86dc55509c278cc4f4f11e389d2e4377592f257",
+        "source_id": "bf8be0777c7b38dfae01bc3f63a8b0a6",
+        "status": "candidate",
+        "type": "BUSINESS_CONCEPT"
+      },
+      "model_id": "model:11111111-1111-1111-1111-111111111111",
+      "object_id": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/column:44444444-4444-4444-4444-444444444444",
+      "object_type": "COLUMN",
+      "reason": "Only the name “Amount” supports this meaning; no description confirms it.",
+      "report_id": null,
+      "review_id": "semantic:business-concept:bf8be0777c7b38dfae01bc3f63a8b0a6",
+      "source": "object_name",
+      "status": "candidate",
+      "target_id": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/column:44444444-4444-4444-4444-444444444444",
+      "type": "BUSINESS_CONCEPT",
+      "value": "Amount"
+    },
+    {
+      "assertion_type": "BUSINESS_CONCEPT",
+      "candidate_id": "semantic:candidate:67e3ebc745ac0000ba57cea3d2e17275",
+      "confidence": 0.3,
+      "evidence": [
+        {
+          "evidence": "Object name: Gross Sales",
+          "evidence_class": "INFERRED",
+          "extractor": "name_interpretation",
+          "source": "object_name",
+          "status": "candidate",
+          "target": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/measure:88888888-8888-8888-8888-888888888888"
+        }
+      ],
+      "evidence_class": "INFERRED",
+      "id": "semantic:business-concept:c129d115955092a9fac23da0b6d3ae6a",
+      "impact": "high",
+      "issue_type": "candidate",
+      "item": {
+        "assertion_type": "BUSINESS_CONCEPT",
+        "candidate_confidence": 0.3,
+        "candidate_evidence": [
+          {
+            "evidence": "Object name: Gross Sales",
+            "evidence_class": "INFERRED",
+            "extractor": "name_interpretation",
+            "source": "object_name",
+            "status": "candidate",
+            "target": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/measure:88888888-8888-8888-8888-888888888888"
+          }
+        ],
+        "candidate_id": "semantic:candidate:67e3ebc745ac0000ba57cea3d2e17275",
+        "candidate_source": "object_name",
+        "confidence": 0.3,
+        "description": "Gross Sales",
+        "evidence": [
+          {
+            "evidence": "Object name: Gross Sales",
+            "evidence_class": "INFERRED",
+            "extractor": "name_interpretation",
+            "source": "object_name",
+            "status": "candidate",
+            "target": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/measure:88888888-8888-8888-8888-888888888888"
+          }
+        ],
+        "id": "semantic:business-concept:c129d115955092a9fac23da0b6d3ae6a",
+        "meaning": "Gross Sales",
+        "model_id": "model:11111111-1111-1111-1111-111111111111",
+        "name": "Gross Sales",
+        "priority": 5,
+        "properties": {
+          "assertion_type": "BUSINESS_CONCEPT",
+          "candidate_confidence": 0.3,
+          "candidate_evidence": [
+            {
+              "evidence": "Object name: Gross Sales",
+              "evidence_class": "INFERRED",
+              "extractor": "name_interpretation",
+              "source": "object_name",
+              "status": "candidate",
+              "target": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/measure:88888888-8888-8888-8888-888888888888"
+            }
+          ],
+          "candidate_id": "semantic:candidate:67e3ebc745ac0000ba57cea3d2e17275",
+          "candidate_source": "object_name",
+          "confidence": 0.3,
+          "evidence": [
+            {
+              "evidence": "Object name: Gross Sales",
+              "evidence_class": "INFERRED",
+              "extractor": "name_interpretation",
+              "source": "object_name",
+              "status": "candidate",
+              "target": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/measure:88888888-8888-8888-8888-888888888888"
+            }
+          ],
+          "meaning": "Gross Sales",
+          "priority": 5,
+          "source_fingerprint": "f03a7a6744043a19ce569f55b60ff73d791c5700a408ab63b3bc7179501e8a4c",
+          "source_hash": "f03a7a6744043a19ce569f55b60ff73d791c5700a408ab63b3bc7179501e8a4c"
+        },
+        "report_id": null,
+        "source": "object_name",
+        "source_fingerprint": "f03a7a6744043a19ce569f55b60ff73d791c5700a408ab63b3bc7179501e8a4c",
+        "source_hash": "f03a7a6744043a19ce569f55b60ff73d791c5700a408ab63b3bc7179501e8a4c",
+        "source_id": "c129d115955092a9fac23da0b6d3ae6a",
+        "status": "candidate",
+        "type": "BUSINESS_CONCEPT"
+      },
+      "model_id": "model:11111111-1111-1111-1111-111111111111",
+      "object_id": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/measure:88888888-8888-8888-8888-888888888888",
+      "object_type": "MEASURE",
+      "reason": "Only the name “Gross Sales” supports this meaning; no description confirms it.",
+      "report_id": null,
+      "review_id": "semantic:business-concept:c129d115955092a9fac23da0b6d3ae6a",
+      "source": "object_name",
+      "status": "candidate",
+      "target_id": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/measure:88888888-8888-8888-8888-888888888888",
+      "type": "BUSINESS_CONCEPT",
+      "value": "Gross Sales"
+    },
+    {
+      "assertion_type": "BUSINESS_CONCEPT",
+      "candidate_id": "semantic:candidate:d4a6998ea2020f9f579e54a292d385f1",
+      "confidence": 0.3,
+      "evidence": [
+        {
+          "evidence": "Object name: Date",
+          "evidence_class": "INFERRED",
+          "extractor": "name_interpretation",
+          "source": "object_name",
+          "status": "candidate",
+          "target": "model:11111111-1111-1111-1111-111111111111/table:33333333-3333-3333-3333-333333333333"
+        }
+      ],
+      "evidence_class": "INFERRED",
+      "id": "semantic:business-concept:e9a1b6946539eafb0979c6151fc2848d",
+      "impact": "high",
+      "issue_type": "candidate",
+      "item": {
+        "assertion_type": "BUSINESS_CONCEPT",
+        "candidate_confidence": 0.3,
+        "candidate_evidence": [
+          {
+            "evidence": "Object name: Date",
+            "evidence_class": "INFERRED",
+            "extractor": "name_interpretation",
+            "source": "object_name",
+            "status": "candidate",
+            "target": "model:11111111-1111-1111-1111-111111111111/table:33333333-3333-3333-3333-333333333333"
+          }
+        ],
+        "candidate_id": "semantic:candidate:d4a6998ea2020f9f579e54a292d385f1",
+        "candidate_source": "object_name",
+        "confidence": 0.3,
+        "description": "Date",
+        "evidence": [
+          {
+            "evidence": "Object name: Date",
+            "evidence_class": "INFERRED",
+            "extractor": "name_interpretation",
+            "source": "object_name",
+            "status": "candidate",
+            "target": "model:11111111-1111-1111-1111-111111111111/table:33333333-3333-3333-3333-333333333333"
+          }
+        ],
+        "id": "semantic:business-concept:e9a1b6946539eafb0979c6151fc2848d",
+        "meaning": "Date",
+        "model_id": "model:11111111-1111-1111-1111-111111111111",
+        "name": "Date",
+        "priority": 5,
+        "properties": {
+          "assertion_type": "BUSINESS_CONCEPT",
+          "candidate_confidence": 0.3,
+          "candidate_evidence": [
+            {
+              "evidence": "Object name: Date",
+              "evidence_class": "INFERRED",
+              "extractor": "name_interpretation",
+              "source": "object_name",
+              "status": "candidate",
+              "target": "model:11111111-1111-1111-1111-111111111111/table:33333333-3333-3333-3333-333333333333"
+            }
+          ],
+          "candidate_id": "semantic:candidate:d4a6998ea2020f9f579e54a292d385f1",
+          "candidate_source": "object_name",
+          "confidence": 0.3,
+          "evidence": [
+            {
+              "evidence": "Object name: Date",
+              "evidence_class": "INFERRED",
+              "extractor": "name_interpretation",
+              "source": "object_name",
+              "status": "candidate",
+              "target": "model:11111111-1111-1111-1111-111111111111/table:33333333-3333-3333-3333-333333333333"
+            }
+          ],
+          "meaning": "Date",
+          "priority": 5,
+          "source_fingerprint": "b1dcca5ca36afd5d81116b60f596a49cdcfd0f92b47d074f32264ac96fc67a63",
+          "source_hash": "b1dcca5ca36afd5d81116b60f596a49cdcfd0f92b47d074f32264ac96fc67a63"
+        },
+        "report_id": null,
+        "source": "object_name",
+        "source_fingerprint": "b1dcca5ca36afd5d81116b60f596a49cdcfd0f92b47d074f32264ac96fc67a63",
+        "source_hash": "b1dcca5ca36afd5d81116b60f596a49cdcfd0f92b47d074f32264ac96fc67a63",
+        "source_id": "e9a1b6946539eafb0979c6151fc2848d",
+        "status": "candidate",
+        "type": "BUSINESS_CONCEPT"
+      },
+      "model_id": "model:11111111-1111-1111-1111-111111111111",
+      "object_id": "model:11111111-1111-1111-1111-111111111111/table:33333333-3333-3333-3333-333333333333",
+      "object_type": "TABLE",
+      "reason": "Only the name “Date” supports this meaning; no description confirms it.",
+      "report_id": null,
+      "review_id": "semantic:business-concept:e9a1b6946539eafb0979c6151fc2848d",
+      "source": "object_name",
+      "status": "candidate",
+      "target_id": "model:11111111-1111-1111-1111-111111111111/table:33333333-3333-3333-3333-333333333333",
+      "type": "BUSINESS_CONCEPT",
+      "value": "Date"
+    }
+  ],
+  "review_queue": [
+    {
+      "assertion_type": "BUSINESS_CONCEPT",
+      "candidate_id": "semantic:candidate:e3a8d731103c5e5f56eb90f8ea4a6ad6",
+      "confidence": 0.3,
+      "evidence": [
+        {
+          "evidence": "Object name: DateKey",
+          "evidence_class": "INFERRED",
+          "extractor": "name_interpretation",
+          "source": "object_name",
+          "status": "candidate",
+          "target": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/column:55555555-5555-5555-5555-555555555555"
+        }
+      ],
+      "evidence_class": "INFERRED",
+      "id": "edge:semantic:11f6ac0e1bf08048a2e2bef1a8b3c1bc",
+      "impact": "high",
+      "issue_type": "candidate",
+      "item": {
+        "confidence": 0.3,
+        "evidence": [
+          {
+            "evidence": "Object name: DateKey",
+            "evidence_class": "INFERRED",
+            "extractor": "name_interpretation",
+            "source": "object_name",
+            "status": "candidate",
+            "target": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/column:55555555-5555-5555-5555-555555555555"
+          }
+        ],
+        "evidence_class": "INFERRED",
+        "from_id": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/column:55555555-5555-5555-5555-555555555555",
+        "id": "edge:semantic:11f6ac0e1bf08048a2e2bef1a8b3c1bc",
+        "properties": {
+          "assertion_type": "BUSINESS_CONCEPT",
+          "candidate_id": "semantic:candidate:e3a8d731103c5e5f56eb90f8ea4a6ad6",
+          "candidate_source": "object_name",
+          "priority": 5,
+          "value": "DateKey"
+        },
+        "source": "semantic_inference",
+        "status": "candidate",
+        "to_id": "semantic:business-concept:5c841239c25046033f76df275dbc2455",
+        "type": "SEMANTICALLY_MAPS_TO"
+      },
+      "model_id": "model:11111111-1111-1111-1111-111111111111",
+      "object_id": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/column:55555555-5555-5555-5555-555555555555",
+      "object_type": "COLUMN",
+      "reason": "Only the name “DateKey” supports this meaning; no description confirms it.",
+      "report_id": null,
+      "review_id": "edge:semantic:11f6ac0e1bf08048a2e2bef1a8b3c1bc",
+      "source": "semantic_inference",
+      "status": "candidate",
+      "target_id": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/column:55555555-5555-5555-5555-555555555555",
+      "type": "SEMANTICALLY_MAPS_TO",
+      "value": "DateKey"
+    },
+    {
+      "assertion_type": "BUSINESS_CONCEPT",
+      "candidate_id": "semantic:candidate:37b830d447b6246c03b191d95a1c28f5",
+      "confidence": 0.3,
+      "evidence": [
+        {
+          "evidence": "Object name: DateKey",
+          "evidence_class": "INFERRED",
+          "extractor": "name_interpretation",
+          "source": "object_name",
+          "status": "candidate",
+          "target": "model:11111111-1111-1111-1111-111111111111/table:33333333-3333-3333-3333-333333333333/column:66666666-6666-6666-6666-666666666666"
+        }
+      ],
+      "evidence_class": "INFERRED",
+      "id": "edge:semantic:717b755b4c74468d87fb258760c8e5d1",
+      "impact": "high",
+      "issue_type": "candidate",
+      "item": {
+        "confidence": 0.3,
+        "evidence": [
+          {
+            "evidence": "Object name: DateKey",
+            "evidence_class": "INFERRED",
+            "extractor": "name_interpretation",
+            "source": "object_name",
+            "status": "candidate",
+            "target": "model:11111111-1111-1111-1111-111111111111/table:33333333-3333-3333-3333-333333333333/column:66666666-6666-6666-6666-666666666666"
+          }
+        ],
+        "evidence_class": "INFERRED",
+        "from_id": "model:11111111-1111-1111-1111-111111111111/table:33333333-3333-3333-3333-333333333333/column:66666666-6666-6666-6666-666666666666",
+        "id": "edge:semantic:717b755b4c74468d87fb258760c8e5d1",
+        "properties": {
+          "assertion_type": "BUSINESS_CONCEPT",
+          "candidate_id": "semantic:candidate:37b830d447b6246c03b191d95a1c28f5",
+          "candidate_source": "object_name",
+          "priority": 5,
+          "value": "DateKey"
+        },
+        "source": "semantic_inference",
+        "status": "candidate",
+        "to_id": "semantic:business-concept:5c841239c25046033f76df275dbc2455",
+        "type": "SEMANTICALLY_MAPS_TO"
+      },
+      "model_id": "model:11111111-1111-1111-1111-111111111111",
+      "object_id": "model:11111111-1111-1111-1111-111111111111/table:33333333-3333-3333-3333-333333333333/column:66666666-6666-6666-6666-666666666666",
+      "object_type": "COLUMN",
+      "reason": "Only the name “DateKey” supports this meaning; no description confirms it.",
+      "report_id": null,
+      "review_id": "edge:semantic:717b755b4c74468d87fb258760c8e5d1",
+      "source": "semantic_inference",
+      "status": "candidate",
+      "target_id": "model:11111111-1111-1111-1111-111111111111/table:33333333-3333-3333-3333-333333333333/column:66666666-6666-6666-6666-666666666666",
+      "type": "SEMANTICALLY_MAPS_TO",
+      "value": "DateKey"
+    },
+    {
+      "assertion_type": "BUSINESS_CONCEPT",
+      "candidate_id": "semantic:candidate:c0afd4fdce7d4289897369cf17a47c1f",
+      "confidence": 0.3,
+      "evidence": [
+        {
+          "evidence": "Object name: Sales",
+          "evidence_class": "INFERRED",
+          "extractor": "name_interpretation",
+          "source": "object_name",
+          "status": "candidate",
+          "target": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222"
+        }
+      ],
+      "evidence_class": "INFERRED",
+      "id": "semantic:business-concept:1c239a8ac4a447efcf1db26d4825bfa6",
+      "impact": "high",
+      "issue_type": "candidate",
+      "item": {
+        "assertion_type": "BUSINESS_CONCEPT",
+        "candidate_confidence": 0.3,
+        "candidate_evidence": [
+          {
+            "evidence": "Object name: Sales",
+            "evidence_class": "INFERRED",
+            "extractor": "name_interpretation",
+            "source": "object_name",
+            "status": "candidate",
+            "target": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222"
+          }
+        ],
+        "candidate_id": "semantic:candidate:c0afd4fdce7d4289897369cf17a47c1f",
+        "candidate_source": "object_name",
+        "confidence": 0.3,
+        "description": "Sales",
+        "evidence": [
+          {
+            "evidence": "Object name: Sales",
+            "evidence_class": "INFERRED",
+            "extractor": "name_interpretation",
+            "source": "object_name",
+            "status": "candidate",
+            "target": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222"
+          }
+        ],
+        "id": "semantic:business-concept:1c239a8ac4a447efcf1db26d4825bfa6",
+        "meaning": "Sales",
+        "model_id": "model:11111111-1111-1111-1111-111111111111",
+        "name": "Sales",
+        "priority": 5,
+        "properties": {
+          "assertion_type": "BUSINESS_CONCEPT",
+          "candidate_confidence": 0.3,
+          "candidate_evidence": [
+            {
+              "evidence": "Object name: Sales",
+              "evidence_class": "INFERRED",
+              "extractor": "name_interpretation",
+              "source": "object_name",
+              "status": "candidate",
+              "target": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222"
+            }
+          ],
+          "candidate_id": "semantic:candidate:c0afd4fdce7d4289897369cf17a47c1f",
+          "candidate_source": "object_name",
+          "confidence": 0.3,
+          "evidence": [
+            {
+              "evidence": "Object name: Sales",
+              "evidence_class": "INFERRED",
+              "extractor": "name_interpretation",
+              "source": "object_name",
+              "status": "candidate",
+              "target": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222"
+            }
+          ],
+          "meaning": "Sales",
+          "priority": 5,
+          "source_fingerprint": "42f846c0c3140d9ae22f0206ef64e0d5efb205d7aaa5bac4686d037edfdbb7f9",
+          "source_hash": "42f846c0c3140d9ae22f0206ef64e0d5efb205d7aaa5bac4686d037edfdbb7f9"
+        },
+        "report_id": null,
+        "source": "object_name",
+        "source_fingerprint": "42f846c0c3140d9ae22f0206ef64e0d5efb205d7aaa5bac4686d037edfdbb7f9",
+        "source_hash": "42f846c0c3140d9ae22f0206ef64e0d5efb205d7aaa5bac4686d037edfdbb7f9",
+        "source_id": "1c239a8ac4a447efcf1db26d4825bfa6",
+        "status": "candidate",
+        "type": "BUSINESS_CONCEPT"
+      },
+      "model_id": "model:11111111-1111-1111-1111-111111111111",
+      "object_id": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222",
+      "object_type": "TABLE",
+      "reason": "Only the name “Sales” supports this meaning; no description confirms it.",
+      "report_id": null,
+      "review_id": "semantic:business-concept:1c239a8ac4a447efcf1db26d4825bfa6",
+      "source": "object_name",
+      "status": "candidate",
+      "target_id": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222",
+      "type": "BUSINESS_CONCEPT",
+      "value": "Sales"
+    },
+    {
+      "assertion_type": "BUSINESS_CONCEPT",
+      "candidate_id": "semantic:candidate:a7d3ff47bd3a4c76b3bb6a46682180b8",
+      "confidence": 0.3,
+      "evidence": [
+        {
+          "evidence": "Object name: FinanceModel",
+          "evidence_class": "INFERRED",
+          "extractor": "name_interpretation",
+          "source": "object_name",
+          "status": "candidate",
+          "target": "model:11111111-1111-1111-1111-111111111111"
+        }
+      ],
+      "evidence_class": "INFERRED",
+      "id": "semantic:business-concept:2fce5ce5bc0bac8099418b27f60cd6d9",
+      "impact": "high",
+      "issue_type": "candidate",
+      "item": {
+        "assertion_type": "BUSINESS_CONCEPT",
+        "candidate_confidence": 0.3,
+        "candidate_evidence": [
+          {
+            "evidence": "Object name: FinanceModel",
+            "evidence_class": "INFERRED",
+            "extractor": "name_interpretation",
+            "source": "object_name",
+            "status": "candidate",
+            "target": "model:11111111-1111-1111-1111-111111111111"
+          }
+        ],
+        "candidate_id": "semantic:candidate:a7d3ff47bd3a4c76b3bb6a46682180b8",
+        "candidate_source": "object_name",
+        "confidence": 0.3,
+        "description": "FinanceModel",
+        "evidence": [
+          {
+            "evidence": "Object name: FinanceModel",
+            "evidence_class": "INFERRED",
+            "extractor": "name_interpretation",
+            "source": "object_name",
+            "status": "candidate",
+            "target": "model:11111111-1111-1111-1111-111111111111"
+          }
+        ],
+        "id": "semantic:business-concept:2fce5ce5bc0bac8099418b27f60cd6d9",
+        "meaning": "FinanceModel",
+        "model_id": null,
+        "name": "FinanceModel",
+        "priority": 5,
+        "properties": {
+          "assertion_type": "BUSINESS_CONCEPT",
+          "candidate_confidence": 0.3,
+          "candidate_evidence": [
+            {
+              "evidence": "Object name: FinanceModel",
+              "evidence_class": "INFERRED",
+              "extractor": "name_interpretation",
+              "source": "object_name",
+              "status": "candidate",
+              "target": "model:11111111-1111-1111-1111-111111111111"
+            }
+          ],
+          "candidate_id": "semantic:candidate:a7d3ff47bd3a4c76b3bb6a46682180b8",
+          "candidate_source": "object_name",
+          "confidence": 0.3,
+          "evidence": [
+            {
+              "evidence": "Object name: FinanceModel",
+              "evidence_class": "INFERRED",
+              "extractor": "name_interpretation",
+              "source": "object_name",
+              "status": "candidate",
+              "target": "model:11111111-1111-1111-1111-111111111111"
+            }
+          ],
+          "meaning": "FinanceModel",
+          "priority": 5,
+          "source_fingerprint": "9248b28a748fef3579550dacf5098c568933bbe48489819d83ce7d57f37a3ce3",
+          "source_hash": "9248b28a748fef3579550dacf5098c568933bbe48489819d83ce7d57f37a3ce3"
+        },
+        "report_id": null,
+        "source": "object_name",
+        "source_fingerprint": "9248b28a748fef3579550dacf5098c568933bbe48489819d83ce7d57f37a3ce3",
+        "source_hash": "9248b28a748fef3579550dacf5098c568933bbe48489819d83ce7d57f37a3ce3",
+        "source_id": "2fce5ce5bc0bac8099418b27f60cd6d9",
+        "status": "candidate",
+        "type": "BUSINESS_CONCEPT"
+      },
+      "model_id": null,
+      "object_id": "model:11111111-1111-1111-1111-111111111111",
+      "object_type": "MODEL",
+      "reason": "Only the name “FinanceModel” supports this meaning; no description confirms it.",
+      "report_id": null,
+      "review_id": "semantic:business-concept:2fce5ce5bc0bac8099418b27f60cd6d9",
+      "source": "object_name",
+      "status": "candidate",
+      "target_id": "model:11111111-1111-1111-1111-111111111111",
+      "type": "BUSINESS_CONCEPT",
+      "value": "FinanceModel"
+    },
+    {
+      "assertion_type": "BUSINESS_CONCEPT",
+      "candidate_id": "semantic:candidate:8c14fce66476105909b9963bb34227ef",
+      "confidence": 0.3,
+      "evidence": [
+        {
+          "evidence": "Object name: Net Sales",
+          "evidence_class": "INFERRED",
+          "extractor": "name_interpretation",
+          "source": "object_name",
+          "status": "candidate",
+          "target": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/measure:77777777-7777-7777-7777-777777777777"
+        }
+      ],
+      "evidence_class": "INFERRED",
+      "id": "semantic:business-concept:522cab8a63bd3da1fd8e1ff1cdde1baf",
+      "impact": "high",
+      "issue_type": "candidate",
+      "item": {
+        "assertion_type": "BUSINESS_CONCEPT",
+        "candidate_confidence": 0.3,
+        "candidate_evidence": [
+          {
+            "evidence": "Object name: Net Sales",
+            "evidence_class": "INFERRED",
+            "extractor": "name_interpretation",
+            "source": "object_name",
+            "status": "candidate",
+            "target": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/measure:77777777-7777-7777-7777-777777777777"
+          }
+        ],
+        "candidate_id": "semantic:candidate:8c14fce66476105909b9963bb34227ef",
+        "candidate_source": "object_name",
+        "confidence": 0.3,
+        "description": "Net Sales",
+        "evidence": [
+          {
+            "evidence": "Object name: Net Sales",
+            "evidence_class": "INFERRED",
+            "extractor": "name_interpretation",
+            "source": "object_name",
+            "status": "candidate",
+            "target": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/measure:77777777-7777-7777-7777-777777777777"
+          }
+        ],
+        "id": "semantic:business-concept:522cab8a63bd3da1fd8e1ff1cdde1baf",
+        "meaning": "Net Sales",
+        "model_id": "model:11111111-1111-1111-1111-111111111111",
+        "name": "Net Sales",
+        "priority": 5,
+        "properties": {
+          "assertion_type": "BUSINESS_CONCEPT",
+          "candidate_confidence": 0.3,
+          "candidate_evidence": [
+            {
+              "evidence": "Object name: Net Sales",
+              "evidence_class": "INFERRED",
+              "extractor": "name_interpretation",
+              "source": "object_name",
+              "status": "candidate",
+              "target": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/measure:77777777-7777-7777-7777-777777777777"
+            }
+          ],
+          "candidate_id": "semantic:candidate:8c14fce66476105909b9963bb34227ef",
+          "candidate_source": "object_name",
+          "confidence": 0.3,
+          "evidence": [
+            {
+              "evidence": "Object name: Net Sales",
+              "evidence_class": "INFERRED",
+              "extractor": "name_interpretation",
+              "source": "object_name",
+              "status": "candidate",
+              "target": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/measure:77777777-7777-7777-7777-777777777777"
+            }
+          ],
+          "meaning": "Net Sales",
+          "priority": 5,
+          "source_fingerprint": "8bb0fe17f163f1e1691f06b933cbd33b21ac8b520f474ee98072342842a3e090",
+          "source_hash": "8bb0fe17f163f1e1691f06b933cbd33b21ac8b520f474ee98072342842a3e090"
+        },
+        "report_id": null,
+        "source": "object_name",
+        "source_fingerprint": "8bb0fe17f163f1e1691f06b933cbd33b21ac8b520f474ee98072342842a3e090",
+        "source_hash": "8bb0fe17f163f1e1691f06b933cbd33b21ac8b520f474ee98072342842a3e090",
+        "source_id": "522cab8a63bd3da1fd8e1ff1cdde1baf",
+        "status": "candidate",
+        "type": "BUSINESS_CONCEPT"
+      },
+      "model_id": "model:11111111-1111-1111-1111-111111111111",
+      "object_id": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/measure:77777777-7777-7777-7777-777777777777",
+      "object_type": "MEASURE",
+      "reason": "Only the name “Net Sales” supports this meaning; no description confirms it.",
+      "report_id": null,
+      "review_id": "semantic:business-concept:522cab8a63bd3da1fd8e1ff1cdde1baf",
+      "source": "object_name",
+      "status": "candidate",
+      "target_id": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/measure:77777777-7777-7777-7777-777777777777",
+      "type": "BUSINESS_CONCEPT",
+      "value": "Net Sales"
+    },
+    {
+      "assertion_type": "BUSINESS_CONCEPT",
+      "candidate_id": "semantic:candidate:2ac4f71f975f0c4d7c144b74e77b226f",
+      "confidence": 0.3,
+      "evidence": [
+        {
+          "evidence": "Object name: Amount",
+          "evidence_class": "INFERRED",
+          "extractor": "name_interpretation",
+          "source": "object_name",
+          "status": "candidate",
+          "target": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/column:44444444-4444-4444-4444-444444444444"
+        }
+      ],
+      "evidence_class": "INFERRED",
+      "id": "semantic:business-concept:bf8be0777c7b38dfae01bc3f63a8b0a6",
+      "impact": "high",
+      "issue_type": "candidate",
+      "item": {
+        "assertion_type": "BUSINESS_CONCEPT",
+        "candidate_confidence": 0.3,
+        "candidate_evidence": [
+          {
+            "evidence": "Object name: Amount",
+            "evidence_class": "INFERRED",
+            "extractor": "name_interpretation",
+            "source": "object_name",
+            "status": "candidate",
+            "target": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/column:44444444-4444-4444-4444-444444444444"
+          }
+        ],
+        "candidate_id": "semantic:candidate:2ac4f71f975f0c4d7c144b74e77b226f",
+        "candidate_source": "object_name",
+        "confidence": 0.3,
+        "description": "Amount",
+        "evidence": [
+          {
+            "evidence": "Object name: Amount",
+            "evidence_class": "INFERRED",
+            "extractor": "name_interpretation",
+            "source": "object_name",
+            "status": "candidate",
+            "target": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/column:44444444-4444-4444-4444-444444444444"
+          }
+        ],
+        "id": "semantic:business-concept:bf8be0777c7b38dfae01bc3f63a8b0a6",
+        "meaning": "Amount",
+        "model_id": "model:11111111-1111-1111-1111-111111111111",
+        "name": "Amount",
+        "priority": 5,
+        "properties": {
+          "assertion_type": "BUSINESS_CONCEPT",
+          "candidate_confidence": 0.3,
+          "candidate_evidence": [
+            {
+              "evidence": "Object name: Amount",
+              "evidence_class": "INFERRED",
+              "extractor": "name_interpretation",
+              "source": "object_name",
+              "status": "candidate",
+              "target": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/column:44444444-4444-4444-4444-444444444444"
+            }
+          ],
+          "candidate_id": "semantic:candidate:2ac4f71f975f0c4d7c144b74e77b226f",
+          "candidate_source": "object_name",
+          "confidence": 0.3,
+          "evidence": [
+            {
+              "evidence": "Object name: Amount",
+              "evidence_class": "INFERRED",
+              "extractor": "name_interpretation",
+              "source": "object_name",
+              "status": "candidate",
+              "target": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/column:44444444-4444-4444-4444-444444444444"
+            }
+          ],
+          "meaning": "Amount",
+          "priority": 5,
+          "source_fingerprint": "3edba159add4c1a5bdf9e580e86dc55509c278cc4f4f11e389d2e4377592f257",
+          "source_hash": "3edba159add4c1a5bdf9e580e86dc55509c278cc4f4f11e389d2e4377592f257"
+        },
+        "report_id": null,
+        "source": "object_name",
+        "source_fingerprint": "3edba159add4c1a5bdf9e580e86dc55509c278cc4f4f11e389d2e4377592f257",
+        "source_hash": "3edba159add4c1a5bdf9e580e86dc55509c278cc4f4f11e389d2e4377592f257",
+        "source_id": "bf8be0777c7b38dfae01bc3f63a8b0a6",
+        "status": "candidate",
+        "type": "BUSINESS_CONCEPT"
+      },
+      "model_id": "model:11111111-1111-1111-1111-111111111111",
+      "object_id": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/column:44444444-4444-4444-4444-444444444444",
+      "object_type": "COLUMN",
+      "reason": "Only the name “Amount” supports this meaning; no description confirms it.",
+      "report_id": null,
+      "review_id": "semantic:business-concept:bf8be0777c7b38dfae01bc3f63a8b0a6",
+      "source": "object_name",
+      "status": "candidate",
+      "target_id": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/column:44444444-4444-4444-4444-444444444444",
+      "type": "BUSINESS_CONCEPT",
+      "value": "Amount"
+    },
+    {
+      "assertion_type": "BUSINESS_CONCEPT",
+      "candidate_id": "semantic:candidate:67e3ebc745ac0000ba57cea3d2e17275",
+      "confidence": 0.3,
+      "evidence": [
+        {
+          "evidence": "Object name: Gross Sales",
+          "evidence_class": "INFERRED",
+          "extractor": "name_interpretation",
+          "source": "object_name",
+          "status": "candidate",
+          "target": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/measure:88888888-8888-8888-8888-888888888888"
+        }
+      ],
+      "evidence_class": "INFERRED",
+      "id": "semantic:business-concept:c129d115955092a9fac23da0b6d3ae6a",
+      "impact": "high",
+      "issue_type": "candidate",
+      "item": {
+        "assertion_type": "BUSINESS_CONCEPT",
+        "candidate_confidence": 0.3,
+        "candidate_evidence": [
+          {
+            "evidence": "Object name: Gross Sales",
+            "evidence_class": "INFERRED",
+            "extractor": "name_interpretation",
+            "source": "object_name",
+            "status": "candidate",
+            "target": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/measure:88888888-8888-8888-8888-888888888888"
+          }
+        ],
+        "candidate_id": "semantic:candidate:67e3ebc745ac0000ba57cea3d2e17275",
+        "candidate_source": "object_name",
+        "confidence": 0.3,
+        "description": "Gross Sales",
+        "evidence": [
+          {
+            "evidence": "Object name: Gross Sales",
+            "evidence_class": "INFERRED",
+            "extractor": "name_interpretation",
+            "source": "object_name",
+            "status": "candidate",
+            "target": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/measure:88888888-8888-8888-8888-888888888888"
+          }
+        ],
+        "id": "semantic:business-concept:c129d115955092a9fac23da0b6d3ae6a",
+        "meaning": "Gross Sales",
+        "model_id": "model:11111111-1111-1111-1111-111111111111",
+        "name": "Gross Sales",
+        "priority": 5,
+        "properties": {
+          "assertion_type": "BUSINESS_CONCEPT",
+          "candidate_confidence": 0.3,
+          "candidate_evidence": [
+            {
+              "evidence": "Object name: Gross Sales",
+              "evidence_class": "INFERRED",
+              "extractor": "name_interpretation",
+              "source": "object_name",
+              "status": "candidate",
+              "target": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/measure:88888888-8888-8888-8888-888888888888"
+            }
+          ],
+          "candidate_id": "semantic:candidate:67e3ebc745ac0000ba57cea3d2e17275",
+          "candidate_source": "object_name",
+          "confidence": 0.3,
+          "evidence": [
+            {
+              "evidence": "Object name: Gross Sales",
+              "evidence_class": "INFERRED",
+              "extractor": "name_interpretation",
+              "source": "object_name",
+              "status": "candidate",
+              "target": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/measure:88888888-8888-8888-8888-888888888888"
+            }
+          ],
+          "meaning": "Gross Sales",
+          "priority": 5,
+          "source_fingerprint": "f03a7a6744043a19ce569f55b60ff73d791c5700a408ab63b3bc7179501e8a4c",
+          "source_hash": "f03a7a6744043a19ce569f55b60ff73d791c5700a408ab63b3bc7179501e8a4c"
+        },
+        "report_id": null,
+        "source": "object_name",
+        "source_fingerprint": "f03a7a6744043a19ce569f55b60ff73d791c5700a408ab63b3bc7179501e8a4c",
+        "source_hash": "f03a7a6744043a19ce569f55b60ff73d791c5700a408ab63b3bc7179501e8a4c",
+        "source_id": "c129d115955092a9fac23da0b6d3ae6a",
+        "status": "candidate",
+        "type": "BUSINESS_CONCEPT"
+      },
+      "model_id": "model:11111111-1111-1111-1111-111111111111",
+      "object_id": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/measure:88888888-8888-8888-8888-888888888888",
+      "object_type": "MEASURE",
+      "reason": "Only the name “Gross Sales” supports this meaning; no description confirms it.",
+      "report_id": null,
+      "review_id": "semantic:business-concept:c129d115955092a9fac23da0b6d3ae6a",
+      "source": "object_name",
+      "status": "candidate",
+      "target_id": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/measure:88888888-8888-8888-8888-888888888888",
+      "type": "BUSINESS_CONCEPT",
+      "value": "Gross Sales"
+    },
+    {
+      "assertion_type": "BUSINESS_CONCEPT",
+      "candidate_id": "semantic:candidate:d4a6998ea2020f9f579e54a292d385f1",
+      "confidence": 0.3,
+      "evidence": [
+        {
+          "evidence": "Object name: Date",
+          "evidence_class": "INFERRED",
+          "extractor": "name_interpretation",
+          "source": "object_name",
+          "status": "candidate",
+          "target": "model:11111111-1111-1111-1111-111111111111/table:33333333-3333-3333-3333-333333333333"
+        }
+      ],
+      "evidence_class": "INFERRED",
+      "id": "semantic:business-concept:e9a1b6946539eafb0979c6151fc2848d",
+      "impact": "high",
+      "issue_type": "candidate",
+      "item": {
+        "assertion_type": "BUSINESS_CONCEPT",
+        "candidate_confidence": 0.3,
+        "candidate_evidence": [
+          {
+            "evidence": "Object name: Date",
+            "evidence_class": "INFERRED",
+            "extractor": "name_interpretation",
+            "source": "object_name",
+            "status": "candidate",
+            "target": "model:11111111-1111-1111-1111-111111111111/table:33333333-3333-3333-3333-333333333333"
+          }
+        ],
+        "candidate_id": "semantic:candidate:d4a6998ea2020f9f579e54a292d385f1",
+        "candidate_source": "object_name",
+        "confidence": 0.3,
+        "description": "Date",
+        "evidence": [
+          {
+            "evidence": "Object name: Date",
+            "evidence_class": "INFERRED",
+            "extractor": "name_interpretation",
+            "source": "object_name",
+            "status": "candidate",
+            "target": "model:11111111-1111-1111-1111-111111111111/table:33333333-3333-3333-3333-333333333333"
+          }
+        ],
+        "id": "semantic:business-concept:e9a1b6946539eafb0979c6151fc2848d",
+        "meaning": "Date",
+        "model_id": "model:11111111-1111-1111-1111-111111111111",
+        "name": "Date",
+        "priority": 5,
+        "properties": {
+          "assertion_type": "BUSINESS_CONCEPT",
+          "candidate_confidence": 0.3,
+          "candidate_evidence": [
+            {
+              "evidence": "Object name: Date",
+              "evidence_class": "INFERRED",
+              "extractor": "name_interpretation",
+              "source": "object_name",
+              "status": "candidate",
+              "target": "model:11111111-1111-1111-1111-111111111111/table:33333333-3333-3333-3333-333333333333"
+            }
+          ],
+          "candidate_id": "semantic:candidate:d4a6998ea2020f9f579e54a292d385f1",
+          "candidate_source": "object_name",
+          "confidence": 0.3,
+          "evidence": [
+            {
+              "evidence": "Object name: Date",
+              "evidence_class": "INFERRED",
+              "extractor": "name_interpretation",
+              "source": "object_name",
+              "status": "candidate",
+              "target": "model:11111111-1111-1111-1111-111111111111/table:33333333-3333-3333-3333-333333333333"
+            }
+          ],
+          "meaning": "Date",
+          "priority": 5,
+          "source_fingerprint": "b1dcca5ca36afd5d81116b60f596a49cdcfd0f92b47d074f32264ac96fc67a63",
+          "source_hash": "b1dcca5ca36afd5d81116b60f596a49cdcfd0f92b47d074f32264ac96fc67a63"
+        },
+        "report_id": null,
+        "source": "object_name",
+        "source_fingerprint": "b1dcca5ca36afd5d81116b60f596a49cdcfd0f92b47d074f32264ac96fc67a63",
+        "source_hash": "b1dcca5ca36afd5d81116b60f596a49cdcfd0f92b47d074f32264ac96fc67a63",
+        "source_id": "e9a1b6946539eafb0979c6151fc2848d",
+        "status": "candidate",
+        "type": "BUSINESS_CONCEPT"
+      },
+      "model_id": "model:11111111-1111-1111-1111-111111111111",
+      "object_id": "model:11111111-1111-1111-1111-111111111111/table:33333333-3333-3333-3333-333333333333",
+      "object_type": "TABLE",
+      "reason": "Only the name “Date” supports this meaning; no description confirms it.",
+      "report_id": null,
+      "review_id": "semantic:business-concept:e9a1b6946539eafb0979c6151fc2848d",
+      "source": "object_name",
+      "status": "candidate",
+      "target_id": "model:11111111-1111-1111-1111-111111111111/table:33333333-3333-3333-3333-333333333333",
+      "type": "BUSINESS_CONCEPT",
+      "value": "Date"
+    }
+  ],
+  "scan": {
+    "last_scan": "2026-09-30T01:01:32.274059+02:00",
+    "state": "ready"
+  },
+  "semantic_candidates": [
+    {
+      "confidence": 0.3,
+      "edge_id": "edge:semantic:dfee6a08424df95b260720dfc327a2c7",
+      "edge_type": "SEMANTICALLY_MAPS_TO",
+      "evidence": [
+        {
+          "evidence": "Object name: Amount",
+          "evidence_class": "INFERRED",
+          "extractor": "name_interpretation",
+          "source": "object_name",
+          "status": "candidate",
+          "target": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/column:44444444-4444-4444-4444-444444444444"
+        }
+      ],
+      "evidence_class": "INFERRED",
+      "id": "semantic:candidate:2ac4f71f975f0c4d7c144b74e77b226f",
+      "meaning": "Amount",
+      "model_id": "model:11111111-1111-1111-1111-111111111111",
+      "properties": {
+        "assertion_type": "BUSINESS_CONCEPT",
+        "candidate_id": "semantic:candidate:2ac4f71f975f0c4d7c144b74e77b226f",
+        "candidate_source": "object_name",
+        "priority": 5,
+        "value": "Amount"
+      },
+      "report_id": null,
+      "source": "semantic_inference",
+      "status": "candidate",
+      "target": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/column:44444444-4444-4444-4444-444444444444",
+      "target_id": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/column:44444444-4444-4444-4444-444444444444",
+      "type": "BUSINESS_CONCEPT",
+      "value": "Amount"
+    },
+    {
+      "confidence": 0.3,
+      "edge_id": "edge:semantic:717b755b4c74468d87fb258760c8e5d1",
+      "edge_type": "SEMANTICALLY_MAPS_TO",
+      "evidence": [
+        {
+          "evidence": "Object name: DateKey",
+          "evidence_class": "INFERRED",
+          "extractor": "name_interpretation",
+          "source": "object_name",
+          "status": "candidate",
+          "target": "model:11111111-1111-1111-1111-111111111111/table:33333333-3333-3333-3333-333333333333/column:66666666-6666-6666-6666-666666666666"
+        }
+      ],
+      "evidence_class": "INFERRED",
+      "id": "semantic:candidate:37b830d447b6246c03b191d95a1c28f5",
+      "meaning": "DateKey",
+      "model_id": "model:11111111-1111-1111-1111-111111111111",
+      "properties": {
+        "assertion_type": "BUSINESS_CONCEPT",
+        "candidate_id": "semantic:candidate:37b830d447b6246c03b191d95a1c28f5",
+        "candidate_source": "object_name",
+        "priority": 5,
+        "value": "DateKey"
+      },
+      "report_id": null,
+      "source": "semantic_inference",
+      "status": "candidate",
+      "target": "model:11111111-1111-1111-1111-111111111111/table:33333333-3333-3333-3333-333333333333/column:66666666-6666-6666-6666-666666666666",
+      "target_id": "model:11111111-1111-1111-1111-111111111111/table:33333333-3333-3333-3333-333333333333/column:66666666-6666-6666-6666-666666666666",
+      "type": "BUSINESS_CONCEPT",
+      "value": "DateKey"
+    },
+    {
+      "confidence": 0.3,
+      "edge_id": "edge:semantic:84ed57ddcebde21efabb3a7f7492a2f1",
+      "edge_type": "SEMANTICALLY_MAPS_TO",
+      "evidence": [
+        {
+          "evidence": "Object name: Gross Sales",
+          "evidence_class": "INFERRED",
+          "extractor": "name_interpretation",
+          "source": "object_name",
+          "status": "candidate",
+          "target": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/measure:88888888-8888-8888-8888-888888888888"
+        }
+      ],
+      "evidence_class": "INFERRED",
+      "id": "semantic:candidate:67e3ebc745ac0000ba57cea3d2e17275",
+      "meaning": "Gross Sales",
+      "model_id": "model:11111111-1111-1111-1111-111111111111",
+      "properties": {
+        "assertion_type": "BUSINESS_CONCEPT",
+        "candidate_id": "semantic:candidate:67e3ebc745ac0000ba57cea3d2e17275",
+        "candidate_source": "object_name",
+        "priority": 5,
+        "value": "Gross Sales"
+      },
+      "report_id": null,
+      "source": "semantic_inference",
+      "status": "candidate",
+      "target": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/measure:88888888-8888-8888-8888-888888888888",
+      "target_id": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/measure:88888888-8888-8888-8888-888888888888",
+      "type": "BUSINESS_CONCEPT",
+      "value": "Gross Sales"
+    },
+    {
+      "confidence": 0.3,
+      "edge_id": "edge:semantic:e06777fb67af29fe58d4ea3d2e026867",
+      "edge_type": "SEMANTICALLY_MAPS_TO",
+      "evidence": [
+        {
+          "evidence": "Object name: Net Sales",
+          "evidence_class": "INFERRED",
+          "extractor": "name_interpretation",
+          "source": "object_name",
+          "status": "candidate",
+          "target": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/measure:77777777-7777-7777-7777-777777777777"
+        }
+      ],
+      "evidence_class": "INFERRED",
+      "id": "semantic:candidate:8c14fce66476105909b9963bb34227ef",
+      "meaning": "Net Sales",
+      "model_id": "model:11111111-1111-1111-1111-111111111111",
+      "properties": {
+        "assertion_type": "BUSINESS_CONCEPT",
+        "candidate_id": "semantic:candidate:8c14fce66476105909b9963bb34227ef",
+        "candidate_source": "object_name",
+        "priority": 5,
+        "value": "Net Sales"
+      },
+      "report_id": null,
+      "source": "semantic_inference",
+      "status": "candidate",
+      "target": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/measure:77777777-7777-7777-7777-777777777777",
+      "target_id": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/measure:77777777-7777-7777-7777-777777777777",
+      "type": "BUSINESS_CONCEPT",
+      "value": "Net Sales"
+    },
+    {
+      "confidence": 0.3,
+      "edge_id": "edge:semantic:23e32802034d0ac3e7f2ab4ff1d39733",
+      "edge_type": "SEMANTICALLY_MAPS_TO",
+      "evidence": [
+        {
+          "evidence": "Object name: FinanceModel",
+          "evidence_class": "INFERRED",
+          "extractor": "name_interpretation",
+          "source": "object_name",
+          "status": "candidate",
+          "target": "model:11111111-1111-1111-1111-111111111111"
+        }
+      ],
+      "evidence_class": "INFERRED",
+      "id": "semantic:candidate:a7d3ff47bd3a4c76b3bb6a46682180b8",
+      "meaning": "FinanceModel",
+      "model_id": null,
+      "properties": {
+        "assertion_type": "BUSINESS_CONCEPT",
+        "candidate_id": "semantic:candidate:a7d3ff47bd3a4c76b3bb6a46682180b8",
+        "candidate_source": "object_name",
+        "priority": 5,
+        "value": "FinanceModel"
+      },
+      "report_id": null,
+      "source": "semantic_inference",
+      "status": "candidate",
+      "target": "model:11111111-1111-1111-1111-111111111111",
+      "target_id": "model:11111111-1111-1111-1111-111111111111",
+      "type": "BUSINESS_CONCEPT",
+      "value": "FinanceModel"
+    },
+    {
+      "confidence": 0.3,
+      "edge_id": "edge:semantic:3260f425df0fabc591ee1c9e9b646c59",
+      "edge_type": "SEMANTICALLY_MAPS_TO",
+      "evidence": [
+        {
+          "evidence": "Object name: Sales",
+          "evidence_class": "INFERRED",
+          "extractor": "name_interpretation",
+          "source": "object_name",
+          "status": "candidate",
+          "target": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222"
+        }
+      ],
+      "evidence_class": "INFERRED",
+      "id": "semantic:candidate:c0afd4fdce7d4289897369cf17a47c1f",
+      "meaning": "Sales",
+      "model_id": "model:11111111-1111-1111-1111-111111111111",
+      "properties": {
+        "assertion_type": "BUSINESS_CONCEPT",
+        "candidate_id": "semantic:candidate:c0afd4fdce7d4289897369cf17a47c1f",
+        "candidate_source": "object_name",
+        "priority": 5,
+        "value": "Sales"
+      },
+      "report_id": null,
+      "source": "semantic_inference",
+      "status": "candidate",
+      "target": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222",
+      "target_id": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222",
+      "type": "BUSINESS_CONCEPT",
+      "value": "Sales"
+    },
+    {
+      "confidence": 0.3,
+      "edge_id": "edge:semantic:3f3c01bc93b5c941d25bd5afa23ad109",
+      "edge_type": "SEMANTICALLY_MAPS_TO",
+      "evidence": [
+        {
+          "evidence": "Object name: Date",
+          "evidence_class": "INFERRED",
+          "extractor": "name_interpretation",
+          "source": "object_name",
+          "status": "candidate",
+          "target": "model:11111111-1111-1111-1111-111111111111/table:33333333-3333-3333-3333-333333333333"
+        }
+      ],
+      "evidence_class": "INFERRED",
+      "id": "semantic:candidate:d4a6998ea2020f9f579e54a292d385f1",
+      "meaning": "Date",
+      "model_id": "model:11111111-1111-1111-1111-111111111111",
+      "properties": {
+        "assertion_type": "BUSINESS_CONCEPT",
+        "candidate_id": "semantic:candidate:d4a6998ea2020f9f579e54a292d385f1",
+        "candidate_source": "object_name",
+        "priority": 5,
+        "value": "Date"
+      },
+      "report_id": null,
+      "source": "semantic_inference",
+      "status": "candidate",
+      "target": "model:11111111-1111-1111-1111-111111111111/table:33333333-3333-3333-3333-333333333333",
+      "target_id": "model:11111111-1111-1111-1111-111111111111/table:33333333-3333-3333-3333-333333333333",
+      "type": "BUSINESS_CONCEPT",
+      "value": "Date"
+    },
+    {
+      "confidence": 0.3,
+      "edge_id": "edge:semantic:11f6ac0e1bf08048a2e2bef1a8b3c1bc",
+      "edge_type": "SEMANTICALLY_MAPS_TO",
+      "evidence": [
+        {
+          "evidence": "Object name: DateKey",
+          "evidence_class": "INFERRED",
+          "extractor": "name_interpretation",
+          "source": "object_name",
+          "status": "candidate",
+          "target": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/column:55555555-5555-5555-5555-555555555555"
+        }
+      ],
+      "evidence_class": "INFERRED",
+      "id": "semantic:candidate:e3a8d731103c5e5f56eb90f8ea4a6ad6",
+      "meaning": "DateKey",
+      "model_id": "model:11111111-1111-1111-1111-111111111111",
+      "properties": {
+        "assertion_type": "BUSINESS_CONCEPT",
+        "candidate_id": "semantic:candidate:e3a8d731103c5e5f56eb90f8ea4a6ad6",
+        "candidate_source": "object_name",
+        "priority": 5,
+        "value": "DateKey"
+      },
+      "report_id": null,
+      "source": "semantic_inference",
+      "status": "candidate",
+      "target": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/column:55555555-5555-5555-5555-555555555555",
+      "target_id": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/column:55555555-5555-5555-5555-555555555555",
+      "type": "BUSINESS_CONCEPT",
+      "value": "DateKey"
+    }
+  ],
+  "stale_overrides": [],
+  "validation": {
+    "checked": true,
+    "counts": {
+      "blocking": 0,
+      "error": 0,
+      "info": 0,
+      "warning": 0
+    },
+    "evidence": [],
+    "issues": [],
+    "state": "valid",
+    "status": "valid",
+    "valid": true
+  }
+}

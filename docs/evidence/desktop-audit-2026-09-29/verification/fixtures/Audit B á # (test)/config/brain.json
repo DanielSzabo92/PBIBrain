@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "name": "Audit B á # (test)",
+  "sources": [
+    "../Finance.pbip"
+  ],
+  "database": "../.pbibrain/brain.lbug",
+  "identity_map": "../.pbibrain/identity.json"
+}

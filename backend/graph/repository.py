@@ -52,7 +52,7 @@ class GraphRepository:
             message = "LadybugDB is required for the production graph repository"
             if detail:
                 message += f": {detail}"
-            message += "; pass use_native=False only for an explicit test double"
+            message += "; close other PBIBrain sessions and check that the project folder is writable. For Unicode folders on Windows, use the current packaged PBIBrain desktop or agent (UTF-8 runtime)."
             raise RuntimeError(message)
 
     @property

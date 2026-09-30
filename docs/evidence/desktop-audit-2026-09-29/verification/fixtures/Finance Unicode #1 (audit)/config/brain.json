@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "name": "Finance Unicode #1",
+  "sources": [
+    "../Finance.pbip"
+  ],
+  "database": "../.pbibrain/brain.lbug",
+  "identity_map": "../.pbibrain/identity.json"
+}

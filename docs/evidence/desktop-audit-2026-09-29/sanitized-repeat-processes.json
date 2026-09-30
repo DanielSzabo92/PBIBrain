@@ -1,0 +1,6 @@
+{
+  "Name": "msedgewebview2.exe",
+  "ProcessId": 37860,
+  "ParentProcessId": 29756,
+  "CommandLine": "\"C:\\Program Files (x86)\\Microsoft\\EdgeWebView\\Application\\154.0.4258.37\\msedgewebview2.exe\" --embedded-browser-webview=1 --webview-exe-name=PBIBrain.exe --user-data-dir=\"C:\\Users\\Daniel\\AppData\\Local\\Temp\\tmp2yyedj5w\\EBWebView\" --noerrdialogs --embedded-browser-webview-dpi-awareness=1 --allow-file-access-from-files --disable-features=ElasticOverscroll --mojo-named-platform-channel-pipe=29756.8164.9560039032569178628 /pfhostedapp:8dca82d4c8da30063199d6e7b1513e73b64edca9"
+}

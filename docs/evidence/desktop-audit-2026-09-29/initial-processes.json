@@ -1,0 +1,16 @@
+[
+  {
+    "ProcessId": 13848,
+    "ParentProcessId": 6232,
+    "Name": "PBIBrain.exe",
+    "ExecutablePath": "C:\\Users\\Daniel\\AppData\\Local\\Programs\\PBIBrain\\PBIBrain.exe",
+    "CommandLine": "\"C:\\Users\\Daniel\\AppData\\Local\\Programs\\PBIBrain\\PBIBrain.exe\" "
+  },
+  {
+    "ProcessId": 1884,
+    "ParentProcessId": 13848,
+    "Name": "msedgewebview2.exe",
+    "ExecutablePath": "C:\\Program Files (x86)\\Microsoft\\EdgeWebView\\Application\\154.0.4258.37\\msedgewebview2.exe",
+    "CommandLine": "\"C:\\Program Files (x86)\\Microsoft\\EdgeWebView\\Application\\154.0.4258.37\\msedgewebview2.exe\" --embedded-browser-webview=1 --webview-exe-name=PBIBrain.exe --user-data-dir=\"C:\\Users\\Daniel\\AppData\\Local\\Temp\\tmphpic93if\\EBWebView\" --noerrdialogs --embedded-browser-webview-dpi-awareness=1 --allow-file-access-from-files --disable-features=ElasticOverscroll --mojo-named-platform-channel-pipe=13848.29276.10031036698483213119 /pfhostedapp:b4a99f9aedc3e86c6eed34417ee249e43de98272"
+  }
+]

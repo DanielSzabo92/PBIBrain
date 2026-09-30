@@ -1,0 +1,621 @@
+[
+  {
+    "assertion_type": "BUSINESS_CONCEPT",
+    "candidate_id": "semantic:candidate:e3a8d731103c5e5f56eb90f8ea4a6ad6",
+    "confidence": 0.3,
+    "evidence": [
+      {
+        "evidence": "Object name: DateKey",
+        "evidence_class": "INFERRED",
+        "extractor": "name_interpretation",
+        "source": "object_name",
+        "status": "candidate",
+        "target": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/column:55555555-5555-5555-5555-555555555555"
+      }
+    ],
+    "evidence_class": "INFERRED",
+    "id": "edge:semantic:11f6ac0e1bf08048a2e2bef1a8b3c1bc",
+    "impact": "high",
+    "issue_type": "candidate",
+    "item": {
+      "confidence": 0.3,
+      "evidence": [
+        {
+          "evidence": "Object name: DateKey",
+          "evidence_class": "INFERRED",
+          "extractor": "name_interpretation",
+          "source": "object_name",
+          "status": "candidate",
+          "target": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/column:55555555-5555-5555-5555-555555555555"
+        }
+      ],
+      "evidence_class": "INFERRED",
+      "from_id": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/column:55555555-5555-5555-5555-555555555555",
+      "id": "edge:semantic:11f6ac0e1bf08048a2e2bef1a8b3c1bc",
+      "properties": {
+        "assertion_type": "BUSINESS_CONCEPT",
+        "candidate_id": "semantic:candidate:e3a8d731103c5e5f56eb90f8ea4a6ad6",
+        "candidate_source": "object_name",
+        "priority": 5,
+        "value": "DateKey"
+      },
+      "source": "semantic_inference",
+      "status": "candidate",
+      "to_id": "semantic:business-concept:5c841239c25046033f76df275dbc2455",
+      "type": "SEMANTICALLY_MAPS_TO"
+    },
+    "model_id": "model:11111111-1111-1111-1111-111111111111",
+    "object_id": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/column:55555555-5555-5555-5555-555555555555",
+    "object_type": "COLUMN",
+    "reason": "Only the name “DateKey” supports this meaning; no description confirms it.",
+    "report_id": null,
+    "review_id": "edge:semantic:11f6ac0e1bf08048a2e2bef1a8b3c1bc",
+    "source": "semantic_inference",
+    "status": "candidate",
+    "target_id": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/column:55555555-5555-5555-5555-555555555555",
+    "type": "SEMANTICALLY_MAPS_TO",
+    "value": "DateKey"
+  },
+  {
+    "assertion_type": "BUSINESS_CONCEPT",
+    "candidate_id": "semantic:candidate:37b830d447b6246c03b191d95a1c28f5",
+    "confidence": 0.3,
+    "evidence": [
+      {
+        "evidence": "Object name: DateKey",
+        "evidence_class": "INFERRED",
+        "extractor": "name_interpretation",
+        "source": "object_name",
+        "status": "candidate",
+        "target": "model:11111111-1111-1111-1111-111111111111/table:33333333-3333-3333-3333-333333333333/column:66666666-6666-6666-6666-666666666666"
+      }
+    ],
+    "evidence_class": "INFERRED",
+    "id": "edge:semantic:717b755b4c74468d87fb258760c8e5d1",
+    "impact": "high",
+    "issue_type": "candidate",
+    "item": {
+      "confidence": 0.3,
+      "evidence": [
+        {
+          "evidence": "Object name: DateKey",
+          "evidence_class": "INFERRED",
+          "extractor": "name_interpretation",
+          "source": "object_name",
+          "status": "candidate",
+          "target": "model:11111111-1111-1111-1111-111111111111/table:33333333-3333-3333-3333-333333333333/column:66666666-6666-6666-6666-666666666666"
+        }
+      ],
+      "evidence_class": "INFERRED",
+      "from_id": "model:11111111-1111-1111-1111-111111111111/table:33333333-3333-3333-3333-333333333333/column:66666666-6666-6666-6666-666666666666",
+      "id": "edge:semantic:717b755b4c74468d87fb258760c8e5d1",
+      "properties": {
+        "assertion_type": "BUSINESS_CONCEPT",
+        "candidate_id": "semantic:candidate:37b830d447b6246c03b191d95a1c28f5",
+        "candidate_source": "object_name",
+        "priority": 5,
+        "value": "DateKey"
+      },
+      "source": "semantic_inference",
+      "status": "candidate",
+      "to_id": "semantic:business-concept:5c841239c25046033f76df275dbc2455",
+      "type": "SEMANTICALLY_MAPS_TO"
+    },
+    "model_id": "model:11111111-1111-1111-1111-111111111111",
+    "object_id": "model:11111111-1111-1111-1111-111111111111/table:33333333-3333-3333-3333-333333333333/column:66666666-6666-6666-6666-666666666666",
+    "object_type": "COLUMN",
+    "reason": "Only the name “DateKey” supports this meaning; no description confirms it.",
+    "report_id": null,
+    "review_id": "edge:semantic:717b755b4c74468d87fb258760c8e5d1",
+    "source": "semantic_inference",
+    "status": "candidate",
+    "target_id": "model:11111111-1111-1111-1111-111111111111/table:33333333-3333-3333-3333-333333333333/column:66666666-6666-6666-6666-666666666666",
+    "type": "SEMANTICALLY_MAPS_TO",
+    "value": "DateKey"
+  },
+  {
+    "assertion_type": "BUSINESS_CONCEPT",
+    "candidate_id": "semantic:candidate:c0afd4fdce7d4289897369cf17a47c1f",
+    "confidence": 0.3,
+    "evidence": [
+      {
+        "evidence": "Object name: Sales",
+        "evidence_class": "INFERRED",
+        "extractor": "name_interpretation",
+        "source": "object_name",
+        "status": "candidate",
+        "target": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222"
+      }
+    ],
+    "evidence_class": "INFERRED",
+    "id": "semantic:business-concept:1c239a8ac4a447efcf1db26d4825bfa6",
+    "impact": "high",
+    "issue_type": "candidate",
+    "item": {
+      "assertion_type": "BUSINESS_CONCEPT",
+      "candidate_confidence": 0.3,
+      "candidate_evidence": [
+        {
+          "evidence": "Object name: Sales",
+          "evidence_class": "INFERRED",
+          "extractor": "name_interpretation",
+          "source": "object_name",
+          "status": "candidate",
+          "target": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222"
+        }
+      ],
+      "candidate_id": "semantic:candidate:c0afd4fdce7d4289897369cf17a47c1f",
+      "candidate_source": "object_name",
+      "confidence": 0.3,
+      "description": "Sales",
+      "evidence": [
+        {
+          "evidence": "Object name: Sales",
+          "evidence_class": "INFERRED",
+          "extractor": "name_interpretation",
+          "source": "object_name",
+          "status": "candidate",
+          "target": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222"
+        }
+      ],
+      "id": "semantic:business-concept:1c239a8ac4a447efcf1db26d4825bfa6",
+      "meaning": "Sales",
+      "model_id": "model:11111111-1111-1111-1111-111111111111",
+      "name": "Sales",
+      "priority": 5,
+      "properties": {
+        "assertion_type": "BUSINESS_CONCEPT",
+        "candidate_confidence": 0.3,
+        "candidate_evidence": [
+          {
+            "evidence": "Object name: Sales",
+            "evidence_class": "INFERRED",
+            "extractor": "name_interpretation",
+            "source": "object_name",
+            "status": "candidate",
+            "target": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222"
+          }
+        ],
+        "candidate_id": "semantic:candidate:c0afd4fdce7d4289897369cf17a47c1f",
+        "candidate_source": "object_name",
+        "confidence": 0.3,
+        "evidence": [
+          {
+            "evidence": "Object name: Sales",
+            "evidence_class": "INFERRED",
+            "extractor": "name_interpretation",
+            "source": "object_name",
+            "status": "candidate",
+            "target": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222"
+          }
+        ],
+        "meaning": "Sales",
+        "priority": 5,
+        "source_fingerprint": "42f846c0c3140d9ae22f0206ef64e0d5efb205d7aaa5bac4686d037edfdbb7f9",
+        "source_hash": "42f846c0c3140d9ae22f0206ef64e0d5efb205d7aaa5bac4686d037edfdbb7f9"
+      },
+      "report_id": null,
+      "source": "object_name",
+      "source_fingerprint": "42f846c0c3140d9ae22f0206ef64e0d5efb205d7aaa5bac4686d037edfdbb7f9",
+      "source_hash": "42f846c0c3140d9ae22f0206ef64e0d5efb205d7aaa5bac4686d037edfdbb7f9",
+      "source_id": "1c239a8ac4a447efcf1db26d4825bfa6",
+      "status": "candidate",
+      "type": "BUSINESS_CONCEPT"
+    },
+    "model_id": "model:11111111-1111-1111-1111-111111111111",
+    "object_id": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222",
+    "object_type": "TABLE",
+    "reason": "Only the name “Sales” supports this meaning; no description confirms it.",
+    "report_id": null,
+    "review_id": "semantic:business-concept:1c239a8ac4a447efcf1db26d4825bfa6",
+    "source": "object_name",
+    "status": "candidate",
+    "target_id": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222",
+    "type": "BUSINESS_CONCEPT",
+    "value": "Sales"
+  },
+  {
+    "assertion_type": "BUSINESS_CONCEPT",
+    "candidate_id": "semantic:candidate:a7d3ff47bd3a4c76b3bb6a46682180b8",
+    "confidence": 0.3,
+    "evidence": [
+      {
+        "evidence": "Object name: FinanceModel",
+        "evidence_class": "INFERRED",
+        "extractor": "name_interpretation",
+        "source": "object_name",
+        "status": "candidate",
+        "target": "model:11111111-1111-1111-1111-111111111111"
+      }
+    ],
+    "evidence_class": "INFERRED",
+    "id": "semantic:business-concept:2fce5ce5bc0bac8099418b27f60cd6d9",
+    "impact": "high",
+    "issue_type": "candidate",
+    "item": {
+      "assertion_type": "BUSINESS_CONCEPT",
+      "candidate_confidence": 0.3,
+      "candidate_evidence": [
+        {
+          "evidence": "Object name: FinanceModel",
+          "evidence_class": "INFERRED",
+          "extractor": "name_interpretation",
+          "source": "object_name",
+          "status": "candidate",
+          "target": "model:11111111-1111-1111-1111-111111111111"
+        }
+      ],
+      "candidate_id": "semantic:candidate:a7d3ff47bd3a4c76b3bb6a46682180b8",
+      "candidate_source": "object_name",
+      "confidence": 0.3,
+      "description": "FinanceModel",
+      "evidence": [
+        {
+          "evidence": "Object name: FinanceModel",
+          "evidence_class": "INFERRED",
+          "extractor": "name_interpretation",
+          "source": "object_name",
+          "status": "candidate",
+          "target": "model:11111111-1111-1111-1111-111111111111"
+        }
+      ],
+      "id": "semantic:business-concept:2fce5ce5bc0bac8099418b27f60cd6d9",
+      "meaning": "FinanceModel",
+      "model_id": null,
+      "name": "FinanceModel",
+      "priority": 5,
+      "properties": {
+        "assertion_type": "BUSINESS_CONCEPT",
+        "candidate_confidence": 0.3,
+        "candidate_evidence": [
+          {
+            "evidence": "Object name: FinanceModel",
+            "evidence_class": "INFERRED",
+            "extractor": "name_interpretation",
+            "source": "object_name",
+            "status": "candidate",
+            "target": "model:11111111-1111-1111-1111-111111111111"
+          }
+        ],
+        "candidate_id": "semantic:candidate:a7d3ff47bd3a4c76b3bb6a46682180b8",
+        "candidate_source": "object_name",
+        "confidence": 0.3,
+        "evidence": [
+          {
+            "evidence": "Object name: FinanceModel",
+            "evidence_class": "INFERRED",
+            "extractor": "name_interpretation",
+            "source": "object_name",
+            "status": "candidate",
+            "target": "model:11111111-1111-1111-1111-111111111111"
+          }
+        ],
+        "meaning": "FinanceModel",
+        "priority": 5,
+        "source_fingerprint": "9248b28a748fef3579550dacf5098c568933bbe48489819d83ce7d57f37a3ce3",
+        "source_hash": "9248b28a748fef3579550dacf5098c568933bbe48489819d83ce7d57f37a3ce3"
+      },
+      "report_id": null,
+      "source": "object_name",
+      "source_fingerprint": "9248b28a748fef3579550dacf5098c568933bbe48489819d83ce7d57f37a3ce3",
+      "source_hash": "9248b28a748fef3579550dacf5098c568933bbe48489819d83ce7d57f37a3ce3",
+      "source_id": "2fce5ce5bc0bac8099418b27f60cd6d9",
+      "status": "candidate",
+      "type": "BUSINESS_CONCEPT"
+    },
+    "model_id": null,
+    "object_id": "model:11111111-1111-1111-1111-111111111111",
+    "object_type": "MODEL",
+    "reason": "Only the name “FinanceModel” supports this meaning; no description confirms it.",
+    "report_id": null,
+    "review_id": "semantic:business-concept:2fce5ce5bc0bac8099418b27f60cd6d9",
+    "source": "object_name",
+    "status": "candidate",
+    "target_id": "model:11111111-1111-1111-1111-111111111111",
+    "type": "BUSINESS_CONCEPT",
+    "value": "FinanceModel"
+  },
+  {
+    "assertion_type": "BUSINESS_CONCEPT",
+    "candidate_id": "semantic:candidate:8c14fce66476105909b9963bb34227ef",
+    "confidence": 0.3,
+    "evidence": [
+      {
+        "evidence": "Object name: Net Sales",
+        "evidence_class": "INFERRED",
+        "extractor": "name_interpretation",
+        "source": "object_name",
+        "status": "candidate",
+        "target": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/measure:77777777-7777-7777-7777-777777777777"
+      }
+    ],
+    "evidence_class": "INFERRED",
+    "id": "semantic:business-concept:522cab8a63bd3da1fd8e1ff1cdde1baf",
+    "impact": "high",
+    "issue_type": "candidate",
+    "item": {
+      "assertion_type": "BUSINESS_CONCEPT",
+      "candidate_confidence": 0.3,
+      "candidate_evidence": [
+        {
+          "evidence": "Object name: Net Sales",
+          "evidence_class": "INFERRED",
+          "extractor": "name_interpretation",
+          "source": "object_name",
+          "status": "candidate",
+          "target": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/measure:77777777-7777-7777-7777-777777777777"
+        }
+      ],
+      "candidate_id": "semantic:candidate:8c14fce66476105909b9963bb34227ef",
+      "candidate_source": "object_name",
+      "confidence": 0.3,
+      "description": "Net Sales",
+      "evidence": [
+        {
+          "evidence": "Object name: Net Sales",
+          "evidence_class": "INFERRED",
+          "extractor": "name_interpretation",
+          "source": "object_name",
+          "status": "candidate",
+          "target": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/measure:77777777-7777-7777-7777-777777777777"
+        }
+      ],
+      "id": "semantic:business-concept:522cab8a63bd3da1fd8e1ff1cdde1baf",
+      "meaning": "Net Sales",
+      "model_id": "model:11111111-1111-1111-1111-111111111111",
+      "name": "Net Sales",
+      "priority": 5,
+      "properties": {
+        "assertion_type": "BUSINESS_CONCEPT",
+        "candidate_confidence": 0.3,
+        "candidate_evidence": [
+          {
+            "evidence": "Object name: Net Sales",
+            "evidence_class": "INFERRED",
+            "extractor": "name_interpretation",
+            "source": "object_name",
+            "status": "candidate",
+            "target": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/measure:77777777-7777-7777-7777-777777777777"
+          }
+        ],
+        "candidate_id": "semantic:candidate:8c14fce66476105909b9963bb34227ef",
+        "candidate_source": "object_name",
+        "confidence": 0.3,
+        "evidence": [
+          {
+            "evidence": "Object name: Net Sales",
+            "evidence_class": "INFERRED",
+            "extractor": "name_interpretation",
+            "source": "object_name",
+            "status": "candidate",
+            "target": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/measure:77777777-7777-7777-7777-777777777777"
+          }
+        ],
+        "meaning": "Net Sales",
+        "priority": 5,
+        "source_fingerprint": "8bb0fe17f163f1e1691f06b933cbd33b21ac8b520f474ee98072342842a3e090",
+        "source_hash": "8bb0fe17f163f1e1691f06b933cbd33b21ac8b520f474ee98072342842a3e090"
+      },
+      "report_id": null,
+      "source": "object_name",
+      "source_fingerprint": "8bb0fe17f163f1e1691f06b933cbd33b21ac8b520f474ee98072342842a3e090",
+      "source_hash": "8bb0fe17f163f1e1691f06b933cbd33b21ac8b520f474ee98072342842a3e090",
+      "source_id": "522cab8a63bd3da1fd8e1ff1cdde1baf",
+      "status": "candidate",
+      "type": "BUSINESS_CONCEPT"
+    },
+    "model_id": "model:11111111-1111-1111-1111-111111111111",
+    "object_id": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/measure:77777777-7777-7777-7777-777777777777",
+    "object_type": "MEASURE",
+    "reason": "Only the name “Net Sales” supports this meaning; no description confirms it.",
+    "report_id": null,
+    "review_id": "semantic:business-concept:522cab8a63bd3da1fd8e1ff1cdde1baf",
+    "source": "object_name",
+    "status": "candidate",
+    "target_id": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/measure:77777777-7777-7777-7777-777777777777",
+    "type": "BUSINESS_CONCEPT",
+    "value": "Net Sales"
+  },
+  {
+    "assertion_type": "BUSINESS_CONCEPT",
+    "candidate_id": "semantic:candidate:2ac4f71f975f0c4d7c144b74e77b226f",
+    "confidence": 0.3,
+    "evidence": [
+      {
+        "evidence": "Object name: Amount",
+        "evidence_class": "INFERRED",
+        "extractor": "name_interpretation",
+        "source": "object_name",
+        "status": "candidate",
+        "target": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/column:44444444-4444-4444-4444-444444444444"
+      }
+    ],
+    "evidence_class": "INFERRED",
+    "id": "semantic:business-concept:bf8be0777c7b38dfae01bc3f63a8b0a6",
+    "impact": "high",
+    "issue_type": "candidate",
+    "item": {
+      "assertion_type": "BUSINESS_CONCEPT",
+      "candidate_confidence": 0.3,
+      "candidate_evidence": [
+        {
+          "evidence": "Object name: Amount",
+          "evidence_class": "INFERRED",
+          "extractor": "name_interpretation",
+          "source": "object_name",
+          "status": "candidate",
+          "target": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/column:44444444-4444-4444-4444-444444444444"
+        }
+      ],
+      "candidate_id": "semantic:candidate:2ac4f71f975f0c4d7c144b74e77b226f",
+      "candidate_source": "object_name",
+      "confidence": 0.3,
+      "description": "Amount",
+      "evidence": [
+        {
+          "evidence": "Object name: Amount",
+          "evidence_class": "INFERRED",
+          "extractor": "name_interpretation",
+          "source": "object_name",
+          "status": "candidate",
+          "target": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/column:44444444-4444-4444-4444-444444444444"
+        }
+      ],
+      "id": "semantic:business-concept:bf8be0777c7b38dfae01bc3f63a8b0a6",
+      "meaning": "Amount",
+      "model_id": "model:11111111-1111-1111-1111-111111111111",
+      "name": "Amount",
+      "priority": 5,
+      "properties": {
+        "assertion_type": "BUSINESS_CONCEPT",
+        "candidate_confidence": 0.3,
+        "candidate_evidence": [
+          {
+            "evidence": "Object name: Amount",
+            "evidence_class": "INFERRED",
+            "extractor": "name_interpretation",
+            "source": "object_name",
+            "status": "candidate",
+            "target": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/column:44444444-4444-4444-4444-444444444444"
+          }
+        ],
+        "candidate_id": "semantic:candidate:2ac4f71f975f0c4d7c144b74e77b226f",
+        "candidate_source": "object_name",
+        "confidence": 0.3,
+        "evidence": [
+          {
+            "evidence": "Object name: Amount",
+            "evidence_class": "INFERRED",
+            "extractor": "name_interpretation",
+            "source": "object_name",
+            "status": "candidate",
+            "target": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/column:44444444-4444-4444-4444-444444444444"
+          }
+        ],
+        "meaning": "Amount",
+        "priority": 5,
+        "source_fingerprint": "3edba159add4c1a5bdf9e580e86dc55509c278cc4f4f11e389d2e4377592f257",
+        "source_hash": "3edba159add4c1a5bdf9e580e86dc55509c278cc4f4f11e389d2e4377592f257"
+      },
+      "report_id": null,
+      "source": "object_name",
+      "source_fingerprint": "3edba159add4c1a5bdf9e580e86dc55509c278cc4f4f11e389d2e4377592f257",
+      "source_hash": "3edba159add4c1a5bdf9e580e86dc55509c278cc4f4f11e389d2e4377592f257",
+      "source_id": "bf8be0777c7b38dfae01bc3f63a8b0a6",
+      "status": "candidate",
+      "type": "BUSINESS_CONCEPT"
+    },
+    "model_id": "model:11111111-1111-1111-1111-111111111111",
+    "object_id": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/column:44444444-4444-4444-4444-444444444444",
+    "object_type": "COLUMN",
+    "reason": "Only the name “Amount” supports this meaning; no description confirms it.",
+    "report_id": null,
+    "review_id": "semantic:business-concept:bf8be0777c7b38dfae01bc3f63a8b0a6",
+    "source": "object_name",
+    "status": "candidate",
+    "target_id": "model:11111111-1111-1111-1111-111111111111/table:22222222-2222-2222-2222-222222222222/column:44444444-4444-4444-4444-444444444444",
+    "type": "BUSINESS_CONCEPT",
+    "value": "Amount"
+  },
+  {
+    "assertion_type": "BUSINESS_CONCEPT",
+    "candidate_id": "semantic:candidate:d4a6998ea2020f9f579e54a292d385f1",
+    "confidence": 0.3,
+    "evidence": [
+      {
+        "evidence": "Object name: Date",
+        "evidence_class": "INFERRED",
+        "extractor": "name_interpretation",
+        "source": "object_name",
+        "status": "candidate",
+        "target": "model:11111111-1111-1111-1111-111111111111/table:33333333-3333-3333-3333-333333333333"
+      }
+    ],
+    "evidence_class": "INFERRED",
+    "id": "semantic:business-concept:e9a1b6946539eafb0979c6151fc2848d",
+    "impact": "high",
+    "issue_type": "candidate",
+    "item": {
+      "assertion_type": "BUSINESS_CONCEPT",
+      "candidate_confidence": 0.3,
+      "candidate_evidence": [
+        {
+          "evidence": "Object name: Date",
+          "evidence_class": "INFERRED",
+          "extractor": "name_interpretation",
+          "source": "object_name",
+          "status": "candidate",
+          "target": "model:11111111-1111-1111-1111-111111111111/table:33333333-3333-3333-3333-333333333333"
+        }
+      ],
+      "candidate_id": "semantic:candidate:d4a6998ea2020f9f579e54a292d385f1",
+      "candidate_source": "object_name",
+      "confidence": 0.3,
+      "description": "Date",
+      "evidence": [
+        {
+          "evidence": "Object name: Date",
+          "evidence_class": "INFERRED",
+          "extractor": "name_interpretation",
+          "source": "object_name",
+          "status": "candidate",
+          "target": "model:11111111-1111-1111-1111-111111111111/table:33333333-3333-3333-3333-333333333333"
+        }
+      ],
+      "id": "semantic:business-concept:e9a1b6946539eafb0979c6151fc2848d",
+      "meaning": "Date",
+      "model_id": "model:11111111-1111-1111-1111-111111111111",
+      "name": "Date",
+      "priority": 5,
+      "properties": {
+        "assertion_type": "BUSINESS_CONCEPT",
+        "candidate_confidence": 0.3,
+        "candidate_evidence": [
+          {
+            "evidence": "Object name: Date",
+            "evidence_class": "INFERRED",
+            "extractor": "name_interpretation",
+            "source": "object_name",
+            "status": "candidate",
+            "target": "model:11111111-1111-1111-1111-111111111111/table:33333333-3333-3333-3333-333333333333"
+          }
+        ],
+        "candidate_id": "semantic:candidate:d4a6998ea2020f9f579e54a292d385f1",
+        "candidate_source": "object_name",
+        "confidence": 0.3,
+        "evidence": [
+          {
+            "evidence": "Object name: Date",
+            "evidence_class": "INFERRED",
+            "extractor": "name_interpretation",
+            "source": "object_name",
+            "status": "candidate",
+            "target": "model:11111111-1111-1111-1111-111111111111/table:33333333-3333-3333-3333-333333333333"
+          }
+        ],
+        "meaning": "Date",
+        "priority": 5,
+        "source_fingerprint": "b1dcca5ca36afd5d81116b60f596a49cdcfd0f92b47d074f32264ac96fc67a63",
+        "source_hash": "b1dcca5ca36afd5d81116b60f596a49cdcfd0f92b47d074f32264ac96fc67a63"
+      },
+      "report_id": null,
+      "source": "object_name",
+      "source_fingerprint": "b1dcca5ca36afd5d81116b60f596a49cdcfd0f92b47d074f32264ac96fc67a63",
+      "source_hash": "b1dcca5ca36afd5d81116b60f596a49cdcfd0f92b47d074f32264ac96fc67a63",
+      "source_id": "e9a1b6946539eafb0979c6151fc2848d",
+      "status": "candidate",
+      "type": "BUSINESS_CONCEPT"
+    },
+    "model_id": "model:11111111-1111-1111-1111-111111111111",
+    "object_id": "model:11111111-1111-1111-1111-111111111111/table:33333333-3333-3333-3333-333333333333",
+    "object_type": "TABLE",
+    "reason": "Only the name “Date” supports this meaning; no description confirms it.",
+    "report_id": null,
+    "review_id": "semantic:business-concept:e9a1b6946539eafb0979c6151fc2848d",
+    "source": "object_name",
+    "status": "candidate",
+    "target_id": "model:11111111-1111-1111-1111-111111111111/table:33333333-3333-3333-3333-333333333333",
+    "type": "BUSINESS_CONCEPT",
+    "value": "Date"
+  }
+]

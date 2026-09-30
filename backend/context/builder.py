@@ -89,6 +89,8 @@ def _record_matches(item: Mapping[str, Any], target: str) -> bool:
         return True
     properties = item.get("properties")
     if isinstance(properties, Mapping):
+        if properties.get("candidate_ids"):
+            return False
         return any(str(properties.get(key, "")) == target for key in ("candidate_id", "target", "target_id"))
     return False
 
@@ -164,21 +166,25 @@ def _object_record(node: Node, edge: Edge | None, store: Any = None) -> dict[str
 
 
 def _semantic_record(edge: Edge, nodes: Mapping[str, Node], store: Any = None) -> dict[str, Any]:
-    record = _edge_record(edge, nodes, store)
-    properties = edge.properties if isinstance(edge.properties, Mapping) else {}
+    record = _apply_overrides(_edge_record(edge, nodes, store), store)
+    properties = record.get("properties", {})
     target_id = edge.from_id
     record.update(
         {
             "target": target_id,
             "target_id": target_id,
             "assertion_type": properties.get("assertion_type", edge.type),
-            "value": _safe(properties.get("value", properties.get("meaning"))),
-            "meaning": _safe(properties.get("meaning", properties.get("value"))),
+            "value": _safe(record.get("value", properties.get("value", properties.get("meaning")))),
+            "meaning": _safe(record.get("meaning", properties.get("meaning", properties.get("value")))),
         }
     )
     semantic_node = nodes.get(edge.to_id)
     if semantic_node is not None and semantic_node.type in _SEMANTIC_NODE_TYPES:
-        record["semantic_node"] = _apply_overrides(semantic_node.to_dict(), store)
+        payload = semantic_node.to_dict()
+        if semantic_node.properties.get("candidate_ids") and edge.properties.get("candidate_id"):
+            payload["properties"] = {**semantic_node.properties, **edge.properties, "candidate_ids": []}
+            payload.update(status=edge.status, confidence=edge.confidence, evidence=edge.evidence)
+        record["semantic_node"] = _apply_overrides(payload, store)
     return record
 
 
@@ -363,7 +369,7 @@ class ContextBuilder:
             for edge in sorted(selected["semantics"].values(), key=lambda item: item.id)
             if edge.type != "CONFLICTS_WITH"
         ]
-        if target_node.type in _SEMANTIC_NODE_TYPES:
+        if target_node.type in _SEMANTIC_NODE_TYPES and not target_node.properties.get("candidate_ids"):
             semantic_records.insert(0, _apply_overrides(target_node.to_dict(), self.store))
         context["semantics"] = semantic_records
 

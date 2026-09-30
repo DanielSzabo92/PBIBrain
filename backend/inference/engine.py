@@ -647,6 +647,8 @@ class InferenceEngine:
                     if evidence not in previous:
                         previous.append(evidence)
                 current.properties.setdefault("candidate_ids", []).append(candidate.id)
+                if current.status != semantic_node.status:
+                    current.status = "candidate"
             edge = edge_for(candidate, semantic_node)
             semantic_edges.setdefault(edge.id, edge)
 

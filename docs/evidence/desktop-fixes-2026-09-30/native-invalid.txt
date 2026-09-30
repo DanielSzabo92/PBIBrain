@@ -1,0 +1,97 @@
+Window: "PBIBrain", App: PBIBrain.exe.
+	0 ablak PBIBrain Secondary Actions: Raise
+		1 tábla ID: 12716842
+			2 tábla PBIBrain – [InPrivate]
+				3 tábla (disabled)
+				4 terület PBIBrain – Webes tartalom (InPrivate)
+					5 terület
+						6 terület
+						7 terület
+							8 terület
+								9 terület
+								10 terület
+									11 terület
+										12 terület
+											13 terület
+												14 terület
+												15 dokumentum PBIBrain Value: http://127.0.0.1:61398/ ID: RootWebArea
+													16 csoport
+														17 csoport ID: root
+															40 fejléc
+																41 fejléc Invalid á
+																42 szöveg Connected
+																43 kép
+																44 gomb Change project
+																45 kép
+																46 gomb Reload Brain Description: Reload Brain
+															47 kiegészítő
+																48 navigáció Main navigation
+																	49 kép
+																	50 gomb Overview
+																	51 kép
+																	52 gomb Search
+																	53 kép
+																	54 gomb Graph
+																	55 kép
+																	56 gomb Inspector
+																	57 kép
+																	58 gomb Review queue Pending reviews
+																		73 csoport Pending reviews
+																	59 kép
+																	60 gomb Settings
+															61 elsődleges
+																64 riasztás
+																	65 fejléc Graph validation failed
+																	66 szöveg Sources were extracted, but graph issues need attention.
+																	102 részletek
+																		103 plusz tartalom kibontására szolgáló háromszög View validation issues (1)
+																			104 szöveg View validation issues (
+																			105 szöveg 1
+																			106 szöveg )
+																		107 lista
+																			108 listaelem ERROR: Relationship endpoint is missing: from_column_idInspect affected object
+																				109 szöveg ERROR
+																				110 kép
+																				111 gomb Inspect affected object
+																74 szöveg Find an object
+																75 szerkesztés (settable, string) Find an object Description: Measure, table, column, or visual… ID: project-search
+																76 kép
+																77 gomb (disabled) Search project
+																78 kép
+																79 gomb Explore relationships in the graph
+																80 lista Project counts
+																	81 kifejezés Models
+																		82 szöveg Models
+																	83 szöveg 1
+																	84 kifejezés Reports
+																		85 szöveg Reports
+																	86 szöveg 1
+																	87 kifejezés Objects
+																		88 szöveg Objects
+																	89 szöveg 20
+																	90 kifejezés Relationships
+																		91 szöveg Relationships
+																	92 szöveg 29
+																93 fejléc Resolve graph issues before review
+																94 szöveg Check suggested meanings and resolve uncertain matches.
+																95 kép
+																96 gomb Open review queue
+																69 szöveg Sources indexed
+																70 szöveg 1 source
+																97 szöveg · Last scan 2026. szept. 30. 1:07
+																71 kép
+																72 gomb Manage sources
+																98 kép
+																99 gomb Scan project
+								32 terület
+						33 terület
+		34 címsor (settable, string) Value: PBIBrain
+			35 menüsor Rendszer ID: MenuBar
+				36 menüelem Rendszer
+			37 gomb Kis méret
+			38 gomb Teljes méret
+			39 gomb Bezárás
+
+Document text: ```
+￼
+```

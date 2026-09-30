@@ -1,0 +1,59 @@
+{
+  "approved_count": 0,
+  "candidate_count": 15,
+  "counts": {
+    "edges": 29,
+    "nodes": 20
+  },
+  "last_scan": "2026-09-30T01:07:31.536321+02:00",
+  "model_ids": [
+    "model:11111111-1111-1111-1111-111111111111"
+  ],
+  "model_objects": [
+    {
+      "id": "model:11111111-1111-1111-1111-111111111111",
+      "name": "FinanceModel"
+    }
+  ],
+  "models": 1,
+  "object_counts": {
+    "BUSINESS_CONCEPT": 7,
+    "COLUMN": 3,
+    "MEASURE": 2,
+    "MODEL": 1,
+    "PAGE": 1,
+    "RELATIONSHIP": 1,
+    "REPORT": 1,
+    "TABLE": 2,
+    "VISUAL": 2
+  },
+  "report_ids": [
+    "report:Finance.Report"
+  ],
+  "report_objects": [
+    {
+      "id": "report:Finance.Report",
+      "name": "Finance Report"
+    }
+  ],
+  "reports": 1,
+  "scan_state": "ready",
+  "state": "ready",
+  "storage": "ladybug",
+  "validation_issues": [
+    {
+      "category": "graph_integrity",
+      "code": "missing_relationship_endpoint",
+      "edge_id": null,
+      "endpoint": null,
+      "evidence": [],
+      "issue_type": "missing_relationship_endpoint",
+      "message": "Relationship endpoint is missing: from_column_id",
+      "object_id": "model:11111111-1111-1111-1111-111111111111/relationship:99999999-9999-9999-9999-999999999999",
+      "severity": "ERROR",
+      "source": "validation"
+    }
+  ],
+  "validation_state": "invalid",
+  "warning_count": 0
+}

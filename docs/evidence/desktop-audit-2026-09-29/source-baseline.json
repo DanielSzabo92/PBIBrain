@@ -1,0 +1,62 @@
+{
+  "docs\\evidence\\desktop-audit-2026-09-29\\projects\\Audit A\\Finance.pbip": {
+    "sha256": "539e8284f501d9dddc1a269c1f413045b5d46ad0c81996519d5b347df24376a2",
+    "mtime_ns": 1790719155710444800
+  },
+  "docs\\evidence\\desktop-audit-2026-09-29\\projects\\Audit B \u00e1 # (test)\\Finance.pbip": {
+    "sha256": "539e8284f501d9dddc1a269c1f413045b5d46ad0c81996519d5b347df24376a2",
+    "mtime_ns": 1790719155728913200
+  },
+  "docs\\evidence\\desktop-audit-2026-09-29\\projects\\Audit A\\Finance.Report\\definition.pbir": {
+    "sha256": "c79138792d43731e401747ab5b3243a0791ae2bc6599a0abe07dd00c48349cfb",
+    "mtime_ns": 1790719155719427900
+  },
+  "docs\\evidence\\desktop-audit-2026-09-29\\projects\\Audit A\\Finance.SemanticModel\\definition.pbism": {
+    "sha256": "59f077c3f8c9de800aed08648d98ad73f87a6fd9497fa706c31121b3b43a2ed5",
+    "mtime_ns": 1790719155711449000
+  },
+  "docs\\evidence\\desktop-audit-2026-09-29\\projects\\Audit A\\Finance.Report\\definition\\report.json": {
+    "sha256": "a49c363d9c46146c8bf9cf71f7c0cb4d9c3de39bed687abbe9a6dd11f1b67b46",
+    "mtime_ns": 1790719155721931500
+  },
+  "docs\\evidence\\desktop-audit-2026-09-29\\projects\\Audit A\\Finance.Report\\definition\\pages\\Overview\\page.json": {
+    "sha256": "ab44b2c5f30347ec8f8f08c72ef2f96d566835021e73accb47f83dd06849d320",
+    "mtime_ns": 1790719155723925900
+  },
+  "docs\\evidence\\desktop-audit-2026-09-29\\projects\\Audit A\\Finance.Report\\definition\\pages\\Overview\\visuals\\SalesByDate\\visual.json": {
+    "sha256": "b693fe6e53cb63b98f1f50e4f8a1adee067df642a946a6f5bfee06978d7470c7",
+    "mtime_ns": 1790719155725921000
+  },
+  "docs\\evidence\\desktop-audit-2026-09-29\\projects\\Audit A\\Finance.SemanticModel\\definition\\model.tmdl": {
+    "sha256": "b755111abbe1b4df9df65396751fc5a55663194112a0de1f59e96ae07784a433",
+    "mtime_ns": 1790719155714441700
+  },
+  "docs\\evidence\\desktop-audit-2026-09-29\\projects\\Audit A\\Finance.SemanticModel\\definition\\relationships.tmdl": {
+    "sha256": "a0a2aaf83d89df51e476842e0dd539236b4507f95f84e49f75585efea069eea6",
+    "mtime_ns": 1790719155717433300
+  },
+  "docs\\evidence\\desktop-audit-2026-09-29\\projects\\Audit A\\Finance.SemanticModel\\definition\\tables\\Date.tmdl": {
+    "sha256": "b947996f192c88f2165716adde44b84cbaa93957cf6dfafe0f21cde1a52f390d",
+    "mtime_ns": 1790719155716435700
+  },
+  "docs\\evidence\\desktop-audit-2026-09-29\\projects\\Audit A\\Finance.SemanticModel\\definition\\tables\\Sales.tmdl": {
+    "sha256": "0a0f3bc9b0025c4dce61e2f7d56ab4117223d0ae2594847b2ae7b7aa8b5fa9ad",
+    "mtime_ns": 1790719155715438400
+  },
+  "docs\\evidence\\desktop-audit-2026-09-29\\projects\\Audit B \u00e1 # (test)\\Finance.Report\\definition.pbir": {
+    "sha256": "d47598bcddf639d090349ea60a0a26872db530548f9c5bc7f568e5b38d2836fb",
+    "mtime_ns": 1790719155734416200
+  },
+  "docs\\evidence\\desktop-audit-2026-09-29\\projects\\Audit B \u00e1 # (test)\\Finance.Report\\report.json": {
+    "sha256": "1193b4425291e83fceafbe62d350b51b3727cc29fa275c0e3115a4e9c00b80d1",
+    "mtime_ns": 1790719155735413200
+  },
+  "docs\\evidence\\desktop-audit-2026-09-29\\projects\\Audit B \u00e1 # (test)\\Finance.SemanticModel\\definition.pbism": {
+    "sha256": "2b5f79f82c10f73b30ab84764a9351dfc420439882cee4d9ddc90d04010cf9fd",
+    "mtime_ns": 1790719155731423800
+  },
+  "docs\\evidence\\desktop-audit-2026-09-29\\projects\\Audit B \u00e1 # (test)\\Finance.SemanticModel\\model.bim": {
+    "sha256": "6b7b8deff61f7b173275d18270e974656e1e256e3d805d7c1cef2cc71ed5bee7",
+    "mtime_ns": 1790719155732421500
+  }
+}

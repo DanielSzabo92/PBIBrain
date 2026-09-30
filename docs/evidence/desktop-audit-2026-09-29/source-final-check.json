@@ -1,0 +1,77 @@
+[
+  {
+    "path": "docs\\evidence\\desktop-audit-2026-09-29\\projects\\Audit A\\Finance.pbip",
+    "sha256_same": true,
+    "mtime_same": true
+  },
+  {
+    "path": "docs\\evidence\\desktop-audit-2026-09-29\\projects\\Audit B \u00e1 # (test)\\Finance.pbip",
+    "sha256_same": true,
+    "mtime_same": true
+  },
+  {
+    "path": "docs\\evidence\\desktop-audit-2026-09-29\\projects\\Audit A\\Finance.Report\\definition.pbir",
+    "sha256_same": true,
+    "mtime_same": true
+  },
+  {
+    "path": "docs\\evidence\\desktop-audit-2026-09-29\\projects\\Audit A\\Finance.SemanticModel\\definition.pbism",
+    "sha256_same": true,
+    "mtime_same": true
+  },
+  {
+    "path": "docs\\evidence\\desktop-audit-2026-09-29\\projects\\Audit A\\Finance.Report\\definition\\report.json",
+    "sha256_same": true,
+    "mtime_same": true
+  },
+  {
+    "path": "docs\\evidence\\desktop-audit-2026-09-29\\projects\\Audit A\\Finance.Report\\definition\\pages\\Overview\\page.json",
+    "sha256_same": true,
+    "mtime_same": true
+  },
+  {
+    "path": "docs\\evidence\\desktop-audit-2026-09-29\\projects\\Audit A\\Finance.Report\\definition\\pages\\Overview\\visuals\\SalesByDate\\visual.json",
+    "sha256_same": true,
+    "mtime_same": true
+  },
+  {
+    "path": "docs\\evidence\\desktop-audit-2026-09-29\\projects\\Audit A\\Finance.SemanticModel\\definition\\model.tmdl",
+    "sha256_same": true,
+    "mtime_same": true
+  },
+  {
+    "path": "docs\\evidence\\desktop-audit-2026-09-29\\projects\\Audit A\\Finance.SemanticModel\\definition\\relationships.tmdl",
+    "sha256_same": true,
+    "mtime_same": true
+  },
+  {
+    "path": "docs\\evidence\\desktop-audit-2026-09-29\\projects\\Audit A\\Finance.SemanticModel\\definition\\tables\\Date.tmdl",
+    "sha256_same": true,
+    "mtime_same": true
+  },
+  {
+    "path": "docs\\evidence\\desktop-audit-2026-09-29\\projects\\Audit A\\Finance.SemanticModel\\definition\\tables\\Sales.tmdl",
+    "sha256_same": true,
+    "mtime_same": true
+  },
+  {
+    "path": "docs\\evidence\\desktop-audit-2026-09-29\\projects\\Audit B \u00e1 # (test)\\Finance.Report\\definition.pbir",
+    "sha256_same": true,
+    "mtime_same": true
+  },
+  {
+    "path": "docs\\evidence\\desktop-audit-2026-09-29\\projects\\Audit B \u00e1 # (test)\\Finance.Report\\report.json",
+    "sha256_same": true,
+    "mtime_same": true
+  },
+  {
+    "path": "docs\\evidence\\desktop-audit-2026-09-29\\projects\\Audit B \u00e1 # (test)\\Finance.SemanticModel\\definition.pbism",
+    "sha256_same": true,
+    "mtime_same": true
+  },
+  {
+    "path": "docs\\evidence\\desktop-audit-2026-09-29\\projects\\Audit B \u00e1 # (test)\\Finance.SemanticModel\\model.bim",
+    "sha256_same": true,
+    "mtime_same": true
+  }
+]

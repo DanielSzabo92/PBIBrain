@@ -65,6 +65,7 @@ def get_overview(repository: GraphRepository, *, store: OverrideStore | None = N
     validation_state = getattr(repository, "validation_state", None)
     if validation_state is None:
         validation_state = getattr(validation, "state", "not_run") if validation is not None else "not_run"
+    validation_payload = validation.to_dict() if hasattr(validation, "to_dict") else validation if isinstance(validation, Mapping) else {}
     return {
         "models": sum(1 for node in nodes if node.type == "MODEL"),
         "reports": sum(1 for node in nodes if node.type == "REPORT"),
@@ -82,6 +83,7 @@ def get_overview(repository: GraphRepository, *, store: OverrideStore | None = N
         "approved_count": sum(edge.status == "approved" for edge in edges),
         "warning_count": warning_count,
         "validation_state": str(validation_state),
+        "validation_issues": validation_payload.get("issues", []),
     }
 
 
@@ -425,6 +427,12 @@ class BrainApp:
                 )
             if method == "GET" and parts == ["overview"]:
                 return 200, self.api.get_overview()
+            if method == "GET" and parts == ["model-summary"]:
+                from backend.model_summary import build_model_summary
+                model_id = self._query_values(query, "model_id")
+                if not isinstance(model_id, str) or not model_id.strip():
+                    raise ValueError("model-summary requires one exact model_id")
+                return 200, build_model_summary(self.api.repository, model_id, store=self.api.overrides)
             if method == "GET" and parts == ["brain"]:
                 return 200, self.api.get_snapshot()
             if method == "GET" and parts == ["objects"]:

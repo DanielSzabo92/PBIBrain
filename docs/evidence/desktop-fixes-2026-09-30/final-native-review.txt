@@ -1,0 +1,281 @@
+Window: "PBIBrain", App: PBIBrain.exe.
+	0 ablak PBIBrain Secondary Actions: Raise
+		1 tábla ID: 12716842
+			2 tábla PBIBrain – [InPrivate]
+				3 tábla (disabled)
+				4 terület PBIBrain – Webes tartalom (InPrivate)
+					5 terület
+						6 terület
+						7 terület
+							8 terület
+								9 terület
+								10 terület
+									11 terület
+										12 terület
+											13 terület
+												14 terület
+												15 dokumentum PBIBrain Value: http://127.0.0.1:61398/ ID: RootWebArea
+													16 csoport
+														17 csoport ID: root
+															40 fejléc
+																41 fejléc Invalid á
+																42 szöveg Connected
+																43 kép
+																44 gomb Change project
+																45 kép
+																46 gomb Reload Brain Description: Reload Brain
+															47 kiegészítő
+																48 navigáció Main navigation
+																	49 kép
+																	50 gomb Overview
+																	51 kép
+																	52 gomb Search
+																	53 kép
+																	54 gomb Graph
+																	55 kép
+																	56 gomb Inspector
+																	57 kép
+																	58 gomb Review queue Pending reviews
+																		73 csoport Pending reviews
+																	59 kép
+																	60 gomb Settings
+															61 elsődleges
+																133 szöveg Confirm the meanings PBIBrain inferred. Approval saves a trusted label for search and context; rejection excludes it. Your Power BI files stay unchanged.
+																134 szöveg 8 to review
+																135 szöveg Issue
+																136 kombinált lista (settable, string) Issue Value: All issues
+																137 szöveg Object
+																138 kombinált lista (settable, string) Object Value: All types
+																139 szöveg Sort
+																140 kombinált lista (settable, string) Sort Value: Most certain first
+																141 csoport
+																	142 csoport
+																		143 kép
+																		144 gomb DateKey FinanceModel / Sales Meaning: DateKey Column
+																		145 szöveg Only the name “DateKey” supports this meaning; no description confirms it.
+																		146 szöveg Object name: DateKey
+																		147 szöveg 30%
+																		148 szöveg Suggested
+																		149 kép
+																		150 gomb Approve
+																		151 kép
+																		152 gomb Reject
+																	153 csoport
+																		154 kép
+																		155 gomb DateKey FinanceModel / Date Meaning: DateKey Column
+																		156 szöveg Only the name “DateKey” supports this meaning; no description confirms it.
+																		157 szöveg Object name: DateKey
+																		158 szöveg 30%
+																		159 szöveg Suggested
+																		160 kép
+																		161 gomb Approve
+																		162 kép
+																		163 gomb Reject
+																	164 csoport
+																		165 kép
+																		166 gomb Sales FinanceModel Meaning: Sales Table
+																		167 szöveg Only the name “Sales” supports this meaning; no description confirms it.
+																		168 szöveg Object name: Sales
+																		169 szöveg 30%
+																		170 szöveg Suggested
+																		171 kép
+																		172 gomb Approve
+																		173 kép
+																		174 gomb Reject
+																	175 csoport
+																		176 kép
+																		177 gomb FinanceModel Project model Meaning: FinanceModel Model
+																		178 szöveg Only the name “FinanceModel” supports this meaning; no description confirms it.
+																		179 szöveg Object name: FinanceModel
+																		180 szöveg 30%
+																		181 szöveg Suggested
+																		182 kép
+																		183 gomb Approve
+																		184 kép
+																		185 gomb Reject
+																	186 csoport
+																		187 kép
+																		188 gomb Net Sales FinanceModel / Sales Meaning: Net Sales Measure
+																		189 szöveg Only the name “Net Sales” supports this meaning; no description confirms it.
+																		190 szöveg Object name: Net Sales
+																		191 szöveg 30%
+																		192 szöveg Suggested
+																		193 kép
+																		194 gomb Approve
+																		195 kép
+																		196 gomb Reject
+																	197 csoport
+																		198 kép
+																		199 gomb Amount FinanceModel / Sales Meaning: Amount Column
+																		200 szöveg Only the name “Amount” supports this meaning; no description confirms it.
+																		201 szöveg Object name: Amount
+																		202 szöveg 30%
+																		203 szöveg Suggested
+																		204 kép
+																		205 gomb Approve
+																		206 kép
+																		207 gomb Reject
+																	208 csoport
+																		209 kép
+																		210 gomb Gross Sales FinanceModel / Sales Meaning: Gross Sales Measure
+																		211 szöveg Only the name “Gross Sales” supports this meaning; no description confirms it.
+																		212 szöveg Object name: Gross Sales
+																		213 szöveg 30%
+																		214 szöveg Suggested
+																		215 kép
+																		216 gomb Approve
+																		217 kép
+																		218 gomb Reject
+																	219 csoport
+																		220 kép
+																		221 gomb Date FinanceModel Meaning: Date Table
+																		222 szöveg Only the name “Date” supports this meaning; no description confirms it.
+																		223 szöveg Object name: Date
+																		224 szöveg 30%
+																		225 szöveg Suggested
+																		226 kép
+																		227 gomb Approve
+																		228 kép
+																		229 gomb Reject
+								32 terület
+						33 terület
+		34 címsor (settable, string) Value: PBIBrain
+			35 menüsor Rendszer ID: MenuBar
+				36 menüelem Rendszer
+			37 gomb Kis méret
+			38 gomb Teljes méret
+			39 gomb Bezárás
+
+Document text: ```
+Invalid á
+Connected
+￼
+Change project
+￼
+↻
+￼
+Overview
+￼
+Search
+￼
+Graph
+￼
+Inspector
+￼
+Review queue
+Pending reviews
+￼
+Settings
+Confirm the meanings PBIBrain inferred. Approval saves a trusted label for search and context; rejection excludes it. Your Power BI files stay unchanged.
+8 to review
+Issue
+￼
+Object
+￼
+Sort
+￼
+￼
+DateKey
+FinanceModel / Sales
+Meaning: DateKey
+Column
+Only the name “DateKey” supports this meaning; no description confirms it.
+Object name: DateKey
+30%
+Suggested
+￼
+Approve
+￼
+Reject
+￼
+DateKey
+FinanceModel / Date
+Meaning: DateKey
+Column
+Only the name “DateKey” supports this meaning; no description confirms it.
+Object name: DateKey
+30%
+Suggested
+￼
+Approve
+￼
+Reject
+￼
+Sales
+FinanceModel
+Meaning: Sales
+Table
+Only the name “Sales” supports this meaning; no description confirms it.
+Object name: Sales
+30%
+Suggested
+￼
+Approve
+￼
+Reject
+￼
+FinanceModel
+Project model
+Meaning: FinanceModel
+Model
+Only the name “FinanceModel” supports this meaning; no description confirms it.
+Object name: FinanceModel
+30%
+Suggested
+￼
+Approve
+￼
+Reject
+￼
+Net Sales
+FinanceModel / Sales
+Meaning: Net Sales
+Measure
+Only the name “Net Sales” supports this meaning; no description confirms it.
+Object name: Net Sales
+30%
+Suggested
+￼
+Approve
+￼
+Reject
+￼
+Amount
+FinanceModel / Sales
+Meaning: Amount
+Column
+Only the name “Amount” supports this meaning; no description confirms it.
+Object name: Amount
+30%
+Suggested
+￼
+Approve
+￼
+Reject
+￼
+Gross Sales
+FinanceModel / Sales
+Meaning: Gross Sales
+Measure
+Only the name “Gross Sales” supports this meaning; no description confirms it.
+Object name: Gross Sales
+30%
+Suggested
+￼
+Approve
+￼
+Reject
+￼
+Date
+FinanceModel
+Meaning: Date
+Table
+Only the name “Date” supports this meaning; no description confirms it.
+Object name: Date
+30%
+Suggested
+￼
+Approve
+￼
+Reject
+```

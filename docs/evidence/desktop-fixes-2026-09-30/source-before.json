@@ -1,0 +1,13 @@
+{
+  "Finance.pbip": "539e8284f501d9dddc1a269c1f413045b5d46ad0c81996519d5b347df24376a2",
+  "Finance.Report\\definition.pbir": "c79138792d43731e401747ab5b3243a0791ae2bc6599a0abe07dd00c48349cfb",
+  "Finance.Report\\definition\\report.json": "a49c363d9c46146c8bf9cf71f7c0cb4d9c3de39bed687abbe9a6dd11f1b67b46",
+  "Finance.Report\\definition\\pages\\Overview\\page.json": "ab44b2c5f30347ec8f8f08c72ef2f96d566835021e73accb47f83dd06849d320",
+  "Finance.Report\\definition\\pages\\Overview\\visuals\\GrossSalesCard\\visual.json": "da478fb9124f6ce312498decd48005def0b78baf96b47adc65692b1fbf813472",
+  "Finance.Report\\definition\\pages\\Overview\\visuals\\SalesByDate\\visual.json": "b693fe6e53cb63b98f1f50e4f8a1adee067df642a946a6f5bfee06978d7470c7",
+  "Finance.SemanticModel\\definition.pbism": "59f077c3f8c9de800aed08648d98ad73f87a6fd9497fa706c31121b3b43a2ed5",
+  "Finance.SemanticModel\\definition\\model.tmdl": "b755111abbe1b4df9df65396751fc5a55663194112a0de1f59e96ae07784a433",
+  "Finance.SemanticModel\\definition\\relationships.tmdl": "a0a2aaf83d89df51e476842e0dd539236b4507f95f84e49f75585efea069eea6",
+  "Finance.SemanticModel\\definition\\tables\\Date.tmdl": "b947996f192c88f2165716adde44b84cbaa93957cf6dfafe0f21cde1a52f390d",
+  "Finance.SemanticModel\\definition\\tables\\Sales.tmdl": "8683810e453ad20685eb9fedcca6a40d08b23e4f6abc3e9c51106d5252bed288"
+}

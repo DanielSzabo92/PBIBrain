@@ -1,0 +1,4 @@
+model FinanceModel
+    culture: en-US
+    defaultPowerBIDataSourceVersion: powerBI_V3
+    lineageTag: 11111111-1111-1111-1111-111111111111

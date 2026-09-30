@@ -122,7 +122,7 @@ def _preserve_candidate_statuses(
     statuses: dict[str, str] = {}
     for node in previous_nodes:
         candidate_id = node.properties.get("candidate_id")
-        if candidate_id and node.status != "factual":
+        if candidate_id and not node.properties.get("candidate_ids") and node.status != "factual":
             statuses[str(candidate_id)] = node.status
     for edge in previous_edges:
         candidate_id = edge.properties.get("candidate_id")

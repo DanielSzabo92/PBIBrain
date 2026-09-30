@@ -1,0 +1,52 @@
+ M .claude/skills/graft/SKILL.md
+ M backend/api/graph.py
+ M backend/api/objects.py
+ M backend/api/review.py
+ M backend/context/builder.py
+ M backend/graph/artifacts.py
+ M backend/graph/loader.py
+ M backend/graph/schema.py
+ M backend/inference/engine.py
+ M backend/inference/semantics.py
+ M backend/scanner/normalization.py
+ M backend/scanner/pipeline.py
+ M frontend/e2e/graph.spec.js
+ M frontend/index.html
+ M frontend/package-lock.json
+ M frontend/package.json
+ M frontend/src/App.jsx
+ M frontend/src/NavIcon.jsx
+ M frontend/src/components/GraphColors.jsx
+ M frontend/src/components/GraphDetails.jsx
+ M frontend/src/components/GraphView.jsx
+ M frontend/src/components/ui/button.jsx
+ M frontend/src/components/ui/checkbox.jsx
+ M frontend/src/components/ui/input.jsx
+ M frontend/src/components/ui/native-select.jsx
+ M frontend/src/components/ui/sheet.jsx
+ M frontend/src/components/ui/tabs.jsx
+ M frontend/src/graphLayout.js
+ M frontend/src/graphPresentation.js
+ M frontend/src/main.jsx
+ M frontend/src/styles.css
+ M frontend/src/theme.css
+ M frontend/src/transport.js
+ M tests/test_graph_presentation.py
+ M tests/test_nonblocking_cleanup_contract.py
+ M tests/test_pbip_direct_ingestion_contract.py
+ M tests/test_phase4_inspector_contract.py
+?? docs/backend-frontend-review-handoff.md
+?? docs/evidence/
+?? docs/frontend-overhaul-audit.md
+?? docs/product-improvement-plan.md
+?? frontend/e2e/overhaul.spec.js
+?? frontend/e2e/product.spec.js
+?? frontend/public/
+?? frontend/src/components/VisualBindings.jsx
+?? frontend/src/components/ui/metal-frame.jsx
+?? frontend/src/presentation.js
+?? frontend/src/product-ui.css
+?? frontend/test/presentation.test.js
+?? frontend/test/reportHierarchy.test.js
+?? tests/test_report_hierarchy.py
+?? tests/test_shared_semantic_review.py

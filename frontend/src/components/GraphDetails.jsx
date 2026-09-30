@@ -1,19 +1,21 @@
 import React, { useEffect, useRef, useState } from "react";
-import { ArrowUpRight, LoaderCircle } from "lucide-react";
+import { ArrowTopRightIcon as ArrowUpRight, UpdateIcon as LoaderCircle } from "@radix-ui/react-icons";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import { Separator } from "./ui/separator";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "./ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
+import VisualBindings from "./VisualBindings";
 import { ARTIFACT_GROUPS, artifactColor, artifactGroup, typeLabel } from "../graphPresentation";
 
-const valueText = (value) => value == null ? "—" : typeof value === "object" ? JSON.stringify(value, null, 2) : String(value);
+import { objectName, readableText, publicProperties, statusLabel } from "../presentation";
+const valueText = (value) => readableText(value) || "—";
 
 function RelatedObjects({ title, nodes = [], onSelect, colors }) {
   return <section className="detail-section"><h3>{title} <span>{nodes.length}</span></h3>
     {nodes.length ? nodes.map((node) => <Button variant="ghost" className="detail-related" key={node.id} onClick={() => onSelect(node)}>
       <span className="artifact-dot" style={{ backgroundColor: artifactColor(node, colors) }} />
-      <span><strong>{node.name || node.id}</strong><small>{typeLabel(node.type)}</small></span><ArrowUpRight />
+      <span><strong>{objectName(node)}</strong><small>{typeLabel(node.type)}</small></span><ArrowUpRight />
     </Button>) : <p className="text-sm text-muted-foreground">None recorded.</p>}
   </section>;
 }
@@ -39,14 +41,17 @@ export default function GraphDetails({ node, colors, transport, onClose, onSelec
   const details = result && result.id === displayedNode?.id ? result.data : null;
   const current = details?.object || displayedNode;
   const color = current ? artifactColor(current, colors) : undefined;
-  const properties = Object.entries(current?.properties || {}).filter(([key]) => !["raw_source", "raw_metadata", "source_fingerprint", "source_hash", "dax_ast", "daxAst", "evidence", "dax_evidence", "dax_behaviors"].includes(key));
+  const properties = publicProperties(current);
+  const expression = current?.expression || current?.properties?.expression;
+  const related = [current, ...(details?.dependencies || []), ...(details?.dependents || []), ...(details?.usage || []), ...(details?.relationships?.nodes || [])].filter(Boolean);
+  const name = (id) => objectName(related.find((item) => item.id === id));
   return <Sheet modal={false} open={Boolean(node)} onOpenChange={(open) => { if (!open) onClose(); }}>
     <SheetContent side="right" className="graph-detail-sheet" onInteractOutside={(event) => event.preventDefault()}
       onOpenAutoFocus={() => { returnFocus.current = document.activeElement; }}
       onCloseAutoFocus={(event) => { event.preventDefault(); if (returnFocus.current?.isConnected) returnFocus.current.focus(); }}>
       <SheetHeader className="graph-detail-header">
-        <div className="flex items-center gap-2 pr-8"><span className="artifact-dot" style={{ backgroundColor: color }} /><Badge variant="outline">{typeLabel(current?.type)}</Badge><Badge variant="secondary">{current?.status || "factual"}</Badge></div>
-        <SheetTitle className="graph-detail-title">{current?.name || current?.id || "Object details"}</SheetTitle>
+        <div className="flex items-center gap-2 pr-8"><span className="artifact-dot" style={{ backgroundColor: color }} /><Badge variant="outline">{typeLabel(current?.type)}</Badge><Badge variant="secondary">{statusLabel(current?.status)}</Badge></div>
+        <SheetTitle className="graph-detail-title">{current ? objectName(current) : "Object details"}</SheetTitle>
         <SheetDescription>{current ? ARTIFACT_GROUPS[artifactGroup(current)].label : "Object details"}</SheetDescription>
       </SheetHeader>
       <Separator />
@@ -58,10 +63,10 @@ export default function GraphDetails({ node, colors, transport, onClose, onSelec
           <TabsContent value="properties">
             <p className="detail-description">{valueText(current?.description || "No description available.")}</p>
             <dl className="detail-fields">
-              {[["Canonical ID", current?.id], ["Model", current?.model_id], ["Report", current?.report_id], ["Source ID", current?.source_id]].filter(([, value]) => value).map(([key, value]) => <div key={key}><dt>{key}</dt><dd>{valueText(value)}</dd></div>)}
-              {properties.map(([key, value]) => <div key={key}><dt>{typeLabel(key)}</dt><dd className={key === "expression" ? "detail-expression" : ""}>{valueText(value)}</dd></div>)}
+              {expression ? <div><dt>DAX formula</dt><dd className="detail-expression">{expression}</dd></div> : null}
+              {properties.map(([key, value]) => <div key={key}><dt>{key}</dt><dd>{value}</dd></div>)}
             </dl>
-            {details ? <details className="detail-raw"><summary>Raw metadata</summary><pre>{valueText(details.raw_metadata ?? current.properties?.raw_source ?? current)}</pre></details> : null}
+            <VisualBindings bindings={details?.visual_bindings} onSelect={onSelect} />
           </TabsContent>
           <TabsContent value="lineage">
             {details ? <>
@@ -69,15 +74,15 @@ export default function GraphDetails({ node, colors, transport, onClose, onSelec
               <RelatedObjects title="Dependents" nodes={details.dependents} colors={colors} onSelect={onSelect} />
               <RelatedObjects title="Report usage" nodes={details.usage} colors={colors} onSelect={onSelect} />
               <RelatedObjects title="Related objects" nodes={details.relationships?.nodes} colors={colors} onSelect={onSelect} />
-              <section className="detail-section"><h3>Relationships <span>{details.edges?.length || 0}</span></h3>{(details.edges || []).map((edge) => <div className="detail-edge" key={edge.id}><span>{typeLabel(edge.type)}</span><small>{edge.from_id} → {edge.to_id}</small><Badge variant="outline">{edge.evidence_class || "FACT"}</Badge></div>)}</section>
+              <section className="detail-section"><h3>Relationships <span>{details.edges?.length || 0}</span></h3>{(details.edges || []).map((edge) => <div className="detail-edge" key={edge.id}><span>{typeLabel(edge.type)}</span><small>{name(edge.from_id)} → {name(edge.to_id)}</small><Badge variant="outline">{edge.evidence_class === "INFERRED" ? "Suggested" : edge.evidence_class === "OBSERVED" ? "Observed" : "From source"}</Badge></div>)}</section>
             </> : <p className="text-sm text-muted-foreground">{error ? "Details unavailable." : "Loading lineage…"}</p>}
           </TabsContent>
           <TabsContent value="evidence">
-            {details ? <>{["warnings", "semantics", "evidence"].map((key) => <section className="detail-section" key={key}><h3>{typeLabel(key)}</h3>{details[key]?.length ? details[key].map((value, index) => <pre className="detail-evidence" key={index}>{valueText(value)}</pre>) : <p className="text-sm text-muted-foreground">None recorded.</p>}</section>)}</> : <p className="text-sm text-muted-foreground">{error ? "Details unavailable." : "Loading evidence…"}</p>}
+            {details ? <>{["warnings", "semantics", "evidence"].map((key) => <section className="detail-section" key={key}><h3>{typeLabel(key)}</h3>{details[key]?.length ? details[key].map((value, index) => <p className="detail-evidence" key={index}>{readableText(value, related) || "No explanation recorded."}</p>) : <p className="text-sm text-muted-foreground">None recorded.</p>}</section>)}</> : <p className="text-sm text-muted-foreground">{error ? "Details unavailable." : "Loading evidence…"}</p>}
           </TabsContent>
         </Tabs>
       </div>
-      <div className="graph-detail-actions"><Button variant="outline" onClick={() => onCenter(current)}>Center graph here</Button><Button onClick={() => onInspect(current.id)}>Full inspector <ArrowUpRight /></Button></div>
+      <div className="graph-detail-actions"><Button variant="outline" onClick={() => { onCenter(current); onClose(); }}>Center graph here</Button><Button onClick={() => onInspect(current.id)}>Full inspector <ArrowUpRight /></Button></div>
     </SheetContent>
   </Sheet>;
 }

@@ -1,0 +1,12 @@
+STDOUT
+
+STDERR
+127.0.0.1 - - [30/Sep/2026 00:42:08] "GET / HTTP/1.1" 200 514
+127.0.0.1 - - [30/Sep/2026 00:42:08] "GET /desktop/bootstrap.js HTTP/1.1" 200 33
+127.0.0.1 - - [30/Sep/2026 00:42:08] "GET /assets/index-Cv3ickgH.css HTTP/1.1" 200 107310
+127.0.0.1 - - [30/Sep/2026 00:42:08] "GET /assets/index-mC6nK879.js HTTP/1.1" 200 733696
+127.0.0.1 - - [30/Sep/2026 00:42:08] "GET /favicon.ico HTTP/1.1" 404 41
+127.0.0.1 - - [30/Sep/2026 00:42:16] "GET / HTTP/1.1" 200 514
+127.0.0.1 - - [30/Sep/2026 00:42:16] "GET /desktop/session HTTP/1.1" 200 79
+127.0.0.1 - - [30/Sep/2026 00:42:16] "GET /desktop/bootstrap.js HTTP/1.1" 200 33
+

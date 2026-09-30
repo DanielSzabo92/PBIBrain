@@ -119,7 +119,8 @@ class DirectPBIPIngestionContractTests(unittest.TestCase):
         measure = _node_by_source(nodes, "MEASURE", NET_LINEAGE)
         report = _node_by_name(nodes, "REPORT", "Finance Report")
         page = _node_by_name(nodes, "PAGE", PAGE_OVERVIEW)
-        visual = _node_by_name(nodes, "VISUAL", VISUAL_SALES)
+        visual = _node_by_source(nodes, "VISUAL", VISUAL_SALES)
+        self.assertEqual(visual.name, "Sales by date")
         date_key = _node_by_source(nodes, "COLUMN", DATE_KEY_LINEAGE)
 
         self.assertEqual(model.type, "MODEL")
@@ -161,7 +162,7 @@ class DirectPBIPIngestionContractTests(unittest.TestCase):
         measure = _node_by_source(graph.nodes, "MEASURE", NET_LINEAGE)
         report = _node_by_name(graph.nodes, "REPORT", "Finance Legacy Report")
         page = _node_by_name(graph.nodes, "PAGE", PAGE_OVERVIEW)
-        visual = _node_by_name(graph.nodes, "VISUAL", VISUAL_SALES)
+        visual = _node_by_source(graph.nodes, "VISUAL", VISUAL_SALES)
 
         self.assertEqual(model.name, "FinanceModel")
         self.assertEqual(sales.name, TABLE_SALES)
@@ -265,12 +266,12 @@ class DirectPBIPIngestionContractTests(unittest.TestCase):
                 ("MEASURE", MEASURE_NET),
                 ("REPORT", "Finance Report"),
                 ("PAGE", PAGE_OVERVIEW),
-                ("VISUAL", VISUAL_SALES),
+                ("VISUAL", "Sales by date"),
             }
         }
         self.assertEqual(len(tracked), 7, tracked)
         self.assertNotIn(MEASURE_GROSS, {node.name for node in first.nodes})
-        self.assertNotIn(VISUAL_GROSS, {node.name for node in first.nodes})
+        self.assertNotIn(VISUAL_GROSS, {node.source_id for node in first.nodes})
 
         write_pbip_project(self.root / "fixture", include_extra=True)
         second = self.scanner.scan(self.project)
@@ -280,8 +281,9 @@ class DirectPBIPIngestionContractTests(unittest.TestCase):
             self.assertEqual(by_name[key].id, identifier, key)
 
         gross = _node_by_source(second.nodes, "MEASURE", GROSS_LINEAGE)
-        gross_visual = _node_by_name(second.nodes, "VISUAL", VISUAL_GROSS)
+        gross_visual = _node_by_source(second.nodes, "VISUAL", VISUAL_GROSS)
         self.assertEqual(gross.name, MEASURE_GROSS)
+        self.assertEqual(gross_visual.name, "Gross sales")
         self.assertTrue(
             any(edge.type == "USES" and edge.from_id == gross_visual.id and edge.to_id == gross.id for edge in second.edges),
             second.to_dict(),
@@ -340,7 +342,7 @@ os._exit(0)
 
             model = _node_by_source(reopened.all_nodes(), "MODEL", MODEL_LINEAGE)
             report = _node_by_name(reopened.all_nodes(), "REPORT", "Finance Report")
-            visual = _node_by_name(reopened.all_nodes(), "VISUAL", VISUAL_SALES)
+            visual = _node_by_source(reopened.all_nodes(), "VISUAL", VISUAL_SALES)
             measure = _node_by_source(reopened.all_nodes(), "MEASURE", NET_LINEAGE)
             self.assertTrue(
                 reopened.get_edges(

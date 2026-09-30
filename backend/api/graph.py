@@ -52,10 +52,17 @@ def get_graph(
         raise ValueError("Unsupported graph status")
     all_nodes = {node.id: node for node in repository.all_nodes()}
     all_edges = repository.all_edges()
+    # A report slice includes its source model and the fields actually used by
+    # its visuals/filters. Ownership metadata on those fields remains model.
+    report_context = {key for key, node in all_nodes.items()
+                      if node.report_id and (report_id is None or node.report_id == report_id)}
+    report_roots = set(report_context)
+    report_context.update(edge.to_id for edge in all_edges
+                          if edge.from_id in report_roots and edge.type in {"USES", "FILTERS", "USES_MODEL"})
     allowed = {
         key for key, node in all_nodes.items()
         if (model_id is None or node.model_id == model_id or key == model_id)
-        and (report_id is None or node.report_id == report_id or key == report_id)
+        and (report_id is None or key in report_context or key == report_id)
     }
     adjacency: dict[str, set[str]] = {}
     for edge in all_edges:
@@ -92,12 +99,37 @@ def get_graph(
     if wanted_nodes:
         nodes = [node for node in nodes if node.type in wanted_nodes or node.id == center_id]
     if center_id is None:
-        nodes = sorted(nodes, key=lambda node: (node.type not in {"MODEL", "REPORT"}, node.type, node.name.casefold(), node.id))
+        # Visit report branches before unrelated model objects so a limited
+        # overview still contains pages, visuals and their immediate bindings.
+        order = {kind: index for index, kind in enumerate(("MODEL", "REPORT", "REPORT_FILTER", "PAGE", "PAGE_FILTER", "VISUAL", "VISUAL_FILTER", "VISUAL_CALCULATION"))}
+        children: dict[str, list[str]] = {}
+        for edge in all_edges:
+            if edge.type == "USES_MODEL":
+                # Display report branches beside their model without inventing containment.
+                children.setdefault(edge.to_id, []).append(edge.from_id)
+            if edge.type in {"CONTAINS", "USES", "FILTERS"}:
+                children.setdefault(edge.from_id, []).append(edge.to_id)
+        available = {node.id: node for node in nodes}
+        key = lambda item: (order.get(available[item].type, 99), available[item].name.casefold(), item)
+        ordered_ids: list[str] = []
+        visited: set[str] = set()
+
+        def visit(item: str) -> None:
+            if item in visited:
+                return
+            visited.add(item)
+            ordered_ids.append(item)
+            for child in sorted((value for value in children.get(item, []) if value in available), key=key):
+                visit(child)
+
+        for item in sorted(available, key=key):
+            visit(item)
+        nodes = [available[item] for item in ordered_ids]
     payloads = [apply_overrides_to_dict(node.to_dict(), store) for node in nodes]
     for payload in payloads:
         payload["artifact_group"] = artifact_group(payload)
     payloads = [payload for payload in payloads
-                if (artifact is None or payload["artifact_group"] == artifact)
+                if (artifact is None or payload["artifact_group"] == artifact or artifact == "report" and payload["id"] in report_context)
                 and (status is None or payload.get("status") == status)]
     total_nodes = len(payloads)
     if limit is not None:

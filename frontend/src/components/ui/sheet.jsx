@@ -1,6 +1,7 @@
+import { Button } from "./button";
 import * as React from "react"
 import { cn } from "@/lib/utils"
-import { XIcon } from "lucide-react"
+import { Cross2Icon as XIcon } from "@radix-ui/react-icons"
 import { Dialog as SheetPrimitive } from "radix-ui"
 
 function Sheet({
@@ -69,11 +70,10 @@ function SheetContent({
         {...props}>
         {children}
         {showCloseButton && (
-          <SheetPrimitive.Close
-            className="absolute top-4 right-4 rounded-xs opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none data-[state=open]:bg-secondary">
+          <div className="absolute top-4 right-4"><SheetPrimitive.Close asChild><Button variant="ghost" size="icon-sm">
             <XIcon className="size-4" />
             <span className="sr-only">Close</span>
-          </SheetPrimitive.Close>
+          </Button></SheetPrimitive.Close></div>
         )}
       </SheetPrimitive.Content>
     </SheetPortal>

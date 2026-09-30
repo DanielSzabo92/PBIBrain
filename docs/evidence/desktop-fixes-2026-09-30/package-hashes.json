@@ -1,0 +1,12 @@
+{
+  "PBIBrain.exe": {
+    "sha256": "25f8f7a7744b7027539cf9068852d961d21ae96b07d63a9e74428ddf7dc59cfd",
+    "utf8_manifest": true
+  },
+  "PBIBrain-Agent.exe": {
+    "sha256": "2e66a783857124ef3d58108f0018f09bbeb38553100809dd8629b9cfc491dc70",
+    "utf8_manifest": true
+  },
+  "portable_zip_sha256": "7cad277a9c7dcc2fea236c7ac9a9cba063dcb386c140192e71b2fb3fb6d56736",
+  "frontend_byte_match": true
+}

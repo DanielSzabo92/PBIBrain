@@ -1,0 +1,15 @@
+{
+  "version": "1.0.0",
+  "artifacts": [
+    {
+      "report": {
+        "path": "Finance.Report"
+      }
+    },
+    {
+      "semanticModel": {
+        "path": "Finance.SemanticModel"
+      }
+    }
+  ]
+}

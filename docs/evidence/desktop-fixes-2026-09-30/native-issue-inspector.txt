@@ -1,0 +1,110 @@
+Window: "PBIBrain", App: PBIBrain.exe.
+	0 ablak PBIBrain Secondary Actions: Raise
+		1 tábla ID: 12716842
+			2 tábla PBIBrain – [InPrivate]
+				3 tábla (disabled)
+				4 terület PBIBrain – Webes tartalom (InPrivate)
+					5 terület
+						6 terület
+						7 terület
+							8 terület
+								9 terület
+								10 terület
+									11 terület
+										12 terület
+											13 terület
+												14 terület
+												15 dokumentum PBIBrain Value: http://127.0.0.1:61398/ ID: RootWebArea
+													16 csoport
+														17 csoport ID: root
+															40 fejléc
+																41 fejléc Invalid á
+																42 szöveg Connected
+																43 kép
+																44 gomb Change project
+																45 kép
+																46 gomb Reload Brain Description: Reload Brain
+															47 kiegészítő
+																48 navigáció Main navigation
+																	49 kép
+																	50 gomb Overview
+																	51 kép
+																	52 gomb Search
+																	53 kép
+																	54 gomb Graph
+																	55 kép
+																	56 gomb Inspector
+																	57 kép
+																	58 gomb Review queue Pending reviews
+																		73 csoport Pending reviews
+																	59 kép
+																	60 gomb Settings
+															61 elsődleges
+																112 kép
+																113 gomb Back to overview
+																116 fejléc Referenced object
+																117 szöveg FinanceModel
+																118 kép
+																119 gomb Show in graph
+																120 szöveg Relationship
+																121 szöveg FROM SOURCE
+																122 szöveg No description recorded.
+																123 régió Used by
+																	124 fejléc Used by 0
+																	125 szöveg No direct uses recorded.
+																126 régió Dependencies
+																	127 fejléc Dependencies 0
+																	128 szöveg No direct dependencies recorded.
+																129 szöveg Direct links from the latest scan.
+																130 részletek
+																	131 plusz tartalom kibontására szolgáló háromszög Other relationships
+																		132 szöveg Other relationships
+								32 terület
+						33 terület
+		34 címsor (settable, string) Value: PBIBrain
+			35 menüsor Rendszer ID: MenuBar
+				36 menüelem Rendszer
+			37 gomb Kis méret
+			38 gomb Teljes méret
+			39 gomb Bezárás
+
+Document text: ```
+Invalid á
+Connected
+￼
+Change project
+￼
+↻
+￼
+Overview
+￼
+Search
+￼
+Graph
+￼
+Inspector
+￼
+Review queue
+Pending reviews
+￼
+Settings
+￼
+￼
+Back to overview
+￼
+Referenced object
+FinanceModel
+￼
+Show in graph
+Relationship
+FROM SOURCE
+No description recorded.
+Used by
+0
+No direct uses recorded.
+Dependencies
+0
+No direct dependencies recorded.
+Direct links from the latest scan.
+Other relationships
+```

@@ -1,0 +1,7 @@
+table Date
+    lineageTag: 33333333-3333-3333-3333-333333333333
+
+    column DateKey
+        dataType: int64
+        lineageTag: 66666666-6666-6666-6666-666666666666
+        sourceColumn: DateKey

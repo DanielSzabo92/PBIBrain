@@ -1,0 +1,19 @@
+{
+  "storage": "ladybug",
+  "model_id": "model:11111111-1111-1111-1111-111111111111",
+  "snapshot_id": "sha256:f5d5168327e5974f412231ec9466ee892da0de6ecbd6ef77be6afa6bfbb80c7e",
+  "object_counts": {
+    "COLUMN": 3,
+    "MEASURE": 1,
+    "MODEL": 1,
+    "PAGE": 1,
+    "RELATIONSHIP": 1,
+    "REPORT": 1,
+    "TABLE": 2,
+    "VISUAL": 1
+  },
+  "utf8_bytes": 12545,
+  "source_files_unchanged": 10,
+  "deterministic_export": true,
+  "executable_sha256": "5e236300710f69bbfe8e4ff715fae7216e186e326e4e78f0e93cd43bec7fca6e"
+}

@@ -4,6 +4,9 @@ async function openGraph(page) {
   await page.goto("/");
   await page.getByRole("button", { name: "Graph", exact: true }).click();
   await expect(page.locator(".react-flow__node-brain").first()).toBeVisible();
+  await page.getByRole("checkbox", { name: "Include suggestions" }).check();
+  await page.getByRole("checkbox", { name: "Group by ownership" }).check();
+  await page.locator(".graph-filter-details > summary").click();
 }
 
 test("native graph separates ownership, keeps cross-links, and opens a right-side detail sheet", async ({ page, request }) => {
@@ -38,18 +41,18 @@ test("native graph separates ownership, keeps cross-links, and opens a right-sid
 test("filters compose on the server, clear cleanly, and show empty states", async ({ page }) => {
   await openGraph(page);
   await page.getByRole("tab", { name: "Report", exact: true }).click();
-  await expect(page.locator(".react-flow__node-artifactGroup")).toHaveCount(1);
-  await expect(page.locator(".artifact-group-title")).toContainText("Report artifacts");
+  await expect(page.locator(".react-flow__node-artifactGroup")).toHaveCount(2);
+  await expect(page.locator(".artifact-group-title").filter({ hasText: "Report artifacts" })).toContainText("Report artifacts");
   await page.getByLabel("Object type", { exact: true }).selectOption("VISUAL");
   await expect(page.locator(".react-flow__node-brain")).toHaveCount(2);
-  await page.getByRole("textbox", { name: "Filter graph objects" }).fill("Sales by region");
+  await page.getByRole("searchbox", { name: "Filter graph objects" }).fill("Sales by region");
   await expect(page.locator(".react-flow__node-brain")).toHaveCount(1);
   await expect(page.locator(".flow-node-name")).toHaveText("Sales by region");
   await page.getByLabel("Status", { exact: true }).selectOption("rejected");
   await expect(page.getByRole("heading", { name: "No matching objects" })).toBeVisible();
   await page.getByRole("button", { name: "Clear filters", exact: true }).first().click();
-  await expect(page.locator(".react-flow__node-artifactGroup")).toHaveCount(3);
-  await expect(page.getByRole("textbox", { name: "Filter graph objects" })).toHaveValue("");
+  await expect(page.locator(".react-flow__node-artifactGroup")).toHaveCount(2);
+  await expect(page.getByRole("searchbox", { name: "Filter graph objects" })).toHaveValue("");
   await expect(page.getByLabel("Distance", { exact: true })).toBeDisabled();
 });
 
@@ -58,6 +61,7 @@ test("project color mapping persists through reload and drives nodes, minimap, a
   try {
     await page.goto("/");
     await page.getByRole("button", { name: "Settings", exact: true }).click();
+    await page.getByText("Customize colors", { exact: true }).click();
     await page.getByRole("textbox", { name: "Report artifacts hex color", exact: true }).fill("#f472b6");
     await page.getByRole("textbox", { name: "Visual hex color", exact: true }).fill("#34d399");
     await page.getByRole("button", { name: "Save colors", exact: true }).click();
@@ -69,16 +73,18 @@ test("project color mapping persists through reload and drives nodes, minimap, a
     expect(saved.database).toEqual(original.database);
     await page.reload();
     await page.getByRole("button", { name: "Settings", exact: true }).click();
+    await page.getByText("Customize colors", { exact: true }).click();
     await expect(page.getByRole("textbox", { name: "Visual hex color", exact: true })).toHaveValue("#34d399");
     await page.getByRole("button", { name: "Graph", exact: true }).click();
     await expect(page.locator(".react-flow__node-brain").first()).toBeVisible();
-    const visual = page.locator(".artifact-node").filter({ has: page.locator(".flow-node-type", { hasText: /^Visual$/ }) }).first();
-    await expect(visual).toHaveCSS("border-left-color", "rgb(52, 211, 153)");
+    const visual = page.locator(".artifact-node").filter({ has: page.locator(".flow-node-type", { hasText: /^Column Chart$/ }) }).first();
+    await expect(visual.locator(".artifact-dot")).toHaveCSS("background-color", "rgb(52, 211, 153)");
     await expect.poll(() => page.locator(".react-flow__minimap-node:not(.minimap-artifact-group)").evaluateAll((elements) => elements.filter((element) => getComputedStyle(element).fill === "rgb(52, 211, 153)").length)).toBe(2);
     await expect(page.getByLabel("Graph color legend").getByText("Visual", { exact: true }).locator(".artifact-dot")).toHaveCSS("background-color", "rgb(52, 211, 153)");
     await page.getByRole("button", { name: "Settings", exact: true }).click();
+    await page.getByText("Customize colors", { exact: true }).click();
     await page.getByRole("button", { name: "Restore defaults", exact: true }).click();
-    await expect(page.getByRole("textbox", { name: "Report artifacts hex color", exact: true })).toHaveValue("#a78bfa");
+    await expect(page.getByRole("textbox", { name: "Report artifacts hex color", exact: true })).toHaveValue("#b4a0cd");
     await page.getByRole("button", { name: "Save colors", exact: true }).click();
     await expect(page.getByRole("button", { name: "Save colors", exact: true })).toBeDisabled();
     await page.screenshot({ path: "test-results/graph-settings.png", fullPage: true });
@@ -108,6 +114,7 @@ test("keyboard selection opens details and narrow layouts stay within the viewpo
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBeTruthy();
   await page.screenshot({ path: "test-results/graph-mobile.png", fullPage: true });
   await page.getByRole("button", { name: "Settings", exact: true }).click();
+    await page.getByText("Customize colors", { exact: true }).click();
   await expect(page.getByText("Graph colors", { exact: true }).last()).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBeTruthy();
 });
@@ -123,7 +130,7 @@ test("failed graph and object requests expose retry without showing another scop
   await expect(page.locator(".react-flow__node-brain")).toHaveCount(0);
   await page.unroute("**/api/graph?**");
   await page.getByRole("button", { name: "Retry graph", exact: true }).click();
-  await expect(page.locator(".react-flow__node-artifactGroup")).toHaveCount(1);
+  await expect(page.locator(".react-flow__node-artifactGroup")).toHaveCount(2);
   await page.route("**/api/objects/**", async (route) => route.fulfill({ status: 500, contentType: "application/json", body: JSON.stringify({ error: "Details unavailable for test" }) }));
   await page.locator(".react-flow__node-brain").first().click();
   await expect(page.getByRole("dialog").getByRole("alert")).toContainText("Details unavailable for test");
@@ -183,19 +190,21 @@ test("shared shadcn controls preserve search, full inspector, review, and source
   await page.goto("/");
   await expect(page.locator('[data-slot="card"]')).not.toHaveCount(0);
   await page.getByRole("button", { name: "Search", exact: true }).click();
-  await page.getByRole("textbox", { name: "Search the brain", exact: true }).fill("Net Sales");
-  await page.locator(".search-result").filter({ has: page.locator(".result-type", { hasText: "MEASURE" }) }).first().click();
+  await page.getByRole("searchbox", { name: "Search the brain", exact: true }).fill("Net Sales");
+  await page.locator(".search-result").filter({ has: page.locator(".result-type", { hasText: "Measure" }) }).first().click();
   await expect(page.getByRole("heading", { name: "Net Sales", exact: true }).first()).toBeVisible();
   await expect(page.getByText("SUM('Sales'[Amount])", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: /Show in graph/ }).click();
   await expect(page.getByText("Focused view", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: /^Review queue/ }).click();
-  await expect(page.getByRole("heading", { name: /Review queue/ })).toBeVisible();
+  await expect(page.getByRole("navigation").getByRole("button", { name: /^Review queue/ })).toHaveAttribute("aria-current", "page");
+  await expect(page.locator(".review-purpose")).toContainText("Approval");
   await page.getByRole("button", { name: "Settings", exact: true }).click();
+    await page.getByText("Customize colors", { exact: true }).click();
   await page.getByRole("tab", { name: "Project", exact: true }).click();
   await expect(page.getByLabel("Project name", { exact: true })).toHaveValue(original.name);
   await expect(page.getByRole("textbox", { name: "Source 1", exact: true })).toHaveValue(original.sources[0]);
-  await expect(page.getByLabel("Brain database", { exact: false })).toHaveAttribute("readonly", "");
+  await expect(page.getByLabel("Brain database", { exact: false })).toHaveCount(0);
   await page.screenshot({ path: "test-results/project-settings.png", fullPage: true });
   expect(errors).toEqual([]);
 });

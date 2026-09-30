@@ -390,6 +390,7 @@ def edge_for(candidate: SemanticCandidate, semantic_node: Node) -> Edge:
             "assertion_type": candidate.type,
             "value": _safe(candidate.value),
             "candidate_id": candidate.id,
+            "candidate_source": candidate.source,
             **candidate.properties,
         },
     )

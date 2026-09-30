@@ -1,0 +1,45 @@
+{
+  "approved_count": 2,
+  "candidate_count": 10,
+  "counts": {
+    "edges": 24,
+    "nodes": 17
+  },
+  "last_scan": "2026-09-30T00:27:13.975794+02:00",
+  "model_ids": [
+    "model:11111111-1111-1111-1111-111111111111"
+  ],
+  "model_objects": [
+    {
+      "id": "model:11111111-1111-1111-1111-111111111111",
+      "name": "FinanceModel"
+    }
+  ],
+  "models": 1,
+  "object_counts": {
+    "BUSINESS_CONCEPT": 6,
+    "COLUMN": 3,
+    "MEASURE": 1,
+    "MODEL": 1,
+    "PAGE": 1,
+    "RELATIONSHIP": 1,
+    "REPORT": 1,
+    "TABLE": 2,
+    "VISUAL": 1
+  },
+  "report_ids": [
+    "report:Finance.Report"
+  ],
+  "report_objects": [
+    {
+      "id": "report:Finance.Report",
+      "name": "Finance Report"
+    }
+  ],
+  "reports": 1,
+  "scan_state": "ready",
+  "state": "ready",
+  "storage": "ladybug",
+  "validation_state": "invalid",
+  "warning_count": 0
+}

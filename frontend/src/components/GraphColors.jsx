@@ -1,11 +1,13 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { RotateCcw } from "lucide-react";
+import { ResetIcon as RotateCcw } from "@radix-ui/react-icons";
 import { Button } from "./ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
-import { ARTIFACT_GROUPS, normalizeColors, typeLabel } from "../graphPresentation";
+import { ARTIFACT_GROUPS, PALETTES, normalizeColors, typeLabel } from "../graphPresentation";
+
+const sameColors = (a, b) => ["groups", "types"].every((section) => Object.keys(a[section]).length === Object.keys(b[section]).length && Object.entries(a[section]).every(([key, color]) => b[section][key] === color));
 
 function ColorInput({ label, color, onChange }) {
   const [text, setText] = useState(color);
@@ -27,7 +29,7 @@ export default function GraphColors({ config, transport, overview, onSaved }) {
   const [message, setMessage] = useState("");
   const [failed, setFailed] = useState(false);
   useEffect(() => { setDraft(saved); }, [saved]);
-  const dirty = JSON.stringify(draft) !== JSON.stringify(saved);
+  const dirty = !sameColors(draft, saved);
   const extraTypes = Object.keys(overview?.object_counts || {}).filter((type) => !Object.values(ARTIFACT_GROUPS).some((group) => group.types.includes(type)));
   const change = (section, key, color) => {
     setDraft((current) => ({ ...current, [section]: { ...current[section], [key]: color } }));
@@ -51,11 +53,13 @@ export default function GraphColors({ config, transport, overview, onSaved }) {
 
   return <Card className="graph-colors">
     <CardHeader>
-      <CardTitle>Graph colors</CardTitle>
-      <CardDescription>One color per group. Set a different color for any object type. Saved with this project.</CardDescription>
+      <CardTitle>Color palette</CardTitle>
+      <CardDescription>Soft colors distinguish objects. Saved with this project.</CardDescription>
     </CardHeader>
     <CardContent>
       <fieldset disabled={saving}>
+        <div className="palette-grid" role="group" aria-label="Color palettes">{PALETTES.map((palette) => <Button key={palette.name} variant="ghost" className="palette-option" aria-pressed={sameColors(draft, palette)} onClick={() => { setDraft({ groups: { ...palette.groups }, types: { ...palette.types } }); setMessage(""); }}><span className="palette-swatches" aria-hidden="true">{Object.values(palette.types).map((color, index) => <i key={index} style={{ background: color }} />)}</span><strong>{palette.name}</strong><small>{palette.description}</small></Button>)}</div>
+        <details className="customize-colors"><summary>Customize colors</summary>
         <Tabs defaultValue="report">
           <TabsList aria-label="Artifact color groups" className="color-tabs">
             {Object.entries(ARTIFACT_GROUPS).map(([key, group]) => <TabsTrigger key={key} value={key}><span className="artifact-dot" style={{ backgroundColor: draft.groups[key] }} />{group.label.replace(" artifacts", "")}</TabsTrigger>)}
@@ -74,9 +78,9 @@ export default function GraphColors({ config, transport, overview, onSaved }) {
             </div>
           </TabsContent>)}
         </Tabs>
+        </details>
         <div className="color-preview" aria-label="Graph color preview">
-          {Object.entries(ARTIFACT_GROUPS).map(([key, group]) => <div className="color-preview-node" key={key} style={{ "--artifact-color": draft.types[group.types[0]] || draft.groups[key] }}><span className="artifact-dot" /><span>{typeLabel(group.types[0])}</span></div>)}
-          <span className="text-sm text-muted-foreground">Preview · status stays labeled</span>
+          {["TABLE", "COLUMN", "MEASURE", "REPORT", "PAGE", "VISUAL"].map((type) => <div className="color-preview-node" key={type} style={{ "--artifact-color": draft.types[type] || draft.groups[Object.keys(ARTIFACT_GROUPS).find((key) => ARTIFACT_GROUPS[key].types.includes(type))] }}><span className="artifact-dot" /><span>{typeLabel(type)}</span></div>)}
         </div>
         <div className="settings-actions">
           <Button onClick={save} disabled={!dirty || saving || !config}>{saving ? "Saving…" : "Save colors"}</Button>

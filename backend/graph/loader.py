@@ -195,7 +195,7 @@ class FactGraphBuilder:
             if group_id in node_ids and node.type == "CALCULATION_ITEM":
                 self._add_edge("CONTAINS", str(group_id), node.id, source="model_metadata", evidence=["calculation group membership"])
             parent_id = properties.get("parent_id")
-            if parent_id in node_ids and node.type in {"PAGE", "VISUAL", "VISUAL_FILTER", "PAGE_FILTER", "REPORT_FILTER"}:
+            if parent_id in node_ids and node.type in {"PAGE", "VISUAL", "VISUAL_CALCULATION", "VISUAL_FILTER", "PAGE_FILTER", "REPORT_FILTER"}:
                 self._add_edge("CONTAINS", str(parent_id), node.id, source="report_metadata", evidence=["report containment"])
 
             if node.type == "REPORT" and node.model_id in node_ids:

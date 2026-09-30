@@ -246,7 +246,7 @@ class Phase4TransportContractTests(unittest.TestCase):
         self.assertIsNotNone(payload)
         self.assertEqual(
             set(payload),
-            {"object", "identity", "raw_metadata", "description", "dependencies", "dependents", "relationships", "usage", "semantics", "evidence", "confidence", "approval_state", "warnings", "edges"},
+            {"object", "visual_bindings", "identity", "raw_metadata", "description", "dependencies", "dependents", "relationships", "usage", "semantics", "evidence", "confidence", "approval_state", "warnings", "edges"},
         )
         self.assertEqual(payload["identity"]["id"], self.ids["measure"])
         self.assertEqual(payload["raw_metadata"]["id"], "revenue")
@@ -522,7 +522,7 @@ if (staleSnapshot.review_items.length !== 1 || staleSnapshot.review_items[0].iss
 }
 const appSource = readFileSync("./src/App.jsx", "utf8");
 const itemImpactStart = appSource.indexOf("function itemImpact");
-const itemImpactEnd = appSource.indexOf("\n\nfunction dataCounts", itemImpactStart);
+const itemImpactEnd = appSource.indexOf("function dataCounts", itemImpactStart);
 const numberOr = (value, fallback = 0) => {
   const number = Number(value);
   return Number.isFinite(number) ? number : fallback;
