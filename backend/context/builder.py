@@ -456,7 +456,35 @@ class ContextBuilder:
             if issue_target is None or str(issue_target) in relevant:
                 warnings.append(issue)
         context["warnings"] = warnings
-        return prune_context(context, task)
+        result = prune_context(context, task)
+        task_name = task if isinstance(task, str) else task.get("task", task.get("type", "")) if isinstance(task, Mapping) else ""
+        if task_name in {"impact", "change_preflight", "regression_planning", "post_change_review"}:
+            from backend.impact import analyze_impact
+            proposal = list(task.get("proposed_changes", [])) if isinstance(task, Mapping) else []
+            impact = analyze_impact(self.repository, [target_id], proposal,
+                                    completeness=getattr(self.repository, "impact_completeness", None))
+            dependency_queue, dependency_seen, dependency_records = deque([(target_id, 0)]), set(), []
+            while dependency_queue:
+                current, distance = dependency_queue.popleft()
+                if current in dependency_seen:
+                    continue
+                dependency_seen.add(current)
+                for edge in outgoing.get(current, []):
+                    if edge.type in {"DEPENDS_ON", "REFERENCES"}:
+                        dependency_records.append({**_edge_record(edge, nodes, self.store), "distance": distance + 1})
+                        dependency_queue.append((edge.to_id, distance + 1))
+            result.update(impact=impact, impact_report_id=impact["impact_report_id"], baseline_snapshot_id=impact["baseline_snapshot_id"],
+                          requested_mutation=proposal, current_properties=dict(target_node.properties),
+                          direct_dependencies=[item for item in dependency_records if item["distance"] == 1],
+                          transitive_dependencies=[item for item in dependency_records if item["distance"] > 1],
+                          constraints=[*result.get("constraints", []), {"code": "EXACT_TARGET_REQUIRED", "target_id": target_id}, {"code": "CONTEXT_DOES_NOT_AUTHORIZE_MUTATION"},
+                                       {"code": "UNKNOWN_COVERAGE_BLOCKS_CERTIFICATION", "status": impact["completeness"]["status"]}],
+                          relationship_paths=[item["path"] for item in impact["potential_impacts"]],
+                          potentially_affected_measures=[item for item in impact["potential_impacts"] if item["object_type"] == "MEASURE"],
+                          potentially_affected_visuals=[item for item in impact["potential_impacts"] if item["object_type"] == "VISUAL"],
+                          security_implications=impact["warnings"], unknowns=impact["unknown_impacts"], completeness=impact["completeness"], omitted_optional_context=[])
+            result["current_validation_failures"] = [item for item in _validation_payload(self.repository) if isinstance(item, Mapping) and item.get("severity") in {"ERROR", "BLOCKING"}]
+        return result
 
     get_context = build
     compile = build

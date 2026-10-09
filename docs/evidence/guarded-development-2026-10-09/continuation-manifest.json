@@ -1,0 +1,90 @@
+{
+  "evidence_version": 1,
+  "captured_at": "2026-10-09T08:26:25.426605+00:00",
+  "full_contract_accepted": false,
+  "tested_tree": "25a019eea19b5eb2dbd416336799eb1a28e46f67",
+  "parent": "22f86dd0a196759d7fc78bbf71c81516ff0d89bd",
+  "publication_branch": "ui-redesign",
+  "verification": {
+    "python": {
+      "run": 293,
+      "skipped": 1
+    },
+    "frontend_unit": 26,
+    "chrome_compatibility": 32,
+    "chrome_guard": 3,
+    "real_runtime": {
+      "tests": 12,
+      "covered_paths": 41,
+      "certified": true,
+      "engine_version": "17.0.74.22",
+      "scope": "SEALED_LITERAL_ACCEPTANCE_FIXTURE",
+      "promotion": "POST_PROMOTION_VERIFIED",
+      "audit_integrity_verified": true
+    },
+    "real_os": {
+      "attempts": 20,
+      "status": "PASSED"
+    },
+    "native_bridges": "LOCKED_BUILD_PASSED"
+  },
+  "retained_failure_diagnostics": [
+    "release-python.log",
+    "release-live-regression.log",
+    "release-chrome-guard.log",
+    "release-tom-build.log",
+    "release-runtime-build.log"
+  ],
+  "remaining_blocked_scopes": [
+    "arbitrary calculated-table dependencies",
+    "calculation-group/field-parameter contexts",
+    "RLS/OLS",
+    "remote/multimodel runtime bindings",
+    "bookmarks/interactions",
+    "generic external-data freeze",
+    "standalone model workflows",
+    "source create/delete operations"
+  ],
+  "remaining_delivery_work": [
+    "packaged native bridge distribution",
+    "production-scale optimization and acceptance"
+  ],
+  "evidence_sha256": {
+    "benchmark.json": "190caf07c6c10fa8a113b3e3399a644e567f7097d61aa6433b4c0610b71257fc",
+    "chrome-compat-final.log": "5b5b6867d30713dd503f706db8470ed46187cd1f88780192d180b2c4fe4c92ba",
+    "chrome-existing-ui.log": "f3fed178a2a1aa4239f457c928658a16be0f1a26d2d230e24d6c247c4798ea92",
+    "chrome-guard-final.log": "f0268ceaacbff661cf7a0790dcc6fee0818052eaba353f50299c909da2a08d9a",
+    "chrome-guard-ui.log": "16cee9f157e4aef6294599bb25a53ec82fe359970b951af8d1ab9bd1d3e57aa2",
+    "frontend-build-final.log": "852c0d67a7c8a6a34ae99b5c3b1522c38a1c835bf2335063e7d8fc27d0d7c32f",
+    "frontend-build.log": "fea1f812294c4a9fea9c576cf2cbf22452ecfccbcf746db9d2a03aaadb3a62ae",
+    "frontend-unit-final.log": "b4b566af0adb0aa9832774d39b475b82ddde7d1ed78b3461faeae6bb438887d8",
+    "frontend-unit.log": "2ed762b15a09e25bbab16c115c7fcd22c6e20e8a70729b4c75eaa85ed644b872",
+    "git-recovery-final.log": "9b8fb5f5079976c168eff71812912f92ed85f997345edcda82c1bbc82456ea93",
+    "guard-review.png": "643eb2cd413b9e22ecf3efd0f8aaf00e846aab570fd9fec179878948959d6835",
+    "guard-tests.log": "7cdb4fc7ac4f978f21fb5b85e7f9b22d24f87d31b11310139d40cce5b6919b46",
+    "live-regression.json": "f5d71a320dcf91a97c2deeb1216e13897983afbb72b32f18f260de25461cbe05",
+    "manifest.json": "93e0459fe5945f5c80a8c21de1b76bfe6e014e2e4f2ed48a7c1e7f1fb8b84fc5",
+    "python-suite-final.log": "b9dc55dd3e04aaff1da840740b1287084956b1619df0dcfe76a968ce73c5adb9",
+    "python-suite.log": "b3dbe0703d9ec93331f5c835cfb2876d96530904ef7f1b63e8ec4b8cecd9bf25",
+    "reference-static.json": "a1aeaa33cf5300ac5154b3b84205e30e8460d1cde20e83b7fed9ed76cf8299ce",
+    "release-chrome-compat.log": "b28e047634d8cc585e8dd9a970739866950faf05283c474eb2bb1b5bc89c4cff",
+    "release-chrome-guard.log": "c6d5faa660832f64163fde661a3907a0505a765984788a32a9808e839181e8f7",
+    "release-final-chrome-guard.log": "bb3c6da5baf7fa82172ee1ba12df5f12a534ef865fd582b5c0bcca50755a8b74",
+    "release-final-frontend-build.log": "6843e085db1b7dfbfe67589042253a5b5b0d912c062f1e912a067b45be5f8fc7",
+    "release-final-live-regression.json": "a1130e825a208a6003554e95b3a4e24a53426d8e17d965c0d0f6a63a425c4eba",
+    "release-final-live-regression.log": "6129c036f8e3447a3721b6fc536efe36adca5cff7a6e993bce929db19dbe1cb2",
+    "release-final-python.log": "ccf4f5658e8aebfae0ded24794a81c7ec968e973564918b7c388f396b392b77f",
+    "release-final-runtime-build.log": "56bcd3034d238e09d1821281f83da177e08d38c6ac9dbadfc61fb76ea4815b44",
+    "release-final-tom-build.log": "f68a57cfd12cd5d55cfa878e73755420da2d2f86cbd5082536bce1b1671dfe21",
+    "release-frontend-build.log": "607c43157410c409ca072b11a63b2d21fef5059b26fab82a79d09d9b142f3f7a",
+    "release-frontend-unit.log": "9739341e20cd9d1f3845af1c9804e1ed601c713395e7669e12ea7e6d7345f7a9",
+    "release-live-regression.log": "7017b2f59e10fba8610e0578a0121f1af309901c2859d74df69cbe851390d647",
+    "release-python.log": "e292dd7b78eaaf6d1bd76332cf604246611fbe2b47f2e38587558aa36f546bd4",
+    "release-runtime-build.log": "054a50968d0dc7686a81515292f27e596dedee8cba71063547500cbbb39cdc10",
+    "release-tom-build.log": "f3e44791a294d8479989722d48112adb5681000d75626585cba749a9cbe60eff",
+    "release-windows-isolation.json": "a1a6dd01e3981ba0a70be650a9d5a84f2cc7c345b550e15f1842b01a83fcad79",
+    "release-windows-isolation.log": "a1a6dd01e3981ba0a70be650a9d5a84f2cc7c345b550e15f1842b01a83fcad79",
+    "VERIFICATION.md": "bc4cd56a34724ff4b90f52818a9dd273d4438184d3836f0487724a307fa7543c",
+    "windows-isolation.json": "b2ee150f4df097c91ded6ec24eb6f6f4259ac6cd770f48e54b8c3d38c74e4f0e"
+  }
+}

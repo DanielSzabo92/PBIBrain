@@ -34,6 +34,19 @@ class BrainClient:
             raise RuntimeError("PBIBrain is unavailable. Start brain serve, then retry.") from exc
 
 
+    def post(self, path: str, payload: dict[str, Any]) -> dict[str, Any]:
+        if path not in {"impact", "compare"}:
+            raise ValueError("Read-only analytical endpoint required")
+        request = Request(f"{self.url}/api/{path}", data=json.dumps(payload).encode("utf-8"), headers={"Content-Type": "application/json"}, method="POST")
+        if self.session_id:
+            request.add_header("X-PBIBrain-Session", self.session_id)
+        try:
+            with self.opener.open(request, timeout=30) as response:
+                return json.load(response)
+        except (HTTPError, URLError) as error:
+            raise RuntimeError("Read-only Brain analysis failed") from error
+
+
 def create_server(url: str = "http://127.0.0.1:8000", *, session_id: str | None = None) -> Any:
     try:
         from mcp.server.fastmcp import FastMCP
@@ -77,6 +90,16 @@ def create_server(url: str = "http://127.0.0.1:8000", *, session_id: str | None 
         """Read a bounded neighborhood. Truncation means this is not the whole graph."""
         return client.get("graph", center_id=center_id, depth=depth, limit=limit,
                           model_id=model_id, report_id=report_id)
+
+    @server.tool()
+    def brain_impact(target_id: str, proposed_changes: list[dict[str, Any]] | None = None, include_report_usage: bool = True) -> dict[str, Any]:
+        """Read conservative impact; unknown coverage never proves no effects."""
+        return client.post("impact", {"target_id": target_id, "proposed_changes": proposed_changes or [], "include_report_usage": include_report_usage})
+
+    @server.tool()
+    def brain_compare(before: str, after: str) -> dict[str, Any]:
+        """Compare two previously prepared immutable snapshot IDs. No paths/writes."""
+        return client.post("compare", {"before": before, "after": after})
 
     return server
 

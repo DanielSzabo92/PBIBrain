@@ -1,0 +1,196 @@
+TAP version 13
+# Subtest: desktop bridge is available immediately when injected
+ok 1 - desktop bridge is available immediately when injected
+  ---
+  duration_ms: 2.256
+  type: 'test'
+  ...
+# Subtest: desktop bridge waits for pywebviewready without affecting browser mode
+ok 2 - desktop bridge waits for pywebviewready without affecting browser mode
+  ---
+  duration_ms: 0.4786
+  type: 'test'
+  ...
+# Subtest: desktop requests return bridge failures as useful errors
+ok 3 - desktop requests return bridge failures as useful errors
+  ---
+  duration_ms: 1.1897
+  type: 'test'
+  ...
+# Subtest: desktop requests carry selected source files to the native bridge
+ok 4 - desktop requests carry selected source files to the native bridge
+  ---
+  duration_ms: 3.0712
+  type: 'test'
+  ...
+# Subtest: same-name review targets retain table and model/report scope
+ok 5 - same-name review targets retain table and model/report scope
+  ---
+  duration_ms: 3.0806
+  type: 'test'
+  ...
+# Subtest: dependency chains flow left to right without overlapping nodes
+ok 6 - dependency chains flow left to right without overlapping nodes
+  ---
+  duration_ms: 60.2879
+  type: 'test'
+  ...
+# Subtest: cycles, self loops, parallel edges and disconnected objects remain finite
+ok 7 - cycles, self loops, parallel edges and disconnected objects remain finite
+  ---
+  duration_ms: 10.2404
+  type: 'test'
+  ...
+# Subtest: empty and single-object scopes are safe
+ok 8 - empty and single-object scopes are safe
+  ---
+  duration_ms: 0.7889
+  type: 'test'
+  ...
+# Subtest: explorer folds nested ownership and reports loaded descendants
+ok 9 - explorer folds nested ownership and reports loaded descendants
+  ---
+  duration_ms: 4.5138
+  type: 'test'
+  ...
+# Subtest: explorer chooses one safe owner for cycles and multiple ownership
+ok 10 - explorer chooses one safe owner for cycles and multiple ownership
+  ---
+  duration_ms: 1.2521
+  type: 'test'
+  ...
+# Subtest: explorer layout uses ownership only and preserves canonical edge direction
+ok 11 - explorer layout uses ownership only and preserves canonical edge direction
+  ---
+  duration_ms: 11.3695
+  type: 'test'
+  ...
+# Subtest: explorer layout anchors surviving nodes while expanding without overlap
+ok 12 - explorer layout anchors surviving nodes while expanding without overlap
+  ---
+  duration_ms: 20.0767
+  type: 'test'
+  ...
+# Subtest: explorer ranks models before reports without changing USES_MODEL facts
+ok 13 - explorer ranks models before reports without changing USES_MODEL facts
+  ---
+  duration_ms: 2.1623
+  type: 'test'
+  ...
+# Subtest: report artifacts with both ownership IDs stay in the report group
+ok 14 - report artifacts with both ownership IDs stay in the report group
+  ---
+  duration_ms: 2.2118
+  type: 'test'
+  ...
+# Subtest: status never overrides artifact colors and reset restores group inheritance
+ok 15 - status never overrides artifact colors and reset restores group inheritance
+  ---
+  duration_ms: 2.3668
+  type: 'test'
+  ...
+# Subtest: artifact regions are disjoint and contain their nodes (LR)
+ok 16 - artifact regions are disjoint and contain their nodes (LR)
+  ---
+  duration_ms: 92.725
+  type: 'test'
+  ...
+# Subtest: artifact regions are disjoint and contain their nodes (TB)
+ok 17 - artifact regions are disjoint and contain their nodes (TB)
+  ---
+  duration_ms: 35.6017
+  type: 'test'
+  ...
+# Subtest: grouped layout preserves cycles, parallel edges, self-loops, unknown nodes and ID collisions
+ok 18 - grouped layout preserves cycles, parallel edges, self-loops, unknown nodes and ID collisions
+  ---
+  duration_ms: 38.6388
+  type: 'test'
+  ...
+# Subtest: vertical layout preserves source-to-target direction
+ok 19 - vertical layout preserves source-to-target direction
+  ---
+  duration_ms: 46.1491
+  type: 'test'
+  ...
+# Subtest: source visual identifiers use the visual type while explicit titles survive
+ok 20 - source visual identifiers use the visual type while explicit titles survive
+  ---
+  duration_ms: 2.1734
+  type: 'test'
+  ...
+# Subtest: nested and serialized evidence becomes readable without exposing internal references
+ok 21 - nested and serialized evidence becomes readable without exposing internal references
+  ---
+  duration_ms: 3.217
+  type: 'test'
+  ...
+# Subtest: palettes are diverse defaults while explicit custom colors and group inheritance survive
+ok 22 - palettes are diverse defaults while explicit custom colors and group inheritance survive
+  ---
+  duration_ms: 2.655
+  type: 'test'
+  ...
+# Subtest: model precedes report, page, visual and bound field without reversing canonical arrows
+ok 23 - model precedes report, page, visual and bound field without reversing canonical arrows
+  ---
+  duration_ms: 89.6004
+  type: 'test'
+  ...
+# Subtest: visual titles and types are readable; an opaque ID is the final fallback
+ok 24 - visual titles and types are readable; an opaque ID is the final fallback
+  ---
+  duration_ms: 0.939
+  type: 'test'
+  ...
+# Subtest: search scopes and paginates through the local API
+ok 25 - search scopes and paginates through the local API
+  ---
+  duration_ms: 2.7319
+  type: 'test'
+  ...
+# Subtest: graph encodes a center and carries an explicit bounded scope
+ok 26 - graph encodes a center and carries an explicit bounded scope
+  ---
+  duration_ms: 1.7406
+  type: 'test'
+  ...
+# Subtest: graph filters are sent before the server truncates the result
+ok 27 - graph filters are sent before the server truncates the result
+  ---
+  duration_ms: 0.9314
+  type: 'test'
+  ...
+# Subtest: config save preserves the complete server contract
+ok 28 - config save preserves the complete server contract
+  ---
+  duration_ms: 1.7582
+  type: 'test'
+  ...
+# Subtest: scan posts an explicit JSON payload for the local WSGI API
+ok 29 - scan posts an explicit JSON payload for the local WSGI API
+  ---
+  duration_ms: 0.4689
+  type: 'test'
+  ...
+# Subtest: API errors expose the backend error field
+ok 30 - API errors expose the backend error field
+  ---
+  duration_ms: 1.0285
+  type: 'test'
+  ...
+# Subtest: model summary requires an explicit encoded model scope
+ok 31 - model summary requires an explicit encoded model scope
+  ---
+  duration_ms: 0.4142
+  type: 'test'
+  ...
+1..31
+# tests 31
+# suites 0
+# pass 31
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 441.4199

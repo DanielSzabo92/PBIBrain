@@ -1,0 +1,15 @@
+MSBUILD : error MSB1001: Unknown switch.
+    Full command line: 'C:\Program Files\dotnet\sdk\8.0.403\MSBuild.dll -maxcpucount -verbosity:m -nologo -restore -consoleloggerparameters:Summary -property:Configuration=Release backend/adapters/tabular_metadata/dotnet/TabularMetadata.csproj --locked-mode -distributedlogger:Microsoft.DotNet.Tools.MSBuild.MSBuildLogger,C:\Program Files\dotnet\sdk\8.0.403\dotnet.dll*Microsoft.DotNet.Tools.MSBuild.MSBuildForwardingLogger,C:\Program Files\dotnet\sdk\8.0.403\dotnet.dll'
+  Switches appended by response files:
+Switch: --locked-mode
+
+For switch syntax, type "MSBuild -help"
+  Determining projects to restore...
+  Restored C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\backend\adapters\tabular_metadata\dotnet\TabularMetadata.csproj (in 658 ms).
+  TabularMetadata -> C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\backend\adapters\tabular_metadata\dotnet\bin\Release\net8.0\TabularMetadata.dll
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:03.91

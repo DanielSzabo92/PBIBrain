@@ -1,0 +1,132 @@
+{
+  "proof_version": 1,
+  "status": "PASSED",
+  "kind": "REAL_WINDOWS_OS",
+  "receipt": {
+    "isolation_version": 1,
+    "status": "PASSED",
+    "backend": "WINDOWS_APPCONTAINER",
+    "candidate_source_hash": "sha256:bbc1d42d326534ef1c4e5893a0910c69390b375734dea62d07b301b49d63f737",
+    "process_exit_code": 0,
+    "finished_at": "2026-10-09T07:42:54.475458+00:00",
+    "network": "NONE",
+    "writable_roots": [
+      "C:\\Users\\Daniel\\AppData\\Local\\Temp\\pbi-guard-native-proof-9lo3v7ar\\candidate"
+    ],
+    "ephemeral_profile": "C:\\Users\\Daniel\\AppData\\Local\\Packages\\pbibrain.guard.f07dd7a141b841d184d1271c6b2a7d7e\\AC",
+    "runtime_readonly_roots": [
+      "C:\\Users\\Daniel\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\python"
+    ],
+    "command_hash": "sha256:1fbbcbe715646c71f60f2d42bc8b26d7afc111defcd3fa6344a7391f42634b1c",
+    "token_is_appcontainer": true,
+    "capability_count": 0,
+    "descendants_exited": true,
+    "inherited_handles": false
+  },
+  "attempts": [
+    {
+      "target": "authoritative",
+      "action": "read",
+      "result": "DENIED"
+    },
+    {
+      "target": "authoritative",
+      "action": "write",
+      "result": "DENIED"
+    },
+    {
+      "target": "authoritative",
+      "action": "create",
+      "result": "DENIED"
+    },
+    {
+      "target": "baseline",
+      "action": "read",
+      "result": "DENIED"
+    },
+    {
+      "target": "baseline",
+      "action": "write",
+      "result": "DENIED"
+    },
+    {
+      "target": "baseline",
+      "action": "create",
+      "result": "DENIED"
+    },
+    {
+      "target": "policy",
+      "action": "read",
+      "result": "DENIED"
+    },
+    {
+      "target": "policy",
+      "action": "write",
+      "result": "DENIED"
+    },
+    {
+      "target": "policy",
+      "action": "create",
+      "result": "DENIED"
+    },
+    {
+      "target": "audit",
+      "action": "read",
+      "result": "DENIED"
+    },
+    {
+      "target": "audit",
+      "action": "write",
+      "result": "DENIED"
+    },
+    {
+      "target": "audit",
+      "action": "create",
+      "result": "DENIED"
+    },
+    {
+      "target": "unrelated",
+      "action": "read",
+      "result": "DENIED"
+    },
+    {
+      "target": "unrelated",
+      "action": "write",
+      "result": "DENIED"
+    },
+    {
+      "target": "unrelated",
+      "action": "create",
+      "result": "DENIED"
+    },
+    {
+      "target": "network",
+      "action": "network",
+      "result": "BLOCKED_TIMEOUT"
+    },
+    {
+      "target": "hardlink",
+      "action": "hardlink",
+      "result": "DENIED"
+    },
+    {
+      "target": "runtime_write",
+      "action": "runtime_write",
+      "result": "DENIED"
+    },
+    {
+      "target": "controller_process_write_access",
+      "action": "controller_process_write_access",
+      "result": "DENIED"
+    },
+    {
+      "target": "child_protected_write",
+      "action": "child_protected_write",
+      "result": "DENIED"
+    }
+  ],
+  "protected_unchanged": true,
+  "candidate_write_verified": true,
+  "listener_control_connection_verified": true,
+  "cleanup_verified": true
+}

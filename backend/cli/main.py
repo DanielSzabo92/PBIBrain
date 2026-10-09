@@ -60,6 +60,14 @@ def _parser() -> argparse.ArgumentParser:
     export_markdown.add_argument("--output", help="create a new Markdown file; stdout when omitted")
     commands.add_parser("project-scan", help="scan all sources in the configured Brain project")
     commands.add_parser("config", help="show resolved project configuration")
+    impact = commands.add_parser("impact", help="read conservative downstream impact")
+    impact.add_argument("--object-id", required=True)
+    impact.add_argument("--proposal", required=True)
+    impact.add_argument("--json", action="store_true")
+    compare = commands.add_parser("compare", help="compare prepared snapshot documents")
+    compare.add_argument("--before", required=True)
+    compare.add_argument("--after", required=True)
+    compare.add_argument("--json", action="store_true")
     server = commands.add_parser("serve", help="serve the local config, graph UI, and agent API")
     server.add_argument("--port", type=int, default=8000)
     server.add_argument("--ui", default=str(Path(__file__).resolve().parents[2] / "frontend" / "dist"), help="built Inspector directory")
@@ -75,6 +83,13 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.command == "mcp":
         from backend.mcp_server import run
         run(args.url)
+        return 0
+    if args.command == "compare":
+        from backend.diff import compare_snapshots
+        from backend.snapshots import Snapshot
+        before = Snapshot.from_dict(json.loads(Path(args.before).read_text(encoding="utf-8")))
+        after = Snapshot.from_dict(json.loads(Path(args.after).read_text(encoding="utf-8")))
+        print(json.dumps(compare_snapshots(before, after), ensure_ascii=False, sort_keys=True))
         return 0
     from backend.projects import ProjectService
     project = ProjectService(args.config)
@@ -109,6 +124,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         except UnsafeExportPathError as exc:
             parser.error(str(exc))
     with GraphRepository(args.db) as repository:
+        if args.command == "impact":
+            from backend.impact import analyze_impact
+            proposed = json.loads(Path(args.proposal).read_text(encoding="utf-8"))
+            changes = proposed.get("proposed_changes", []) if isinstance(proposed, dict) else proposed
+            print(json.dumps(analyze_impact(repository, [args.object_id], changes), ensure_ascii=False, sort_keys=True))
+            return 0
         if args.command == "project-scan":
             result = project.scan(repository)
             print(json.dumps({"nodes": len(result.graph.nodes), "edges": len(result.graph.edges), "sources": result.source_count}, sort_keys=True))

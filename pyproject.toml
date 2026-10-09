@@ -7,7 +7,7 @@ name = "powerbi-brain"
 version = "0.1.0"
 description = "Canonical, provenance-aware Power BI semantic graph"
 requires-python = ">=3.11"
-dependencies = ["ladybug>=0.20", "antlr4-python3-runtime==4.13.2"]
+dependencies = ["ladybug>=0.20", "antlr4-python3-runtime==4.13.2", "jsonschema==4.25.1"]
 
 [project.optional-dependencies]
 mcp = ["mcp>=1.9,<2"]
@@ -20,9 +20,16 @@ Repository = "https://github.com/DanielSzabo92/PBIBrain"
 [project.scripts]
 brain = "backend.cli.main:main"
 brain-agent = "backend.agent:main"
+pbi-guard = "change_guard.cli:main"
 
 [project.gui-scripts]
 pbibrain = "backend.desktop:run"
 
 [tool.setuptools.packages.find]
-include = ["backend*"]
+include = ["backend*", "change_guard*"]
+
+[tool.setuptools.package-data]
+"backend.adapters.tabular_metadata" = ["dotnet/*.cs", "dotnet/*.csproj", "dotnet/packages.lock.json"]
+"change_guard.contracts" = ["contract-v1.schema.json"]
+"backend.adapters.pbir" = ["schemas/**/*", "schemas/manifest.json", "schemas/LICENSE"]
+"change_guard.regression" = ["dotnet/*.cs", "dotnet/*.csproj", "dotnet/packages.lock.json"]

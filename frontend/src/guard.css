@@ -1,0 +1,17 @@
+.guard-stack { display: grid; gap: 1rem; margin-top: 1rem; }
+.guard-fields { display: flex; flex-wrap: wrap; align-items: end; gap: .75rem; }
+.guard-fields label { display: grid; gap: .4rem; min-width: 12rem; flex: 1; }
+.guard-warning { border: 1px solid var(--border); border-left: 3px solid var(--primary); padding: .8rem; background: var(--muted-surface); }
+.impact-flow { height: 24rem; min-height: 16rem; border: 1px solid var(--border); border-radius: var(--radius); background: var(--background); }
+.impact-flow .react-flow__node-default { color: var(--foreground); background: var(--card); border-color: var(--border); }
+.guard-records { list-style: none; padding: 0; display: grid; gap: .8rem; }
+.guard-records > li { border-bottom: 1px solid var(--border); padding-bottom: .8rem; }
+.guard-records span { display: block; color: var(--muted-foreground); font-size: .85rem; }
+.guard-review { margin: auto; max-width: 84rem; padding: 2rem; }
+.guard-review .panel { padding: 1.25rem; min-width: 0; }
+.guard-review li { overflow-wrap: anywhere; }
+.guard-table-wrap { overflow-x: auto; max-width: 100%; }
+.guard-review table { width: 100%; border-collapse: collapse; text-align: left; }
+.guard-review th, .guard-review td { border-bottom: 1px solid var(--border); padding: .65rem; max-width: 25rem; overflow-wrap: anywhere; vertical-align: top; }
+.guard-review td small { display: block; color: var(--muted-foreground); }
+@media (max-width: 640px) { .guard-review { padding: 1rem; } .guard-fields { display: grid; } .impact-flow { height: 20rem; } }

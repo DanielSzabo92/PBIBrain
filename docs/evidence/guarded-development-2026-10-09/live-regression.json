@@ -1,0 +1,3331 @@
+{
+  "proof_version": 1,
+  "status": "PASSED",
+  "kind": "REAL_DESKTOP_ENGINE",
+  "scope": "SEALED_LITERAL_ACCEPTANCE_FIXTURE",
+  "engine_version": "17.0.74.22",
+  "context": {
+    "data_snapshot_id": "sha256:023ee8bf9eeddb80844280ec1563a7ac23798750fdb4b39bd8633a83b7a579fd",
+    "processed_state_id": "sha256:c1a071d61b14d85c36920f6cbdd92a1e4215043a1d80c1dfbd83aa21b052cc46",
+    "culture": "en-US",
+    "role": null,
+    "parameters_json": "{}",
+    "filter_context_json": "{}",
+    "calculation_configuration_json": "{}",
+    "evaluation_time": null,
+    "data_frozen": true
+  },
+  "data_freeze": {
+    "rule": "SEALED_LITERAL_DATA_V1",
+    "definition_hash": "sha256:023ee8bf9eeddb80844280ec1563a7ac23798750fdb4b39bd8633a83b7a579fd",
+    "processed_hash": "sha256:c1a071d61b14d85c36920f6cbdd92a1e4215043a1d80c1dfbd83aa21b052cc46",
+    "table_hashes": {
+      "Date": "sha256:08c6a735a90e4868d781d51338c9b5c860451b81859295a27ca252a9e641d2c1",
+      "FactSales": "sha256:2d3c8ec44a28ec520e5101513424bb914098badf3eed33175a5034040c5d09fa",
+      "AlternateDate": "sha256:08c6a735a90e4868d781d51338c9b5c860451b81859295a27ca252a9e641d2c1"
+    }
+  },
+  "permissions": [
+    {
+      "status": "DENIED",
+      "read_probe": true,
+      "administrator_control": "PASSED",
+      "model_permission": "Read",
+      "enforced_role": "PBIBrainGuardReader",
+      "command_hash": "6543daad63ae12299b1b2828ebc9775cfa42345e94fd506c3e20616e61b087ef",
+      "error": "The JSON DDL request failed with the following error: Cannot execute the Refresh command: database 'guard_3619330bfc594316866f648220eff586' cannot be found..",
+      "errors": [
+        {
+          "code": -1055784777,
+          "message": "The JSON DDL request failed with the following error: Cannot execute the Refresh command: database 'guard_3619330bfc594316866f648220eff586' cannot be found.."
+        }
+      ]
+    },
+    {
+      "status": "DENIED",
+      "read_probe": true,
+      "administrator_control": "PASSED",
+      "model_permission": "Read",
+      "enforced_role": "PBIBrainGuardReader",
+      "command_hash": "43b9cae3ee6f0e044d3cc1a625ec8aaef26cec00002a1cb8e3c81c4b9ae3ecbd",
+      "error": "The JSON DDL request failed with the following error: Cannot execute the Refresh command: database 'guard_e968bdfb85b34b48a438fc69346a1626' cannot be found..",
+      "errors": [
+        {
+          "code": -1055784777,
+          "message": "The JSON DDL request failed with the following error: Cannot execute the Refresh command: database 'guard_e968bdfb85b34b48a438fc69346a1626' cannot be found.."
+        }
+      ]
+    }
+  ],
+  "baseline_snapshot_id": "sha256:11b2052bec918772d3bd6a44eb693d11e6c4ea21161d3b7e966906fe34fe3443",
+  "candidate_snapshot_id": "sha256:98ace83f947873df89dde6a262028e0c7d6c7ae0830f56ac9e9424d2c845940c",
+  "runtime": {
+    "certified": true,
+    "completed_tests": [
+      "affected_measure",
+      "alternate_relationship",
+      "blank_unmatched_keys",
+      "dependent_measure",
+      "grouped_dimension_total",
+      "preserve_fields_AlternateDate",
+      "preserve_fields_Date",
+      "preserve_fields_FactSales",
+      "report_bound_calculation",
+      "slicer_filter_context",
+      "time_intelligence",
+      "unfiltered_total"
+    ],
+    "covered_impact_paths": [
+      "sha256:0192e4c94868bdb948170fcc0dd6129bb819dd19c6003b301e149bd807650c23",
+      "sha256:021ac7318e25a9d207db24529d743ac833f64ee6c63b95334f5ab407039ccd3b",
+      "sha256:0a4dae8c30094b3b31821736f5a48268cfe1e9cfda0081ffda238e502eb258dd",
+      "sha256:0b5e122968a1c35bbb5be442dfdef717b006d629d900cc806306a2efd43a0f4c",
+      "sha256:160b595e73364f4ef531ab439526ac6e5980fb53b393125477121f09b2de85ed",
+      "sha256:1b5b8b1001aac3ffbc1afee2fdabbfa1a3642a5cccfedb408ee67d11932500cf",
+      "sha256:1f14f8aa8c276bedaf6cf0d4985d092f091d8a1be0a63f2d5e18f955c072a987",
+      "sha256:222375f89a6e07d375ba8d07466124f7ef756fa994677bfd058e3f59fac6a507",
+      "sha256:2fc15895626eaf1c67c19eedf32d96e6034ca2e04f6b8f2a6c315e21600d4925",
+      "sha256:311de3a96d39ac03f39ab5b4956ff13f4cc0406abdae06c10124abb39caa0d89",
+      "sha256:34afd1e15f9dcc395f096e660b975cf5400d69402c5c6d5d2d5c1ace9a3c9672",
+      "sha256:361b8cecf6abae3bf4d4120576ef9af75de51afda463b23f58fdb43cdad48600",
+      "sha256:38adb153084dcc474cd0548c1104b7a8cc9ffa07d854573abfd628570f252b07",
+      "sha256:440d6f2986ef0c3b46fcd4c0aea7379eb79a512621c9ea0599d927cae23cd1ab",
+      "sha256:48c660a4afb6da86570479cae59b09649da04ca85a720f9797820d88257316fb",
+      "sha256:4caf413cf256920c892c0008081575778730e3571665897b849121d0dfc1934b",
+      "sha256:50b962449703edecfa604c2219ffedaa0d8de0bf05b076bd52da42b8151d6556",
+      "sha256:59629bbc7c93983e25b68b2a8582d1809e0c977008881354a4faccda295cdd02",
+      "sha256:641750ab483457eef83d9a8285106c1293effdc1e90874e626c18cf5e65aeaea",
+      "sha256:67ce0985c6d02fbe55b881ba08678d4775a2d0c1200f08d089f7d056e01b9910",
+      "sha256:71b0f1c9d80efdc84b37679c47b9a4d2cc8f24cdcfe9d77a9b0654dc047e5304",
+      "sha256:78d7816acf105e82a40e7bcd6a2a8a8b32b43e6ab8f1954e567c73af2c0f6cdd",
+      "sha256:7dbb4b5c2b3f51bf6ec7a40aa574c1beebb28aff8005de70e6e264707a75bcb2",
+      "sha256:7ef4eede276e31ec23ea30ffe30eb5fdc63d30c24ee5d890f1be486f2b0fd5fb",
+      "sha256:7f7f1239f368429e3ea3eef7c20ba65ef0d79de7d665853e4730f519d361d975",
+      "sha256:83a48a98d9ddca5a20dcb053f0cc775ad39e4575c9832621be2bbd1a39c46861",
+      "sha256:87186387d851d1a65fa6f787ac71c7068da5ae55fc6d569e5300e03885a5c672",
+      "sha256:8ddab6b79cb39760d3583d98d10e7b664600485bf0ab5bd5ac4c57473536fe93",
+      "sha256:9ec62a47d83b8eee5f0c81d11d6c391b5c06d50f6d990b99ea31fbc1ebc50095",
+      "sha256:ad63a64325fd16568240f1f51e8a3e0d46a24b146b3c2aaec9a5539017ac3131",
+      "sha256:ad92e81b789fb2e9c7e0e2840b8d9e6823be13e6fa68bb70b85fa8e988f2bb25",
+      "sha256:b06efa1a9aa1966ba6708fcfc1a58ffeb92f3ef5d8277a1c950f05a4a1d785d9",
+      "sha256:b4f991d0cef9ec1b2eb4248077ac1bac2727f78aa75ff908bbd91bc1c7a9f3de",
+      "sha256:ba0118c54eb151ff58edddd048967e84b7f3b28474f24843e296878c3d0d044f",
+      "sha256:c71ffe1caf5621a8b3a183369d89d928eb6ed3c75691f638c21bd02a2a8cbe9e",
+      "sha256:c8dede8f0a2ee193d55c4b2bc446d6c889daeaf4c0ecc85190ea89f5fc60d339",
+      "sha256:d4a404621d704d6faeb6ee2fdecea04355078062114ad1390f49b2ff200f8912",
+      "sha256:d60920aab96fc516770022a73cb26ee6b1a188665bcd22140e38f95df911499d",
+      "sha256:db24e366ea3fc5c3de999ecdfc35d1057dcda4a47e2083e6964bb94448383b2f",
+      "sha256:e2159c3775ac0f521d43ae819ac2a37dcacdead918b71895b2fd93f654240d72",
+      "sha256:e4ebb59ef6b4a8b7290069cb9c2786c4bb27326a56e1f9548926ffb055426840"
+    ],
+    "data_equivalent": true,
+    "duration_seconds": 9.735973699949682,
+    "evidence_hash": "sha256:bb71d9b6aba75b8b6965a8274d7266010a8d6d33c7aa8e51df30d91840d80450",
+    "failed_tests": [],
+    "frozen_data_rechecked": true,
+    "impacted_objects": [
+      "model:Sales/relationship:4eaeb483652356538717f5801c0094c9",
+      "model:Sales/table:table-alternate-date",
+      "model:Sales/table:table-alternate-date/column:alternate-column-calendar-date",
+      "model:Sales/table:table-alternate-date/column:alternate-column-date",
+      "model:Sales/table:table-alternate-date/column:alternate-column-month",
+      "model:Sales/table:table-date",
+      "model:Sales/table:table-date/column:column-calendar-date",
+      "model:Sales/table:table-date/column:column-date",
+      "model:Sales/table:table-date/column:column-month",
+      "model:Sales/table:table-fact",
+      "model:Sales/table:table-fact/column:column-amount",
+      "model:Sales/table:table-fact/column:column-order",
+      "model:Sales/table:table-fact/column:column-ship",
+      "model:Sales/table:table-fact/measure:measure-explicit-ship",
+      "model:Sales/table:table-fact/measure:measure-sales",
+      "model:Sales/table:table-fact/measure:measure-ytd",
+      "report:report-sales",
+      "report:report-sales/page:month",
+      "report:report-sales/page:month/visual:sales"
+    ],
+    "inconclusive_tests": [],
+    "missing_required_tests": [],
+    "regression_version": 1,
+    "required_tests": [
+      "affected_measure",
+      "alternate_relationship",
+      "blank_unmatched_keys",
+      "dependent_measure",
+      "grouped_dimension_total",
+      "preserve_fields_AlternateDate",
+      "preserve_fields_Date",
+      "preserve_fields_FactSales",
+      "report_bound_calculation",
+      "slicer_filter_context",
+      "time_intelligence",
+      "unfiltered_total"
+    ],
+    "results": [
+      {
+        "after_hash": "sha256:7e5f3f51b7bd525ab3e2cc5cb0c93e17e85295b226f149cd224d1ccb3e9bf40f",
+        "after_result": {
+          "columns": [
+            {
+              "name": "[Sales]",
+              "type": "Decimal"
+            }
+          ],
+          "rows": [
+            [
+              {
+                "$decimal": "65"
+              }
+            ]
+          ]
+        },
+        "after_result_hash": "sha256:7e5f3f51b7bd525ab3e2cc5cb0c93e17e85295b226f149cd224d1ccb3e9bf40f",
+        "assertions": [],
+        "backend": [
+          "LOCAL_ANALYSIS_SERVICES",
+          "LOCAL_ANALYSIS_SERVICES"
+        ],
+        "baseline_snapshot_id": "sha256:11b2052bec918772d3bd6a44eb693d11e6c4ea21161d3b7e966906fe34fe3443",
+        "before_hash": "sha256:7e5f3f51b7bd525ab3e2cc5cb0c93e17e85295b226f149cd224d1ccb3e9bf40f",
+        "before_result": {
+          "columns": [
+            {
+              "name": "[Sales]",
+              "type": "Decimal"
+            }
+          ],
+          "rows": [
+            [
+              {
+                "$decimal": "65"
+              }
+            ]
+          ]
+        },
+        "before_result_hash": "sha256:7e5f3f51b7bd525ab3e2cc5cb0c93e17e85295b226f149cd224d1ccb3e9bf40f",
+        "candidate_snapshot_id": "sha256:98ace83f947873df89dde6a262028e0c7d6c7ae0830f56ac9e9424d2c845940c",
+        "category": "unfiltered_total",
+        "changed": false,
+        "context": {
+          "calculation_configuration_json": "{}",
+          "culture": "en-US",
+          "data_frozen": true,
+          "data_snapshot_id": "sha256:023ee8bf9eeddb80844280ec1563a7ac23798750fdb4b39bd8633a83b7a579fd",
+          "evaluation_time": null,
+          "filter_context_json": "{}",
+          "parameters_json": "{}",
+          "processed_state_id": "sha256:c1a071d61b14d85c36920f6cbdd92a1e4215043a1d80c1dfbd83aa21b052cc46",
+          "role": null
+        },
+        "context_hash": "sha256:9871f41b5a5688395bcc614157b26be7336298d48bc28f9951b664ca019483ef",
+        "data_snapshot_id": "sha256:023ee8bf9eeddb80844280ec1563a7ac23798750fdb4b39bd8633a83b7a579fd",
+        "duration_seconds": 0.606322200037539,
+        "evidence_class": "OBSERVED",
+        "executed_at": "2026-10-09T08:12:57.358601+00:00",
+        "query": "EVALUATE ROW(\"Sales\", [Sales Amount])",
+        "query_hash": "sha256:815685b8d8d510ad087d36660dfab4d89772fdee999203b44e45ec84795e8ae8",
+        "query_target_coverage": [
+          {
+            "diagnostics": [],
+            "missing_ids": [],
+            "report_contexts": [],
+            "resolved_ids": [
+              "model:Sales/table:table-fact",
+              "model:Sales/table:table-fact/column:column-amount",
+              "model:Sales/table:table-fact/measure:measure-sales"
+            ],
+            "status": "PASSED"
+          },
+          {
+            "diagnostics": [],
+            "missing_ids": [],
+            "report_contexts": [],
+            "resolved_ids": [
+              "model:Sales/table:table-fact",
+              "model:Sales/table:table-fact/column:column-amount",
+              "model:Sales/table:table-fact/measure:measure-sales"
+            ],
+            "status": "PASSED"
+          }
+        ],
+        "required": true,
+        "result_values_retained": true,
+        "row_count_after": 1,
+        "row_count_before": 1,
+        "status": "PASSED",
+        "target_objects": [
+          "model:Sales/table:table-fact/measure:measure-sales"
+        ],
+        "test_id": "unfiltered_total",
+        "tolerance_policy_version": "explicit-1"
+      },
+      {
+        "after_hash": "sha256:354d77fa1de62a7fdaeff782b28ef315e0cd3de9dd13fc887d358a69e4bb61b1",
+        "after_result": {
+          "columns": [
+            {
+              "name": "Date[CalendarMonth]",
+              "type": "String"
+            },
+            {
+              "name": "[Sales]",
+              "type": "Decimal"
+            }
+          ],
+          "rows": [
+            [
+              null,
+              {
+                "$decimal": "5"
+              }
+            ],
+            [
+              "2025-02",
+              {
+                "$decimal": "60"
+              }
+            ]
+          ]
+        },
+        "after_result_hash": "sha256:354d77fa1de62a7fdaeff782b28ef315e0cd3de9dd13fc887d358a69e4bb61b1",
+        "assertions": [],
+        "backend": [
+          "LOCAL_ANALYSIS_SERVICES",
+          "LOCAL_ANALYSIS_SERVICES"
+        ],
+        "baseline_snapshot_id": "sha256:11b2052bec918772d3bd6a44eb693d11e6c4ea21161d3b7e966906fe34fe3443",
+        "before_hash": "sha256:1b11531f9953f2cb6949ecf5c51ae85ffec8c7b9595611ef4281e2c6129c035e",
+        "before_result": {
+          "columns": [
+            {
+              "name": "Date[CalendarMonth]",
+              "type": "String"
+            },
+            {
+              "name": "[Sales]",
+              "type": "Decimal"
+            }
+          ],
+          "rows": [
+            [
+              null,
+              {
+                "$decimal": "5"
+              }
+            ],
+            [
+              "2025-01",
+              {
+                "$decimal": "30"
+              }
+            ],
+            [
+              "2025-02",
+              {
+                "$decimal": "30"
+              }
+            ]
+          ]
+        },
+        "before_result_hash": "sha256:1b11531f9953f2cb6949ecf5c51ae85ffec8c7b9595611ef4281e2c6129c035e",
+        "candidate_snapshot_id": "sha256:98ace83f947873df89dde6a262028e0c7d6c7ae0830f56ac9e9424d2c845940c",
+        "category": "grouped_dimension_total",
+        "changed": true,
+        "context": {
+          "calculation_configuration_json": "{}",
+          "culture": "en-US",
+          "data_frozen": true,
+          "data_snapshot_id": "sha256:023ee8bf9eeddb80844280ec1563a7ac23798750fdb4b39bd8633a83b7a579fd",
+          "evaluation_time": null,
+          "filter_context_json": "{}",
+          "parameters_json": "{}",
+          "processed_state_id": "sha256:c1a071d61b14d85c36920f6cbdd92a1e4215043a1d80c1dfbd83aa21b052cc46",
+          "role": null
+        },
+        "context_hash": "sha256:9871f41b5a5688395bcc614157b26be7336298d48bc28f9951b664ca019483ef",
+        "data_snapshot_id": "sha256:023ee8bf9eeddb80844280ec1563a7ac23798750fdb4b39bd8633a83b7a579fd",
+        "duration_seconds": 0.6062338999472558,
+        "evidence_class": "OBSERVED",
+        "executed_at": "2026-10-09T08:12:57.974729+00:00",
+        "query": "EVALUATE SUMMARIZECOLUMNS('Date'[CalendarMonth], \"Sales\", [Sales Amount])",
+        "query_hash": "sha256:ea2e197ce5d4f87d12178dab7cde89aa597dcedf7f893d43ee6cfa0be1bd1642",
+        "query_target_coverage": [
+          {
+            "diagnostics": [],
+            "missing_ids": [],
+            "report_contexts": [],
+            "resolved_ids": [
+              "model:Sales/table:table-date",
+              "model:Sales/table:table-date/column:column-month",
+              "model:Sales/table:table-fact",
+              "model:Sales/table:table-fact/column:column-amount",
+              "model:Sales/table:table-fact/measure:measure-sales"
+            ],
+            "status": "PASSED"
+          },
+          {
+            "diagnostics": [],
+            "missing_ids": [],
+            "report_contexts": [],
+            "resolved_ids": [
+              "model:Sales/table:table-date",
+              "model:Sales/table:table-date/column:column-month",
+              "model:Sales/table:table-fact",
+              "model:Sales/table:table-fact/column:column-amount",
+              "model:Sales/table:table-fact/measure:measure-sales"
+            ],
+            "status": "PASSED"
+          }
+        ],
+        "required": true,
+        "result_values_retained": true,
+        "row_count_after": 2,
+        "row_count_before": 3,
+        "status": "PASSED",
+        "target_objects": [
+          "model:Sales/table:table-fact/measure:measure-sales",
+          "model:Sales/table:table-date",
+          "model:Sales/table:table-fact"
+        ],
+        "test_id": "grouped_dimension_total",
+        "tolerance_policy_version": "explicit-1"
+      },
+      {
+        "after_hash": "sha256:7e5f3f51b7bd525ab3e2cc5cb0c93e17e85295b226f149cd224d1ccb3e9bf40f",
+        "after_result": {
+          "columns": [
+            {
+              "name": "[Sales]",
+              "type": "Decimal"
+            }
+          ],
+          "rows": [
+            [
+              {
+                "$decimal": "65"
+              }
+            ]
+          ]
+        },
+        "after_result_hash": "sha256:7e5f3f51b7bd525ab3e2cc5cb0c93e17e85295b226f149cd224d1ccb3e9bf40f",
+        "assertions": [],
+        "backend": [
+          "LOCAL_ANALYSIS_SERVICES",
+          "LOCAL_ANALYSIS_SERVICES"
+        ],
+        "baseline_snapshot_id": "sha256:11b2052bec918772d3bd6a44eb693d11e6c4ea21161d3b7e966906fe34fe3443",
+        "before_hash": "sha256:7e5f3f51b7bd525ab3e2cc5cb0c93e17e85295b226f149cd224d1ccb3e9bf40f",
+        "before_result": {
+          "columns": [
+            {
+              "name": "[Sales]",
+              "type": "Decimal"
+            }
+          ],
+          "rows": [
+            [
+              {
+                "$decimal": "65"
+              }
+            ]
+          ]
+        },
+        "before_result_hash": "sha256:7e5f3f51b7bd525ab3e2cc5cb0c93e17e85295b226f149cd224d1ccb3e9bf40f",
+        "candidate_snapshot_id": "sha256:98ace83f947873df89dde6a262028e0c7d6c7ae0830f56ac9e9424d2c845940c",
+        "category": "affected_measure",
+        "changed": false,
+        "context": {
+          "calculation_configuration_json": "{}",
+          "culture": "en-US",
+          "data_frozen": true,
+          "data_snapshot_id": "sha256:023ee8bf9eeddb80844280ec1563a7ac23798750fdb4b39bd8633a83b7a579fd",
+          "evaluation_time": null,
+          "filter_context_json": "{}",
+          "parameters_json": "{}",
+          "processed_state_id": "sha256:c1a071d61b14d85c36920f6cbdd92a1e4215043a1d80c1dfbd83aa21b052cc46",
+          "role": null
+        },
+        "context_hash": "sha256:9871f41b5a5688395bcc614157b26be7336298d48bc28f9951b664ca019483ef",
+        "data_snapshot_id": "sha256:023ee8bf9eeddb80844280ec1563a7ac23798750fdb4b39bd8633a83b7a579fd",
+        "duration_seconds": 0.6017409998457879,
+        "evidence_class": "OBSERVED",
+        "executed_at": "2026-10-09T08:12:58.588225+00:00",
+        "query": "EVALUATE ROW(\"Sales\", [Sales Amount])",
+        "query_hash": "sha256:815685b8d8d510ad087d36660dfab4d89772fdee999203b44e45ec84795e8ae8",
+        "query_target_coverage": [
+          {
+            "diagnostics": [],
+            "missing_ids": [],
+            "report_contexts": [],
+            "resolved_ids": [
+              "model:Sales/table:table-fact",
+              "model:Sales/table:table-fact/column:column-amount",
+              "model:Sales/table:table-fact/measure:measure-sales"
+            ],
+            "status": "PASSED"
+          },
+          {
+            "diagnostics": [],
+            "missing_ids": [],
+            "report_contexts": [],
+            "resolved_ids": [
+              "model:Sales/table:table-fact",
+              "model:Sales/table:table-fact/column:column-amount",
+              "model:Sales/table:table-fact/measure:measure-sales"
+            ],
+            "status": "PASSED"
+          }
+        ],
+        "required": true,
+        "result_values_retained": true,
+        "row_count_after": 1,
+        "row_count_before": 1,
+        "status": "PASSED",
+        "target_objects": [
+          "model:Sales/table:table-fact/measure:measure-sales"
+        ],
+        "test_id": "affected_measure",
+        "tolerance_policy_version": "explicit-1"
+      },
+      {
+        "after_hash": "sha256:764452d90500c299f3e314f2961880429906425225d29b35dbe718c35b5d4a82",
+        "after_result": {
+          "columns": [
+            {
+              "name": "[YTD]",
+              "type": "Decimal"
+            }
+          ],
+          "rows": [
+            [
+              {
+                "$decimal": "60"
+              }
+            ]
+          ]
+        },
+        "after_result_hash": "sha256:764452d90500c299f3e314f2961880429906425225d29b35dbe718c35b5d4a82",
+        "assertions": [],
+        "backend": [
+          "LOCAL_ANALYSIS_SERVICES",
+          "LOCAL_ANALYSIS_SERVICES"
+        ],
+        "baseline_snapshot_id": "sha256:11b2052bec918772d3bd6a44eb693d11e6c4ea21161d3b7e966906fe34fe3443",
+        "before_hash": "sha256:764452d90500c299f3e314f2961880429906425225d29b35dbe718c35b5d4a82",
+        "before_result": {
+          "columns": [
+            {
+              "name": "[YTD]",
+              "type": "Decimal"
+            }
+          ],
+          "rows": [
+            [
+              {
+                "$decimal": "60"
+              }
+            ]
+          ]
+        },
+        "before_result_hash": "sha256:764452d90500c299f3e314f2961880429906425225d29b35dbe718c35b5d4a82",
+        "candidate_snapshot_id": "sha256:98ace83f947873df89dde6a262028e0c7d6c7ae0830f56ac9e9424d2c845940c",
+        "category": "dependent_measure",
+        "changed": false,
+        "context": {
+          "calculation_configuration_json": "{}",
+          "culture": "en-US",
+          "data_frozen": true,
+          "data_snapshot_id": "sha256:023ee8bf9eeddb80844280ec1563a7ac23798750fdb4b39bd8633a83b7a579fd",
+          "evaluation_time": null,
+          "filter_context_json": "{}",
+          "parameters_json": "{}",
+          "processed_state_id": "sha256:c1a071d61b14d85c36920f6cbdd92a1e4215043a1d80c1dfbd83aa21b052cc46",
+          "role": null
+        },
+        "context_hash": "sha256:9871f41b5a5688395bcc614157b26be7336298d48bc28f9951b664ca019483ef",
+        "data_snapshot_id": "sha256:023ee8bf9eeddb80844280ec1563a7ac23798750fdb4b39bd8633a83b7a579fd",
+        "duration_seconds": 0.6215266000945121,
+        "evidence_class": "OBSERVED",
+        "executed_at": "2026-10-09T08:12:59.197513+00:00",
+        "query": "EVALUATE ROW(\"YTD\", [Sales YTD])",
+        "query_hash": "sha256:6b0b0023fbe2a898d77844166d398bfcdcd1901f552c24335d6abeff99b51ae8",
+        "query_target_coverage": [
+          {
+            "diagnostics": [],
+            "missing_ids": [],
+            "report_contexts": [],
+            "resolved_ids": [
+              "model:Sales/table:table-date",
+              "model:Sales/table:table-date/column:column-calendar-date",
+              "model:Sales/table:table-fact",
+              "model:Sales/table:table-fact/column:column-amount",
+              "model:Sales/table:table-fact/measure:measure-sales",
+              "model:Sales/table:table-fact/measure:measure-ytd"
+            ],
+            "status": "PASSED"
+          },
+          {
+            "diagnostics": [],
+            "missing_ids": [],
+            "report_contexts": [],
+            "resolved_ids": [
+              "model:Sales/table:table-date",
+              "model:Sales/table:table-date/column:column-calendar-date",
+              "model:Sales/table:table-fact",
+              "model:Sales/table:table-fact/column:column-amount",
+              "model:Sales/table:table-fact/measure:measure-sales",
+              "model:Sales/table:table-fact/measure:measure-ytd"
+            ],
+            "status": "PASSED"
+          }
+        ],
+        "required": true,
+        "result_values_retained": true,
+        "row_count_after": 1,
+        "row_count_before": 1,
+        "status": "PASSED",
+        "target_objects": [
+          "model:Sales/table:table-fact/measure:measure-sales",
+          "model:Sales/table:table-fact/measure:measure-ytd"
+        ],
+        "test_id": "dependent_measure",
+        "tolerance_policy_version": "explicit-1"
+      },
+      {
+        "after_hash": "sha256:589032588c64097adf51bef9f5ca33b981f4d3e55d4aa84e3048726b648f71c3",
+        "after_result": {
+          "columns": [
+            {
+              "name": "AlternateDate[CalendarMonth]",
+              "type": "String"
+            },
+            {
+              "name": "[Ship]",
+              "type": "Decimal"
+            }
+          ],
+          "rows": [
+            [
+              null,
+              {
+                "$decimal": "5"
+              }
+            ],
+            [
+              "2025-02",
+              {
+                "$decimal": "60"
+              }
+            ]
+          ]
+        },
+        "after_result_hash": "sha256:589032588c64097adf51bef9f5ca33b981f4d3e55d4aa84e3048726b648f71c3",
+        "assertions": [],
+        "backend": [
+          "LOCAL_ANALYSIS_SERVICES",
+          "LOCAL_ANALYSIS_SERVICES"
+        ],
+        "baseline_snapshot_id": "sha256:11b2052bec918772d3bd6a44eb693d11e6c4ea21161d3b7e966906fe34fe3443",
+        "before_hash": "sha256:589032588c64097adf51bef9f5ca33b981f4d3e55d4aa84e3048726b648f71c3",
+        "before_result": {
+          "columns": [
+            {
+              "name": "AlternateDate[CalendarMonth]",
+              "type": "String"
+            },
+            {
+              "name": "[Ship]",
+              "type": "Decimal"
+            }
+          ],
+          "rows": [
+            [
+              null,
+              {
+                "$decimal": "5"
+              }
+            ],
+            [
+              "2025-02",
+              {
+                "$decimal": "60"
+              }
+            ]
+          ]
+        },
+        "before_result_hash": "sha256:589032588c64097adf51bef9f5ca33b981f4d3e55d4aa84e3048726b648f71c3",
+        "candidate_snapshot_id": "sha256:98ace83f947873df89dde6a262028e0c7d6c7ae0830f56ac9e9424d2c845940c",
+        "category": "alternate_relationship",
+        "changed": false,
+        "context": {
+          "calculation_configuration_json": "{}",
+          "culture": "en-US",
+          "data_frozen": true,
+          "data_snapshot_id": "sha256:023ee8bf9eeddb80844280ec1563a7ac23798750fdb4b39bd8633a83b7a579fd",
+          "evaluation_time": null,
+          "filter_context_json": "{}",
+          "parameters_json": "{}",
+          "processed_state_id": "sha256:c1a071d61b14d85c36920f6cbdd92a1e4215043a1d80c1dfbd83aa21b052cc46",
+          "role": null
+        },
+        "context_hash": "sha256:9871f41b5a5688395bcc614157b26be7336298d48bc28f9951b664ca019483ef",
+        "data_snapshot_id": "sha256:023ee8bf9eeddb80844280ec1563a7ac23798750fdb4b39bd8633a83b7a579fd",
+        "duration_seconds": 0.657137000001967,
+        "evidence_class": "OBSERVED",
+        "executed_at": "2026-10-09T08:12:59.832607+00:00",
+        "query": "EVALUATE SUMMARIZECOLUMNS(AlternateDate[CalendarMonth], \"Ship\", [Explicit Ship Sales])",
+        "query_hash": "sha256:f2d80950d0269949aa3947a564ab8a9ca31f3147467f541b1d17db8d6dbedcda",
+        "query_target_coverage": [
+          {
+            "diagnostics": [],
+            "missing_ids": [],
+            "report_contexts": [],
+            "resolved_ids": [
+              "model:Sales/table:table-alternate-date",
+              "model:Sales/table:table-alternate-date/column:alternate-column-date",
+              "model:Sales/table:table-alternate-date/column:alternate-column-month",
+              "model:Sales/table:table-fact",
+              "model:Sales/table:table-fact/column:column-amount",
+              "model:Sales/table:table-fact/column:column-ship",
+              "model:Sales/table:table-fact/measure:measure-explicit-ship",
+              "model:Sales/table:table-fact/measure:measure-sales"
+            ],
+            "status": "PASSED"
+          },
+          {
+            "diagnostics": [],
+            "missing_ids": [],
+            "report_contexts": [],
+            "resolved_ids": [
+              "model:Sales/table:table-alternate-date",
+              "model:Sales/table:table-alternate-date/column:alternate-column-date",
+              "model:Sales/table:table-alternate-date/column:alternate-column-month",
+              "model:Sales/table:table-fact",
+              "model:Sales/table:table-fact/column:column-amount",
+              "model:Sales/table:table-fact/column:column-ship",
+              "model:Sales/table:table-fact/measure:measure-explicit-ship",
+              "model:Sales/table:table-fact/measure:measure-sales"
+            ],
+            "status": "PASSED"
+          }
+        ],
+        "required": true,
+        "result_values_retained": true,
+        "row_count_after": 2,
+        "row_count_before": 2,
+        "status": "PASSED",
+        "target_objects": [
+          "model:Sales/table:table-fact/measure:measure-sales",
+          "model:Sales/table:table-fact/measure:measure-explicit-ship",
+          "model:Sales/table:table-alternate-date"
+        ],
+        "test_id": "alternate_relationship",
+        "tolerance_policy_version": "explicit-1"
+      },
+      {
+        "after_hash": "sha256:0aaddabf47147ca9846d0e86b5b8d3fbedbc79b61b8afb140825574bb7b74f39",
+        "after_result": {
+          "columns": [
+            {
+              "name": "[Sales]",
+              "type": "Decimal"
+            }
+          ],
+          "rows": [
+            [
+              null
+            ]
+          ]
+        },
+        "after_result_hash": "sha256:0aaddabf47147ca9846d0e86b5b8d3fbedbc79b61b8afb140825574bb7b74f39",
+        "assertions": [],
+        "backend": [
+          "LOCAL_ANALYSIS_SERVICES",
+          "LOCAL_ANALYSIS_SERVICES"
+        ],
+        "baseline_snapshot_id": "sha256:11b2052bec918772d3bd6a44eb693d11e6c4ea21161d3b7e966906fe34fe3443",
+        "before_hash": "sha256:0aaddabf47147ca9846d0e86b5b8d3fbedbc79b61b8afb140825574bb7b74f39",
+        "before_result": {
+          "columns": [
+            {
+              "name": "[Sales]",
+              "type": "Decimal"
+            }
+          ],
+          "rows": [
+            [
+              null
+            ]
+          ]
+        },
+        "before_result_hash": "sha256:0aaddabf47147ca9846d0e86b5b8d3fbedbc79b61b8afb140825574bb7b74f39",
+        "candidate_snapshot_id": "sha256:98ace83f947873df89dde6a262028e0c7d6c7ae0830f56ac9e9424d2c845940c",
+        "category": "blank_unmatched_keys",
+        "changed": false,
+        "context": {
+          "calculation_configuration_json": "{}",
+          "culture": "en-US",
+          "data_frozen": true,
+          "data_snapshot_id": "sha256:023ee8bf9eeddb80844280ec1563a7ac23798750fdb4b39bd8633a83b7a579fd",
+          "evaluation_time": null,
+          "filter_context_json": "{}",
+          "parameters_json": "{}",
+          "processed_state_id": "sha256:c1a071d61b14d85c36920f6cbdd92a1e4215043a1d80c1dfbd83aa21b052cc46",
+          "role": null
+        },
+        "context_hash": "sha256:9871f41b5a5688395bcc614157b26be7336298d48bc28f9951b664ca019483ef",
+        "data_snapshot_id": "sha256:023ee8bf9eeddb80844280ec1563a7ac23798750fdb4b39bd8633a83b7a579fd",
+        "duration_seconds": 0.5924245999194682,
+        "evidence_class": "OBSERVED",
+        "executed_at": "2026-10-09T08:13:00.529022+00:00",
+        "query": "EVALUATE ROW(\"Sales\", CALCULATE([Sales Amount], FILTER('Date', ISBLANK('Date'[DateKey]))))",
+        "query_hash": "sha256:170eacf79e2d09c6a68b68905599ed1f4102127475caaf4aca91aa7da7052910",
+        "query_target_coverage": [
+          {
+            "diagnostics": [],
+            "missing_ids": [],
+            "report_contexts": [],
+            "resolved_ids": [
+              "model:Sales/table:table-date",
+              "model:Sales/table:table-date/column:column-date",
+              "model:Sales/table:table-fact",
+              "model:Sales/table:table-fact/column:column-amount",
+              "model:Sales/table:table-fact/measure:measure-sales"
+            ],
+            "status": "PASSED"
+          },
+          {
+            "diagnostics": [],
+            "missing_ids": [],
+            "report_contexts": [],
+            "resolved_ids": [
+              "model:Sales/table:table-date",
+              "model:Sales/table:table-date/column:column-date",
+              "model:Sales/table:table-fact",
+              "model:Sales/table:table-fact/column:column-amount",
+              "model:Sales/table:table-fact/measure:measure-sales"
+            ],
+            "status": "PASSED"
+          }
+        ],
+        "required": true,
+        "result_values_retained": true,
+        "row_count_after": 1,
+        "row_count_before": 1,
+        "status": "PASSED",
+        "target_objects": [
+          "model:Sales/table:table-fact/measure:measure-sales"
+        ],
+        "test_id": "blank_unmatched_keys",
+        "tolerance_policy_version": "explicit-1"
+      },
+      {
+        "after_hash": "sha256:0aaddabf47147ca9846d0e86b5b8d3fbedbc79b61b8afb140825574bb7b74f39",
+        "after_result": {
+          "columns": [
+            {
+              "name": "[Sales]",
+              "type": "Decimal"
+            }
+          ],
+          "rows": [
+            [
+              null
+            ]
+          ]
+        },
+        "after_result_hash": "sha256:0aaddabf47147ca9846d0e86b5b8d3fbedbc79b61b8afb140825574bb7b74f39",
+        "assertions": [],
+        "backend": [
+          "LOCAL_ANALYSIS_SERVICES",
+          "LOCAL_ANALYSIS_SERVICES"
+        ],
+        "baseline_snapshot_id": "sha256:11b2052bec918772d3bd6a44eb693d11e6c4ea21161d3b7e966906fe34fe3443",
+        "before_hash": "sha256:91ee2710f274074a5ac4b15b5abbe7b6207534d016997fc6350a7c6a387ffcea",
+        "before_result": {
+          "columns": [
+            {
+              "name": "[Sales]",
+              "type": "Decimal"
+            }
+          ],
+          "rows": [
+            [
+              {
+                "$decimal": "30"
+              }
+            ]
+          ]
+        },
+        "before_result_hash": "sha256:91ee2710f274074a5ac4b15b5abbe7b6207534d016997fc6350a7c6a387ffcea",
+        "candidate_snapshot_id": "sha256:98ace83f947873df89dde6a262028e0c7d6c7ae0830f56ac9e9424d2c845940c",
+        "category": "slicer_filter_context",
+        "changed": true,
+        "context": {
+          "calculation_configuration_json": "{}",
+          "culture": "en-US",
+          "data_frozen": true,
+          "data_snapshot_id": "sha256:023ee8bf9eeddb80844280ec1563a7ac23798750fdb4b39bd8633a83b7a579fd",
+          "evaluation_time": null,
+          "filter_context_json": "{}",
+          "parameters_json": "{}",
+          "processed_state_id": "sha256:c1a071d61b14d85c36920f6cbdd92a1e4215043a1d80c1dfbd83aa21b052cc46",
+          "role": null
+        },
+        "context_hash": "sha256:9871f41b5a5688395bcc614157b26be7336298d48bc28f9951b664ca019483ef",
+        "data_snapshot_id": "sha256:023ee8bf9eeddb80844280ec1563a7ac23798750fdb4b39bd8633a83b7a579fd",
+        "duration_seconds": 0.6260906998068094,
+        "evidence_class": "OBSERVED",
+        "executed_at": "2026-10-09T08:13:01.140372+00:00",
+        "query": "EVALUATE ROW(\"Sales\", CALCULATE([Sales Amount], TREATAS({\"2025-01\"}, 'Date'[CalendarMonth])))",
+        "query_hash": "sha256:59d699d69fe8e310d97ba5dbe0b1f828feb706a91f1c7f2e79016964d5a60826",
+        "query_target_coverage": [
+          {
+            "diagnostics": [],
+            "missing_ids": [],
+            "report_contexts": [],
+            "resolved_ids": [
+              "model:Sales/table:table-date",
+              "model:Sales/table:table-date/column:column-month",
+              "model:Sales/table:table-fact",
+              "model:Sales/table:table-fact/column:column-amount",
+              "model:Sales/table:table-fact/measure:measure-sales"
+            ],
+            "status": "PASSED"
+          },
+          {
+            "diagnostics": [],
+            "missing_ids": [],
+            "report_contexts": [],
+            "resolved_ids": [
+              "model:Sales/table:table-date",
+              "model:Sales/table:table-date/column:column-month",
+              "model:Sales/table:table-fact",
+              "model:Sales/table:table-fact/column:column-amount",
+              "model:Sales/table:table-fact/measure:measure-sales"
+            ],
+            "status": "PASSED"
+          }
+        ],
+        "required": true,
+        "result_values_retained": true,
+        "row_count_after": 1,
+        "row_count_before": 1,
+        "status": "PASSED",
+        "target_objects": [
+          "model:Sales/table:table-fact/measure:measure-sales"
+        ],
+        "test_id": "slicer_filter_context",
+        "tolerance_policy_version": "explicit-1"
+      },
+      {
+        "after_hash": "sha256:764452d90500c299f3e314f2961880429906425225d29b35dbe718c35b5d4a82",
+        "after_result": {
+          "columns": [
+            {
+              "name": "[YTD]",
+              "type": "Decimal"
+            }
+          ],
+          "rows": [
+            [
+              {
+                "$decimal": "60"
+              }
+            ]
+          ]
+        },
+        "after_result_hash": "sha256:764452d90500c299f3e314f2961880429906425225d29b35dbe718c35b5d4a82",
+        "assertions": [],
+        "backend": [
+          "LOCAL_ANALYSIS_SERVICES",
+          "LOCAL_ANALYSIS_SERVICES"
+        ],
+        "baseline_snapshot_id": "sha256:11b2052bec918772d3bd6a44eb693d11e6c4ea21161d3b7e966906fe34fe3443",
+        "before_hash": "sha256:764452d90500c299f3e314f2961880429906425225d29b35dbe718c35b5d4a82",
+        "before_result": {
+          "columns": [
+            {
+              "name": "[YTD]",
+              "type": "Decimal"
+            }
+          ],
+          "rows": [
+            [
+              {
+                "$decimal": "60"
+              }
+            ]
+          ]
+        },
+        "before_result_hash": "sha256:764452d90500c299f3e314f2961880429906425225d29b35dbe718c35b5d4a82",
+        "candidate_snapshot_id": "sha256:98ace83f947873df89dde6a262028e0c7d6c7ae0830f56ac9e9424d2c845940c",
+        "category": "time_intelligence",
+        "changed": false,
+        "context": {
+          "calculation_configuration_json": "{}",
+          "culture": "en-US",
+          "data_frozen": true,
+          "data_snapshot_id": "sha256:023ee8bf9eeddb80844280ec1563a7ac23798750fdb4b39bd8633a83b7a579fd",
+          "evaluation_time": null,
+          "filter_context_json": "{}",
+          "parameters_json": "{}",
+          "processed_state_id": "sha256:c1a071d61b14d85c36920f6cbdd92a1e4215043a1d80c1dfbd83aa21b052cc46",
+          "role": null
+        },
+        "context_hash": "sha256:9871f41b5a5688395bcc614157b26be7336298d48bc28f9951b664ca019483ef",
+        "data_snapshot_id": "sha256:023ee8bf9eeddb80844280ec1563a7ac23798750fdb4b39bd8633a83b7a579fd",
+        "duration_seconds": 0.6335879999678582,
+        "evidence_class": "OBSERVED",
+        "executed_at": "2026-10-09T08:13:01.790098+00:00",
+        "query": "EVALUATE ROW(\"YTD\", CALCULATE([Sales YTD], 'Date'[Date] = DATE(2025,2,28)))",
+        "query_hash": "sha256:2c5d8aee61c714a040a47a449869413ad905906dae156644ce394b7ee3b2369a",
+        "query_target_coverage": [
+          {
+            "diagnostics": [],
+            "missing_ids": [],
+            "report_contexts": [],
+            "resolved_ids": [
+              "model:Sales/table:table-date",
+              "model:Sales/table:table-date/column:column-calendar-date",
+              "model:Sales/table:table-fact",
+              "model:Sales/table:table-fact/column:column-amount",
+              "model:Sales/table:table-fact/measure:measure-sales",
+              "model:Sales/table:table-fact/measure:measure-ytd"
+            ],
+            "status": "PASSED"
+          },
+          {
+            "diagnostics": [],
+            "missing_ids": [],
+            "report_contexts": [],
+            "resolved_ids": [
+              "model:Sales/table:table-date",
+              "model:Sales/table:table-date/column:column-calendar-date",
+              "model:Sales/table:table-fact",
+              "model:Sales/table:table-fact/column:column-amount",
+              "model:Sales/table:table-fact/measure:measure-sales",
+              "model:Sales/table:table-fact/measure:measure-ytd"
+            ],
+            "status": "PASSED"
+          }
+        ],
+        "required": true,
+        "result_values_retained": true,
+        "row_count_after": 1,
+        "row_count_before": 1,
+        "status": "PASSED",
+        "target_objects": [
+          "model:Sales/table:table-fact/measure:measure-sales",
+          "model:Sales/table:table-fact/measure:measure-ytd"
+        ],
+        "test_id": "time_intelligence",
+        "tolerance_policy_version": "explicit-1"
+      },
+      {
+        "after_hash": "sha256:354d77fa1de62a7fdaeff782b28ef315e0cd3de9dd13fc887d358a69e4bb61b1",
+        "after_result": {
+          "columns": [
+            {
+              "name": "Date[CalendarMonth]",
+              "type": "String"
+            },
+            {
+              "name": "[Sales]",
+              "type": "Decimal"
+            }
+          ],
+          "rows": [
+            [
+              null,
+              {
+                "$decimal": "5"
+              }
+            ],
+            [
+              "2025-02",
+              {
+                "$decimal": "60"
+              }
+            ]
+          ]
+        },
+        "after_result_hash": "sha256:354d77fa1de62a7fdaeff782b28ef315e0cd3de9dd13fc887d358a69e4bb61b1",
+        "assertions": [],
+        "backend": [
+          "LOCAL_ANALYSIS_SERVICES",
+          "LOCAL_ANALYSIS_SERVICES"
+        ],
+        "baseline_snapshot_id": "sha256:11b2052bec918772d3bd6a44eb693d11e6c4ea21161d3b7e966906fe34fe3443",
+        "before_hash": "sha256:1b11531f9953f2cb6949ecf5c51ae85ffec8c7b9595611ef4281e2c6129c035e",
+        "before_result": {
+          "columns": [
+            {
+              "name": "Date[CalendarMonth]",
+              "type": "String"
+            },
+            {
+              "name": "[Sales]",
+              "type": "Decimal"
+            }
+          ],
+          "rows": [
+            [
+              null,
+              {
+                "$decimal": "5"
+              }
+            ],
+            [
+              "2025-01",
+              {
+                "$decimal": "30"
+              }
+            ],
+            [
+              "2025-02",
+              {
+                "$decimal": "30"
+              }
+            ]
+          ]
+        },
+        "before_result_hash": "sha256:1b11531f9953f2cb6949ecf5c51ae85ffec8c7b9595611ef4281e2c6129c035e",
+        "candidate_snapshot_id": "sha256:98ace83f947873df89dde6a262028e0c7d6c7ae0830f56ac9e9424d2c845940c",
+        "category": "report_bound_calculation",
+        "changed": true,
+        "context": {
+          "calculation_configuration_json": "{}",
+          "culture": "en-US",
+          "data_frozen": true,
+          "data_snapshot_id": "sha256:023ee8bf9eeddb80844280ec1563a7ac23798750fdb4b39bd8633a83b7a579fd",
+          "evaluation_time": null,
+          "filter_context_json": "{}",
+          "parameters_json": "{}",
+          "processed_state_id": "sha256:c1a071d61b14d85c36920f6cbdd92a1e4215043a1d80c1dfbd83aa21b052cc46",
+          "role": null
+        },
+        "context_hash": "sha256:9871f41b5a5688395bcc614157b26be7336298d48bc28f9951b664ca019483ef",
+        "data_snapshot_id": "sha256:023ee8bf9eeddb80844280ec1563a7ac23798750fdb4b39bd8633a83b7a579fd",
+        "duration_seconds": 0.6342575999442488,
+        "evidence_class": "OBSERVED",
+        "executed_at": "2026-10-09T08:13:02.436253+00:00",
+        "query": "EVALUATE SUMMARIZECOLUMNS('Date'[CalendarMonth], \"Sales\", [Sales Amount])",
+        "query_hash": "sha256:ea2e197ce5d4f87d12178dab7cde89aa597dcedf7f893d43ee6cfa0be1bd1642",
+        "query_target_coverage": [
+          {
+            "diagnostics": [],
+            "missing_ids": [],
+            "report_contexts": [
+              {
+                "field_ids": [
+                  "model:Sales/table:table-date/column:column-month",
+                  "model:Sales/table:table-fact/measure:measure-sales"
+                ],
+                "object_id": "report:report-sales",
+                "verification_scope": "BOUND_DATA_ONLY"
+              },
+              {
+                "field_ids": [
+                  "model:Sales/table:table-date/column:column-month",
+                  "model:Sales/table:table-fact/measure:measure-sales"
+                ],
+                "object_id": "report:report-sales/page:month",
+                "verification_scope": "BOUND_DATA_ONLY"
+              },
+              {
+                "field_ids": [
+                  "model:Sales/table:table-date/column:column-month",
+                  "model:Sales/table:table-fact/measure:measure-sales"
+                ],
+                "object_id": "report:report-sales/page:month/visual:sales",
+                "verification_scope": "BOUND_DATA_ONLY"
+              }
+            ],
+            "resolved_ids": [
+              "model:Sales/table:table-date",
+              "model:Sales/table:table-date/column:column-month",
+              "model:Sales/table:table-fact",
+              "model:Sales/table:table-fact/column:column-amount",
+              "model:Sales/table:table-fact/measure:measure-sales",
+              "report:report-sales",
+              "report:report-sales/page:month",
+              "report:report-sales/page:month/visual:sales"
+            ],
+            "status": "PASSED"
+          },
+          {
+            "diagnostics": [],
+            "missing_ids": [],
+            "report_contexts": [
+              {
+                "field_ids": [
+                  "model:Sales/table:table-date/column:column-month",
+                  "model:Sales/table:table-fact/measure:measure-sales"
+                ],
+                "object_id": "report:report-sales",
+                "verification_scope": "BOUND_DATA_ONLY"
+              },
+              {
+                "field_ids": [
+                  "model:Sales/table:table-date/column:column-month",
+                  "model:Sales/table:table-fact/measure:measure-sales"
+                ],
+                "object_id": "report:report-sales/page:month",
+                "verification_scope": "BOUND_DATA_ONLY"
+              },
+              {
+                "field_ids": [
+                  "model:Sales/table:table-date/column:column-month",
+                  "model:Sales/table:table-fact/measure:measure-sales"
+                ],
+                "object_id": "report:report-sales/page:month/visual:sales",
+                "verification_scope": "BOUND_DATA_ONLY"
+              }
+            ],
+            "resolved_ids": [
+              "model:Sales/table:table-date",
+              "model:Sales/table:table-date/column:column-month",
+              "model:Sales/table:table-fact",
+              "model:Sales/table:table-fact/column:column-amount",
+              "model:Sales/table:table-fact/measure:measure-sales",
+              "report:report-sales",
+              "report:report-sales/page:month",
+              "report:report-sales/page:month/visual:sales"
+            ],
+            "status": "PASSED"
+          }
+        ],
+        "required": true,
+        "result_values_retained": true,
+        "row_count_after": 2,
+        "row_count_before": 3,
+        "status": "PASSED",
+        "target_objects": [
+          "model:Sales/table:table-fact/measure:measure-sales",
+          "report:report-sales",
+          "report:report-sales/page:month",
+          "report:report-sales/page:month/visual:sales"
+        ],
+        "test_id": "report_bound_calculation",
+        "tolerance_policy_version": "explicit-1"
+      },
+      {
+        "after_hash": "sha256:ead1a9d6718d7ea0fe37774cc3ae759d5c5318044e4bb3c1fc5cc2dafa99e5f4",
+        "after_result": {
+          "columns": [
+            {
+              "name": "[Date]",
+              "type": "DateTime"
+            },
+            {
+              "name": "[DateKey]",
+              "type": "Int64"
+            },
+            {
+              "name": "[CalendarMonth]",
+              "type": "String"
+            }
+          ],
+          "rows": [
+            [
+              {
+                "$datetime": "2025-01-01T00:00:00"
+              },
+              1,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-02T00:00:00"
+              },
+              2,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-03T00:00:00"
+              },
+              3,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-04T00:00:00"
+              },
+              4,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-05T00:00:00"
+              },
+              5,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-06T00:00:00"
+              },
+              6,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-07T00:00:00"
+              },
+              7,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-08T00:00:00"
+              },
+              8,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-09T00:00:00"
+              },
+              9,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-10T00:00:00"
+              },
+              10,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-11T00:00:00"
+              },
+              11,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-12T00:00:00"
+              },
+              12,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-13T00:00:00"
+              },
+              13,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-14T00:00:00"
+              },
+              14,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-15T00:00:00"
+              },
+              15,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-16T00:00:00"
+              },
+              16,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-17T00:00:00"
+              },
+              17,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-18T00:00:00"
+              },
+              18,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-19T00:00:00"
+              },
+              19,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-20T00:00:00"
+              },
+              20,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-21T00:00:00"
+              },
+              21,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-22T00:00:00"
+              },
+              22,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-23T00:00:00"
+              },
+              23,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-24T00:00:00"
+              },
+              24,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-25T00:00:00"
+              },
+              25,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-26T00:00:00"
+              },
+              26,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-27T00:00:00"
+              },
+              27,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-28T00:00:00"
+              },
+              28,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-29T00:00:00"
+              },
+              29,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-30T00:00:00"
+              },
+              30,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-31T00:00:00"
+              },
+              31,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-02-01T00:00:00"
+              },
+              32,
+              "2025-02"
+            ],
+            [
+              {
+                "$datetime": "2025-02-02T00:00:00"
+              },
+              33,
+              "2025-02"
+            ],
+            [
+              {
+                "$datetime": "2025-02-03T00:00:00"
+              },
+              34,
+              "2025-02"
+            ],
+            [
+              {
+                "$datetime": "2025-02-04T00:00:00"
+              },
+              35,
+              "2025-02"
+            ],
+            [
+              {
+                "$datetime": "2025-02-05T00:00:00"
+              },
+              36,
+              "2025-02"
+            ],
+            [
+              {
+                "$datetime": "2025-02-06T00:00:00"
+              },
+              37,
+              "2025-02"
+            ],
+            [
+              {
+                "$datetime": "2025-02-07T00:00:00"
+              },
+              38,
+              "2025-02"
+            ],
+            [
+              {
+                "$datetime": "2025-02-08T00:00:00"
+              },
+              39,
+              "2025-02"
+            ],
+            [
+              {
+                "$datetime": "2025-02-09T00:00:00"
+              },
+              40,
+              "2025-02"
+            ],
+            [
+              {
+                "$datetime": "2025-02-10T00:00:00"
+              },
+              41,
+              "2025-02"
+            ],
+            [
+              {
+                "$datetime": "2025-02-11T00:00:00"
+              },
+              42,
+              "2025-02"
+            ],
+            [
+              {
+                "$datetime": "2025-02-12T00:00:00"
+              },
+              43,
+              "2025-02"
+            ],
+            [
+              {
+                "$datetime": "2025-02-13T00:00:00"
+              },
+              44,
+              "2025-02"
+            ],
+            [
+              {
+                "$datetime": "2025-02-14T00:00:00"
+              },
+              45,
+              "2025-02"
+            ],
+            [
+              {
+                "$datetime": "2025-02-15T00:00:00"
+              },
+              46,
+              "2025-02"
+            ],
+            [
+              {
+                "$datetime": "2025-02-16T00:00:00"
+              },
+              47,
+              "2025-02"
+            ],
+            [
+              {
+                "$datetime": "2025-02-17T00:00:00"
+              },
+              48,
+              "2025-02"
+            ],
+            [
+              {
+                "$datetime": "2025-02-18T00:00:00"
+              },
+              49,
+              "2025-02"
+            ],
+            [
+              {
+                "$datetime": "2025-02-19T00:00:00"
+              },
+              50,
+              "2025-02"
+            ],
+            [
+              {
+                "$datetime": "2025-02-20T00:00:00"
+              },
+              51,
+              "2025-02"
+            ],
+            [
+              {
+                "$datetime": "2025-02-21T00:00:00"
+              },
+              52,
+              "2025-02"
+            ],
+            [
+              {
+                "$datetime": "2025-02-22T00:00:00"
+              },
+              53,
+              "2025-02"
+            ],
+            [
+              {
+                "$datetime": "2025-02-23T00:00:00"
+              },
+              54,
+              "2025-02"
+            ],
+            [
+              {
+                "$datetime": "2025-02-24T00:00:00"
+              },
+              55,
+              "2025-02"
+            ],
+            [
+              {
+                "$datetime": "2025-02-25T00:00:00"
+              },
+              56,
+              "2025-02"
+            ],
+            [
+              {
+                "$datetime": "2025-02-26T00:00:00"
+              },
+              57,
+              "2025-02"
+            ],
+            [
+              {
+                "$datetime": "2025-02-27T00:00:00"
+              },
+              58,
+              "2025-02"
+            ],
+            [
+              {
+                "$datetime": "2025-02-28T00:00:00"
+              },
+              59,
+              "2025-02"
+            ]
+          ]
+        },
+        "after_result_hash": "sha256:ead1a9d6718d7ea0fe37774cc3ae759d5c5318044e4bb3c1fc5cc2dafa99e5f4",
+        "assertions": [],
+        "backend": [
+          "LOCAL_ANALYSIS_SERVICES",
+          "LOCAL_ANALYSIS_SERVICES"
+        ],
+        "baseline_snapshot_id": "sha256:11b2052bec918772d3bd6a44eb693d11e6c4ea21161d3b7e966906fe34fe3443",
+        "before_hash": "sha256:ead1a9d6718d7ea0fe37774cc3ae759d5c5318044e4bb3c1fc5cc2dafa99e5f4",
+        "before_result": {
+          "columns": [
+            {
+              "name": "[Date]",
+              "type": "DateTime"
+            },
+            {
+              "name": "[DateKey]",
+              "type": "Int64"
+            },
+            {
+              "name": "[CalendarMonth]",
+              "type": "String"
+            }
+          ],
+          "rows": [
+            [
+              {
+                "$datetime": "2025-01-01T00:00:00"
+              },
+              1,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-02T00:00:00"
+              },
+              2,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-03T00:00:00"
+              },
+              3,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-04T00:00:00"
+              },
+              4,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-05T00:00:00"
+              },
+              5,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-06T00:00:00"
+              },
+              6,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-07T00:00:00"
+              },
+              7,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-08T00:00:00"
+              },
+              8,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-09T00:00:00"
+              },
+              9,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-10T00:00:00"
+              },
+              10,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-11T00:00:00"
+              },
+              11,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-12T00:00:00"
+              },
+              12,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-13T00:00:00"
+              },
+              13,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-14T00:00:00"
+              },
+              14,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-15T00:00:00"
+              },
+              15,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-16T00:00:00"
+              },
+              16,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-17T00:00:00"
+              },
+              17,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-18T00:00:00"
+              },
+              18,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-19T00:00:00"
+              },
+              19,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-20T00:00:00"
+              },
+              20,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-21T00:00:00"
+              },
+              21,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-22T00:00:00"
+              },
+              22,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-23T00:00:00"
+              },
+              23,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-24T00:00:00"
+              },
+              24,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-25T00:00:00"
+              },
+              25,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-26T00:00:00"
+              },
+              26,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-27T00:00:00"
+              },
+              27,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-28T00:00:00"
+              },
+              28,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-29T00:00:00"
+              },
+              29,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-30T00:00:00"
+              },
+              30,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-31T00:00:00"
+              },
+              31,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-02-01T00:00:00"
+              },
+              32,
+              "2025-02"
+            ],
+            [
+              {
+                "$datetime": "2025-02-02T00:00:00"
+              },
+              33,
+              "2025-02"
+            ],
+            [
+              {
+                "$datetime": "2025-02-03T00:00:00"
+              },
+              34,
+              "2025-02"
+            ],
+            [
+              {
+                "$datetime": "2025-02-04T00:00:00"
+              },
+              35,
+              "2025-02"
+            ],
+            [
+              {
+                "$datetime": "2025-02-05T00:00:00"
+              },
+              36,
+              "2025-02"
+            ],
+            [
+              {
+                "$datetime": "2025-02-06T00:00:00"
+              },
+              37,
+              "2025-02"
+            ],
+            [
+              {
+                "$datetime": "2025-02-07T00:00:00"
+              },
+              38,
+              "2025-02"
+            ],
+            [
+              {
+                "$datetime": "2025-02-08T00:00:00"
+              },
+              39,
+              "2025-02"
+            ],
+            [
+              {
+                "$datetime": "2025-02-09T00:00:00"
+              },
+              40,
+              "2025-02"
+            ],
+            [
+              {
+                "$datetime": "2025-02-10T00:00:00"
+              },
+              41,
+              "2025-02"
+            ],
+            [
+              {
+                "$datetime": "2025-02-11T00:00:00"
+              },
+              42,
+              "2025-02"
+            ],
+            [
+              {
+                "$datetime": "2025-02-12T00:00:00"
+              },
+              43,
+              "2025-02"
+            ],
+            [
+              {
+                "$datetime": "2025-02-13T00:00:00"
+              },
+              44,
+              "2025-02"
+            ],
+            [
+              {
+                "$datetime": "2025-02-14T00:00:00"
+              },
+              45,
+              "2025-02"
+            ],
+            [
+              {
+                "$datetime": "2025-02-15T00:00:00"
+              },
+              46,
+              "2025-02"
+            ],
+            [
+              {
+                "$datetime": "2025-02-16T00:00:00"
+              },
+              47,
+              "2025-02"
+            ],
+            [
+              {
+                "$datetime": "2025-02-17T00:00:00"
+              },
+              48,
+              "2025-02"
+            ],
+            [
+              {
+                "$datetime": "2025-02-18T00:00:00"
+              },
+              49,
+              "2025-02"
+            ],
+            [
+              {
+                "$datetime": "2025-02-19T00:00:00"
+              },
+              50,
+              "2025-02"
+            ],
+            [
+              {
+                "$datetime": "2025-02-20T00:00:00"
+              },
+              51,
+              "2025-02"
+            ],
+            [
+              {
+                "$datetime": "2025-02-21T00:00:00"
+              },
+              52,
+              "2025-02"
+            ],
+            [
+              {
+                "$datetime": "2025-02-22T00:00:00"
+              },
+              53,
+              "2025-02"
+            ],
+            [
+              {
+                "$datetime": "2025-02-23T00:00:00"
+              },
+              54,
+              "2025-02"
+            ],
+            [
+              {
+                "$datetime": "2025-02-24T00:00:00"
+              },
+              55,
+              "2025-02"
+            ],
+            [
+              {
+                "$datetime": "2025-02-25T00:00:00"
+              },
+              56,
+              "2025-02"
+            ],
+            [
+              {
+                "$datetime": "2025-02-26T00:00:00"
+              },
+              57,
+              "2025-02"
+            ],
+            [
+              {
+                "$datetime": "2025-02-27T00:00:00"
+              },
+              58,
+              "2025-02"
+            ],
+            [
+              {
+                "$datetime": "2025-02-28T00:00:00"
+              },
+              59,
+              "2025-02"
+            ]
+          ]
+        },
+        "before_result_hash": "sha256:ead1a9d6718d7ea0fe37774cc3ae759d5c5318044e4bb3c1fc5cc2dafa99e5f4",
+        "candidate_snapshot_id": "sha256:98ace83f947873df89dde6a262028e0c7d6c7ae0830f56ac9e9424d2c845940c",
+        "category": "preserve_fields_AlternateDate",
+        "changed": false,
+        "context": {
+          "calculation_configuration_json": "{}",
+          "culture": "en-US",
+          "data_frozen": true,
+          "data_snapshot_id": "sha256:023ee8bf9eeddb80844280ec1563a7ac23798750fdb4b39bd8633a83b7a579fd",
+          "evaluation_time": null,
+          "filter_context_json": "{}",
+          "parameters_json": "{}",
+          "processed_state_id": "sha256:c1a071d61b14d85c36920f6cbdd92a1e4215043a1d80c1dfbd83aa21b052cc46",
+          "role": null
+        },
+        "context_hash": "sha256:9871f41b5a5688395bcc614157b26be7336298d48bc28f9951b664ca019483ef",
+        "data_snapshot_id": "sha256:023ee8bf9eeddb80844280ec1563a7ac23798750fdb4b39bd8633a83b7a579fd",
+        "duration_seconds": 0.6662359000183642,
+        "evidence_class": "OBSERVED",
+        "executed_at": "2026-10-09T08:13:03.092750+00:00",
+        "query": "EVALUATE SELECTCOLUMNS(ALLNOBLANKROW('AlternateDate'),\"Date\", 'AlternateDate'[Date],\"DateKey\", 'AlternateDate'[DateKey],\"CalendarMonth\", 'AlternateDate'[CalendarMonth])",
+        "query_hash": "sha256:abd5f7ed3fa9b266ae355edd42e48288402060587299c505084e569593932b87",
+        "query_target_coverage": [
+          {
+            "diagnostics": [],
+            "missing_ids": [],
+            "report_contexts": [],
+            "resolved_ids": [
+              "model:Sales/table:table-alternate-date",
+              "model:Sales/table:table-alternate-date/column:alternate-column-calendar-date",
+              "model:Sales/table:table-alternate-date/column:alternate-column-date",
+              "model:Sales/table:table-alternate-date/column:alternate-column-month"
+            ],
+            "status": "PASSED"
+          },
+          {
+            "diagnostics": [],
+            "missing_ids": [],
+            "report_contexts": [],
+            "resolved_ids": [
+              "model:Sales/table:table-alternate-date",
+              "model:Sales/table:table-alternate-date/column:alternate-column-calendar-date",
+              "model:Sales/table:table-alternate-date/column:alternate-column-date",
+              "model:Sales/table:table-alternate-date/column:alternate-column-month"
+            ],
+            "status": "PASSED"
+          }
+        ],
+        "required": true,
+        "result_values_retained": true,
+        "row_count_after": 59,
+        "row_count_before": 59,
+        "status": "PASSED",
+        "target_objects": [
+          "model:Sales/table:table-alternate-date",
+          "model:Sales/table:table-alternate-date/column:alternate-column-calendar-date",
+          "model:Sales/table:table-alternate-date/column:alternate-column-date",
+          "model:Sales/table:table-alternate-date/column:alternate-column-month"
+        ],
+        "test_id": "preserve_fields_AlternateDate",
+        "tolerance_policy_version": "explicit-1"
+      },
+      {
+        "after_hash": "sha256:ead1a9d6718d7ea0fe37774cc3ae759d5c5318044e4bb3c1fc5cc2dafa99e5f4",
+        "after_result": {
+          "columns": [
+            {
+              "name": "[Date]",
+              "type": "DateTime"
+            },
+            {
+              "name": "[DateKey]",
+              "type": "Int64"
+            },
+            {
+              "name": "[CalendarMonth]",
+              "type": "String"
+            }
+          ],
+          "rows": [
+            [
+              {
+                "$datetime": "2025-01-01T00:00:00"
+              },
+              1,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-02T00:00:00"
+              },
+              2,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-03T00:00:00"
+              },
+              3,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-04T00:00:00"
+              },
+              4,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-05T00:00:00"
+              },
+              5,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-06T00:00:00"
+              },
+              6,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-07T00:00:00"
+              },
+              7,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-08T00:00:00"
+              },
+              8,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-09T00:00:00"
+              },
+              9,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-10T00:00:00"
+              },
+              10,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-11T00:00:00"
+              },
+              11,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-12T00:00:00"
+              },
+              12,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-13T00:00:00"
+              },
+              13,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-14T00:00:00"
+              },
+              14,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-15T00:00:00"
+              },
+              15,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-16T00:00:00"
+              },
+              16,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-17T00:00:00"
+              },
+              17,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-18T00:00:00"
+              },
+              18,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-19T00:00:00"
+              },
+              19,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-20T00:00:00"
+              },
+              20,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-21T00:00:00"
+              },
+              21,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-22T00:00:00"
+              },
+              22,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-23T00:00:00"
+              },
+              23,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-24T00:00:00"
+              },
+              24,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-25T00:00:00"
+              },
+              25,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-26T00:00:00"
+              },
+              26,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-27T00:00:00"
+              },
+              27,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-28T00:00:00"
+              },
+              28,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-29T00:00:00"
+              },
+              29,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-30T00:00:00"
+              },
+              30,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-31T00:00:00"
+              },
+              31,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-02-01T00:00:00"
+              },
+              32,
+              "2025-02"
+            ],
+            [
+              {
+                "$datetime": "2025-02-02T00:00:00"
+              },
+              33,
+              "2025-02"
+            ],
+            [
+              {
+                "$datetime": "2025-02-03T00:00:00"
+              },
+              34,
+              "2025-02"
+            ],
+            [
+              {
+                "$datetime": "2025-02-04T00:00:00"
+              },
+              35,
+              "2025-02"
+            ],
+            [
+              {
+                "$datetime": "2025-02-05T00:00:00"
+              },
+              36,
+              "2025-02"
+            ],
+            [
+              {
+                "$datetime": "2025-02-06T00:00:00"
+              },
+              37,
+              "2025-02"
+            ],
+            [
+              {
+                "$datetime": "2025-02-07T00:00:00"
+              },
+              38,
+              "2025-02"
+            ],
+            [
+              {
+                "$datetime": "2025-02-08T00:00:00"
+              },
+              39,
+              "2025-02"
+            ],
+            [
+              {
+                "$datetime": "2025-02-09T00:00:00"
+              },
+              40,
+              "2025-02"
+            ],
+            [
+              {
+                "$datetime": "2025-02-10T00:00:00"
+              },
+              41,
+              "2025-02"
+            ],
+            [
+              {
+                "$datetime": "2025-02-11T00:00:00"
+              },
+              42,
+              "2025-02"
+            ],
+            [
+              {
+                "$datetime": "2025-02-12T00:00:00"
+              },
+              43,
+              "2025-02"
+            ],
+            [
+              {
+                "$datetime": "2025-02-13T00:00:00"
+              },
+              44,
+              "2025-02"
+            ],
+            [
+              {
+                "$datetime": "2025-02-14T00:00:00"
+              },
+              45,
+              "2025-02"
+            ],
+            [
+              {
+                "$datetime": "2025-02-15T00:00:00"
+              },
+              46,
+              "2025-02"
+            ],
+            [
+              {
+                "$datetime": "2025-02-16T00:00:00"
+              },
+              47,
+              "2025-02"
+            ],
+            [
+              {
+                "$datetime": "2025-02-17T00:00:00"
+              },
+              48,
+              "2025-02"
+            ],
+            [
+              {
+                "$datetime": "2025-02-18T00:00:00"
+              },
+              49,
+              "2025-02"
+            ],
+            [
+              {
+                "$datetime": "2025-02-19T00:00:00"
+              },
+              50,
+              "2025-02"
+            ],
+            [
+              {
+                "$datetime": "2025-02-20T00:00:00"
+              },
+              51,
+              "2025-02"
+            ],
+            [
+              {
+                "$datetime": "2025-02-21T00:00:00"
+              },
+              52,
+              "2025-02"
+            ],
+            [
+              {
+                "$datetime": "2025-02-22T00:00:00"
+              },
+              53,
+              "2025-02"
+            ],
+            [
+              {
+                "$datetime": "2025-02-23T00:00:00"
+              },
+              54,
+              "2025-02"
+            ],
+            [
+              {
+                "$datetime": "2025-02-24T00:00:00"
+              },
+              55,
+              "2025-02"
+            ],
+            [
+              {
+                "$datetime": "2025-02-25T00:00:00"
+              },
+              56,
+              "2025-02"
+            ],
+            [
+              {
+                "$datetime": "2025-02-26T00:00:00"
+              },
+              57,
+              "2025-02"
+            ],
+            [
+              {
+                "$datetime": "2025-02-27T00:00:00"
+              },
+              58,
+              "2025-02"
+            ],
+            [
+              {
+                "$datetime": "2025-02-28T00:00:00"
+              },
+              59,
+              "2025-02"
+            ]
+          ]
+        },
+        "after_result_hash": "sha256:ead1a9d6718d7ea0fe37774cc3ae759d5c5318044e4bb3c1fc5cc2dafa99e5f4",
+        "assertions": [],
+        "backend": [
+          "LOCAL_ANALYSIS_SERVICES",
+          "LOCAL_ANALYSIS_SERVICES"
+        ],
+        "baseline_snapshot_id": "sha256:11b2052bec918772d3bd6a44eb693d11e6c4ea21161d3b7e966906fe34fe3443",
+        "before_hash": "sha256:ead1a9d6718d7ea0fe37774cc3ae759d5c5318044e4bb3c1fc5cc2dafa99e5f4",
+        "before_result": {
+          "columns": [
+            {
+              "name": "[Date]",
+              "type": "DateTime"
+            },
+            {
+              "name": "[DateKey]",
+              "type": "Int64"
+            },
+            {
+              "name": "[CalendarMonth]",
+              "type": "String"
+            }
+          ],
+          "rows": [
+            [
+              {
+                "$datetime": "2025-01-01T00:00:00"
+              },
+              1,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-02T00:00:00"
+              },
+              2,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-03T00:00:00"
+              },
+              3,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-04T00:00:00"
+              },
+              4,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-05T00:00:00"
+              },
+              5,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-06T00:00:00"
+              },
+              6,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-07T00:00:00"
+              },
+              7,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-08T00:00:00"
+              },
+              8,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-09T00:00:00"
+              },
+              9,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-10T00:00:00"
+              },
+              10,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-11T00:00:00"
+              },
+              11,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-12T00:00:00"
+              },
+              12,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-13T00:00:00"
+              },
+              13,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-14T00:00:00"
+              },
+              14,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-15T00:00:00"
+              },
+              15,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-16T00:00:00"
+              },
+              16,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-17T00:00:00"
+              },
+              17,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-18T00:00:00"
+              },
+              18,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-19T00:00:00"
+              },
+              19,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-20T00:00:00"
+              },
+              20,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-21T00:00:00"
+              },
+              21,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-22T00:00:00"
+              },
+              22,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-23T00:00:00"
+              },
+              23,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-24T00:00:00"
+              },
+              24,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-25T00:00:00"
+              },
+              25,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-26T00:00:00"
+              },
+              26,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-27T00:00:00"
+              },
+              27,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-28T00:00:00"
+              },
+              28,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-29T00:00:00"
+              },
+              29,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-30T00:00:00"
+              },
+              30,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-01-31T00:00:00"
+              },
+              31,
+              "2025-01"
+            ],
+            [
+              {
+                "$datetime": "2025-02-01T00:00:00"
+              },
+              32,
+              "2025-02"
+            ],
+            [
+              {
+                "$datetime": "2025-02-02T00:00:00"
+              },
+              33,
+              "2025-02"
+            ],
+            [
+              {
+                "$datetime": "2025-02-03T00:00:00"
+              },
+              34,
+              "2025-02"
+            ],
+            [
+              {
+                "$datetime": "2025-02-04T00:00:00"
+              },
+              35,
+              "2025-02"
+            ],
+            [
+              {
+                "$datetime": "2025-02-05T00:00:00"
+              },
+              36,
+              "2025-02"
+            ],
+            [
+              {
+                "$datetime": "2025-02-06T00:00:00"
+              },
+              37,
+              "2025-02"
+            ],
+            [
+              {
+                "$datetime": "2025-02-07T00:00:00"
+              },
+              38,
+              "2025-02"
+            ],
+            [
+              {
+                "$datetime": "2025-02-08T00:00:00"
+              },
+              39,
+              "2025-02"
+            ],
+            [
+              {
+                "$datetime": "2025-02-09T00:00:00"
+              },
+              40,
+              "2025-02"
+            ],
+            [
+              {
+                "$datetime": "2025-02-10T00:00:00"
+              },
+              41,
+              "2025-02"
+            ],
+            [
+              {
+                "$datetime": "2025-02-11T00:00:00"
+              },
+              42,
+              "2025-02"
+            ],
+            [
+              {
+                "$datetime": "2025-02-12T00:00:00"
+              },
+              43,
+              "2025-02"
+            ],
+            [
+              {
+                "$datetime": "2025-02-13T00:00:00"
+              },
+              44,
+              "2025-02"
+            ],
+            [
+              {
+                "$datetime": "2025-02-14T00:00:00"
+              },
+              45,
+              "2025-02"
+            ],
+            [
+              {
+                "$datetime": "2025-02-15T00:00:00"
+              },
+              46,
+              "2025-02"
+            ],
+            [
+              {
+                "$datetime": "2025-02-16T00:00:00"
+              },
+              47,
+              "2025-02"
+            ],
+            [
+              {
+                "$datetime": "2025-02-17T00:00:00"
+              },
+              48,
+              "2025-02"
+            ],
+            [
+              {
+                "$datetime": "2025-02-18T00:00:00"
+              },
+              49,
+              "2025-02"
+            ],
+            [
+              {
+                "$datetime": "2025-02-19T00:00:00"
+              },
+              50,
+              "2025-02"
+            ],
+            [
+              {
+                "$datetime": "2025-02-20T00:00:00"
+              },
+              51,
+              "2025-02"
+            ],
+            [
+              {
+                "$datetime": "2025-02-21T00:00:00"
+              },
+              52,
+              "2025-02"
+            ],
+            [
+              {
+                "$datetime": "2025-02-22T00:00:00"
+              },
+              53,
+              "2025-02"
+            ],
+            [
+              {
+                "$datetime": "2025-02-23T00:00:00"
+              },
+              54,
+              "2025-02"
+            ],
+            [
+              {
+                "$datetime": "2025-02-24T00:00:00"
+              },
+              55,
+              "2025-02"
+            ],
+            [
+              {
+                "$datetime": "2025-02-25T00:00:00"
+              },
+              56,
+              "2025-02"
+            ],
+            [
+              {
+                "$datetime": "2025-02-26T00:00:00"
+              },
+              57,
+              "2025-02"
+            ],
+            [
+              {
+                "$datetime": "2025-02-27T00:00:00"
+              },
+              58,
+              "2025-02"
+            ],
+            [
+              {
+                "$datetime": "2025-02-28T00:00:00"
+              },
+              59,
+              "2025-02"
+            ]
+          ]
+        },
+        "before_result_hash": "sha256:ead1a9d6718d7ea0fe37774cc3ae759d5c5318044e4bb3c1fc5cc2dafa99e5f4",
+        "candidate_snapshot_id": "sha256:98ace83f947873df89dde6a262028e0c7d6c7ae0830f56ac9e9424d2c845940c",
+        "category": "preserve_fields_Date",
+        "changed": false,
+        "context": {
+          "calculation_configuration_json": "{}",
+          "culture": "en-US",
+          "data_frozen": true,
+          "data_snapshot_id": "sha256:023ee8bf9eeddb80844280ec1563a7ac23798750fdb4b39bd8633a83b7a579fd",
+          "evaluation_time": null,
+          "filter_context_json": "{}",
+          "parameters_json": "{}",
+          "processed_state_id": "sha256:c1a071d61b14d85c36920f6cbdd92a1e4215043a1d80c1dfbd83aa21b052cc46",
+          "role": null
+        },
+        "context_hash": "sha256:9871f41b5a5688395bcc614157b26be7336298d48bc28f9951b664ca019483ef",
+        "data_snapshot_id": "sha256:023ee8bf9eeddb80844280ec1563a7ac23798750fdb4b39bd8633a83b7a579fd",
+        "duration_seconds": 0.6187494001351297,
+        "evidence_class": "OBSERVED",
+        "executed_at": "2026-10-09T08:13:03.775829+00:00",
+        "query": "EVALUATE SELECTCOLUMNS(ALLNOBLANKROW('Date'),\"Date\", 'Date'[Date],\"DateKey\", 'Date'[DateKey],\"CalendarMonth\", 'Date'[CalendarMonth])",
+        "query_hash": "sha256:4fbc06a26e308c17338ca9f5743c8d18dea0b68d977db82973f059a49e15640b",
+        "query_target_coverage": [
+          {
+            "diagnostics": [],
+            "missing_ids": [],
+            "report_contexts": [],
+            "resolved_ids": [
+              "model:Sales/table:table-date",
+              "model:Sales/table:table-date/column:column-calendar-date",
+              "model:Sales/table:table-date/column:column-date",
+              "model:Sales/table:table-date/column:column-month"
+            ],
+            "status": "PASSED"
+          },
+          {
+            "diagnostics": [],
+            "missing_ids": [],
+            "report_contexts": [],
+            "resolved_ids": [
+              "model:Sales/table:table-date",
+              "model:Sales/table:table-date/column:column-calendar-date",
+              "model:Sales/table:table-date/column:column-date",
+              "model:Sales/table:table-date/column:column-month"
+            ],
+            "status": "PASSED"
+          }
+        ],
+        "required": true,
+        "result_values_retained": true,
+        "row_count_after": 59,
+        "row_count_before": 59,
+        "status": "PASSED",
+        "target_objects": [
+          "model:Sales/table:table-date",
+          "model:Sales/table:table-date/column:column-calendar-date",
+          "model:Sales/table:table-date/column:column-date",
+          "model:Sales/table:table-date/column:column-month"
+        ],
+        "test_id": "preserve_fields_Date",
+        "tolerance_policy_version": "explicit-1"
+      },
+      {
+        "after_hash": "sha256:efc4a663c0ed931d016ef85dae4bf6cb79fe92fa3d76c9ab02bb1a8f5c9a2813",
+        "after_result": {
+          "columns": [
+            {
+              "name": "[SalesAmount]",
+              "type": "Decimal"
+            },
+            {
+              "name": "[OrderDateKey]",
+              "type": "Int64"
+            },
+            {
+              "name": "[ShipDateKey]",
+              "type": "Int64"
+            }
+          ],
+          "rows": [
+            [
+              {
+                "$decimal": "10"
+              },
+              1,
+              32
+            ],
+            [
+              {
+                "$decimal": "20"
+              },
+              2,
+              33
+            ],
+            [
+              {
+                "$decimal": "30"
+              },
+              32,
+              32
+            ],
+            [
+              {
+                "$decimal": "5"
+              },
+              9999,
+              9999
+            ]
+          ]
+        },
+        "after_result_hash": "sha256:efc4a663c0ed931d016ef85dae4bf6cb79fe92fa3d76c9ab02bb1a8f5c9a2813",
+        "assertions": [],
+        "backend": [
+          "LOCAL_ANALYSIS_SERVICES",
+          "LOCAL_ANALYSIS_SERVICES"
+        ],
+        "baseline_snapshot_id": "sha256:11b2052bec918772d3bd6a44eb693d11e6c4ea21161d3b7e966906fe34fe3443",
+        "before_hash": "sha256:efc4a663c0ed931d016ef85dae4bf6cb79fe92fa3d76c9ab02bb1a8f5c9a2813",
+        "before_result": {
+          "columns": [
+            {
+              "name": "[SalesAmount]",
+              "type": "Decimal"
+            },
+            {
+              "name": "[OrderDateKey]",
+              "type": "Int64"
+            },
+            {
+              "name": "[ShipDateKey]",
+              "type": "Int64"
+            }
+          ],
+          "rows": [
+            [
+              {
+                "$decimal": "10"
+              },
+              1,
+              32
+            ],
+            [
+              {
+                "$decimal": "20"
+              },
+              2,
+              33
+            ],
+            [
+              {
+                "$decimal": "30"
+              },
+              32,
+              32
+            ],
+            [
+              {
+                "$decimal": "5"
+              },
+              9999,
+              9999
+            ]
+          ]
+        },
+        "before_result_hash": "sha256:efc4a663c0ed931d016ef85dae4bf6cb79fe92fa3d76c9ab02bb1a8f5c9a2813",
+        "candidate_snapshot_id": "sha256:98ace83f947873df89dde6a262028e0c7d6c7ae0830f56ac9e9424d2c845940c",
+        "category": "preserve_fields_FactSales",
+        "changed": false,
+        "context": {
+          "calculation_configuration_json": "{}",
+          "culture": "en-US",
+          "data_frozen": true,
+          "data_snapshot_id": "sha256:023ee8bf9eeddb80844280ec1563a7ac23798750fdb4b39bd8633a83b7a579fd",
+          "evaluation_time": null,
+          "filter_context_json": "{}",
+          "parameters_json": "{}",
+          "processed_state_id": "sha256:c1a071d61b14d85c36920f6cbdd92a1e4215043a1d80c1dfbd83aa21b052cc46",
+          "role": null
+        },
+        "context_hash": "sha256:9871f41b5a5688395bcc614157b26be7336298d48bc28f9951b664ca019483ef",
+        "data_snapshot_id": "sha256:023ee8bf9eeddb80844280ec1563a7ac23798750fdb4b39bd8633a83b7a579fd",
+        "duration_seconds": 0.6222825997974724,
+        "evidence_class": "OBSERVED",
+        "executed_at": "2026-10-09T08:13:04.413343+00:00",
+        "query": "EVALUATE SELECTCOLUMNS(ALLNOBLANKROW('FactSales'),\"SalesAmount\", 'FactSales'[SalesAmount],\"OrderDateKey\", 'FactSales'[OrderDateKey],\"ShipDateKey\", 'FactSales'[ShipDateKey])",
+        "query_hash": "sha256:ab4b417c2dc30188080d2c1d68e76ec8a73668dfd65380bf84a4ce06ab3de557",
+        "query_target_coverage": [
+          {
+            "diagnostics": [],
+            "missing_ids": [],
+            "report_contexts": [],
+            "resolved_ids": [
+              "model:Sales/table:table-fact",
+              "model:Sales/table:table-fact/column:column-amount",
+              "model:Sales/table:table-fact/column:column-order",
+              "model:Sales/table:table-fact/column:column-ship"
+            ],
+            "status": "PASSED"
+          },
+          {
+            "diagnostics": [],
+            "missing_ids": [],
+            "report_contexts": [],
+            "resolved_ids": [
+              "model:Sales/table:table-fact",
+              "model:Sales/table:table-fact/column:column-amount",
+              "model:Sales/table:table-fact/column:column-order",
+              "model:Sales/table:table-fact/column:column-ship"
+            ],
+            "status": "PASSED"
+          }
+        ],
+        "required": true,
+        "result_values_retained": true,
+        "row_count_after": 4,
+        "row_count_before": 4,
+        "status": "PASSED",
+        "target_objects": [
+          "model:Sales/table:table-fact",
+          "model:Sales/table:table-fact/column:column-amount",
+          "model:Sales/table:table-fact/column:column-order",
+          "model:Sales/table:table-fact/column:column-ship"
+        ],
+        "test_id": "preserve_fields_FactSales",
+        "tolerance_policy_version": "explicit-1"
+      }
+    ],
+    "runtime_binding_verified": true,
+    "status": "PASSED",
+    "structurally_verified_paths": [
+      "sha256:021ac7318e25a9d207db24529d743ac833f64ee6c63b95334f5ab407039ccd3b",
+      "sha256:1b5b8b1001aac3ffbc1afee2fdabbfa1a3642a5cccfedb408ee67d11932500cf",
+      "sha256:311de3a96d39ac03f39ab5b4956ff13f4cc0406abdae06c10124abb39caa0d89",
+      "sha256:361b8cecf6abae3bf4d4120576ef9af75de51afda463b23f58fdb43cdad48600",
+      "sha256:48c660a4afb6da86570479cae59b09649da04ca85a720f9797820d88257316fb",
+      "sha256:59629bbc7c93983e25b68b2a8582d1809e0c977008881354a4faccda295cdd02",
+      "sha256:641750ab483457eef83d9a8285106c1293effdc1e90874e626c18cf5e65aeaea",
+      "sha256:78d7816acf105e82a40e7bcd6a2a8a8b32b43e6ab8f1954e567c73af2c0f6cdd",
+      "sha256:ad63a64325fd16568240f1f51e8a3e0d46a24b146b3c2aaec9a5539017ac3131",
+      "sha256:b06efa1a9aa1966ba6708fcfc1a58ffeb92f3ef5d8277a1c950f05a4a1d785d9",
+      "sha256:c8dede8f0a2ee193d55c4b2bc446d6c889daeaf4c0ecc85190ea89f5fc60d339",
+      "sha256:d60920aab96fc516770022a73cb26ee6b1a188665bcd22140e38f95df911499d",
+      "sha256:e4ebb59ef6b4a8b7290069cb9c2786c4bb27326a56e1f9548926ffb055426840"
+    ],
+    "tested_objects": [
+      "model:Sales/table:table-alternate-date",
+      "model:Sales/table:table-alternate-date/column:alternate-column-calendar-date",
+      "model:Sales/table:table-alternate-date/column:alternate-column-date",
+      "model:Sales/table:table-alternate-date/column:alternate-column-month",
+      "model:Sales/table:table-date",
+      "model:Sales/table:table-date/column:column-calendar-date",
+      "model:Sales/table:table-date/column:column-date",
+      "model:Sales/table:table-date/column:column-month",
+      "model:Sales/table:table-fact",
+      "model:Sales/table:table-fact/column:column-amount",
+      "model:Sales/table:table-fact/column:column-order",
+      "model:Sales/table:table-fact/column:column-ship",
+      "model:Sales/table:table-fact/measure:measure-explicit-ship",
+      "model:Sales/table:table-fact/measure:measure-sales",
+      "model:Sales/table:table-fact/measure:measure-ytd",
+      "report:report-sales",
+      "report:report-sales/page:month",
+      "report:report-sales/page:month/visual:sales"
+    ],
+    "uncovered_impact_paths": [],
+    "unexplained_differences": [],
+    "untested_objects": [
+      "model:Sales/relationship:4eaeb483652356538717f5801c0094c9"
+    ],
+    "verified_invariants": [
+      "grand-total"
+    ],
+    "violated_invariants": []
+  },
+  "policy_decision": {
+    "approval_reasons": [],
+    "blocking_reasons": [],
+    "decision": "ALLOW",
+    "eligible_for_promotion": true,
+    "impact_coverage": "COMPLETE",
+    "policy_hash": "sha256:d1298891c81b958589f1cff3ed17fba84841f4b03c03913c8e3fc5ae4660e48b",
+    "policy_version": "guard-policy-1",
+    "regression_status": "PASSED",
+    "risk": "HIGH",
+    "runtime_valid": true,
+    "scope_compliant": true,
+    "static_valid": true
+  },
+  "promotion_state": "POST_PROMOTION_VERIFIED",
+  "git_promotion": {
+    "authoritative_promoted": true,
+    "authorization_hash": "sha256:3a2008583d916db60dd5af0b1dbd1077f8fcd995a06eaccb557f444c62bd9a9f",
+    "baseline_revision": "f2b59fb07e47a8f85d2900ac3adb7da33783428b",
+    "baseline_source_hash": "sha256:ac755ccee9935075891f16575d7e41ffa829b264e0249d362d3a8c3edd1d1af8",
+    "branch": "refs/heads/main",
+    "candidate_revision": "60ea41a7c44e244ff9553147a1b4f431fde82967",
+    "operation_id": "956de829-def6-475b-933c-36f03d2debb2",
+    "reference": "refs/pbi-guard/956de829-def6-475b-933c-36f03d2debb2",
+    "source_root": "C:\\Users\\Daniel\\AppData\\Local\\Temp\\guard-real-regression-6t37n4uc\\source",
+    "status": "COMMITTED"
+  },
+  "audit": {
+    "integrity_verified": true,
+    "head": {
+      "count": 24,
+      "last_hash": "sha256:a7bdff44cc63b562ca577f4f2107c858ed29e794c9d28f88fa54ce3bb33523dd",
+      "operation_id": "956de829-def6-475b-933c-36f03d2debb2"
+    },
+    "computed_tail_hash": "sha256:a7bdff44cc63b562ca577f4f2107c858ed29e794c9d28f88fa54ce3bb33523dd",
+    "terminal_event": "POST_PROMOTION_VERIFIED",
+    "algorithm": "HMAC-SHA256_AND_CONTENT_HASH_CHAIN"
+  }
+}

@@ -1,0 +1,66 @@
+{
+  "reference_version": 1,
+  "baseline_snapshot_id": "sha256:bfd41b79640c13dc2e5a9bb1541a169f98719410c8c28a34204f0146bc787320",
+  "candidate_snapshot_id": "sha256:a67a9a806f8e17f3f9bf9e00d782486c86003f99ed63d08cddf742eb34982729",
+  "differences": [
+    {
+      "object_id": "model:Sales/relationship:4eaeb483652356538717f5801c0094c9",
+      "object_type": "RELATIONSHIP",
+      "property_path": "from_column_id",
+      "previous_value": "model:Sales/table:table-fact/column:column-order",
+      "new_value": "model:Sales/table:table-fact/column:column-ship",
+      "classification": "REFERENCE_CHANGED"
+    }
+  ],
+  "scope_status": "PASSED",
+  "impact_names": [
+    "CalendarMonth",
+    "Date",
+    "Date",
+    "DateKey",
+    "FactSales",
+    "Monthly",
+    "OrderDateKey",
+    "Sales Amount",
+    "Sales YTD",
+    "Sales report",
+    "SalesAmount",
+    "ShipDateKey",
+    "relationship-sales",
+    "sales"
+  ],
+  "impact_ids": [
+    "model:Sales/relationship:4eaeb483652356538717f5801c0094c9",
+    "model:Sales/table:table-date",
+    "model:Sales/table:table-date/column:column-calendar-date",
+    "model:Sales/table:table-date/column:column-date",
+    "model:Sales/table:table-date/column:column-month",
+    "model:Sales/table:table-fact",
+    "model:Sales/table:table-fact/column:column-amount",
+    "model:Sales/table:table-fact/column:column-order",
+    "model:Sales/table:table-fact/column:column-ship",
+    "model:Sales/table:table-fact/measure:measure-sales",
+    "model:Sales/table:table-fact/measure:measure-ytd",
+    "report:report-sales",
+    "report:report-sales/page:month",
+    "report:report-sales/page:month/visual:sales"
+  ],
+  "required_test_categories": [
+    "unfiltered_total",
+    "grouped_dimension_total",
+    "affected_measure",
+    "dependent_measure",
+    "alternate_relationship",
+    "blank_unmatched_keys",
+    "slicer_filter_context",
+    "time_intelligence",
+    "report_bound_calculation"
+  ],
+  "impact_completeness": "INCOMPLETE",
+  "blocking_completeness": [
+    "PBIR_SCHEMA_COVERAGE_NOT_CERTIFIED"
+  ],
+  "runtime_status": "NOT_RUN",
+  "isolation_status": "NOT_RUN",
+  "automatic_promotion_allowed": false
+}

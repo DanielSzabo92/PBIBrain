@@ -51,3 +51,11 @@ runtime/native/
 
 # graphify's generated analysis output — regenerable, not committed.
 /graphify-out/
+
+# Trusted change-control state and .NET build output
+.pbi-guard/
+backend/adapters/tabular_metadata/dotnet/bin/
+backend/adapters/tabular_metadata/dotnet/obj/
+change_guard/regression/dotnet/bin/
+change_guard/regression/dotnet/obj/
+frontend/.guard-test-results/

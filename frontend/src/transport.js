@@ -85,6 +85,12 @@ export function createBrainTransport({ baseUrl = API_ROOT, fetcher = globalThis.
     getObject(id) {
       return request(`/objects/${encodeURIComponent(id)}`);
     },
+    getImpact(targetId, proposedChanges = []) {
+      return request("/impact", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ target_id: targetId, proposed_changes: proposedChanges, include_report_usage: true }) });
+    },
+    compareSnapshots(before, after) {
+      return request("/compare", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ before, after }) });
+    },
   };
 }
 

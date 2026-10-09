@@ -1,0 +1,57 @@
+{
+  "evidence_version": 1,
+  "recorded_at": "2026-10-08T23:03:07.477972+00:00",
+  "files": [
+    {
+      "path": "benchmark.json",
+      "sha256": "190caf07c6c10fa8a113b3e3399a644e567f7097d61aa6433b4c0610b71257fc",
+      "bytes": 2375
+    },
+    {
+      "path": "chrome-existing-ui.log",
+      "sha256": "f3fed178a2a1aa4239f457c928658a16be0f1a26d2d230e24d6c247c4798ea92",
+      "bytes": 5958
+    },
+    {
+      "path": "chrome-guard-ui.log",
+      "sha256": "16cee9f157e4aef6294599bb25a53ec82fe359970b951af8d1ab9bd1d3e57aa2",
+      "bytes": 611
+    },
+    {
+      "path": "frontend-build.log",
+      "sha256": "fea1f812294c4a9fea9c576cf2cbf22452ecfccbcf746db9d2a03aaadb3a62ae",
+      "bytes": 10304
+    },
+    {
+      "path": "frontend-unit.log",
+      "sha256": "2ed762b15a09e25bbab16c115c7fcd22c6e20e8a70729b4c75eaa85ed644b872",
+      "bytes": 6477
+    },
+    {
+      "path": "guard-review.png",
+      "sha256": "643eb2cd413b9e22ecf3efd0f8aaf00e846aab570fd9fec179878948959d6835",
+      "bytes": 40091
+    },
+    {
+      "path": "guard-tests.log",
+      "sha256": "7cdb4fc7ac4f978f21fb5b85e7f9b22d24f87d31b11310139d40cce5b6919b46",
+      "bytes": 103
+    },
+    {
+      "path": "python-suite.log",
+      "sha256": "b3dbe0703d9ec93331f5c835cfb2876d96530904ef7f1b63e8ec4b8cecd9bf25",
+      "bytes": 805
+    },
+    {
+      "path": "reference-static.json",
+      "sha256": "a1aeaa33cf5300ac5154b3b84205e30e8460d1cde20e83b7fed9ed76cf8299ce",
+      "bytes": 2214
+    },
+    {
+      "path": "VERIFICATION.md",
+      "sha256": "1b5e5c310ccb9fbce25278b2f79c773f6018cc4e1ddec4763b8be8f6c86ceede",
+      "bytes": 3908
+    }
+  ],
+  "full_contract_accepted": false
+}

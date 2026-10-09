@@ -1,0 +1,23 @@
+[WebServer] Traceback (most recent call last):
+[WebServer]   File "<frozen runpy>", line 198, in _run_module_as_main
+[WebServer]   File "<frozen runpy>", line 88, in _run_code
+[WebServer]   File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\tests\guard_ui_server.py", line 49, in <module>
+[WebServer]     if __name__ == "__main__": main()
+[WebServer]                                ^^^^^^
+[WebServer]   File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\tests\guard_ui_server.py", line 22, in main
+[WebServer]     baseline = guard.capture_baseline()
+[WebServer]                ^^^^^^^^^^^^^^^^^^^^^^^^
+[WebServer]   File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\change_guard\orchestrator.py", line 105, in capture_baseline
+[WebServer]     analysis = scan_snapshot(self.source_root, identities=seed, adapter=self.adapter)
+[WebServer]                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[WebServer]   File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\backend\snapshots\scan.py", line 155, in scan_snapshot
+[WebServer]     report_validation = validate_report_documents(documents)
+[WebServer]                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[WebServer]   File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\backend\adapters\pbir\validation.py", line 35, in validate_report_documents
+[WebServer]     schemas, registry, revision = _catalog()
+[WebServer]                                   ^^^^^^^^^^
+[WebServer]   File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\backend\adapters\pbir\validation.py", line 25, in _catalog
+[WebServer]     raise ValueError("Schema catalog integrity mismatch")
+[WebServer] ValueError: Schema catalog integrity mismatch
+Error: Process from config.webServer was not able to start. Exit code: 1
+

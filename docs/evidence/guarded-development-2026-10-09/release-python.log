@@ -1,0 +1,706 @@
+127.0.0.1 - - [09/Oct/2026 10:17:17] "GET /desktop/session HTTP/1.1" 200 254
+127.0.0.1 - - [09/Oct/2026 10:17:17] "GET /api/config HTTP/1.1" 200 129
+127.0.0.1 - - [09/Oct/2026 10:17:18] "GET /desktop/session HTTP/1.1" 200 288
+127.0.0.1 - - [09/Oct/2026 10:17:18] "POST /api/scan HTTP/1.1" 200 755
+127.0.0.1 - - [09/Oct/2026 10:17:18] "GET /api/overview HTTP/1.1" 200 722
+127.0.0.1 - - [09/Oct/2026 10:17:18] "GET /api/search?q=Net+Sales HTTP/1.1" 200 1854
+127.0.0.1 - - [09/Oct/2026 10:17:18] "GET /api/overview HTTP/1.1" 409 67
+127.0.0.1 - - [09/Oct/2026 10:17:18] "GET /desktop/session HTTP/1.1" 200 288
+127.0.0.1 - - [09/Oct/2026 10:17:18] "GET /api/overview HTTP/1.1" 200 694
+======================================================================
+ERROR: test_invalid_pbir_is_static_failure_even_when_dependency_coverage_not_required (test_guard_coverage_expansion.CoverageExpansionTests.test_invalid_pbir_is_static_failure_even_when_dependency_coverage_not_required)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\tests\test_guard_coverage_expansion.py", line 29, in test_invalid_pbir_is_static_failure_even_when_dependency_coverage_not_required
+    scan = scan_snapshot(root)
+           ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\backend\snapshots\scan.py", line 155, in scan_snapshot
+    report_validation = validate_report_documents(documents)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\backend\adapters\pbir\validation.py", line 35, in validate_report_documents
+    schemas, registry, revision = _catalog()
+                                  ^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\backend\adapters\pbir\validation.py", line 25, in _catalog
+    raise ValueError("Schema catalog integrity mismatch")
+ValueError: Schema catalog integrity mismatch
+
+======================================================================
+ERROR: test_tom_tmdl_measure_and_column_properties_are_accounted_exactly (test_guard_coverage_expansion.CoverageExpansionTests.test_tom_tmdl_measure_and_column_properties_are_accounted_exactly) (property='formatString', object_kind='measure')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\tests\test_guard_coverage_expansion.py", line 47, in test_tom_tmdl_measure_and_column_properties_are_accounted_exactly
+    before_scan = scan_snapshot(root)
+                  ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\backend\snapshots\scan.py", line 155, in scan_snapshot
+    report_validation = validate_report_documents(documents)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\backend\adapters\pbir\validation.py", line 35, in validate_report_documents
+    schemas, registry, revision = _catalog()
+                                  ^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\backend\adapters\pbir\validation.py", line 25, in _catalog
+    raise ValueError("Schema catalog integrity mismatch")
+ValueError: Schema catalog integrity mismatch
+
+======================================================================
+ERROR: test_tom_tmdl_measure_and_column_properties_are_accounted_exactly (test_guard_coverage_expansion.CoverageExpansionTests.test_tom_tmdl_measure_and_column_properties_are_accounted_exactly) (property='displayFolder', object_kind='measure')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\tests\test_guard_coverage_expansion.py", line 47, in test_tom_tmdl_measure_and_column_properties_are_accounted_exactly
+    before_scan = scan_snapshot(root)
+                  ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\backend\snapshots\scan.py", line 155, in scan_snapshot
+    report_validation = validate_report_documents(documents)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\backend\adapters\pbir\validation.py", line 35, in validate_report_documents
+    schemas, registry, revision = _catalog()
+                                  ^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\backend\adapters\pbir\validation.py", line 25, in _catalog
+    raise ValueError("Schema catalog integrity mismatch")
+ValueError: Schema catalog integrity mismatch
+
+======================================================================
+ERROR: test_tom_tmdl_measure_and_column_properties_are_accounted_exactly (test_guard_coverage_expansion.CoverageExpansionTests.test_tom_tmdl_measure_and_column_properties_are_accounted_exactly) (property='expression', object_kind='measure')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\tests\test_guard_coverage_expansion.py", line 47, in test_tom_tmdl_measure_and_column_properties_are_accounted_exactly
+    before_scan = scan_snapshot(root)
+                  ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\backend\snapshots\scan.py", line 155, in scan_snapshot
+    report_validation = validate_report_documents(documents)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\backend\adapters\pbir\validation.py", line 35, in validate_report_documents
+    schemas, registry, revision = _catalog()
+                                  ^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\backend\adapters\pbir\validation.py", line 25, in _catalog
+    raise ValueError("Schema catalog integrity mismatch")
+ValueError: Schema catalog integrity mismatch
+
+======================================================================
+ERROR: test_tom_tmdl_measure_and_column_properties_are_accounted_exactly (test_guard_coverage_expansion.CoverageExpansionTests.test_tom_tmdl_measure_and_column_properties_are_accounted_exactly) (property='formatString', object_kind='column')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\tests\test_guard_coverage_expansion.py", line 47, in test_tom_tmdl_measure_and_column_properties_are_accounted_exactly
+    before_scan = scan_snapshot(root)
+                  ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\backend\snapshots\scan.py", line 155, in scan_snapshot
+    report_validation = validate_report_documents(documents)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\backend\adapters\pbir\validation.py", line 35, in validate_report_documents
+    schemas, registry, revision = _catalog()
+                                  ^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\backend\adapters\pbir\validation.py", line 25, in _catalog
+    raise ValueError("Schema catalog integrity mismatch")
+ValueError: Schema catalog integrity mismatch
+
+======================================================================
+ERROR: test_additional_cross_filter_change_rejected (test_guarded_development.ReferenceTests.test_additional_cross_filter_change_rejected)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\tests\test_guarded_development.py", line 76, in setUp
+    self.baseline = self.guard.capture_baseline()
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\change_guard\orchestrator.py", line 105, in capture_baseline
+    analysis = scan_snapshot(self.source_root, identities=seed, adapter=self.adapter)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\backend\snapshots\scan.py", line 155, in scan_snapshot
+    report_validation = validate_report_documents(documents)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\backend\adapters\pbir\validation.py", line 35, in validate_report_documents
+    schemas, registry, revision = _catalog()
+                                  ^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\backend\adapters\pbir\validation.py", line 25, in _catalog
+    raise ValueError("Schema catalog integrity mismatch")
+ValueError: Schema catalog integrity mismatch
+
+======================================================================
+ERROR: test_agent_cannot_edit_authorized_contract (test_guarded_development.ReferenceTests.test_agent_cannot_edit_authorized_contract)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\tests\test_guarded_development.py", line 76, in setUp
+    self.baseline = self.guard.capture_baseline()
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\change_guard\orchestrator.py", line 105, in capture_baseline
+    analysis = scan_snapshot(self.source_root, identities=seed, adapter=self.adapter)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\backend\snapshots\scan.py", line 155, in scan_snapshot
+    report_validation = validate_report_documents(documents)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\backend\adapters\pbir\validation.py", line 35, in validate_report_documents
+    schemas, registry, revision = _catalog()
+                                  ^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\backend\adapters\pbir\validation.py", line 25, in _catalog
+    raise ValueError("Schema catalog integrity mismatch")
+ValueError: Schema catalog integrity mismatch
+
+======================================================================
+ERROR: test_authoritative_identity_seed_change_makes_baseline_stale (test_guarded_development.ReferenceTests.test_authoritative_identity_seed_change_makes_baseline_stale)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\tests\test_guarded_development.py", line 76, in setUp
+    self.baseline = self.guard.capture_baseline()
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\change_guard\orchestrator.py", line 105, in capture_baseline
+    analysis = scan_snapshot(self.source_root, identities=seed, adapter=self.adapter)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\backend\snapshots\scan.py", line 155, in scan_snapshot
+    report_validation = validate_report_documents(documents)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\backend\adapters\pbir\validation.py", line 35, in validate_report_documents
+    schemas, registry, revision = _catalog()
+                                  ^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\backend\adapters\pbir\validation.py", line 25, in _catalog
+    raise ValueError("Schema catalog integrity mismatch")
+ValueError: Schema catalog integrity mismatch
+
+======================================================================
+ERROR: test_authorized_active_toggle_and_cardinality_diffs (test_guarded_development.ReferenceTests.test_authorized_active_toggle_and_cardinality_diffs)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\tests\test_guarded_development.py", line 76, in setUp
+    self.baseline = self.guard.capture_baseline()
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\change_guard\orchestrator.py", line 105, in capture_baseline
+    analysis = scan_snapshot(self.source_root, identities=seed, adapter=self.adapter)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\backend\snapshots\scan.py", line 155, in scan_snapshot
+    report_validation = validate_report_documents(documents)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\backend\adapters\pbir\validation.py", line 35, in validate_report_documents
+    schemas, registry, revision = _catalog()
+                                  ^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\backend\adapters\pbir\validation.py", line 25, in _catalog
+    raise ValueError("Schema catalog integrity mismatch")
+ValueError: Schema catalog integrity mismatch
+
+======================================================================
+ERROR: test_candidate_changes_invalidate_review (test_guarded_development.ReferenceTests.test_candidate_changes_invalidate_review)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\tests\test_guarded_development.py", line 76, in setUp
+    self.baseline = self.guard.capture_baseline()
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\change_guard\orchestrator.py", line 105, in capture_baseline
+    analysis = scan_snapshot(self.source_root, identities=seed, adapter=self.adapter)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\backend\snapshots\scan.py", line 155, in scan_snapshot
+    report_validation = validate_report_documents(documents)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\backend\adapters\pbir\validation.py", line 35, in validate_report_documents
+    schemas, registry, revision = _catalog()
+                                  ^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\backend\adapters\pbir\validation.py", line 25, in _catalog
+    raise ValueError("Schema catalog integrity mismatch")
+ValueError: Schema catalog integrity mismatch
+
+======================================================================
+ERROR: test_column_deletion_is_detected_and_rejected (test_guarded_development.ReferenceTests.test_column_deletion_is_detected_and_rejected)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\tests\test_guarded_development.py", line 76, in setUp
+    self.baseline = self.guard.capture_baseline()
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\change_guard\orchestrator.py", line 105, in capture_baseline
+    analysis = scan_snapshot(self.source_root, identities=seed, adapter=self.adapter)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\backend\snapshots\scan.py", line 155, in scan_snapshot
+    report_validation = validate_report_documents(documents)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\backend\adapters\pbir\validation.py", line 35, in validate_report_documents
+    schemas, registry, revision = _catalog()
+                                  ^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\backend\adapters\pbir\validation.py", line 25, in _catalog
+    raise ValueError("Schema catalog integrity mismatch")
+ValueError: Schema catalog integrity mismatch
+
+======================================================================
+ERROR: test_column_lineage_rename_preserved (test_guarded_development.ReferenceTests.test_column_lineage_rename_preserved)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\tests\test_guarded_development.py", line 76, in setUp
+    self.baseline = self.guard.capture_baseline()
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\change_guard\orchestrator.py", line 105, in capture_baseline
+    analysis = scan_snapshot(self.source_root, identities=seed, adapter=self.adapter)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\backend\snapshots\scan.py", line 155, in scan_snapshot
+    report_validation = validate_report_documents(documents)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\backend\adapters\pbir\validation.py", line 35, in validate_report_documents
+    schemas, registry, revision = _catalog()
+                                  ^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\backend\adapters\pbir\validation.py", line 25, in _catalog
+    raise ValueError("Schema catalog integrity mismatch")
+ValueError: Schema catalog integrity mismatch
+
+======================================================================
+ERROR: test_contract_properties_are_immutable_copies (test_guarded_development.ReferenceTests.test_contract_properties_are_immutable_copies)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\tests\test_guarded_development.py", line 76, in setUp
+    self.baseline = self.guard.capture_baseline()
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\change_guard\orchestrator.py", line 105, in capture_baseline
+    analysis = scan_snapshot(self.source_root, identities=seed, adapter=self.adapter)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\backend\snapshots\scan.py", line 155, in scan_snapshot
+    report_validation = validate_report_documents(documents)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\backend\adapters\pbir\validation.py", line 35, in validate_report_documents
+    schemas, registry, revision = _catalog()
+                                  ^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\backend\adapters\pbir\validation.py", line 25, in _catalog
+    raise ValueError("Schema catalog integrity mismatch")
+ValueError: Schema catalog integrity mismatch
+
+======================================================================
+ERROR: test_deterministic_impact_and_output_pruning (test_guarded_development.ReferenceTests.test_deterministic_impact_and_output_pruning)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\tests\test_guarded_development.py", line 76, in setUp
+    self.baseline = self.guard.capture_baseline()
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\change_guard\orchestrator.py", line 105, in capture_baseline
+    analysis = scan_snapshot(self.source_root, identities=seed, adapter=self.adapter)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\backend\snapshots\scan.py", line 155, in scan_snapshot
+    report_validation = validate_report_documents(documents)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\backend\adapters\pbir\validation.py", line 35, in validate_report_documents
+    schemas, registry, revision = _catalog()
+                                  ^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\backend\adapters\pbir\validation.py", line 25, in _catalog
+    raise ValueError("Schema catalog integrity mismatch")
+ValueError: Schema catalog integrity mismatch
+
+======================================================================
+ERROR: test_deterministic_snapshot_and_real_capture_timestamp (test_guarded_development.ReferenceTests.test_deterministic_snapshot_and_real_capture_timestamp)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\tests\test_guarded_development.py", line 76, in setUp
+    self.baseline = self.guard.capture_baseline()
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\change_guard\orchestrator.py", line 105, in capture_baseline
+    analysis = scan_snapshot(self.source_root, identities=seed, adapter=self.adapter)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\backend\snapshots\scan.py", line 155, in scan_snapshot
+    report_validation = validate_report_documents(documents)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\backend\adapters\pbir\validation.py", line 35, in validate_report_documents
+    schemas, registry, revision = _catalog()
+                                  ^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\backend\adapters\pbir\validation.py", line 25, in _catalog
+    raise ValueError("Schema catalog integrity mismatch")
+ValueError: Schema catalog integrity mismatch
+
+======================================================================
+ERROR: test_explicit_relationship_override_has_specialized_impact (test_guarded_development.ReferenceTests.test_explicit_relationship_override_has_specialized_impact)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\tests\test_guarded_development.py", line 76, in setUp
+    self.baseline = self.guard.capture_baseline()
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\change_guard\orchestrator.py", line 105, in capture_baseline
+    analysis = scan_snapshot(self.source_root, identities=seed, adapter=self.adapter)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\backend\snapshots\scan.py", line 155, in scan_snapshot
+    report_validation = validate_report_documents(documents)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\backend\adapters\pbir\validation.py", line 35, in validate_report_documents
+    schemas, registry, revision = _catalog()
+                                  ^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\backend\adapters\pbir\validation.py", line 25, in _catalog
+    raise ValueError("Schema catalog integrity mismatch")
+ValueError: Schema catalog integrity mismatch
+
+======================================================================
+ERROR: test_formal_contract_unknown_fields_wildcards_types_preconditions (test_guarded_development.ReferenceTests.test_formal_contract_unknown_fields_wildcards_types_preconditions)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\tests\test_guarded_development.py", line 76, in setUp
+    self.baseline = self.guard.capture_baseline()
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\change_guard\orchestrator.py", line 105, in capture_baseline
+    analysis = scan_snapshot(self.source_root, identities=seed, adapter=self.adapter)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\backend\snapshots\scan.py", line 155, in scan_snapshot
+    report_validation = validate_report_documents(documents)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\backend\adapters\pbir\validation.py", line 35, in validate_report_documents
+    schemas, registry, revision = _catalog()
+                                  ^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\backend\adapters\pbir\validation.py", line 25, in _catalog
+    raise ValueError("Schema catalog integrity mismatch")
+ValueError: Schema catalog integrity mismatch
+
+======================================================================
+ERROR: test_golden_reference_snapshot_diff_impact_and_blocked_promotion (test_guarded_development.ReferenceTests.test_golden_reference_snapshot_diff_impact_and_blocked_promotion)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\tests\test_guarded_development.py", line 76, in setUp
+    self.baseline = self.guard.capture_baseline()
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\change_guard\orchestrator.py", line 105, in capture_baseline
+    analysis = scan_snapshot(self.source_root, identities=seed, adapter=self.adapter)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\backend\snapshots\scan.py", line 155, in scan_snapshot
+    report_validation = validate_report_documents(documents)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\backend\adapters\pbir\validation.py", line 35, in validate_report_documents
+    schemas, registry, revision = _catalog()
+                                  ^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\backend\adapters\pbir\validation.py", line 25, in _catalog
+    raise ValueError("Schema catalog integrity mismatch")
+ValueError: Schema catalog integrity mismatch
+
+======================================================================
+ERROR: test_isolated_graph_identity_no_live_write (test_guarded_development.ReferenceTests.test_isolated_graph_identity_no_live_write)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\tests\test_guarded_development.py", line 76, in setUp
+    self.baseline = self.guard.capture_baseline()
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\change_guard\orchestrator.py", line 105, in capture_baseline
+    analysis = scan_snapshot(self.source_root, identities=seed, adapter=self.adapter)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\backend\snapshots\scan.py", line 155, in scan_snapshot
+    report_validation = validate_report_documents(documents)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\backend\adapters\pbir\validation.py", line 35, in validate_report_documents
+    schemas, registry, revision = _catalog()
+                                  ^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\backend\adapters\pbir\validation.py", line 25, in _catalog
+    raise ValueError("Schema catalog integrity mismatch")
+ValueError: Schema catalog integrity mismatch
+
+======================================================================
+ERROR: test_measure_rewrite_rejected (test_guarded_development.ReferenceTests.test_measure_rewrite_rejected)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\tests\test_guarded_development.py", line 76, in setUp
+    self.baseline = self.guard.capture_baseline()
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\change_guard\orchestrator.py", line 105, in capture_baseline
+    analysis = scan_snapshot(self.source_root, identities=seed, adapter=self.adapter)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\backend\snapshots\scan.py", line 155, in scan_snapshot
+    report_validation = validate_report_documents(documents)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\backend\adapters\pbir\validation.py", line 35, in validate_report_documents
+    schemas, registry, revision = _catalog()
+                                  ^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\backend\adapters\pbir\validation.py", line 25, in _catalog
+    raise ValueError("Schema catalog integrity mismatch")
+ValueError: Schema catalog integrity mismatch
+
+======================================================================
+ERROR: test_multiple_active_paths_block_complete_certification (test_guarded_development.ReferenceTests.test_multiple_active_paths_block_complete_certification)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\tests\test_guarded_development.py", line 76, in setUp
+    self.baseline = self.guard.capture_baseline()
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\change_guard\orchestrator.py", line 105, in capture_baseline
+    analysis = scan_snapshot(self.source_root, identities=seed, adapter=self.adapter)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\backend\snapshots\scan.py", line 155, in scan_snapshot
+    report_validation = validate_report_documents(documents)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\backend\adapters\pbir\validation.py", line 35, in validate_report_documents
+    schemas, registry, revision = _catalog()
+                                  ^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\backend\adapters\pbir\validation.py", line 25, in _catalog
+    raise ValueError("Schema catalog integrity mismatch")
+ValueError: Schema catalog integrity mismatch
+
+======================================================================
+ERROR: test_opaque_report_resource_is_preserved_but_edit_blocks_scope (test_guarded_development.ReferenceTests.test_opaque_report_resource_is_preserved_but_edit_blocks_scope)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\tests\test_guarded_development.py", line 76, in setUp
+    self.baseline = self.guard.capture_baseline()
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\change_guard\orchestrator.py", line 105, in capture_baseline
+    analysis = scan_snapshot(self.source_root, identities=seed, adapter=self.adapter)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\backend\snapshots\scan.py", line 155, in scan_snapshot
+    report_validation = validate_report_documents(documents)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\backend\adapters\pbir\validation.py", line 35, in validate_report_documents
+    schemas, registry, revision = _catalog()
+                                  ^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\backend\adapters\pbir\validation.py", line 25, in _catalog
+    raise ValueError("Schema catalog integrity mismatch")
+ValueError: Schema catalog integrity mismatch
+
+======================================================================
+ERROR: test_query_ast_requires_actual_target_evaluation (test_guarded_development.ReferenceTests.test_query_ast_requires_actual_target_evaluation)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\tests\test_guarded_development.py", line 76, in setUp
+    self.baseline = self.guard.capture_baseline()
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\change_guard\orchestrator.py", line 105, in capture_baseline
+    analysis = scan_snapshot(self.source_root, identities=seed, adapter=self.adapter)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\backend\snapshots\scan.py", line 155, in scan_snapshot
+    report_validation = validate_report_documents(documents)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\backend\adapters\pbir\validation.py", line 35, in validate_report_documents
+    schemas, registry, revision = _catalog()
+                                  ^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\backend\adapters\pbir\validation.py", line 25, in _catalog
+    raise ValueError("Schema catalog integrity mismatch")
+ValueError: Schema catalog integrity mismatch
+
+======================================================================
+ERROR: test_readonly_api_impact_context_compare_registry (test_guarded_development.ReferenceTests.test_readonly_api_impact_context_compare_registry)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\tests\test_guarded_development.py", line 76, in setUp
+    self.baseline = self.guard.capture_baseline()
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\change_guard\orchestrator.py", line 105, in capture_baseline
+    analysis = scan_snapshot(self.source_root, identities=seed, adapter=self.adapter)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\backend\snapshots\scan.py", line 155, in scan_snapshot
+    report_validation = validate_report_documents(documents)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\backend\adapters\pbir\validation.py", line 35, in validate_report_documents
+    schemas, registry, revision = _catalog()
+                                  ^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\backend\adapters\pbir\validation.py", line 25, in _catalog
+    raise ValueError("Schema catalog integrity mismatch")
+ValueError: Schema catalog integrity mismatch
+
+======================================================================
+ERROR: test_reference_scope_and_missing_isolation_runtime_block (test_guarded_development.ReferenceTests.test_reference_scope_and_missing_isolation_runtime_block)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\tests\test_guarded_development.py", line 76, in setUp
+    self.baseline = self.guard.capture_baseline()
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\change_guard\orchestrator.py", line 105, in capture_baseline
+    analysis = scan_snapshot(self.source_root, identities=seed, adapter=self.adapter)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\backend\snapshots\scan.py", line 155, in scan_snapshot
+    report_validation = validate_report_documents(documents)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\backend\adapters\pbir\validation.py", line 35, in validate_report_documents
+    schemas, registry, revision = _catalog()
+                                  ^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\backend\adapters\pbir\validation.py", line 25, in _catalog
+    raise ValueError("Schema catalog integrity mismatch")
+ValueError: Schema catalog integrity mismatch
+
+======================================================================
+ERROR: test_reference_unchanged_sum_transitive_measure_visuals (test_guarded_development.ReferenceTests.test_reference_unchanged_sum_transitive_measure_visuals)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\tests\test_guarded_development.py", line 76, in setUp
+    self.baseline = self.guard.capture_baseline()
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\change_guard\orchestrator.py", line 105, in capture_baseline
+    analysis = scan_snapshot(self.source_root, identities=seed, adapter=self.adapter)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\backend\snapshots\scan.py", line 155, in scan_snapshot
+    report_validation = validate_report_documents(documents)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\backend\adapters\pbir\validation.py", line 35, in validate_report_documents
+    schemas, registry, revision = _catalog()
+                                  ^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\backend\adapters\pbir\validation.py", line 25, in _catalog
+    raise ValueError("Schema catalog integrity mismatch")
+ValueError: Schema catalog integrity mismatch
+
+======================================================================
+ERROR: test_relationship_deletion_recreation_rejected (test_guarded_development.ReferenceTests.test_relationship_deletion_recreation_rejected)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\tests\test_guarded_development.py", line 76, in setUp
+    self.baseline = self.guard.capture_baseline()
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\change_guard\orchestrator.py", line 105, in capture_baseline
+    analysis = scan_snapshot(self.source_root, identities=seed, adapter=self.adapter)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\backend\snapshots\scan.py", line 155, in scan_snapshot
+    report_validation = validate_report_documents(documents)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\backend\adapters\pbir\validation.py", line 35, in validate_report_documents
+    schemas, registry, revision = _catalog()
+                                  ^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\backend\adapters\pbir\validation.py", line 25, in _catalog
+    raise ValueError("Schema catalog integrity mismatch")
+ValueError: Schema catalog integrity mismatch
+
+======================================================================
+ERROR: test_snapshot_cache_keeps_full_isolated_results (test_guarded_development.ReferenceTests.test_snapshot_cache_keeps_full_isolated_results)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\tests\test_guarded_development.py", line 76, in setUp
+    self.baseline = self.guard.capture_baseline()
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\change_guard\orchestrator.py", line 105, in capture_baseline
+    analysis = scan_snapshot(self.source_root, identities=seed, adapter=self.adapter)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\backend\snapshots\scan.py", line 155, in scan_snapshot
+    report_validation = validate_report_documents(documents)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\backend\adapters\pbir\validation.py", line 35, in validate_report_documents
+    schemas, registry, revision = _catalog()
+                                  ^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\backend\adapters\pbir\validation.py", line 25, in _catalog
+    raise ValueError("Schema catalog integrity mismatch")
+ValueError: Schema catalog integrity mismatch
+
+======================================================================
+ERROR: test_stale_baseline_blocks_verification_and_authorization (test_guarded_development.ReferenceTests.test_stale_baseline_blocks_verification_and_authorization)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\tests\test_guarded_development.py", line 76, in setUp
+    self.baseline = self.guard.capture_baseline()
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\change_guard\orchestrator.py", line 105, in capture_baseline
+    analysis = scan_snapshot(self.source_root, identities=seed, adapter=self.adapter)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\backend\snapshots\scan.py", line 155, in scan_snapshot
+    report_validation = validate_report_documents(documents)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\backend\adapters\pbir\validation.py", line 35, in validate_report_documents
+    schemas, registry, revision = _catalog()
+                                  ^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\backend\adapters\pbir\validation.py", line 25, in _catalog
+    raise ValueError("Schema catalog integrity mismatch")
+ValueError: Schema catalog integrity mismatch
+
+======================================================================
+ERROR: test_tmdl_endpoint_one_diff_and_unknown_comment_blocked (test_guarded_development.ReferenceTests.test_tmdl_endpoint_one_diff_and_unknown_comment_blocked)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\tests\test_guarded_development.py", line 76, in setUp
+    self.baseline = self.guard.capture_baseline()
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\change_guard\orchestrator.py", line 105, in capture_baseline
+    analysis = scan_snapshot(self.source_root, identities=seed, adapter=self.adapter)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\backend\snapshots\scan.py", line 155, in scan_snapshot
+    report_validation = validate_report_documents(documents)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\backend\adapters\pbir\validation.py", line 35, in validate_report_documents
+    schemas, registry, revision = _catalog()
+                                  ^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\backend\adapters\pbir\validation.py", line 25, in _catalog
+    raise ValueError("Schema catalog integrity mismatch")
+ValueError: Schema catalog integrity mismatch
+
+======================================================================
+ERROR: test_unknown_metadata_fails_authoritative_adapter (test_guarded_development.ReferenceTests.test_unknown_metadata_fails_authoritative_adapter)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\tests\test_guarded_development.py", line 76, in setUp
+    self.baseline = self.guard.capture_baseline()
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\change_guard\orchestrator.py", line 105, in capture_baseline
+    analysis = scan_snapshot(self.source_root, identities=seed, adapter=self.adapter)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\backend\snapshots\scan.py", line 155, in scan_snapshot
+    report_validation = validate_report_documents(documents)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\backend\adapters\pbir\validation.py", line 35, in validate_report_documents
+    schemas, registry, revision = _catalog()
+                                  ^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\backend\adapters\pbir\validation.py", line 25, in _catalog
+    raise ValueError("Schema catalog integrity mismatch")
+ValueError: Schema catalog integrity mismatch
+
+======================================================================
+ERROR: test_unknown_raw_control_file_change_rejected (test_guarded_development.ReferenceTests.test_unknown_raw_control_file_change_rejected)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\tests\test_guarded_development.py", line 76, in setUp
+    self.baseline = self.guard.capture_baseline()
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\change_guard\orchestrator.py", line 105, in capture_baseline
+    analysis = scan_snapshot(self.source_root, identities=seed, adapter=self.adapter)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\backend\snapshots\scan.py", line 155, in scan_snapshot
+    report_validation = validate_report_documents(documents)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\backend\adapters\pbir\validation.py", line 35, in validate_report_documents
+    schemas, registry, revision = _catalog()
+                                  ^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\backend\adapters\pbir\validation.py", line 25, in _catalog
+    raise ValueError("Schema catalog integrity mismatch")
+ValueError: Schema catalog integrity mismatch
+
+======================================================================
+ERROR: test_unlisted_expected_behavior_still_requires_approval (test_guarded_development.ReferenceTests.test_unlisted_expected_behavior_still_requires_approval)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\tests\test_guarded_development.py", line 76, in setUp
+    self.baseline = self.guard.capture_baseline()
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\change_guard\orchestrator.py", line 105, in capture_baseline
+    analysis = scan_snapshot(self.source_root, identities=seed, adapter=self.adapter)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\backend\snapshots\scan.py", line 155, in scan_snapshot
+    report_validation = validate_report_documents(documents)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\backend\adapters\pbir\validation.py", line 35, in validate_report_documents
+    schemas, registry, revision = _catalog()
+                                  ^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\backend\adapters\pbir\validation.py", line 25, in _catalog
+    raise ValueError("Schema catalog integrity mismatch")
+ValueError: Schema catalog integrity mismatch
+
+======================================================================
+ERROR: test_visual_binding_modification_is_property_diff_and_scope_violation (test_guarded_development.ReferenceTests.test_visual_binding_modification_is_property_diff_and_scope_violation)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\tests\test_guarded_development.py", line 76, in setUp
+    self.baseline = self.guard.capture_baseline()
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\change_guard\orchestrator.py", line 105, in capture_baseline
+    analysis = scan_snapshot(self.source_root, identities=seed, adapter=self.adapter)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\backend\snapshots\scan.py", line 155, in scan_snapshot
+    report_validation = validate_report_documents(documents)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\backend\adapters\pbir\validation.py", line 35, in validate_report_documents
+    schemas, registry, revision = _catalog()
+                                  ^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\backend\adapters\pbir\validation.py", line 25, in _catalog
+    raise ValueError("Schema catalog integrity mismatch")
+ValueError: Schema catalog integrity mismatch
+
+======================================================================
+ERROR: test_schema_and_bindings_are_independent_and_complete (test_pbir_coverage.PBIRCoverageTests.test_schema_and_bindings_are_independent_and_complete)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\tests\test_pbir_coverage.py", line 40, in test_schema_and_bindings_are_independent_and_complete
+    result = validate_report_documents(documents(root))
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\backend\adapters\pbir\validation.py", line 35, in validate_report_documents
+    schemas, registry, revision = _catalog()
+                                  ^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\backend\adapters\pbir\validation.py", line 25, in _catalog
+    raise ValueError("Schema catalog integrity mismatch")
+ValueError: Schema catalog integrity mismatch
+
+======================================================================
+ERROR: test_unknown_schema_property_and_dynamic_context_block (test_pbir_coverage.PBIRCoverageTests.test_unknown_schema_property_and_dynamic_context_block)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\tests\test_pbir_coverage.py", line 53, in test_unknown_schema_property_and_dynamic_context_block
+    self.assertIn("PBIR_SCHEMA_INVALID", {item["code"] for item in validate_report_documents(changed)["issues"]})
+                                                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\backend\adapters\pbir\validation.py", line 35, in validate_report_documents
+    schemas, registry, revision = _catalog()
+                                  ^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\backend\adapters\pbir\validation.py", line 25, in _catalog
+    raise ValueError("Schema catalog integrity mismatch")
+ValueError: Schema catalog integrity mismatch
+
+----------------------------------------------------------------------
+Ran 292 tests in 120.776s
+
+FAILED (errors=36, skipped=1)

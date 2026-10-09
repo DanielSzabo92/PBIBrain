@@ -1,0 +1,19 @@
+Traceback (most recent call last):
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\tests\proof_live_regression.py", line 141, in <module>
+    result = probe()
+             ^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\tests\proof_live_regression.py", line 59, in probe
+    snapshot = guard.capture_baseline()
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\change_guard\orchestrator.py", line 105, in capture_baseline
+    analysis = scan_snapshot(self.source_root, identities=seed, adapter=self.adapter)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\backend\snapshots\scan.py", line 155, in scan_snapshot
+    report_validation = validate_report_documents(documents)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\backend\adapters\pbir\validation.py", line 35, in validate_report_documents
+    schemas, registry, revision = _catalog()
+                                  ^^^^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\.pbi-guard\release\candidate-f96f1c6220bf\backend\adapters\pbir\validation.py", line 25, in _catalog
+    raise ValueError("Schema catalog integrity mismatch")
+ValueError: Schema catalog integrity mismatch

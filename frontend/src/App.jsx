@@ -1,4 +1,5 @@
 import VisualBindings from "./components/VisualBindings";
+import ImpactExplorer from "./components/ImpactExplorer";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight, ArrowUpRight, Boxes, Check, ChartColumn, ChevronRight, CircleCheck, Copy, Database, FileText, FolderOpen, Moon, Plus, RefreshCw, ScanLine, ShieldAlert, ShieldCheck, Sparkles, Sun, TriangleAlert, Waypoints, X } from "lucide-react";
 import { brainTransport, normalizeSnapshot } from "./transport";
@@ -488,7 +489,7 @@ function App({ transport = brainTransport }) {
             {view === "overview" ? <Overview onSelect={selectNode} overview={overview} config={config} counts={counts} loading={loading} projectName={projectName} onView={navigate} onSearch={(query) => { setSearchSession({ query, modelId: "", reportId: "", result: null }); setView("search"); }} onSources={() => { setSettingsTab("project"); setView("config"); }} onSummary={() => { setSettingsTab("summary"); setView("config"); }} onScan={applyScan} scanning={scanning} scanLabel={activeProject ? "Scan project" : "Scan sources"} onReview={() => navigate("review")} /> : null}
             {view === "search" ? <div className="page page-narrow"><SearchView session={searchSession} onSession={setSearchSession} colors={graphColors} transport={transport} overview={overview} onSelect={selectNode} /></div> : null}
             {view === "graph" ? <GraphView colors={graphColors} transport={transport} overview={overview} snapshot={snapshot} selectedId={selectedId} onSelect={selectNode} /> : null}
-            {view === "inspector" ? <div className="page page-wide">{selectedId ? <><Button variant="ghost" size="sm" className="inspector-back" onClick={() => { if (inspectorOrigin === "inspector") { setSelectedId(null); setInspectedObject(null); } else setView(inspectorOrigin); }}><ArrowLeft aria-hidden="true" />{inspectorOrigin === "search" ? "Back to results" : inspectorOrigin === "inspector" ? "Browse objects" : `Back to ${VIEWS.find(([key]) => key === inspectorOrigin)?.[1]?.toLowerCase() || "overview"}`}</Button><Inspector key={selectedId} colors={graphColors} node={selected} details={inspectedDetails} loading={Boolean(selectedId && !inspectedDetails && !inspectorError)} error={inspectorError} snapshot={snapshot} snapshotLoaded={snapshotLoaded} overview={overview} onSelect={selectNode} onRetry={() => selectNode(selectedId)} onReview={review} onGraph={() => setView("graph")} /></> : <SearchView browse session={inspectorSession} onSession={setInspectorSession} colors={graphColors} transport={transport} overview={overview} onSelect={(id) => { setInspectorOrigin("inspector"); selectNode(id); }} />}</div> : null}
+            {view === "inspector" ? <div className="page page-wide">{selectedId ? <><Button variant="ghost" size="sm" className="inspector-back" onClick={() => { if (inspectorOrigin === "inspector") { setSelectedId(null); setInspectedObject(null); } else setView(inspectorOrigin); }}><ArrowLeft aria-hidden="true" />{inspectorOrigin === "search" ? "Back to results" : inspectorOrigin === "inspector" ? "Browse objects" : `Back to ${VIEWS.find(([key]) => key === inspectorOrigin)?.[1]?.toLowerCase() || "overview"}`}</Button><Inspector key={selectedId} transport={transport} colors={graphColors} node={selected} details={inspectedDetails} loading={Boolean(selectedId && !inspectedDetails && !inspectorError)} error={inspectorError} snapshot={snapshot} snapshotLoaded={snapshotLoaded} overview={overview} onSelect={selectNode} onRetry={() => selectNode(selectedId)} onReview={review} onGraph={() => setView("graph")} /></> : <SearchView browse session={inspectorSession} onSession={setInspectorSession} colors={graphColors} transport={transport} overview={overview} onSelect={(id) => { setInspectorOrigin("inspector"); selectNode(id); }} />}</div> : null}
             {view === "review" ? <div className="page page-wide"><ReviewQueue snapshot={snapshot} loading={!snapshotLoaded} overview={overview} onSelect={selectNode} onReview={review} /></div> : null}
             {view === "config" ? <div className="page page-narrow"><Tabs value={settingsTab} onValueChange={setSettingsTab} className="settings-tabs">
               <TabsList aria-label="Settings sections"><TabsTrigger value="colors">Graph colors</TabsTrigger><TabsTrigger value="project">Project</TabsTrigger><TabsTrigger value="summary">Model summary</TabsTrigger></TabsList>
@@ -774,7 +775,7 @@ function ConfigView({ transport, config, onSaved, onScan, scanning }) {
   </>;
 }
 
-function Inspector({ node, details, loading, error, snapshot, snapshotLoaded, overview, onSelect, onRetry, onReview, onGraph, colors }) {
+function Inspector({ node, details, loading, error, snapshot, snapshotLoaded, overview, onSelect, onRetry, onReview, onGraph, colors, transport }) {
   if (error) return <Card className="panel inspector-state"><div className="empty-state tone-bad"><span className="empty-icon" aria-hidden="true"><TriangleAlert /></span><h2>Object unavailable</h2><p>{readableText(error)}</p><Button variant="outline" onClick={onRetry}><RefreshCw />Retry object</Button></div></Card>;
   if (loading) return <div className="inspector-loading"><div className="skeleton skeleton-title" /><div className="skeleton-grid"><div className="skeleton skeleton-block" /><div className="skeleton skeleton-block" /></div><p role="status" className="loading-label">Loading object details…</p></div>;
   if (!node) return <><PageHeading title="Select an object" description="Choose an object from Search or the graph." action={<Button onClick={onGraph}>Open graph</Button>} /></>;
@@ -816,6 +817,7 @@ function Inspector({ node, details, loading, error, snapshot, snapshotLoaded, ov
         <RelationshipGroup title="Used by" nodeId={node.id} edges={incoming.filter((edge) => usageTypes.has(edge.type))} nodes={relatedNodes} onSelect={onSelect} empty="No direct uses recorded." />
         <RelationshipGroup title="Dependencies" nodeId={node.id} edges={outgoing.filter((edge) => usageTypes.has(edge.type))} nodes={relatedNodes} onSelect={onSelect} empty="No direct dependencies recorded." />
         <p className="footnote">Direct links from the latest scan.</p>
+        <ImpactExplorer node={node} nodes={relatedNodes} onSelect={onSelect} transport={transport} />
       </Card>
     </div>
   </>;

@@ -222,6 +222,7 @@ class BrainAPI:
         self._owns_repository = repository is None
         self.repository = repository or GraphRepository(database_path, use_native=use_native)
         self.overrides = OverrideStore(overrides_path or _default_overrides_path())
+        self.prepared_snapshots: dict[str, Any] = {}
 
     def get_overview(self) -> dict[str, Any]:
         return get_overview(self.repository, store=self.overrides)
@@ -282,6 +283,21 @@ class BrainAPI:
 
     def find_path(self, from_id: str, to_id: str) -> list[dict[str, Any]]:
         return find_path(self.repository, from_id, to_id, store=self.overrides)
+
+    def get_impact(self, target_id: str, proposed_changes: list[dict[str, Any]] | None = None, *, include_report_usage: bool = True) -> dict[str, Any]:
+        from backend.impact import analyze_impact
+        if type(include_report_usage) is not bool or not isinstance(target_id, str):
+            raise ValueError("Impact requires an exact target and boolean report-usage flag")
+        return analyze_impact(self.repository, [target_id], proposed_changes,
+                              completeness=getattr(self.repository, "impact_completeness", None), include_report_usage=include_report_usage)
+
+    def compare_prepared_snapshots(self, before: str, after: str) -> dict[str, Any]:
+        from backend.diff import compare_snapshots
+        if before not in self.prepared_snapshots or after not in self.prepared_snapshots:
+            raise KeyError("PREPARED_SNAPSHOT_NOT_FOUND")
+        a, a_root = self.prepared_snapshots[before]
+        b, b_root = self.prepared_snapshots[after]
+        return compare_snapshots(a, b, before_root=a_root, after_root=b_root)
 
     def validate_selection(self, object_ids: Sequence[str] | str | Mapping[str, Any] | None) -> dict[str, Any]:
         return validate_selection(self.repository, object_ids, store=self.overrides)
@@ -401,6 +417,16 @@ class BrainApp:
         try:
             if method == "OPTIONS":
                 return 204, None
+            if method == "POST" and parts == ["impact"]:
+                payload = self._json_body(body)
+                if set(payload) - {"target_id", "proposed_changes", "include_report_usage"} or not isinstance(payload.get("target_id"), str):
+                    raise ValueError("INVALID_IMPACT_REQUEST")
+                return 200, self.api.get_impact(payload["target_id"], payload.get("proposed_changes"), include_report_usage=payload.get("include_report_usage", True))
+            if method == "POST" and parts == ["compare"]:
+                payload = self._json_body(body)
+                if set(payload) != {"before", "after"} or any(not isinstance(item, str) for item in payload.values()):
+                    raise ValueError("INVALID_COMPARE_REQUEST")
+                return 200, self.api.compare_prepared_snapshots(payload["before"], payload["after"])
             if parts == ["config"] and self.project is not None:
                 if method == "GET":
                     return 200, self.project.get_config()

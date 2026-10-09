@@ -203,6 +203,13 @@ class ObjectResolver:
         else:
             candidates.update(self._lookup_names(name, lookup_expected, scope))
         values = tuple(self.nodes[item] for item in sorted(candidates) if self.nodes[item].type in lookup_expected)
+        # Display names with spaces and compact column names are distinct DAX
+        # identifiers. Prefer exact case-insensitive names before legacy aliases.
+        exact = tuple(node for node in values if str(name).casefold() in {
+            str(node.name).casefold(), str(node.source_id).casefold()
+        })
+        if exact:
+            values = exact
         return Resolution(reference, lookup_expected, values)
 
     def _lookup_names(self, name: str, expected: Sequence[str], scope: str) -> set[str]:

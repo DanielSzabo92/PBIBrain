@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:pbibrain:change-contract:1",
+  "title": "PBIBrain immutable mutation contract",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contract_version", "task_id", "project_id", "baseline", "intent", "targets", "allowed_mutations", "forbidden", "behavior", "validation", "approval"],
+  "$defs": {
+    "exact": {"type": "string", "minLength": 1, "pattern": "^[^*?\\[\\]{}]+$"},
+    "target": {
+      "type": "object", "additionalProperties": false, "required": ["object_id", "object_type"],
+      "properties": {"object_id": {"$ref": "#/$defs/exact"}, "object_type": {"$ref": "#/$defs/exact"}}
+    },
+    "mutation": {
+      "type": "object", "additionalProperties": false,
+      "required": ["object_id", "operation", "property", "expected_before", "expected_after"],
+      "properties": {
+        "object_id": {"$ref": "#/$defs/exact"},
+        "operation": {"enum": ["SET_PROPERTY", "CREATE_OBJECT", "DELETE_OBJECT", "RENAME_OBJECT", "REPLACE_EXPRESSION", "ADD_REFERENCE", "REMOVE_REFERENCE", "CHANGE_BINDING"]},
+        "property": {"$ref": "#/$defs/exact"}, "expected_before": {}, "expected_after": {}
+      }
+    }
+  },
+  "properties": {
+    "contract_version": {"type": "integer", "minimum": 1},
+    "task_id": {"$ref": "#/$defs/exact"}, "project_id": {"$ref": "#/$defs/exact"},
+    "baseline": {
+      "type": "object", "additionalProperties": false, "required": ["snapshot_id", "source_revision"],
+      "properties": {"snapshot_id": {"$ref": "#/$defs/exact"}, "source_revision": {"anyOf": [{"$ref": "#/$defs/exact"}, {"type": "null"}]}}
+    },
+    "intent": {
+      "type": "object", "additionalProperties": false, "required": ["description", "category"],
+      "properties": {"description": {"type": "string", "minLength": 1}, "category": {"$ref": "#/$defs/exact"}}
+    },
+    "targets": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/target"}},
+    "allowed_mutations": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/mutation"}},
+    "forbidden": {
+      "type": "object", "additionalProperties": false,
+      "required": ["allow_unlisted_mutations", "allow_object_creation", "allow_object_deletion", "allow_identity_changes"],
+      "properties": {
+        "allow_unlisted_mutations": {"const": false}, "allow_object_creation": {"type": "boolean"},
+        "allow_object_deletion": {"type": "boolean"}, "allow_identity_changes": {"type": "boolean"}
+      }
+    },
+    "behavior": {
+      "type": "object", "additionalProperties": false, "required": ["permitted_effects", "invariants"],
+      "properties": {
+        "permitted_effects": {"type": "array", "items": {"type": "object", "additionalProperties": false, "required": ["category", "targets"], "properties": {"category": {"$ref": "#/$defs/exact"}, "targets": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/exact"}}}}},
+        "invariants": {"type": "array", "items": {"type": "object", "additionalProperties": false, "required": ["id", "assertion"], "properties": {"id": {"$ref": "#/$defs/exact"}, "assertion": {"const": "PRESERVE"}}}}
+      }
+    },
+    "validation": {
+      "type": "object", "additionalProperties": false,
+      "required": ["require_static_validation", "require_runtime_validation", "require_impact_analysis", "require_complete_dependency_coverage"],
+      "properties": {
+        "require_static_validation": {"const": true}, "require_runtime_validation": {"type": "boolean"},
+        "require_impact_analysis": {"type": "boolean"}, "require_complete_dependency_coverage": {"type": "boolean"}
+      }
+    },
+    "approval": {
+      "type": "object", "additionalProperties": false, "required": ["scope_expansion", "unexpected_behavior", "high_risk_promotion"],
+      "properties": {"scope_expansion": {"const": "EXPLICIT"}, "unexpected_behavior": {"const": "EXPLICIT"}, "high_risk_promotion": {"const": "EXPLICIT"}}
+    }
+  }
+}
