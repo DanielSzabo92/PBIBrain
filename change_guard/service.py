@@ -22,14 +22,22 @@ class GuardService:
         try:
             if len(parts) == 3 and parts[:2] == ["guard", "review"] and method == "GET":
                 result = self.guard.review(parts[2])
+            elif len(parts) == 3 and parts[:2] == ["guard", "accept"] and method == "POST":
+                if not isinstance(body, dict) or set(body) != {"binding", "approval_operations"}:
+                    raise ValueError("Exact reviewed candidate and approval purposes required")
+                result = self.guard.accept_candidate(parts[2], body["binding"], body["approval_operations"])
+            elif len(parts) == 3 and parts[:2] == ["guard", "reject"] and method == "POST":
+                if not isinstance(body, dict) or set(body) != {"binding"}:
+                    raise ValueError("Exact reviewed proposal required")
+                result = self.guard.reject_change(parts[2], body["binding"])
             elif len(parts) == 3 and parts[:2] == ["guard", "authorize"] and method == "POST":
                 if set(body or {}) != {"purpose"}:
                     raise ValueError("Exact authorization purpose required")
                 result = self.guard.authorize(parts[2], body["purpose"])
             elif len(parts) == 3 and parts[:2] == ["guard", "promote"] and method == "POST":
-                if body:
-                    raise ValueError("Promotion accepts no agent-supplied evidence")
-                result = self.guard.promote_candidate(parts[2])
+                if body and (not isinstance(body, dict) or set(body) != {"binding"}):
+                    raise ValueError("Promotion accepts only the exact reviewed binding")
+                result = self.guard.promote_candidate(parts[2], binding=body["binding"]) if body else self.guard.promote_candidate(parts[2])
             else:
                 return 404, {"guard_api_version": 1, "error": {"code": "ROUTE_NOT_FOUND"}}
             return 200, {"guard_api_version": 1, "ok": True, "result": result}

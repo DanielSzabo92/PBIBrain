@@ -78,3 +78,25 @@ Tested Git tree: `25a019eea19b5eb2dbd416336799eb1a28e46f67`, parent `22f86dd0a19
 * Authored-source whitespace check passes. Pinned vendor documents and raw evidence retain their original bytes. Graft refresh completes: 226 files, 2506 nodes and 6806 edges.
 
 The release adds documentation/evidence after execution; source identity is rechecked against the tested tree before publication. `continuation-manifest.json` contains evidence hashes and supported-scope limits. Publication targets the existing `ui-redesign` branch, using a fast-forward revision and preserving all working-file contents.
+
+## User accept/reject continuation
+
+The requested proposal workflow now shows **Accept / Reject**. Proposal acceptance prepares an isolated copy; verified-change acceptance explicitly approves the displayed candidate and disclosed effects before application. Rejection preserves original sources, records a durable signed cancellation and revokes cached local/Git permits. Rejected operations cannot be revived. Changed review bindings and failed acceptance cannot trigger application.
+
+Verification: **69 backend tests passed**, including interrupted rejection, cached-permit replay, stale review, missing verification, authentication and existing guarded promotion/recovery. **7 installed-Chrome cases passed**: five use actual temporary services and two deliberately use transport doubles for positive/failing UI orchestration. The frontend builds. `user-review.png` was visually inspected.
+
+Real Desktop engine acceptance proof: **12 tests, 41 covered paths, certified**, user decision `ACCEPTED`, fixture `POST_PROMOTION_VERIFIED` and independent audit integrity verification. The proof also rejects acceptance omitting the required disclosed risk and verifies sources remain unchanged between acceptance and controlled application. All models/sources are disposable fixtures; the user's Power BI project remains untouched. An initial proof-only assertion referenced the wrong local variable and failed; its diagnostic is retained, and the corrected full proof passed.
+
+`user-review-verification.json` binds current source and evidence hashes. These latest workflow changes remain uncommitted. Earlier publication/full-contract records are retained history; unsupported scopes remain blocked.
+
+
+## Main publication verification
+
+User authorized **commit and push to main**. Tested isolated Git tree: `4c0fb0820671d3932c8fd24f0e81ef70ea29eb37`, parent `d140099d2f4970b4f685c4c9d1a1d421971eb787`. The preceding uncommitted note is retained history.
+
+* Python: **301 tests, OK, 1 existing skip**, exit 0. Frontend: **26 unit tests**, **32 compatibility Chrome cases**, **7 guard Chrome cases** passed. Five guard cases use real temporary services; two are explicitly labeled transport doubles.
+* Both .NET bridges build with locked dependencies, **0 warnings/errors**; the frontend build passes. Imports resolve inside the isolated checkout. Runtime proof executes as `python -m tests.proof_live_regression` against that checkout.
+* Real native Desktop engine **17.0.74.22**: **12 tests, 41 covered paths**, certified equivalent-data comparison, user decision **ACCEPTED**, disposable fixture **POST_PROMOTION_VERIFIED**, independent signed audit verification. This is sealed-literal-model acceptance; no user Power BI project is changed and no unsupported runtime context is certified.
+* `main-verification.json` retains source/evidence hashes. Only documentation and retained evidence are added after tests; implementation identity is checked against the tested tree before committing. Existing unrelated working-file bytes are preserved and excluded.
+
+Publication is a normal fast-forward to `main`, including the already committed guarded-development foundation. Full implementation-contract acceptance remains **NOT COMPLETE** for the unsupported scopes documented above and in `CHANGE_GUARD_CONTRACT.md`.

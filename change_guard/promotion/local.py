@@ -16,13 +16,22 @@ def file_hash(path: Path) -> str | None:
     return content_hash(path.read_bytes()) if path.is_file() else None
 
 
+def verified_promotion_permit(store: AuditStore, operation_id: str, authorization: dict) -> dict:
+    permit = store.verify(authorization)
+    rejection = operation_id + "/user_rejection.json"
+    if safe_path(store.root, rejection).exists():
+        store.load(rejection)  # An invalid signature fails closed too.
+        raise PromotionError("User rejected this change; cached authorization is revoked")
+    return permit
+
+
 class LocalPromotion:
     def __init__(self, store: AuditStore) -> None:
         self.store = store
 
     def promote(self, operation_id: str, authorization: dict, *, fault: Callable[[int], None] | None = None) -> dict:
         # Only a controller-signed authorization can reach filesystem writes.
-        permit = self.store.verify(authorization)
+        permit = verified_promotion_permit(self.store, operation_id, authorization)
         required = {"operation_id", "source_root", "candidate_root", "baseline_manifest", "candidate_manifest", "candidate_hash", "baseline_snapshot_id", "contract_hash", "policy_hash", "evidence_hash", "principal", "authorized_operation"}
         if not required.issubset(permit) or permit["operation_id"] != operation_id or permit["authorized_operation"] != "PROMOTE":
             raise PromotionError("Invalid promotion authorization")

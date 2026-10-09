@@ -1,0 +1,8 @@
+Traceback (most recent call last):
+  File "C:\Users\Daniel\Desktop\PBIBrain\tests\proof_live_regression.py", line 151, in <module>
+    result = probe()
+             ^^^^^^^
+  File "C:\Users\Daniel\Desktop\PBIBrain\tests\proof_live_regression.py", line 139, in probe
+    assert source_manifest(source) == snapshot.to_dict()["source_manifest"], "Acceptance must not apply sources before promotion"
+                           ^^^^^^
+NameError: name 'source' is not defined

@@ -9,7 +9,7 @@ import shutil
 import subprocess
 from copy import deepcopy
 from decimal import Decimal
-from backend.snapshots import capture_snapshot, content_hash, Snapshot
+from backend.snapshots import capture_snapshot, content_hash, source_manifest, Snapshot
 from backend.snapshots.scan import scan_snapshot
 from change_guard.regression import ExecutionContext
 from change_guard.regression.local import LocalAnalysisServices, LocalTestInstance
@@ -126,16 +126,26 @@ def probe():
             assert state["decision"]["approval_reasons"] == ["HIGH_RISK_PROMOTION"], state
             # Explicit user instruction authorizes promotion of this disposable
             # acceptance fixture after successful proof. No user model is used.
-            guard.authorize(operation, "HIGH_RISK_PROMOTION")
-            guard.authorize(operation, "PROMOTE")
-            promoted = guard.promote_candidate(operation, mode="git")
+            reviewed = guard.review(operation)
+            from change_guard.orchestrator import GuardError
+            try:
+                guard.accept_candidate(operation, reviewed["review_binding"], ["PROMOTE"])
+            except GuardError as error:
+                assert error.code == "MISSING_APPROVAL", error.code
+            else:
+                raise AssertionError("Acceptance omitted the disclosed high-risk approval")
+            accepted = guard.accept_candidate(operation, reviewed["review_binding"], ["HIGH_RISK_PROMOTION", "PROMOTE"])
+            assert accepted["user_decision"] == "ACCEPTED" and accepted["promotion_authorized"]
+            assert source_manifest(guard.source_root) == snapshot.to_dict()["source_manifest"], "Acceptance must not apply sources before promotion"
+            promoted = guard.promote_candidate(operation, mode="git", binding=reviewed["review_binding"])
             assert promoted["state"] == "POST_PROMOTION_VERIFIED", promoted
             final = guard.review(operation)
             return {"proof_version": 1, "status": "PASSED", "kind": "REAL_DESKTOP_ENGINE", "scope": "SEALED_LITERAL_ACCEPTANCE_FIXTURE",
                 "engine_version": before.load_evidence["engine_version"], "context": context.__dict__, "data_freeze": before.freeze_evidence,
                 "permissions": [adapter.permission_evidence for adapter in (before, after)], "baseline_snapshot_id": snapshot.snapshot_id,
                 "candidate_snapshot_id": candidate_snapshot.snapshot_id, "runtime": runtime, "policy_decision": promoted["decision"],
-                "promotion_state": promoted["state"], "git_promotion": guard.store.load(operation + "/git-promotion.json"), "audit": guard.store.verify_integrity(operation)}
+                "promotion_state": promoted["state"], "user_decision": promoted["user_decision"], "review_binding": reviewed["review_binding"],
+                "git_promotion": guard.store.load(operation + "/git-promotion.json"), "audit": guard.store.verify_integrity(operation)}
 
 if __name__ == "__main__":
     result = probe()

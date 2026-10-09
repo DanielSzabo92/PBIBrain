@@ -160,3 +160,17 @@ Remaining unsupported boundaries stay explicit: arbitrary calculated-table depen
 Guard-only changes are staged independently of the user's existing UI edits. The isolated release exposed a genuine Windows checkout defect: Git newline conversion changed the pinned Microsoft schema bytes. Scoped `.gitattributes` entries preserve vendor/evidence bytes exactly; a regression test stages and checks out the real catalog with `core.autocrlf=true` and verifies every pinned hash. The integrity gate was retained throughout; no expected hash was weakened or rewritten to accommodate corruption.
 
 The final release keeps the same checked implementation while adding verification records. `evidence/guarded-development-2026-10-09/continuation-manifest.json` binds the tested source tree, final suite results and retained evidence hashes. Source-code publication is separate from the disposable Power BI model promotion acceptance test and does not establish acceptance of the remaining unsupported specification scope.
+
+## User decision workflow — 2026-10-09
+
+The user reviews proposed edits and chooses **Accept** or **Reject**. Preparing or successfully validating a candidate never applies it to the original project.
+
+* **Accept proposal** authorizes the exact contract and prepares a separate working copy. Original sources remain unchanged.
+* **Accept changes** explicitly approves the displayed verified candidate, its disclosed high-risk/unexpected effects where applicable, and application. Required approval purposes remain separate signed audit records. The UI then invokes the trusted promotion controller with the same reviewed binding.
+* **Reject proposal / Reject changes** preserves original sources and cancels the operation. A signed durable rejection record revokes cached permission at both local and Git promotion boundaries. Cancellation survives interruption before the state update; rejected operations cannot be retried or authorized. A fresh proposal is required.
+
+`GET /guard/review/{operation}` includes `review_binding`, binding the operation, candidate hash, baseline snapshot, contract, policy and validation evidence. `POST /guard/accept/{operation}` requires exactly `{binding, approval_operations}`; `POST /guard/reject/{operation}` requires exactly `{binding}`. Promotion optionally accepts this same binding, preserving existing callers while making the UI/CLI final decision resistant to changes between review, acceptance and application. These privileged routes retain independent Guard authentication and are absent from Brain MCP.
+
+Missing or inconclusive mandatory checks keep **Accept changes** disabled. The proposal, errors and rejection action remain visible. Human acceptance cannot override unauthorized mutations, missing evidence or fundamental integrity failures. Semantic-inference review remains a separate workflow.
+
+CLI commands `pbi-guard ... accept OPERATION --binding FILE --approval PURPOSE [--approval PURPOSE] [--mode local|git]` and `pbi-guard ... reject OPERATION --binding FILE` implement the same user decisions. Rejection is a successful user action (exit 0); stale reviews report `REVIEW_STALE`.

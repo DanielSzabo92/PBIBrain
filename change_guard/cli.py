@@ -10,6 +10,7 @@ from .orchestrator import ChangeGuard
 from .workspace import DockerIsolation
 
 EXIT_CODES = {"SUCCESS": 0, "INVALID_INPUT": 2, "UNAUTHORIZED_MUTATION": 3, "SOURCE_INTEGRITY_FAILURE": 4,
+              "USER_REJECTED": 3, "REVIEW_STALE": 7,
               "STRUCTURAL_VALIDATION_FAILURE": 4, "REQUIRED_RUNTIME_NOT_VERIFIED": 5, "MISSING_APPROVAL": 6,
               "INCONCLUSIVE": 7, "BASELINE_STALE": 8, "PROMOTION_RECOVERY_REQUIRED": 9}
 
@@ -37,6 +38,13 @@ def main(argv: Sequence[str] | None = None) -> int:
     authorize = commands.add_parser("authorize")
     authorize.add_argument("operation_id")
     authorize.add_argument("--purpose", required=True, choices=["CONTRACT", "HIGH_RISK_PROMOTION", "UNEXPECTED_BEHAVIOR", "PROMOTE"])
+    for name in ("accept", "reject"):
+        decision = commands.add_parser(name)
+        decision.add_argument("operation_id")
+        decision.add_argument("--binding", required=True, help="Saved review_binding JSON from the reviewed proposal")
+        if name == "accept":
+            decision.add_argument("--approval", action="append", required=True, choices=["HIGH_RISK_PROMOTION", "UNEXPECTED_BEHAVIOR", "PROMOTE"])
+            decision.add_argument("--mode", choices=["local", "git"], default="local")
     agent = commands.add_parser("run-agent")
     agent.add_argument("operation_id")
     agent.add_argument("--backend", choices=["docker", "windows"], default="docker")
@@ -58,6 +66,12 @@ def main(argv: Sequence[str] | None = None) -> int:
             result = guard.review(args.operation_id)
         elif args.command == "authorize":
             result = guard.authorize(args.operation_id, args.purpose)
+        elif args.command == "accept":
+            binding = json.loads(Path(args.binding).read_text(encoding="utf-8-sig"))
+            guard.accept_candidate(args.operation_id, binding, args.approval)
+            result = guard.promote_candidate(args.operation_id, mode=args.mode, binding=binding)
+        elif args.command == "reject":
+            result = guard.reject_change(args.operation_id, json.loads(Path(args.binding).read_text(encoding="utf-8-sig")))
         elif args.command == "promote":
             result = guard.promote_candidate(args.operation_id, mode=args.mode)
         elif args.command == "recover":
@@ -81,6 +95,8 @@ def main(argv: Sequence[str] | None = None) -> int:
                 isolation = DockerIsolation(args.image)
             result = guard.run_agent(args.operation_id, isolation, command)
         print(canonical_json({"guard_api_version": 1, "ok": True, "result": result}))
+        if args.command == "reject":
+            return 0
         decision = result.get("decision", {})
         if isinstance(decision, dict):
             if decision.get("decision") == "REJECT":

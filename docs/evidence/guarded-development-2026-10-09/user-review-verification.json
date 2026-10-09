@@ -1,0 +1,49 @@
+{
+  "evidence_version": 1,
+  "captured_at": "2026-10-09T12:14:52.068328+00:00",
+  "feature": "USER_ACCEPT_REJECT",
+  "full_contract_accepted": false,
+  "backend_tests": 69,
+  "chrome_cases": {
+    "total": 7,
+    "real_services": 5,
+    "transport_doubles": 2
+  },
+  "real_execution": {
+    "engine": "17.0.74.22",
+    "scope": "SEALED_LITERAL_ACCEPTANCE_FIXTURE",
+    "tests": 12,
+    "covered_paths": 41,
+    "certified": true,
+    "user_decision": "ACCEPTED",
+    "promotion": "POST_PROMOTION_VERIFIED",
+    "audit_verified": true
+  },
+  "evidence_sha256": {
+    "user-review-real-proof.json": "8a04e648fbe7bd960d79a23eb6f64e5a8ea10ddd25f2157bfa982cc5a3537084",
+    "user-review-backend.log": "b0217cffaa8b4ba5bf43f448438760299e3d4503001dbcdb4277f839794602f4",
+    "user-review-chrome.log": "bd285b19f1943e75dbcf1f672036e826afa81a70bd7b3e267742db0cba34bad4",
+    "user-review-build.log": "08532a0b7bc264ee3d3afbb7a7cfd1211657dec29a95e52236fd817a4d02c86d",
+    "user-review-proof-initial.log": "ebaf92402ef110e5f78cf990fee1d441000ed511d74f533669f330d554f9fdff",
+    "user-review.png": "207cf40a39fa6dbce9da3370a2077ba8e41b5fdfbdb8290db6542e1950bc23c0"
+  },
+  "source_sha256": {
+    "change_guard/orchestrator.py": "c63e679306ccaf23d8e7cf72f981b274082dfcae665f4c74663db52edd03d50a",
+    "change_guard/service.py": "0c47a8fdb2b26799b4639157baee2755c92295dbf196555388cb9da8ba9ba458",
+    "change_guard/cli.py": "eb19ecac428d89a517155a1a093510f0a3f6fb848f821c84646197d790253c38",
+    "change_guard/promotion/local.py": "52b871d8f21cda20d7a55409c55a454b606bb3e15510b348dcdc39b3eb39069c",
+    "change_guard/promotion/git.py": "094171e4ea778488e1c4819334c892356babc4e01d6c0487403633a1e814a1f5",
+    "frontend/src/components/GuardReview.jsx": "d017a6f6490b447cf8538844cda7598a41148050cff444d33ec53e6b83767bcf",
+    "frontend/e2e/guardedDevelopment.spec.js": "564c7903d1b168a6e6a5a118443bc470534f1f0e703a4afc9548fe6aa197c555",
+    "tests/test_guard_user_decisions.py": "e2d0d33e9bc230e5352c2816f5a9ab5d0306a2faa3fe1b892c4ee5cd102c63cd",
+    "tests/guard_ui_server.py": "a410296198767f0974cd2f1ac316237f2873c6f11f08293c9a84c6cb9823de26",
+    "tests/proof_live_regression.py": "f6a490ea119f1e6082d0706943df4fdd4301cf5166e648f2da0b5f7605538d14"
+  },
+  "limitations": [
+    "Acceptance cannot bypass required checks",
+    "Unsupported scopes remain blocked",
+    "No user Power BI project was modified",
+    "Transport-double browser cases verify UI orchestration only",
+    "Code changes remain uncommitted"
+  ]
+}

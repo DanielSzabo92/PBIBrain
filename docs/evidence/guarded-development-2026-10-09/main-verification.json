@@ -1,0 +1,80 @@
+{
+  "verification_version": 1,
+  "captured_at": "2026-10-09T12:26:17.015961+00:00",
+  "tested_tree": "4c0fb0820671d3932c8fd24f0e81ef70ea29eb37",
+  "parent": "d140099d2f4970b4f685c4c9d1a1d421971eb787",
+  "main_before": "92080155c089193a46ea6140a5b5435712b4a4e9",
+  "isolated_module_paths": [
+    "C:\\Users\\Daniel\\Desktop\\PBIBrain\\.pbi-guard\\main-release\\candidate-4c0fb0820671\\backend\\snapshots\\scan.py",
+    "C:\\Users\\Daniel\\Desktop\\PBIBrain\\.pbi-guard\\main-release\\candidate-4c0fb0820671\\change_guard\\orchestrator.py"
+  ],
+  "source_sha256": {
+    "change_guard/cli.py": "eb19ecac428d89a517155a1a093510f0a3f6fb848f821c84646197d790253c38",
+    "change_guard/orchestrator.py": "c63e679306ccaf23d8e7cf72f981b274082dfcae665f4c74663db52edd03d50a",
+    "change_guard/promotion/git.py": "094171e4ea778488e1c4819334c892356babc4e01d6c0487403633a1e814a1f5",
+    "change_guard/promotion/local.py": "52b871d8f21cda20d7a55409c55a454b606bb3e15510b348dcdc39b3eb39069c",
+    "change_guard/service.py": "0c47a8fdb2b26799b4639157baee2755c92295dbf196555388cb9da8ba9ba458",
+    "frontend/e2e/guardedDevelopment.spec.js": "564c7903d1b168a6e6a5a118443bc470534f1f0e703a4afc9548fe6aa197c555",
+    "frontend/src/components/GuardReview.jsx": "d017a6f6490b447cf8538844cda7598a41148050cff444d33ec53e6b83767bcf",
+    "tests/guard_ui_server.py": "a410296198767f0974cd2f1ac316237f2873c6f11f08293c9a84c6cb9823de26",
+    "tests/proof_live_regression.py": "f6a490ea119f1e6082d0706943df4fdd4301cf5166e648f2da0b5f7605538d14",
+    "tests/test_guard_user_decisions.py": "e2d0d33e9bc230e5352c2816f5a9ab5d0306a2faa3fe1b892c4ee5cd102c63cd"
+  },
+  "observed_results": {
+    "python": {
+      "tests": 301,
+      "skipped": 1,
+      "exit_code": 0
+    },
+    "frontend_unit": {
+      "passed": 26,
+      "exit_code": 0
+    },
+    "chrome_compat": {
+      "passed": 32,
+      "exit_code": 0
+    },
+    "chrome_guard": {
+      "passed": 7,
+      "real_service_cases": 5,
+      "transport_double_cases": 2,
+      "exit_code": 0
+    },
+    "tom_build": {
+      "warnings": 0,
+      "errors": 0,
+      "exit_code": 0
+    },
+    "runtime_build": {
+      "warnings": 0,
+      "errors": 0,
+      "exit_code": 0
+    },
+    "frontend_build": {
+      "exit_code": 0
+    },
+    "real_runtime": {
+      "tests": 12,
+      "covered_paths": 41,
+      "engine_version": "17.0.74.22",
+      "certified": true,
+      "user_decision": "ACCEPTED",
+      "promotion": "POST_PROMOTION_VERIFIED",
+      "audit_integrity_verified": true
+    }
+  },
+  "runtime_scope": "SEALED_LITERAL_ACCEPTANCE_FIXTURE",
+  "full_contract_accepted": false,
+  "evidence_sha256": {
+    "docs/evidence/guarded-development-2026-10-09/main-python.log": "afaeed9bab7f78017f8dac307d0c7c6bfcd42ea058a21bcf8ee5f59cae241daf",
+    "docs/evidence/guarded-development-2026-10-09/main-frontend-unit.log": "75c2ee021a395f7622bf927b32e0072a8429141061f917083244e136864efd6f",
+    "docs/evidence/guarded-development-2026-10-09/main-chrome-compat.log": "9bb6a33894b1df71b4bb4d655c40b9f05d85953ef1bc98a413171d1d71b6db86",
+    "docs/evidence/guarded-development-2026-10-09/main-chrome-guard.log": "2fc5cbedce89b56f598faae6651c447ed42fb88c1d2146668a084669dd316647",
+    "docs/evidence/guarded-development-2026-10-09/main-tom-build.log": "c8fb5ed0376091485f9db4e2a63b02e4bdf7d8df362ea4840a90209b5c7ea9a1",
+    "docs/evidence/guarded-development-2026-10-09/main-runtime-build.log": "cde3212baae168be1757a525bcf92b63ca23e9b54c0ada669b5c1000e6173000",
+    "docs/evidence/guarded-development-2026-10-09/main-frontend-build.log": "24afaa9b46c5629af0f6bd9f0de38575de2153fe2487cf8be0eb8a0815ddcdf9",
+    "docs/evidence/guarded-development-2026-10-09/main-real-proof.log": "6129c036f8e3447a3721b6fc536efe36adca5cff7a6e993bce929db19dbe1cb2",
+    "docs/evidence/guarded-development-2026-10-09/main-real-proof.json": "ad127141c5e6dae6821e66248c66c30b016b836d6ec505a68202067a884ca041"
+  },
+  "publication_authorization": "User explicitly requested commit and push to main."
+}

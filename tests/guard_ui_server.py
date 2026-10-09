@@ -33,6 +33,12 @@ def main():
         brain.project = project_service
         service = GuardService(guard, "isolated-browser-test-session", f"http://127.0.0.1:{args.port}", static_dir=brain.static_dir)
         def application(environ, start_response):
+            if environ["PATH_INFO"] in {"/test-proposal", "/test-source"}:
+                import json
+                from backend.snapshots import source_manifest
+                result = guard.prepare_change(proposal(guard.capture_baseline())) if environ["PATH_INFO"] == "/test-proposal" else source_manifest(source)
+                start_response("200 OK", [("Content-Type", "application/json")])
+                return [json.dumps(result).encode("utf-8")]
             if environ["PATH_INFO"] == "/test-operation":
                 import json
                 start_response("200 OK", [("Content-Type", "application/json")])

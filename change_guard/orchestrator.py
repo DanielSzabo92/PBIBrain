@@ -83,6 +83,14 @@ class ChangeGuard:
         self.store.read(operation_id)
         if state["policy_hash"] != self.policy.policy_hash or state["source_root"] != str(self.source_root) or state["project_id"] != self.project_id:
             raise GuardError("TRUST_BINDING_CHANGED", "Controller configuration changed")
+        rejection_path = operation_id + "/user_rejection.json"
+        if safe_path(self.store.root, rejection_path).exists():
+            rejection = self.store.load(rejection_path)
+            if rejection.get("operation_id") != operation_id:
+                raise GuardError("TRUST_BINDING_CHANGED", "Rejection belongs to another operation")
+            state.update(state="CANCELLED", user_decision="REJECTED", promotion_authorized=False, approvals=[],
+                         decision={"decision": "REJECT", "eligible_for_promotion": False,
+                                   "blocking_reasons": [{"code": "USER_REJECTED", "status": "REJECTED"}]})
         return state
 
     def _save(self, state: dict, event: str, evidence: dict) -> dict:
@@ -92,6 +100,8 @@ class ChangeGuard:
         return state
 
     def _contract(self, state: dict) -> ChangeContract:
+        if state.get("user_decision") == "REJECTED":
+            raise GuardError("USER_REJECTED", "User rejected this change; prepare a new proposal")
         authorized = self.store.load(state["operation_id"] + "/contract.json")
         contract = ChangeContract(authorized["document"], authorized["authorization"])
         contract.authorization_record()
@@ -166,11 +176,7 @@ class ChangeGuard:
             decision = evaluate_candidate(self._contract(state), evidence, self.policy)
             if decision["blocking_reasons"]:
                 raise GuardError("APPROVAL_CANNOT_BYPASS_GATES", "Candidate has blocking validation conditions")
-            binding = {"candidate_hash": state["candidate_hash"], "baseline_snapshot_id": state["baseline_snapshot_id"], "contract_hash": state["contract_hash"],
-                       "policy_hash": self.policy.policy_hash, "evidence_hash": content_hash(evidence), "principal": principal, "authorized_at": utc_now(), "authorized_operation": purpose}
-            state["approvals"].append(binding)
-            self.store.save(operation_id + "/approval-" + str(len(state["approvals"])) + ".json", binding, exclusive=True)
-            self._save(state, "HUMAN_APPROVAL", binding)
+            binding = self._record_approval(state, evidence, principal, purpose)
             state["decision"] = evaluate_candidate(self._contract(state), self._evidence_with_approvals(state, evidence), self.policy)
             state["state"] = "ELIGIBLE_FOR_PROMOTION" if state["decision"]["eligible_for_promotion"] else "APPROVAL_REQUIRED"
             if purpose == "PROMOTE":
@@ -188,6 +194,77 @@ class ChangeGuard:
             else:
                 self._save(state, "APPROVAL_EVALUATED", {"decision": state["decision"]})
             return state
+
+    def _record_approval(self, state: dict, evidence: dict, principal: str, purpose: str) -> dict:
+        binding = {"candidate_hash": state["candidate_hash"], "baseline_snapshot_id": state["baseline_snapshot_id"], "contract_hash": state["contract_hash"],
+                   "policy_hash": self.policy.policy_hash, "evidence_hash": content_hash(evidence), "principal": principal,
+                   "authorized_at": utc_now(), "authorized_operation": purpose}
+        state["approvals"].append(binding)
+        self.store.save(state["operation_id"] + "/approval-" + str(len(state["approvals"])) + ".json", binding, exclusive=True)
+        self._save(state, "HUMAN_APPROVAL", binding)
+        return binding
+
+    def _review_binding(self, state: dict, evidence: dict | None) -> dict:
+        return {"operation_id": state["operation_id"], "candidate_hash": state.get("candidate_hash"),
+                "baseline_snapshot_id": state["baseline_snapshot_id"], "contract_hash": state["contract_hash"],
+                "policy_hash": self.policy.policy_hash, "evidence_hash": content_hash(evidence) if evidence is not None else None}
+
+    def _check_user_binding(self, state: dict, binding: dict) -> tuple[str, dict | None]:
+        principal = getpass.getuser()
+        if principal not in self.allowed_principals:
+            raise GuardError("PRINCIPAL_NOT_AUTHORIZED", "Current OS principal cannot decide changes")
+        path = state["operation_id"] + "/verification.json"
+        evidence = self.store.load(path) if safe_path(self.store.root, path).exists() else None
+        if not isinstance(binding, dict) or binding != self._review_binding(state, evidence):
+            raise GuardError("REVIEW_STALE", "Proposal or verification changed; review it again")
+        return principal, evidence
+
+    @operation_locked
+    def accept_candidate(self, operation_id: str, binding: dict, approval_operations: list[str]) -> dict:
+        """Explicit user decision bound to the displayed candidate and evidence."""
+        state = self._operation(operation_id)
+        principal, evidence = self._check_user_binding(state, binding)
+        if state["state"] not in {"APPROVAL_REQUIRED", "ELIGIBLE_FOR_PROMOTION"} or evidence is None:
+            raise GuardError("INVALID_STAGE", "Acceptance requires a verified candidate")
+        contract = self._contract(state)
+        baseline = self.store.load(operation_id + "/baseline.json")
+        if not self._baseline_matches(baseline):
+            raise GuardError("BASELINE_STALE", "Sources changed after review")
+        if content_hash(assert_candidate_integrity(state["candidate_root"])) != state.get("candidate_hash"):
+            raise GuardError("CANDIDATE_STALE", "Candidate changed after review")
+        decision = evaluate_candidate(contract, self._evidence_with_approvals(state, evidence), self.policy)
+        if decision["blocking_reasons"]:
+            raise GuardError("APPROVAL_CANNOT_BYPASS_GATES", "Candidate has blocking validation conditions")
+        required = [*decision["approval_reasons"], "PROMOTE"]
+        if not isinstance(approval_operations, list) or any(not isinstance(item, str) for item in approval_operations) or len(approval_operations) != len(set(approval_operations)) or set(approval_operations) != set(required):
+            raise GuardError("MISSING_APPROVAL", "Accept the exact disclosed approval purposes")
+        candidate = self.store.load(operation_id + "/candidate.json")
+        for purpose in required:
+            approval = self._record_approval(state, evidence, principal, purpose)
+        state["decision"] = evaluate_candidate(contract, self._evidence_with_approvals(state, evidence), self.policy)
+        if not state["decision"]["eligible_for_promotion"]:
+            raise GuardError("MISSING_APPROVAL", "Required approvals missing")
+        permit = {**approval, "operation_id": operation_id, "source_root": str(self.source_root), "candidate_root": state["candidate_root"],
+                  "baseline_manifest": baseline["source_manifest"], "candidate_manifest": candidate["source_manifest"]}
+        self.store.save(operation_id + "/promotion_authorization.json", permit)
+        state.update(state="ELIGIBLE_FOR_PROMOTION", promotion_authorized=True, user_decision="ACCEPTED")
+        return self._save(state, "USER_ACCEPTED", {**binding, "principal": principal, "approval_operations": required})
+
+    @operation_locked
+    def reject_change(self, operation_id: str, binding: dict) -> dict:
+        """Cancel the proposal without touching original or candidate artifacts."""
+        state = self._operation(operation_id)
+        principal, _ = self._check_user_binding(state, binding)
+        if state["state"] in {"PROMOTING", "PROMOTED", "POST_PROMOTION_VERIFIED", "PROMOTION_RECOVERY_REQUIRED"}:
+            raise GuardError("INVALID_STAGE", "Applied changes require the recovery workflow")
+        if state.get("user_decision") == "REJECTED":
+            return state
+        self.store.save(operation_id + "/user_rejection.json", {**binding, "principal": principal,
+                        "user_decision": "REJECTED", "decided_at": utc_now()}, exclusive=True)
+        state.update(state="CANCELLED", user_decision="REJECTED", promotion_authorized=False, approvals=[])
+        state["decision"] = {"decision": "REJECT", "eligible_for_promotion": False,
+                             "blocking_reasons": [{"code": "USER_REJECTED", "status": "REJECTED"}]}
+        return self._save(state, "USER_REJECTED", {**binding, "principal": principal})
 
     def _create_candidate(self, state: dict, baseline: Snapshot) -> dict:
         if state["attempt"] >= self.policy.retry_limit:
@@ -293,6 +370,7 @@ class ChangeGuard:
     def _evaluate_and_save(self, state: dict, evidence: dict) -> dict:
         state["state"] = "POLICY_EVALUATION"
         state["promotion_authorized"] = False
+        state.pop("user_decision", None)
         self.store.save(state["operation_id"] + "/verification.json", evidence)
         decision = evaluate_candidate(self._contract(state), self._evidence_with_approvals(state, evidence), self.policy)
         state["decision"] = decision
@@ -324,9 +402,11 @@ class ChangeGuard:
         return self._evaluate_and_save(state, evidence)
 
     @operation_locked
-    def promote_candidate(self, operation_id: str, *, mode: str = "local") -> dict:
+    def promote_candidate(self, operation_id: str, *, mode: str = "local", binding: dict | None = None) -> dict:
         if mode not in {"local", "git"}: raise GuardError("INVALID_PROMOTION_MODE", "Supported modes: local, git")
         state = self._operation(operation_id)
+        if binding is not None:
+            self._check_user_binding(state, binding)
         if state["state"] != "ELIGIBLE_FOR_PROMOTION":
             raise GuardError("PROMOTION_NOT_AUTHORIZED", "Candidate is not eligible for promotion")
         self._contract(state)
@@ -389,12 +469,14 @@ class ChangeGuard:
         state = self._operation(operation_id)
         path = operation_id + "/verification.json"
         baseline = self.store.load(operation_id + "/baseline.json")
-        if state["state"] != "POST_PROMOTION_VERIFIED" and not self._baseline_matches(baseline):
+        if state["state"] not in {"POST_PROMOTION_VERIFIED", "CANCELLED"} and not self._baseline_matches(baseline):
             state.update(state="BASELINE_STALE", promotion_authorized=False,
                          decision={"decision": "REJECT", "eligible_for_promotion": False, "blocking_reasons": [{"code": "BASELINE_STALE", "status": "FAILED"}]})
-        if state.get("candidate_hash") and content_hash(assert_candidate_integrity(state["candidate_root"])) != state["candidate_hash"]:
+        if state["state"] != "CANCELLED" and state.get("candidate_hash") and content_hash(assert_candidate_integrity(state["candidate_root"])) != state["candidate_hash"]:
             state.update(state="VALIDATION_INCONCLUSIVE", promotion_authorized=False,
                          decision={"decision": "INCONCLUSIVE", "eligible_for_promotion": False, "blocking_reasons": [{"code": "CANDIDATE_STALE", "status": "INCONCLUSIVE"}]})
+        verification = self.store.load(path) if safe_path(self.store.root, path).exists() else None
         return {"guard_review_version": 1, "operation": state, "preflight": self.store.load(operation_id + "/preflight.json"),
-                "contract": self.store.load(operation_id + "/proposal.json"),
-                "verification": self.store.load(path) if safe_path(self.store.root, path).exists() else {"status": "NOT_RUN"}, "audit": self.store.read(operation_id)}
+                 "contract": self.store.load(operation_id + "/proposal.json"),
+                 "verification": verification if verification is not None else {"status": "NOT_RUN"},
+                 "review_binding": self._review_binding(state, verification), "audit": self.store.read(operation_id)}

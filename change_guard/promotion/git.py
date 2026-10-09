@@ -7,7 +7,7 @@ import subprocess
 import tempfile
 from contextlib import contextmanager
 from backend.snapshots.manifest import safe_path, source_manifest, content_hash
-from .local import PromotionError
+from .local import PromotionError, verified_promotion_permit
 from .local import LocalPromotion
 from change_guard.audit.records import exclusive_lock
 
@@ -111,7 +111,7 @@ Recovery refuses foreign commits, staged edits and modified backup contents.
             staging.unlink(missing_ok=True)
 
     def promote(self, operation_id, authorization, baseline_revision, *, fault=None):
-        permit = self.store.verify(authorization)
+        permit = verified_promotion_permit(self.store, operation_id, authorization)
         if permit.get("authorized_operation") != "PROMOTE" or permit.get("operation_id") != operation_id:
             raise PromotionError("Invalid Git promotion authorization")
         root = Path(permit["source_root"]).resolve()
