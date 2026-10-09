@@ -219,6 +219,66 @@ class Phase4TransportContractTests(unittest.TestCase):
         self.assertEqual(overview["validation_state"], "not_run")
         self.assertEqual(overview["object_counts"]["MEASURE"], 2)
 
+    def test_overview_review_counts_follow_canonical_queue(self):
+        initial = get_overview(self.repository)
+        initial_queue = get_review_queue(self.repository)
+        self.assertEqual(initial["review_count"], len(initial_queue))
+        self.assertEqual(initial["review_counts"], {"candidate": 4, "conflict": 1, "stale": 0})
+
+        candidate_id = "candidate:duplicate"
+        semantic_id = "semantic:duplicate"
+        self.repository.upsert_node(
+            Node(
+                semantic_id,
+                "BUSINESS_CONCEPT",
+                "Duplicate revenue",
+                model_id=self.ids["model"],
+                status="candidate",
+                properties={
+                    "candidate_id": candidate_id,
+                    "target": self.ids["measure"],
+                    "value": "duplicate revenue",
+                    "confidence": 0.42,
+                },
+            )
+        )
+        self.repository.upsert_edge(
+            Edge(
+                "edge:duplicate",
+                "SEMANTICALLY_MAPS_TO",
+                self.ids["measure"],
+                semantic_id,
+                source="semantic_inference",
+                confidence=0.42,
+                status="candidate",
+                evidence_class="INFERRED",
+                properties={
+                    "candidate_id": candidate_id,
+                    "assertion_type": "BUSINESS_CONCEPT",
+                    "value": "duplicate revenue",
+                },
+            )
+        )
+        duplicated = get_overview(self.repository)
+        duplicated_queue = get_review_queue(self.repository)
+        self.assertEqual(duplicated["review_count"], len(duplicated_queue))
+        self.assertEqual(duplicated["review_count"], initial["review_count"] + 1)
+        self.assertEqual(duplicated["candidate_count"], initial["candidate_count"] + 2)
+        self.assertEqual(duplicated["review_counts"], {"candidate": 5, "conflict": 1, "stale": 0})
+
+        approve(self.repository, candidate_id)
+        reviewed = get_overview(self.repository)
+        self.assertEqual(reviewed["review_count"], initial["review_count"])
+        self.assertEqual(reviewed["review_counts"], initial["review_counts"])
+
+        store = OverrideStore()
+        store.put("missing:measure", "meaning", "orphaned override")
+        stale = get_overview(self.repository, store=store)
+        stale_queue = get_review_queue(self.repository, store)
+        self.assertEqual(stale["review_count"], len(stale_queue))
+        self.assertEqual(stale["review_count"], reviewed["review_count"] + 1)
+        self.assertEqual(stale["review_counts"], {"candidate": 4, "conflict": 1, "stale": 1})
+
     def test_graph_search_filters_and_connected_scope_are_deterministic(self):
         searched = get_graph(self.repository, query="Revenue")
         self.assertEqual(
@@ -475,7 +535,11 @@ class Phase4FrontendContractTests(unittest.TestCase):
             "React Flow dependency missing",
         )
         graph_source = (ROOT / "frontend" / "src" / "components" / "GraphView.jsx").read_text(encoding="utf-8")
-        self.assertIn('import GraphView from "./components/GraphView"', app_source)
+        self.assertTrue(
+            'import GraphView from "./components/GraphView"' in app_source
+            or 'import("./components/GraphView")' in app_source,
+            "GraphView must be imported by the application",
+        )
         self.assertIn('from "@xyflow/react"', graph_source)
         self.assertIn("<ReactFlow", graph_source)
         self.assertNotIn("<svg", graph_source, "The graph must render through React Flow")

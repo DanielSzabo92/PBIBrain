@@ -1,0 +1,140 @@
+271 INFO: PyInstaller: 6.22.2, contrib hooks: 2026.7
+271 INFO: Python: 3.11.9
+298 INFO: Platform: Windows-10-10.0.26200-SP0
+298 INFO: Python environment: C:\Users\Daniel\Desktop\PBIBrain\.venv-build
+305 INFO: Removing temporary files and cleaning cache in C:\Users\Daniel\AppData\Local\pyinstaller
+325 INFO: Module search paths (PYTHONPATH):
+['C:\\Users\\Daniel\\Desktop\\PBIBrain',
+ 'C:\\Program Files\\Csound6_x64\\bin',
+ 'C:\\Users\\Daniel\\Desktop\\PBIBrain',
+ 'C:\\Users\\Daniel\\AppData\\Local\\Programs\\Python\\Python311\\python311.zip',
+ 'C:\\Users\\Daniel\\AppData\\Local\\Programs\\Python\\Python311\\DLLs',
+ 'C:\\Users\\Daniel\\AppData\\Local\\Programs\\Python\\Python311\\Lib',
+ 'C:\\Users\\Daniel\\AppData\\Local\\Programs\\Python\\Python311',
+ 'C:\\Users\\Daniel\\Desktop\\PBIBrain\\.venv-build',
+ 'C:\\Users\\Daniel\\Desktop\\PBIBrain\\.venv-build\\Lib\\site-packages',
+ 'C:\\Users\\Daniel\\Desktop\\PBIBrain\\.venv-build\\Lib\\site-packages\\win32',
+ 'C:\\Users\\Daniel\\Desktop\\PBIBrain\\.venv-build\\Lib\\site-packages\\win32\\lib',
+ 'C:\\Users\\Daniel\\Desktop\\PBIBrain\\.venv-build\\Lib\\site-packages\\pythonwin',
+ 'C:\\Users\\Daniel\\Desktop\\PBIBrain\\packaging',
+ 'C:\\Users\\Daniel\\Desktop\\PBIBrain']
+1182 INFO: Appending 'datas' from .spec
+1185 INFO: checking Analysis
+1185 INFO: Building Analysis because Analysis-00.toc is non existent
+1185 INFO: Looking for Python shared library...
+1185 INFO: Using Python shared library: C:\Users\Daniel\AppData\Local\Programs\Python\Python311\python311.dll
+1185 INFO: Running Analysis Analysis-00.toc
+1185 INFO: Target bytecode optimization level: 0
+1185 INFO: Initializing module dependency graph...
+1191 INFO: Initializing module graph hook caches...
+1220 INFO: Analyzing modules for base_library.zip ...
+4775 INFO: Processing standard module hook 'hook-heapq.py' from 'C:\\Users\\Daniel\\Desktop\\PBIBrain\\.venv-build\\Lib\\site-packages\\PyInstaller\\hooks'
+5100 INFO: Processing standard module hook 'hook-encodings.py' from 'C:\\Users\\Daniel\\Desktop\\PBIBrain\\.venv-build\\Lib\\site-packages\\PyInstaller\\hooks'
+10008 INFO: Processing standard module hook 'hook-math.py' from 'C:\\Users\\Daniel\\Desktop\\PBIBrain\\.venv-build\\Lib\\site-packages\\PyInstaller\\hooks'
+10293 INFO: Processing standard module hook 'hook-pickle.py' from 'C:\\Users\\Daniel\\Desktop\\PBIBrain\\.venv-build\\Lib\\site-packages\\PyInstaller\\hooks'
+15128 INFO: Caching module dependency graph...
+15247 INFO: Analyzing C:\Users\Daniel\Desktop\PBIBrain\packaging\desktop_entry.py
+15566 INFO: Processing standard module hook 'hook-platform.py' from 'C:\\Users\\Daniel\\Desktop\\PBIBrain\\.venv-build\\Lib\\site-packages\\PyInstaller\\hooks'
+16544 INFO: Processing standard module hook 'hook-webbrowser.py' from 'C:\\Users\\Daniel\\Desktop\\PBIBrain\\.venv-build\\Lib\\site-packages\\PyInstaller\\hooks'
+17558 INFO: Processing standard module hook 'hook-multiprocessing.util.py' from 'C:\\Users\\Daniel\\Desktop\\PBIBrain\\.venv-build\\Lib\\site-packages\\PyInstaller\\hooks'
+17928 INFO: Processing standard module hook 'hook-xml.py' from 'C:\\Users\\Daniel\\Desktop\\PBIBrain\\.venv-build\\Lib\\site-packages\\PyInstaller\\hooks'
+19158 INFO: Processing standard module hook 'hook-_ctypes.py' from 'C:\\Users\\Daniel\\Desktop\\PBIBrain\\.venv-build\\Lib\\site-packages\\PyInstaller\\hooks'
+20172 INFO: Processing pre-safe-import-module hook 'hook-typing_extensions.py' from 'C:\\Users\\Daniel\\Desktop\\PBIBrain\\.venv-build\\Lib\\site-packages\\PyInstaller\\hooks\\pre_safe_import_module'
+20174 INFO: SetuptoolsInfo: initializing cached setuptools info...
+24264 INFO: Processing standard module hook 'hook-webview.py' from 'C:\\Users\\Daniel\\Desktop\\PBIBrain\\.venv-build\\Lib\\site-packages\\webview\\__pyinstaller'
+25267 INFO: Processing pre-safe-import-module hook 'hook-gi.py' from 'C:\\Users\\Daniel\\Desktop\\PBIBrain\\.venv-build\\Lib\\site-packages\\PyInstaller\\hooks\\pre_safe_import_module'
+25656 INFO: Processing standard module hook 'hook-clr.py' from 'C:\\Users\\Daniel\\Desktop\\PBIBrain\\.venv-build\\Lib\\site-packages\\pythonnet\\_pyinstaller'
+25946 INFO: Processing standard module hook 'hook-clr_loader.py' from 'C:\\Users\\Daniel\\Desktop\\PBIBrain\\.venv-build\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+26408 INFO: Processing standard module hook 'hook-pycparser.py' from 'C:\\Users\\Daniel\\Desktop\\PBIBrain\\.venv-build\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+27018 INFO: Processing standard module hook 'hook-setuptools.py' from 'C:\\Users\\Daniel\\Desktop\\PBIBrain\\.venv-build\\Lib\\site-packages\\PyInstaller\\hooks'
+27040 INFO: Processing pre-safe-import-module hook 'hook-distutils.py' from 'C:\\Users\\Daniel\\Desktop\\PBIBrain\\.venv-build\\Lib\\site-packages\\PyInstaller\\hooks\\pre_safe_import_module'
+27043 INFO: Processing pre-find-module-path hook 'hook-distutils.py' from 'C:\\Users\\Daniel\\Desktop\\PBIBrain\\.venv-build\\Lib\\site-packages\\PyInstaller\\hooks\\pre_find_module_path'
+29708 INFO: Processing standard module hook 'hook-distutils.py' from 'C:\\Users\\Daniel\\Desktop\\PBIBrain\\.venv-build\\Lib\\site-packages\\PyInstaller\\hooks'
+29938 INFO: Processing standard module hook 'hook-distutils.util.py' from 'C:\\Users\\Daniel\\Desktop\\PBIBrain\\.venv-build\\Lib\\site-packages\\PyInstaller\\hooks'
+30010 INFO: Processing standard module hook 'hook-sysconfig.py' from 'C:\\Users\\Daniel\\Desktop\\PBIBrain\\.venv-build\\Lib\\site-packages\\PyInstaller\\hooks'
+30054 INFO: Processing standard module hook 'hook-_osx_support.py' from 'C:\\Users\\Daniel\\Desktop\\PBIBrain\\.venv-build\\Lib\\site-packages\\PyInstaller\\hooks'
+31083 INFO: Processing standard module hook 'hook-pkg_resources.py' from 'C:\\Users\\Daniel\\Desktop\\PBIBrain\\.venv-build\\Lib\\site-packages\\PyInstaller\\hooks'
+34515 INFO: Processing pre-safe-import-module hook 'hook-importlib_metadata.py' from 'C:\\Users\\Daniel\\Desktop\\PBIBrain\\.venv-build\\Lib\\site-packages\\PyInstaller\\hooks\\pre_safe_import_module'
+34803 INFO: Processing pre-safe-import-module hook 'hook-packaging.py' from 'C:\\Users\\Daniel\\Desktop\\PBIBrain\\.venv-build\\Lib\\site-packages\\PyInstaller\\hooks\\pre_safe_import_module'
+37772 INFO: Processing standard module hook 'hook-xml.etree.cElementTree.py' from 'C:\\Users\\Daniel\\Desktop\\PBIBrain\\.venv-build\\Lib\\site-packages\\PyInstaller\\hooks'
+37942 INFO: Processing standard module hook 'hook-cryptography.py' from 'C:\\Users\\Daniel\\Desktop\\PBIBrain\\.venv-build\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+42681 INFO: hook-cryptography: cryptography does not seem to be using dynamically linked OpenSSL.
+43431 INFO: Analyzing C:\Users\Daniel\Desktop\PBIBrain\backend\agent.py
+43586 INFO: Processing standard module hook 'hook-anyio.py' from 'C:\\Users\\Daniel\\Desktop\\PBIBrain\\.venv-build\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+46456 INFO: Processing standard module hook 'hook-pydantic.py' from 'C:\\Users\\Daniel\\Desktop\\PBIBrain\\.venv-build\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+48019 INFO: Processing standard module hook 'hook-zoneinfo.py' from 'C:\\Users\\Daniel\\Desktop\\PBIBrain\\.venv-build\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+49797 INFO: Processing standard module hook 'hook-certifi.py' from 'C:\\Users\\Daniel\\Desktop\\PBIBrain\\.venv-build\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+50805 INFO: Processing standard module hook 'hook-difflib.py' from 'C:\\Users\\Daniel\\Desktop\\PBIBrain\\.venv-build\\Lib\\site-packages\\PyInstaller\\hooks'
+51016 INFO: Processing standard module hook 'hook-jsonschema.py' from 'C:\\Users\\Daniel\\Desktop\\PBIBrain\\.venv-build\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+51606 INFO: Processing standard module hook 'hook-jsonschema_specifications.py' from 'C:\\Users\\Daniel\\Desktop\\PBIBrain\\.venv-build\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+51672 INFO: Processing pre-safe-import-module hook 'hook-importlib_resources.py' from 'C:\\Users\\Daniel\\Desktop\\PBIBrain\\.venv-build\\Lib\\site-packages\\PyInstaller\\hooks\\pre_safe_import_module'
+51870 INFO: Processing standard module hook 'hook-pywintypes.py' from 'C:\\Users\\Daniel\\Desktop\\PBIBrain\\.venv-build\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+53034 INFO: Processing pre-safe-import-module hook 'hook-tomli.py' from 'C:\\Users\\Daniel\\Desktop\\PBIBrain\\.venv-build\\Lib\\site-packages\\PyInstaller\\hooks\\pre_safe_import_module'
+54186 INFO: Processing standard module hook 'hook-uvicorn.py' from 'C:\\Users\\Daniel\\Desktop\\PBIBrain\\.venv-build\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+56738 INFO: Analyzing hidden import 'ladybug._lbug_capi'
+56883 INFO: Processing module hooks (post-graph stage)...
+57257 WARNING: Hidden import "pycparser.lextab" not found!
+57257 WARNING: Hidden import "pycparser.yacctab" not found!
+57599 WARNING: Hidden import "tzdata" not found!
+57628 INFO: Processing pre-safe-import-module hook 'hook-win32com.py' from 'C:\\Users\\Daniel\\Desktop\\PBIBrain\\.venv-build\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\pre_safe_import_module'
+57848 INFO: Processing standard module hook 'hook-win32com.py' from 'C:\\Users\\Daniel\\Desktop\\PBIBrain\\.venv-build\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+57853 INFO: Processing standard module hook 'hook-pythoncom.py' from 'C:\\Users\\Daniel\\Desktop\\PBIBrain\\.venv-build\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+60128 INFO: Processing standard module hook 'hook-setuptools._vendor.importlib_metadata.py' from 'C:\\Users\\Daniel\\Desktop\\PBIBrain\\.venv-build\\Lib\\site-packages\\PyInstaller\\hooks'
+60590 INFO: Processing standard module hook 'hook-setuptools._vendor.jaraco.text.py' from 'C:\\Users\\Daniel\\Desktop\\PBIBrain\\.venv-build\\Lib\\site-packages\\PyInstaller\\hooks'
+64382 INFO: Performing binary vs. data reclassification (182 entries)
+64855 INFO: Looking for ctypes DLLs
+65316 INFO: Analyzing run-time hooks ...
+65327 INFO: Including run-time hook 'pyi_rth_pywintypes.py' from 'C:\\Users\\Daniel\\Desktop\\PBIBrain\\.venv-build\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\rthooks'
+65330 INFO: Including run-time hook 'pyi_rth_pkgutil.py' from 'C:\\Users\\Daniel\\Desktop\\PBIBrain\\.venv-build\\Lib\\site-packages\\PyInstaller\\hooks\\rthooks'
+65337 INFO: Including run-time hook 'pyi_rth_multiprocessing.py' from 'C:\\Users\\Daniel\\Desktop\\PBIBrain\\.venv-build\\Lib\\site-packages\\PyInstaller\\hooks\\rthooks'
+65342 INFO: Including run-time hook 'pyi_rth_inspect.py' from 'C:\\Users\\Daniel\\Desktop\\PBIBrain\\.venv-build\\Lib\\site-packages\\PyInstaller\\hooks\\rthooks'
+65348 INFO: Including run-time hook 'pyi_rth_setuptools.py' from 'C:\\Users\\Daniel\\Desktop\\PBIBrain\\.venv-build\\Lib\\site-packages\\PyInstaller\\hooks\\rthooks'
+65351 INFO: Including run-time hook 'pyi_rth_pkgres.py' from 'C:\\Users\\Daniel\\Desktop\\PBIBrain\\.venv-build\\Lib\\site-packages\\PyInstaller\\hooks\\rthooks'
+65365 INFO: Including run-time hook 'pyi_rth_pythoncom.py' from 'C:\\Users\\Daniel\\Desktop\\PBIBrain\\.venv-build\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\rthooks'
+65366 INFO: Including run-time hook 'pyi_rth_cryptography_openssl.py' from 'C:\\Users\\Daniel\\Desktop\\PBIBrain\\.venv-build\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\rthooks'
+65441 INFO: Creating base_library.zip...
+65512 INFO: Looking for dynamic libraries
+71564 INFO: Extra DLL search directories (AddDllDirectory): ['C:\\Users\\Daniel\\Desktop\\PBIBrain\\.venv-build\\Lib\\site-packages\\ladybug.libs']
+71564 INFO: Extra DLL search directories (PATH): []
+73980 INFO: Warnings written to C:\Users\Daniel\Desktop\PBIBrain\build\pyinstaller\pbibrain\warn-pbibrain.txt
+74470 INFO: Graph cross-reference written to C:\Users\Daniel\Desktop\PBIBrain\build\pyinstaller\pbibrain\xref-pbibrain.html
+74681 INFO: checking PYZ
+74681 INFO: Building PYZ because PYZ-00.toc is non existent
+74682 INFO: Building PYZ (ZlibArchive) C:\Users\Daniel\Desktop\PBIBrain\build\pyinstaller\pbibrain\PYZ-00.pyz
+77131 INFO: Building PYZ (ZlibArchive) C:\Users\Daniel\Desktop\PBIBrain\build\pyinstaller\pbibrain\PYZ-00.pyz completed successfully.
+77264 INFO: checking PKG
+77265 INFO: Building PKG because PKG-00.toc is non existent
+77265 INFO: Building PKG (CArchive) PBIBrain.pkg
+77365 INFO: Building PKG (CArchive) PBIBrain.pkg completed successfully.
+77369 INFO: Bootloader C:\Users\Daniel\Desktop\PBIBrain\.venv-build\Lib\site-packages\PyInstaller\bootloader\Windows-64bit-intel\runw.exe
+77369 INFO: checking EXE
+77369 INFO: Building EXE because EXE-00.toc is non existent
+77369 INFO: Building EXE from EXE-00.toc
+77370 INFO: Copying bootloader EXE to C:\Users\Daniel\Desktop\PBIBrain\build\pyinstaller\pbibrain\PBIBrain.exe
+77506 INFO: Copying icon to EXE
+77588 INFO: Copying 0 resources to EXE
+77590 INFO: Embedding manifest in EXE
+77662 INFO: Appending PKG archive to EXE
+77819 INFO: Fixing EXE headers
+78505 INFO: Building EXE from EXE-00.toc completed successfully.
+78517 INFO: checking PKG
+78517 INFO: Building PKG because PKG-01.toc is non existent
+78517 INFO: Building PKG (CArchive) PBIBrain-Agent.pkg
+78604 INFO: Building PKG (CArchive) PBIBrain-Agent.pkg completed successfully.
+78607 INFO: Bootloader C:\Users\Daniel\Desktop\PBIBrain\.venv-build\Lib\site-packages\PyInstaller\bootloader\Windows-64bit-intel\run.exe
+78608 INFO: checking EXE
+78608 INFO: Building EXE because EXE-01.toc is non existent
+78608 INFO: Building EXE from EXE-01.toc
+78608 INFO: Copying bootloader EXE to C:\Users\Daniel\Desktop\PBIBrain\build\pyinstaller\pbibrain\PBIBrain-Agent.exe
+78677 INFO: Copying icon to EXE
+78745 INFO: Copying 0 resources to EXE
+78745 INFO: Embedding manifest in EXE
+78816 INFO: Appending PKG archive to EXE
+78933 INFO: Fixing EXE headers
+79372 INFO: Building EXE from EXE-01.toc completed successfully.
+79393 INFO: checking COLLECT
+79393 INFO: Building COLLECT because COLLECT-00.toc is non existent
+79393 INFO: Removing dir C:\Users\Daniel\Desktop\PBIBrain\dist\PBIBrain
+79783 INFO: Building COLLECT COLLECT-00.toc
+81443 INFO: Building COLLECT COLLECT-00.toc completed successfully.
+81464 INFO: Build complete! The results are available in: C:\Users\Daniel\Desktop\PBIBrain\dist

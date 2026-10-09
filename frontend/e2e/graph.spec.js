@@ -4,6 +4,7 @@ async function openGraph(page) {
   await page.goto("/");
   await page.getByRole("button", { name: "Graph", exact: true }).click();
   await expect(page.locator(".react-flow__node-brain").first()).toBeVisible();
+  await page.getByRole("tab", { name: "Full graph", exact: true }).click();
   await page.getByRole("checkbox", { name: "Include suggestions" }).check();
   await page.getByRole("checkbox", { name: "Group by ownership" }).check();
   await page.locator(".graph-filter-details > summary").click();
@@ -15,6 +16,7 @@ test("native graph separates ownership, keeps cross-links, and opens a right-sid
   const graph = await (await request.get("/api/graph")).json();
   const measure = graph.nodes.find((node) => node.type === "MEASURE" && node.name === "Net Sales");
   await openGraph(page);
+  await page.getByRole("tab", { name: "Full graph", exact: true }).click();
   await expect(page.locator(".react-flow__node-artifactGroup")).toHaveCount(new Set(graph.nodes.map((node) => node.artifact_group)).size);
   await expect(page.locator(".react-flow__node-brain")).toHaveCount(graph.nodes.length);
   await expect(page.locator(".react-flow__edge")).toHaveCount(graph.edges.length);
@@ -40,6 +42,7 @@ test("native graph separates ownership, keeps cross-links, and opens a right-sid
 
 test("filters compose on the server, clear cleanly, and show empty states", async ({ page }) => {
   await openGraph(page);
+  await page.getByRole("tab", { name: "Full graph", exact: true }).click();
   await page.getByRole("tab", { name: "Report", exact: true }).click();
   await expect(page.locator(".react-flow__node-artifactGroup")).toHaveCount(2);
   await expect(page.locator(".artifact-group-title").filter({ hasText: "Report artifacts" })).toContainText("Report artifacts");
@@ -61,6 +64,7 @@ test("project color mapping persists through reload and drives nodes, minimap, a
   try {
     await page.goto("/");
     await page.getByRole("button", { name: "Settings", exact: true }).click();
+    await page.getByRole("tab", { name: "Graph colors", exact: true }).click();
     await page.getByText("Customize colors", { exact: true }).click();
     await page.getByRole("textbox", { name: "Report artifacts hex color", exact: true }).fill("#f472b6");
     await page.getByRole("textbox", { name: "Visual hex color", exact: true }).fill("#34d399");
@@ -73,15 +77,18 @@ test("project color mapping persists through reload and drives nodes, minimap, a
     expect(saved.database).toEqual(original.database);
     await page.reload();
     await page.getByRole("button", { name: "Settings", exact: true }).click();
+    await page.getByRole("tab", { name: "Graph colors", exact: true }).click();
     await page.getByText("Customize colors", { exact: true }).click();
     await expect(page.getByRole("textbox", { name: "Visual hex color", exact: true })).toHaveValue("#34d399");
     await page.getByRole("button", { name: "Graph", exact: true }).click();
     await expect(page.locator(".react-flow__node-brain").first()).toBeVisible();
+  await page.getByRole("tab", { name: "Full graph", exact: true }).click();
     const visual = page.locator(".artifact-node").filter({ has: page.locator(".flow-node-type", { hasText: /^Column Chart$/ }) }).first();
     await expect(visual.locator(".artifact-dot")).toHaveCSS("background-color", "rgb(52, 211, 153)");
     await expect.poll(() => page.locator(".react-flow__minimap-node:not(.minimap-artifact-group)").evaluateAll((elements) => elements.filter((element) => getComputedStyle(element).fill === "rgb(52, 211, 153)").length)).toBe(2);
     await expect(page.getByLabel("Graph color legend").getByText("Visual", { exact: true }).locator(".artifact-dot")).toHaveCSS("background-color", "rgb(52, 211, 153)");
     await page.getByRole("button", { name: "Settings", exact: true }).click();
+    await page.getByRole("tab", { name: "Graph colors", exact: true }).click();
     await page.getByText("Customize colors", { exact: true }).click();
     await page.getByRole("button", { name: "Restore defaults", exact: true }).click();
     await expect(page.getByRole("textbox", { name: "Report artifacts hex color", exact: true })).toHaveValue("#b4a0cd");
@@ -114,6 +121,7 @@ test("keyboard selection opens details and narrow layouts stay within the viewpo
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBeTruthy();
   await page.screenshot({ path: "test-results/graph-mobile.png", fullPage: true });
   await page.getByRole("button", { name: "Settings", exact: true }).click();
+    await page.getByRole("tab", { name: "Graph colors", exact: true }).click();
     await page.getByText("Customize colors", { exact: true }).click();
   await expect(page.getByText("Graph colors", { exact: true }).last()).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBeTruthy();
@@ -121,6 +129,7 @@ test("keyboard selection opens details and narrow layouts stay within the viewpo
 
 test("failed graph and object requests expose retry without showing another scope", async ({ page }) => {
   await openGraph(page);
+  await page.getByRole("tab", { name: "Full graph", exact: true }).click();
   await page.route("**/api/graph?**", async (route) => {
     if (new URL(route.request().url()).searchParams.get("artifact") === "report") return route.fulfill({ status: 500, contentType: "application/json", body: JSON.stringify({ error: "Graph unavailable for test" }) });
     return route.continue();
@@ -141,6 +150,7 @@ test("failed graph and object requests expose retry without showing another scop
 
 test("late graph and object responses cannot overwrite a newer selection", async ({ page, request }) => {
   await openGraph(page);
+  await page.getByRole("tab", { name: "Full graph", exact: true }).click();
   let releaseGraph;
   let graphFinished;
   const graphDone = new Promise((resolve) => { graphFinished = resolve; });
@@ -200,6 +210,7 @@ test("shared shadcn controls preserve search, full inspector, review, and source
   await expect(page.getByRole("navigation").getByRole("button", { name: /^Review queue/ })).toHaveAttribute("aria-current", "page");
   await expect(page.locator(".review-purpose")).toContainText("Approval");
   await page.getByRole("button", { name: "Settings", exact: true }).click();
+    await page.getByRole("tab", { name: "Graph colors", exact: true }).click();
     await page.getByText("Customize colors", { exact: true }).click();
   await page.getByRole("tab", { name: "Project", exact: true }).click();
   await expect(page.getByLabel("Project name", { exact: true })).toHaveValue(original.name);

@@ -47,8 +47,11 @@ test("graph defaults to source objects and isolates a selected neighborhood", as
   const graph = await (await request.get("/api/graph?status=factual&limit=30")).json();
   await page.goto("/");
   await page.getByRole("button", { name: "Graph", exact: true }).click();
-  await expect(page.locator(".react-flow__node-brain")).toHaveCount(graph.nodes.length);
+  await expect.poll(() => page.locator(".react-flow__node-brain").count()).toBeLessThan(graph.nodes.length);
+  await expect(page.locator(".flow-node-name").filter({ hasText: "Sales" }).first()).toBeVisible();
   await expect(page.getByRole("checkbox", { name: "Include suggestions" })).not.toBeChecked();
+  await page.getByRole("tab", { name: "Full graph", exact: true }).click();
+  await expect(page.locator(".react-flow__node-brain")).toHaveCount(graph.nodes.length);
   const measure = graph.nodes.find((node) => node.name === "Net Sales");
   await page.locator(`.react-flow__node-brain[data-id="${measure.id}"]`).dblclick();
   await expect(page.getByText("Focused view", { exact: true })).toBeVisible();
@@ -56,6 +59,7 @@ test("graph defaults to source objects and isolates a selected neighborhood", as
   await noInternals(page);
   await page.getByRole("button", { name: "Back to project", exact: true }).click();
   await expect(page.locator(".react-flow__node-brain")).toHaveCount(graph.nodes.length);
+  await expect(page.getByRole("tab", { name: "Full graph", exact: true })).toHaveAttribute("aria-selected", "true");
   await page.screenshot({ path: "test-results/overhaul-graph.png", fullPage: true });
 });
 
@@ -64,6 +68,7 @@ test("palette selection persists without changing project sources", async ({ pag
   try {
     await page.goto("/");
     await page.getByRole("button", { name: "Settings", exact: true }).click();
+    await page.getByRole("tab", { name: "Graph colors", exact: true }).click();
     await page.getByRole("button", { name: /^Coast/ }).click();
     await page.getByRole("button", { name: "Save colors", exact: true }).click();
     await expect(page.getByRole("status")).toHaveText("Colors saved");
@@ -72,6 +77,7 @@ test("palette selection persists without changing project sources", async ({ pag
     expect(saved.graph_colors.types.MEASURE).toBe("#d0bf99");
     await page.reload();
     await page.getByRole("button", { name: "Settings", exact: true }).click();
+    await page.getByRole("tab", { name: "Graph colors", exact: true }).click();
     await expect(page.getByRole("button", { name: /^Coast/ })).toHaveAttribute("aria-pressed", "true");
     await page.screenshot({ path: "test-results/overhaul-palettes.png", fullPage: true });
   } finally { await request.post("/api/config", { data: original }); }
@@ -108,9 +114,10 @@ test("review evidence and palettes remain usable on a narrow screen", async ({ p
   for (const name of ["Inspector", "Review queue", "Settings"]) {
     await page.getByRole("navigation").getByRole("button", { name: new RegExp(`^${name}`) }).click();
     await expect(page.getByRole("navigation").getByRole("button", { name: new RegExp(`^${name}`) })).toHaveAttribute("aria-current", "page");
-    await expect(page.getByRole("heading", { name, exact: true })).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: name === "Inspector" ? "Browse objects" : name, level: 1, exact: true })).toHaveCount(1);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     if (name === "Review queue") await expect(page.locator(".review-evidence").first()).toBeVisible();
+    if (name === "Settings") await page.getByRole("tab", { name: "Graph colors", exact: true }).click();
     await page.screenshot({ path: `test-results/overhaul-${name.replace(" ", "-")}-mobile.png`, fullPage: true });
   }
 });
@@ -149,6 +156,7 @@ test("large native scans start bounded and search finds objects beyond the first
     expect((await request.post("/api/scan", { data: {} })).ok()).toBe(true);
     await page.goto("/");
     await page.getByRole("button", { name: "Graph", exact: true }).click();
+    await page.getByRole("tab", { name: "Full graph", exact: true }).click();
     await expect(page.locator(".react-flow__node-brain")).toHaveCount(80);
     await expect(page.locator(".scope-notice")).toContainText("80 of 183");
     await page.getByRole("searchbox", { name: "Filter graph objects" }).fill("Scenario 174");
@@ -180,7 +188,7 @@ test("dark default and flat selection remain clear during keyboard navigation", 
   const project = tabs.getByRole("tab", { name: "Project", exact: true });
   expect(await background(colors)).not.toBe(await background(project));
   await colors.focus();
-  await page.keyboard.press("ArrowRight");
+  await page.keyboard.press("ArrowLeft");
   await expect(project).toBeFocused();
   await expect(project).toHaveAttribute("aria-selected", "true");
   expect(await background(project)).not.toBe(await background(colors));
@@ -206,6 +214,7 @@ test("native scan exposes full report hierarchy and matching visual bindings", a
     for (const group of groups) expect(details.visual_bindings[group]).toHaveLength(1);
     await page.goto("/");
     await page.getByRole("button", { name: "Graph", exact: true }).click();
+  await page.getByRole("tab", { name: "Full graph", exact: true }).click();
     await expect(page.locator(".react-flow__node-brain")).toHaveCount(graph.nodes.length);
     const card = page.locator(".react-flow__node-brain").filter({ hasText: "Revenue trend" });
     await expect(card).toContainText("Line Chart");
@@ -292,6 +301,7 @@ test("flat controls remain usable across navigation, graph, details, Inspector a
     await page.getByRole("navigation").getByRole("button", { name: new RegExp("^" + name) }).click();
     await check();
   }
+  await page.getByRole("tab", { name: "Full graph", exact: true }).click();
   await page.locator(".react-flow__node-brain").filter({ hasText: "Net Sales" }).click();
   await expect(page.locator(".graph-detail-title")).toHaveText("Net Sales");
   await check();

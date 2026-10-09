@@ -1,0 +1,14 @@
+
+Running 6 tests using 1 worker
+
+
+
+(node:5592) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[1/6] e2e\graphExplorer.spec.js:16:1 › native overview unfolds one owner without moving existing objects or changing zoom
+[2/6] e2e\graphExplorer.spec.js:39:1 › nested report groups expand by keyboard and overview survives an Inspector visit
+[3/6] e2e\graphExplorer.spec.js:61:1 › connections follow native edges and can expand a neighborhood
+[4/6] e2e\graphExplorer.spec.js:83:1 › a dense loaded slice starts compact, keeps counts honest, and retains the optional full graph
+[5/6] e2e\graphExplorer.spec.js:124:1 › small screens retain readable group controls without page overflow
+[6/6] e2e\graphExplorer.spec.js:140:1 › an explicit relationship filter stays visible in overview
+  6 passed (14.8s)

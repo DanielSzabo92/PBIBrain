@@ -55,6 +55,11 @@ def get_overview(repository: GraphRepository, *, store: OverrideStore | None = N
     nodes = repository.all_nodes()
     edges = repository.all_edges()
     counts = Counter(node.type for node in nodes)
+    review_items = get_review_queue(repository, store)
+    review_counts = {
+        issue_type: sum(1 for item in review_items if item.get("issue_type") == issue_type)
+        for issue_type in ("candidate", "conflict", "stale")
+    }
     candidate_count = sum(1 for node in nodes if node.status == "candidate") + sum(
         1 for edge in edges if edge.status == "candidate"
     )
@@ -82,6 +87,8 @@ def get_overview(repository: GraphRepository, *, store: OverrideStore | None = N
         "candidate_count": candidate_count,
         "approved_count": sum(edge.status == "approved" for edge in edges),
         "warning_count": warning_count,
+        "review_count": len(review_items),
+        "review_counts": review_counts,
         "validation_state": str(validation_state),
         "validation_issues": validation_payload.get("issues", []),
     }

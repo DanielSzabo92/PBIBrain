@@ -1,0 +1,102 @@
+{
+  "date": "2026-10-08",
+  "artifacts": [
+    {
+      "sha256": "FCA6BFAC2E3C6E166FAA640761B726B10D9D02E501E7300EAF156F3EDD645FF4",
+      "bytes": 48857861,
+      "file": "PBIBrain-Portable-x64.zip"
+    },
+    {
+      "sha256": "56DE266ED8B59B2828DD11DC10588BE378939D3B4E5E62DEE4FF0B4543615A25",
+      "bytes": 41699309,
+      "file": "PBIBrain-Setup-x64.exe"
+    }
+  ],
+  "frontend": [
+    {
+      "sha256": "4821FDCDF1615DBED55674985AB8BECE47FFA93232D3B0116A5B7BEB695D62A7",
+      "file": "index.html"
+    },
+    {
+      "sha256": "8B39C03DC5CFFF8BECF5A694BE5E0245ADD12984A81CB00121409268A6C72BD7",
+      "file": "theme-init.js"
+    },
+    {
+      "sha256": "AAF83495546043C711A7DC48E15D17CD119E389A9C6386E9283C9004680C8AFA",
+      "file": "THIRD_PARTY_NOTICES.txt"
+    },
+    {
+      "sha256": "C68C522D336570B9B9CF31635459D57CB7911A485255D258296A5ED8BE9E04DD",
+      "file": "assets\\GraphColors-BI8matI_.js"
+    },
+    {
+      "sha256": "1243B61A71923367CE620FB944427C80C9B03E863E18374FCF4F74D6D06F63FC",
+      "file": "assets\\GraphView-BnuhLJ6X.css"
+    },
+    {
+      "sha256": "29AF454AA7C53CAA618CF40D122D6A08B0368989DACA9C9F2AC9313CE4F7204D",
+      "file": "assets\\GraphView-psVApX5r.js"
+    },
+    {
+      "sha256": "DFF21C60B1A8513F668BA242D9556C67661D290C5D783B87A01E05F026CE4873",
+      "file": "assets\\index-C0vwFe42.js"
+    },
+    {
+      "sha256": "8D222556807F635E5B14B1424EC90291C00449D9A55298F543E70A9927E4F224",
+      "file": "assets\\index-D39m7NmY.css"
+    },
+    {
+      "sha256": "CA157063339AC4AD418F214F3ABFED119B0798AB4D377386CE5C9E5A7A435EBD",
+      "file": "assets\\inter-cyrillic-ext-wght-normal-BOeWTOD4.woff2"
+    },
+    {
+      "sha256": "71D5EE93CC1E9F1D520A3A8B66456DE18C7879D8DF09D57FCD2EAFF75FEF0075",
+      "file": "assets\\inter-cyrillic-wght-normal-DqGufNeO.woff2"
+    },
+    {
+      "sha256": "6E9E020A25F9B56D418F2C085B1D3C09725A4DA23FE693A5B463064606732190",
+      "file": "assets\\inter-greek-ext-wght-normal-DlzME5K_.woff2"
+    },
+    {
+      "sha256": "1BE3448E292FBF05FFE176FE1E43F135013D50B1E7D324AD1A558F623D3BB6F6",
+      "file": "assets\\inter-greek-wght-normal-CkhJZR-_.woff2"
+    },
+    {
+      "sha256": "34B9C504CAB7A73E37B746343A449132E56CF7B5481AF2CB81DC74DCFF25C956",
+      "file": "assets\\inter-latin-ext-wght-normal-DO1Apj_S.woff2"
+    },
+    {
+      "sha256": "3100E775E8616CD2611BEECFA23A4263D7037586789B43F035236A2E6FBD4C62",
+      "file": "assets\\inter-latin-wght-normal-Dx4kXJAl.woff2"
+    },
+    {
+      "sha256": "5C66F9E07E90C6D4AC4922CC68D60DE26C17B1858E677FB5E603FCE3952B3FF2",
+      "file": "assets\\inter-vietnamese-wght-normal-CBcvBZtf.woff2"
+    },
+    {
+      "sha256": "D274604C40757F98F07DF623A8B8FB5194508A6FA4F5413A7A107F09E3B7452A",
+      "file": "assets\\jetbrains-mono-cyrillic-wght-normal-D73BlboJ.woff2"
+    },
+    {
+      "sha256": "EE863198077F3093FFA81C072581CC4BD608A04E60A8A9C0B846396CE4F14109",
+      "file": "assets\\jetbrains-mono-greek-wght-normal-Bw9x6K1M.woff2"
+    },
+    {
+      "sha256": "79BFDAB9BA467E26EEA4122E6F2567E188DD8A09A8C730D501FC487C4AB99C6E",
+      "file": "assets\\jetbrains-mono-latin-ext-wght-normal-DBQx-q_a.woff2"
+    },
+    {
+      "sha256": "18BE452724BFDC236C074CA94A249A7F41A86752C7D04AB258CE9ED5651F6A7E",
+      "file": "assets\\jetbrains-mono-latin-wght-normal-B9CIFXIH.woff2"
+    },
+    {
+      "sha256": "2288795DA89DD97E648954B96E22B4501BD85DFC453264460B252F888B582CA2",
+      "file": "assets\\jetbrains-mono-vietnamese-wght-normal-Bt-aOZkq.woff2"
+    },
+    {
+      "sha256": "9622F777219E065A64D4E747E9A921B58D38CAA59656B64198B45749B2250761",
+      "file": "assets\\ModelSummary-DxyhuUXi.js"
+    }
+  ],
+  "frontend_files_verified": 21
+}

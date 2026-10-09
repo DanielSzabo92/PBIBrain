@@ -1,0 +1,13 @@
+127.0.0.1 - - [08/Oct/2026 21:33:03] "GET /desktop/session HTTP/1.1" 200 254
+127.0.0.1 - - [08/Oct/2026 21:33:03] "GET /api/config HTTP/1.1" 200 129
+127.0.0.1 - - [08/Oct/2026 21:33:05] "GET /desktop/session HTTP/1.1" 200 288
+127.0.0.1 - - [08/Oct/2026 21:33:05] "POST /api/scan HTTP/1.1" 200 836
+127.0.0.1 - - [08/Oct/2026 21:33:05] "GET /api/overview HTTP/1.1" 200 803
+127.0.0.1 - - [08/Oct/2026 21:33:05] "GET /api/search?q=Net+Sales HTTP/1.1" 200 1854
+127.0.0.1 - - [08/Oct/2026 21:33:05] "GET /api/overview HTTP/1.1" 409 67
+127.0.0.1 - - [08/Oct/2026 21:33:05] "GET /desktop/session HTTP/1.1" 200 288
+127.0.0.1 - - [08/Oct/2026 21:33:05] "GET /api/overview HTTP/1.1" 200 775
+----------------------------------------------------------------------
+Ran 227 tests in 53.003s
+
+OK

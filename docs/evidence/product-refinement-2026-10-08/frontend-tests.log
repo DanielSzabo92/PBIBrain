@@ -1,0 +1,166 @@
+TAP version 13
+# Subtest: desktop bridge is available immediately when injected
+ok 1 - desktop bridge is available immediately when injected
+  ---
+  duration_ms: 5.8576
+  type: 'test'
+  ...
+# Subtest: desktop bridge waits for pywebviewready without affecting browser mode
+ok 2 - desktop bridge waits for pywebviewready without affecting browser mode
+  ---
+  duration_ms: 0.6164
+  type: 'test'
+  ...
+# Subtest: desktop requests return bridge failures as useful errors
+ok 3 - desktop requests return bridge failures as useful errors
+  ---
+  duration_ms: 7.4026
+  type: 'test'
+  ...
+# Subtest: desktop requests carry selected source files to the native bridge
+ok 4 - desktop requests carry selected source files to the native bridge
+  ---
+  duration_ms: 8.5204
+  type: 'test'
+  ...
+# Subtest: same-name review targets retain table and model/report scope
+ok 5 - same-name review targets retain table and model/report scope
+  ---
+  duration_ms: 3.5056
+  type: 'test'
+  ...
+# Subtest: dependency chains flow left to right without overlapping nodes
+ok 6 - dependency chains flow left to right without overlapping nodes
+  ---
+  duration_ms: 141.1587
+  type: 'test'
+  ...
+# Subtest: cycles, self loops, parallel edges and disconnected objects remain finite
+ok 7 - cycles, self loops, parallel edges and disconnected objects remain finite
+  ---
+  duration_ms: 20.7329
+  type: 'test'
+  ...
+# Subtest: empty and single-object scopes are safe
+ok 8 - empty and single-object scopes are safe
+  ---
+  duration_ms: 2.4235
+  type: 'test'
+  ...
+# Subtest: report artifacts with both ownership IDs stay in the report group
+ok 9 - report artifacts with both ownership IDs stay in the report group
+  ---
+  duration_ms: 4.1684
+  type: 'test'
+  ...
+# Subtest: status never overrides artifact colors and reset restores group inheritance
+ok 10 - status never overrides artifact colors and reset restores group inheritance
+  ---
+  duration_ms: 3.4956
+  type: 'test'
+  ...
+# Subtest: artifact regions are disjoint and contain their nodes (LR)
+ok 11 - artifact regions are disjoint and contain their nodes (LR)
+  ---
+  duration_ms: 191.8678
+  type: 'test'
+  ...
+# Subtest: artifact regions are disjoint and contain their nodes (TB)
+ok 12 - artifact regions are disjoint and contain their nodes (TB)
+  ---
+  duration_ms: 68.8851
+  type: 'test'
+  ...
+# Subtest: grouped layout preserves cycles, parallel edges, self-loops, unknown nodes and ID collisions
+ok 13 - grouped layout preserves cycles, parallel edges, self-loops, unknown nodes and ID collisions
+  ---
+  duration_ms: 102.4401
+  type: 'test'
+  ...
+# Subtest: vertical layout preserves source-to-target direction
+ok 14 - vertical layout preserves source-to-target direction
+  ---
+  duration_ms: 77.8431
+  type: 'test'
+  ...
+# Subtest: source visual identifiers use the visual type while explicit titles survive
+ok 15 - source visual identifiers use the visual type while explicit titles survive
+  ---
+  duration_ms: 4.0799
+  type: 'test'
+  ...
+# Subtest: nested and serialized evidence becomes readable without exposing internal references
+ok 16 - nested and serialized evidence becomes readable without exposing internal references
+  ---
+  duration_ms: 3.8826
+  type: 'test'
+  ...
+# Subtest: palettes are diverse defaults while explicit custom colors and group inheritance survive
+ok 17 - palettes are diverse defaults while explicit custom colors and group inheritance survive
+  ---
+  duration_ms: 3.3735
+  type: 'test'
+  ...
+# Subtest: model precedes report, page, visual and bound field without reversing canonical arrows
+ok 18 - model precedes report, page, visual and bound field without reversing canonical arrows
+  ---
+  duration_ms: 172.9431
+  type: 'test'
+  ...
+# Subtest: visual titles and types are readable; an opaque ID is the final fallback
+ok 19 - visual titles and types are readable; an opaque ID is the final fallback
+  ---
+  duration_ms: 2.3876
+  type: 'test'
+  ...
+# Subtest: search scopes and paginates through the local API
+ok 20 - search scopes and paginates through the local API
+  ---
+  duration_ms: 4.2941
+  type: 'test'
+  ...
+# Subtest: graph encodes a center and carries an explicit bounded scope
+ok 21 - graph encodes a center and carries an explicit bounded scope
+  ---
+  duration_ms: 0.7577
+  type: 'test'
+  ...
+# Subtest: graph filters are sent before the server truncates the result
+ok 22 - graph filters are sent before the server truncates the result
+  ---
+  duration_ms: 1.7612
+  type: 'test'
+  ...
+# Subtest: config save preserves the complete server contract
+ok 23 - config save preserves the complete server contract
+  ---
+  duration_ms: 3.7876
+  type: 'test'
+  ...
+# Subtest: scan posts an explicit JSON payload for the local WSGI API
+ok 24 - scan posts an explicit JSON payload for the local WSGI API
+  ---
+  duration_ms: 0.7039
+  type: 'test'
+  ...
+# Subtest: API errors expose the backend error field
+ok 25 - API errors expose the backend error field
+  ---
+  duration_ms: 1.4742
+  type: 'test'
+  ...
+# Subtest: model summary requires an explicit encoded model scope
+ok 26 - model summary requires an explicit encoded model scope
+  ---
+  duration_ms: 0.7597
+  type: 'test'
+  ...
+1..26
+# tests 26
+# suites 0
+# pass 26
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 1070.1644

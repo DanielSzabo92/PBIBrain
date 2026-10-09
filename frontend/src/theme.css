@@ -56,11 +56,12 @@
   --line: #1f2228;
   --line-strong: #2b2f37;
   --line-focus: #3a3f4a;
+  --control-border: #697185;
 
   /* Text */
   --text: #ededf0;
   --text-2: #a3a7b1;
-  --text-3: #6d717c;
+  --text-3: #9298a5;
   --text-inverse: #0b0c0f;
 
   /* Brand accent: calm periwinkle, distinct from every status colour */
@@ -126,10 +127,11 @@
   --line: #e6e5e1;
   --line-strong: #d6d5d0;
   --line-focus: #bdbcb6;
+  --control-border: #838994;
 
   --text: #16171b;
   --text-2: #5c5f68;
-  --text-3: #8c8f97;
+  --text-3: #656a75;
   --text-inverse: #ffffff;
 
   --brand: #4f58e0;
@@ -139,13 +141,13 @@
   --brand-line: rgb(79 88 224 / 0.35);
   --brand-glow: rgb(79 88 224 / 0.16);
 
-  --ok: #1f9d64;
+  --ok: #157347;
   --ok-soft: rgb(31 157 100 / 0.1);
-  --warn: #b87412;
+  --warn: #8a540d;
   --warn-soft: rgb(184 116 18 / 0.1);
-  --bad: #cf3c3c;
+  --bad: #bd3030;
   --bad-soft: rgb(207 60 60 / 0.08);
-  --info: #2a7fc0;
+  --info: #216a9f;
   --info-soft: rgb(42 127 192 / 0.1);
 
   --shadow-sm: 0 1px 2px rgb(20 20 30 / 0.06);

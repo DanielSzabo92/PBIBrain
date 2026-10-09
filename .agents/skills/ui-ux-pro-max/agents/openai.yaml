@@ -1,0 +1,4 @@
+interface:
+  display_name: "UI/UX Pro Max"
+  short_description: "Design accessible, polished Windows and cross-platform UI"
+  default_prompt: "Use $ui-ux-pro-max to design or review this interface with accessible, implementation-ready recommendations."

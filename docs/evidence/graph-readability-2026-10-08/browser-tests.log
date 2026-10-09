@@ -1,0 +1,54 @@
+
+Running 46 tests using 1 worker
+
+
+
+(node:53812) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[1/46] e2e\desktopAudit.spec.js:3:1 › overview exposes invalid graph issues separately from extraction
+[2/46] e2e\desktopAudit.spec.js:21:1 › review decisions show the exact table scope for duplicate columns
+[3/46] e2e\graph.spec.js:13:1 › native graph separates ownership, keeps cross-links, and opens a right-side detail sheet
+[4/46] e2e\graph.spec.js:43:1 › filters compose on the server, clear cleanly, and show empty states
+[5/46] e2e\graph.spec.js:62:1 › project color mapping persists through reload and drives nodes, minimap, and legend
+[6/46] e2e\graph.spec.js:103:1 › keyboard selection opens details and narrow layouts stay within the viewport
+[7/46] e2e\graph.spec.js:130:1 › failed graph and object requests expose retry without showing another scope
+[8/46] e2e\graph.spec.js:151:1 › late graph and object responses cannot overwrite a newer selection
+[9/46] e2e\graph.spec.js:196:1 › shared shadcn controls preserve search, full inspector, review, and source settings
+[10/46] e2e\graphExplorer.spec.js:16:1 › native overview unfolds one owner without moving existing objects or changing zoom
+[11/46] e2e\graphExplorer.spec.js:39:1 › nested report groups expand by keyboard and overview survives an Inspector visit
+[12/46] e2e\graphExplorer.spec.js:61:1 › connections follow native edges and can expand a neighborhood
+[13/46] e2e\graphExplorer.spec.js:83:1 › a dense loaded slice starts compact, keeps counts honest, and retains the optional full graph
+[14/46] e2e\graphExplorer.spec.js:124:1 › small screens retain readable group controls without page overflow
+[15/46] e2e\graphSession.spec.js:3:1 › graph exploration keeps filters, focus, and layout after an Inspector round trip
+[16/46] e2e\modelSummary.spec.js:10:1 › native-backed summary previews and downloads the exact UTF-8 context
+[17/46] e2e\modelSummary.spec.js:35:1 › summary retries errors and offers selection when clipboard is unavailable
+[18/46] e2e\modelSummary.spec.js:51:1 › late model response cannot replace selected model context
+[19/46] e2e\modelSummary.spec.js:71:1 › empty projects explain why a summary is unavailable
+[20/46] e2e\overhaul.spec.js:13:1 › Inspector starts with browsable measures and keeps browse filters on return
+[21/46] e2e\overhaul.spec.js:28:1 › search has a clear focus boundary and respects reduced motion
+[22/46] e2e\overhaul.spec.js:46:1 › graph defaults to source objects and isolates a selected neighborhood
+[23/46] e2e\overhaul.spec.js:66:1 › palette selection persists without changing project sources
+[24/46] e2e\overhaul.spec.js:86:1 › review explains evidence, aligns targets left, prevents double submit, and persists decisions
+[25/46] e2e\overhaul.spec.js:110:1 › review evidence and palettes remain usable on a narrow screen
+[26/46] e2e\overhaul.spec.js:125:1 › failed decisions remain reviewable and command buttons work without WebGL
+[27/46] e2e\overhaul.spec.js:148:1 › large native scans start bounded and search finds objects beyond the first slice
+[28/46] e2e\overhaul.spec.js:176:1 › dark default and flat selection remain clear during keyboard navigation
+[29/46] e2e\overhaul.spec.js:198:1 › native scan exposes full report hierarchy and matching visual bindings
+[30/46] e2e\overhaul.spec.js:252:1 › shared meaning suggestions keep separate decisions through reload and rescan
+[31/46] e2e\overhaul.spec.js:286:1 › flat controls remain usable across navigation, graph, details, Inspector and Settings
+[32/46] e2e\product.spec.js:3:1 › home search returns to the same results and keyboard focus without refetching
+[33/46] e2e\product.spec.js:35:1 › source setup opens project settings and empty projects have one next step
+[34/46] e2e\product.spec.js:56:1 › search scopes, late responses, and retry never show another query's results
+[35/46] e2e\product.spec.js:96:1 › inspector retries failed objects and does not claim empty lineage while loading
+[36/46] e2e\product.spec.js:120:1 › home, search, and readable formulas fit narrow screens with reduced motion
+[37/46] e2e\product.spec.js:139:1 › more results appends real API pages and survives an inspector visit
+[38/46] e2e\product.spec.js:170:1 › every direct relationship remains reachable beyond the first ten
+[39/46] e2e\productRefinement.spec.js:15:1 › review queue explains snapshot failure and retries into a loaded state
+[40/46] e2e\productRefinement.spec.js:35:1 › settings shows a local retry when configuration loading fails
+[41/46] e2e\productRefinement.spec.js:53:1 › blank search with a type filter browses matching objects
+[42/46] e2e\productRefinement.spec.js:64:1 › review filters and sort survive an inspector visit and restore target focus
+[43/46] e2e\productRefinement.spec.js:95:1 › canonical pending count drives the review badge and Reload Brain refreshes its snapshot
+[44/46] e2e\productRefinement.spec.js:119:1 › successful review stays successful when the follow-up snapshot refresh fails
+[45/46] e2e\productRefinement.spec.js:151:1 › a scan started from Overview reloads the review queue after navigation during the scan
+[46/46] e2e\productRefinement.spec.js:186:1 › a delayed review response cannot overwrite a newer successful scan generation
+  46 passed (1.9m)

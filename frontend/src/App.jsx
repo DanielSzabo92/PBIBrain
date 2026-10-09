@@ -1,6 +1,6 @@
 import VisualBindings from "./components/VisualBindings";
 import ImpactExplorer from "./components/ImpactExplorer";
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight, ArrowUpRight, Boxes, Check, ChartColumn, ChevronRight, CircleCheck, Copy, Database, FileText, FolderOpen, Moon, Plus, RefreshCw, ScanLine, ShieldAlert, ShieldCheck, Sparkles, Sun, TriangleAlert, Waypoints, X } from "lucide-react";
 import { brainTransport, normalizeSnapshot } from "./transport";
 import { desktopRequest, subscribeToDesktopBridge } from "./desktop";
@@ -15,9 +15,9 @@ import { Badge } from "./components/ui/badge";
 import { Card } from "./components/ui/card";
 import { Label } from "./components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./components/ui/tabs";
-import GraphView from "./components/GraphView";
-import GraphColors from "./components/GraphColors";
-import ModelSummary from "./components/ModelSummary";
+const GraphView = lazy(() => import("./components/GraphView"));
+const GraphColors = lazy(() => import("./components/GraphColors"));
+const ModelSummary = lazy(() => import("./components/ModelSummary"));
 import { artifactColor, normalizeColors, typeLabel } from "./graphPresentation";
 
 const VIEWS = [
@@ -146,13 +146,20 @@ function App({ transport = brainTransport }) {
   const [theme, toggleTheme] = useTheme();
   const [snapshot, setSnapshot] = useState(() => normalizeSnapshot(null));
   const [snapshotLoaded, setSnapshotLoaded] = useState(false);
+  const [snapshotLoading, setSnapshotLoading] = useState(false);
+  const [snapshotError, setSnapshotError] = useState("");
   const [overview, setOverview] = useState({});
   const [config, setConfig] = useState(null);
+  const [configError, setConfigError] = useState("");
   const graphColors = useMemo(() => normalizeColors(config?.graph_colors), [config?.graph_colors]);
   const [view, setView] = useState("overview");
+  const currentView = useRef(view);
+  currentView.current = view;
   const [searchSession, setSearchSession] = useState({ query: "", modelId: "", reportId: "", result: null });
   const [inspectorSession, setInspectorSession] = useState({ query: "", modelId: "", reportId: "", objectType: "MEASURE", result: null });
-  const [settingsTab, setSettingsTab] = useState("colors");
+  const [settingsTab, setSettingsTab] = useState("project");
+  const [graphSession, setGraphSession] = useState(null);
+  const [reviewSession, setReviewSession] = useState({ issue: "ALL", objectType: "ALL", modelId: "ALL", reportId: "ALL", sort: "confidence-high" });
   const [inspectorOrigin, setInspectorOrigin] = useState("search");
   const [selectedId, setSelectedId] = useState(null);
   const [inspectedObject, setInspectedObject] = useState(null);
@@ -177,15 +184,18 @@ function App({ transport = brainTransport }) {
   const snapshotRequest = useRef(0);
   const selectionRequest = useRef(0);
   const scanInFlight = useRef(false);
+  const projectGeneration = useRef(0);
 
   const load = useCallback(async () => {
     const requestId = ++loadRequest.current;
     setLoading(true);
     setError("");
+    setConfigError("");
     const [overviewResult, configResult] = await Promise.allSettled([transport.getOverview(), transport.getConfig()]);
     if (requestId !== loadRequest.current) return;
     if (overviewResult.status === "fulfilled") setOverview(overviewResult.value || {});
     if (configResult.status === "fulfilled") setConfig(configResult.value || {});
+    else setConfigError(configResult.reason?.message || "Project settings could not be loaded");
     if (overviewResult.status === "rejected") {
       setError(overviewResult.reason?.message || "Brain could not be loaded");
     }
@@ -194,6 +204,8 @@ function App({ transport = brainTransport }) {
 
   const loadSnapshot = useCallback(async () => {
     const requestId = ++snapshotRequest.current;
+    setSnapshotLoading(true);
+    setSnapshotError("");
     try {
       const next = normalizeSnapshot(await transport.getSnapshot());
       if (requestId === snapshotRequest.current) {
@@ -202,8 +214,10 @@ function App({ transport = brainTransport }) {
       }
       return next;
     } catch (cause) {
-      if (requestId === snapshotRequest.current) setOperationError(cause.message || "Review data could not be loaded");
+      if (requestId === snapshotRequest.current) setSnapshotError(cause.message || "Review data could not be loaded");
       throw cause;
+    } finally {
+      if (requestId === snapshotRequest.current) setSnapshotLoading(false);
     }
   }, [transport]);
 
@@ -246,6 +260,7 @@ function App({ transport = brainTransport }) {
   }, [desktopHost, desktopSession?.project, load]);
 
   const invalidateProjectRequests = useCallback(() => {
+    projectGeneration.current += 1;
     loadRequest.current += 1;
     snapshotRequest.current += 1;
     selectionRequest.current += 1;
@@ -255,8 +270,13 @@ function App({ transport = brainTransport }) {
     invalidateProjectRequests();
     setSnapshot(normalizeSnapshot(null));
     setSnapshotLoaded(false);
+    setSnapshotLoading(false);
+    setSnapshotError("");
     setOverview({});
     setConfig(null);
+    setConfigError("");
+    setGraphSession(null);
+    setReviewSession({ issue: "ALL", objectType: "ALL", modelId: "ALL", reportId: "ALL", sort: "confidence-high" });
     setSearchSession({ query: "", modelId: "", reportId: "", result: null });
     setInspectorOrigin("search");
     setInspectorSession({ query: "", modelId: "", reportId: "", objectType: "MEASURE", result: null });
@@ -304,7 +324,7 @@ function App({ transport = brainTransport }) {
   const selected = inspectedObject || nodes.find((node) => node.id === selectedId) || null;
   const counts = useMemo(() => {
     const current = dataCounts(nodes, edges, candidates, conflicts);
-    return { ...current, models: numberOr(overview.models, current.models), reports: numberOr(overview.reports, current.reports), objects: numberOr(overview.counts?.nodes ?? overview.objects, current.objects), edges: numberOr(overview.counts?.edges ?? overview.edges, current.edges), candidates: numberOr(overview.candidate_count, current.candidates), warnings: numberOr(overview.warning_count, current.warnings) };
+    return { ...current, models: numberOr(overview.models, current.models), reports: numberOr(overview.reports, current.reports), objects: numberOr(overview.counts?.nodes ?? overview.objects, current.objects), edges: numberOr(overview.counts?.edges ?? overview.edges, current.edges), candidates: numberOr(overview.review_counts?.candidate ?? overview.candidate_count, current.candidates), warnings: numberOr(overview.review_counts?.conflict ?? overview.warning_count, current.warnings), stale: numberOr(overview.review_counts?.stale), review: numberOr(overview.review_count, numberOr(overview.candidate_count, current.candidates) + numberOr(overview.warning_count, current.warnings)) };
   }, [candidates, conflicts, edges, nodes, overview]);
 
   const selectNode = useCallback(async (id, nextView = "inspector") => {
@@ -334,6 +354,8 @@ function App({ transport = brainTransport }) {
     setScanning(true);
     setLoading(true);
     setOperationError("");
+    invalidateProjectRequests();
+    setSnapshotLoading(false);
     try {
       const result = await transport.scan();
       selectionRequest.current += 1;
@@ -345,10 +367,14 @@ function App({ transport = brainTransport }) {
       setInspectorError("");
       setSnapshot(normalizeSnapshot(null));
       setSnapshotLoaded(false);
+      setSnapshotLoading(false);
+      setSnapshotError("");
+      setGraphSession(null);
       setInspectorSession((current) => ({ ...current, result: null, revision: (current.revision || 0) + 1 }));
       setSearchSession((current) => ({ ...current, result: null, selectedId: null, scrollY: 0, revision: (current.revision || 0) + 1 }));
       setNotice("Scan complete");
       await load();
+      if (currentView.current === "review") await loadSnapshot();
     } catch (cause) {
       setOperationError(cause.message || "Scan failed");
     } finally {
@@ -356,10 +382,12 @@ function App({ transport = brainTransport }) {
       setScanning(false);
       setLoading(false);
     }
-  }, [load, transport]);
+  }, [invalidateProjectRequests, load, loadSnapshot, transport]);
 
   const review = useCallback(
     async (action, item, value = undefined) => {
+      if (scanInFlight.current) return false;
+      const generation = projectGeneration.current;
       const target = itemTarget(item);
       if (!target) return;
       const stale = item?.issue === "stale" || item?.issue_type === "stale" || item?.status === "stale";
@@ -383,8 +411,12 @@ function App({ transport = brainTransport }) {
         const result = await transport.review(action, {
           ...payload,
         });
+        if (generation !== projectGeneration.current) return false;
         const returned = result?.snapshot || result?.brain;
-        if (returned) setSnapshot(normalizeSnapshot(returned));
+        if (returned) {
+          setSnapshot(normalizeSnapshot(returned));
+          setSnapshotLoaded(true);
+        }
         else {
           setSnapshot((current) => ({
             ...current,
@@ -394,9 +426,10 @@ function App({ transport = brainTransport }) {
           }));
         }
         setNotice({ approve: "Suggestion approved", reject: "Suggestion rejected", edit: "Suggestion updated", override: "Meaning updated", remove: "Saved decision removed" }[action] || "Review updated");
-        await Promise.all([loadSnapshot(), load()]);
+        await Promise.allSettled([loadSnapshot(), load()]);
         return true;
       } catch (cause) {
+        if (generation !== projectGeneration.current) return false;
         setNotice("Review failed. Try again.");
         return false;
       }
@@ -433,12 +466,20 @@ function App({ transport = brainTransport }) {
 
   const activeProject = desktopSession?.project;
   const projectName = activeProject?.name || config?.name || "PBIBrain";
-  const pending = counts.candidates + counts.warnings;
+  const pending = counts.review;
   const connection = loading ? "loading" : error ? "error" : "ready";
-  const reloadBrain = () => { setInspectorSession((current) => ({ ...current, result: null, revision: (current.revision || 0) + 1 })); setSearchSession((current) => ({ ...current, result: null, revision: (current.revision || 0) + 1 })); load(); if (view === "inspector" && selectedId) selectNode(selectedId); };
+  const reloadBrain = () => {
+    setInspectorSession((current) => ({ ...current, result: null, revision: (current.revision || 0) + 1 }));
+    setSearchSession((current) => ({ ...current, result: null, revision: (current.revision || 0) + 1 }));
+    setGraphSession((current) => current ? { ...current, result: null, revision: (current.revision || 0) + 1 } : null);
+    load();
+    if (view === "inspector" && selectedId) selectNode(selectedId);
+    else if (snapshotLoaded || view === "review") loadSnapshot().catch(() => {});
+  };
   const failedNotice = /failed/i.test(String(notice));
   return (
     <div className="app-shell">
+      <a className="skip-link" href="#main-content">Skip to content</a>
       <aside className="sidebar">
         <div className="sidebar-brand">
           <BrandMark size={28} />
@@ -472,35 +513,41 @@ function App({ transport = brainTransport }) {
           <div className="topbar-actions">
             {scanning ? <span className="topbar-scanning"><RefreshCw className="spin" aria-hidden="true" />Scanning</span> : null}
             {activeProject ? <Button variant="ghost" size="sm" className="project-switch" onClick={closeDesktopProject} disabled={scanning}><FolderOpen />Change project</Button> : null}
-            <Button variant="ghost" size="icon-sm" onClick={reloadBrain} title="Reload Brain" aria-label="Reload Brain"><RefreshCw className={loading ? "spin" : ""} /></Button>
+            <Button variant="ghost" size="icon-sm" onClick={reloadBrain} disabled={loading || scanning} title="Reload Brain" aria-label="Reload Brain"><RefreshCw className={loading ? "spin" : ""} /></Button>
           </div>
         </header>
 
-        <main className={`content content-${view}`}>
+        <main id="main-content" tabIndex={-1} className={`content content-${view}`}>
           {notice ? <div className={`toast ${failedNotice ? "toast-error" : ""}`} role="status">{failedNotice ? <TriangleAlert aria-hidden="true" /> : <CircleCheck aria-hidden="true" />}{notice}</div> : null}
-          {error || operationError || desktopError ? (
+          {error || configError || operationError || desktopError ? (
             <div className="error-banner" role="alert">
               <TriangleAlert aria-hidden="true" />
-              <span>{readableText(error || operationError || desktopError)}</span>
-              {error ? <Button variant="outline" size="sm" onClick={load}>Retry</Button> : null}
+              <span>{readableText(error || configError || operationError || desktopError)}</span>
+              {error || configError ? <Button variant="outline" size="sm" onClick={load}>Retry</Button> : null}
             </div>
           ) : null}
           <div className="view-frame" key={view}>
+            <Suspense fallback={<div className="view-loading" role="status"><RefreshCw className="spin" aria-hidden="true" />Loading view…</div>}>
             {view === "overview" ? <Overview onSelect={selectNode} overview={overview} config={config} counts={counts} loading={loading} projectName={projectName} onView={navigate} onSearch={(query) => { setSearchSession({ query, modelId: "", reportId: "", result: null }); setView("search"); }} onSources={() => { setSettingsTab("project"); setView("config"); }} onSummary={() => { setSettingsTab("summary"); setView("config"); }} onScan={applyScan} scanning={scanning} scanLabel={activeProject ? "Scan project" : "Scan sources"} onReview={() => navigate("review")} /> : null}
             {view === "search" ? <div className="page page-narrow"><SearchView session={searchSession} onSession={setSearchSession} colors={graphColors} transport={transport} overview={overview} onSelect={selectNode} /></div> : null}
-            {view === "graph" ? <GraphView colors={graphColors} transport={transport} overview={overview} snapshot={snapshot} selectedId={selectedId} onSelect={selectNode} /> : null}
-            {view === "inspector" ? <div className="page page-wide">{selectedId ? <><Button variant="ghost" size="sm" className="inspector-back" onClick={() => { if (inspectorOrigin === "inspector") { setSelectedId(null); setInspectedObject(null); } else setView(inspectorOrigin); }}><ArrowLeft aria-hidden="true" />{inspectorOrigin === "search" ? "Back to results" : inspectorOrigin === "inspector" ? "Browse objects" : `Back to ${VIEWS.find(([key]) => key === inspectorOrigin)?.[1]?.toLowerCase() || "overview"}`}</Button><Inspector key={selectedId} transport={transport} colors={graphColors} node={selected} details={inspectedDetails} loading={Boolean(selectedId && !inspectedDetails && !inspectorError)} error={inspectorError} snapshot={snapshot} snapshotLoaded={snapshotLoaded} overview={overview} onSelect={selectNode} onRetry={() => selectNode(selectedId)} onReview={review} onGraph={() => setView("graph")} /></> : <SearchView browse session={inspectorSession} onSession={setInspectorSession} colors={graphColors} transport={transport} overview={overview} onSelect={(id) => { setInspectorOrigin("inspector"); selectNode(id); }} />}</div> : null}
-            {view === "review" ? <div className="page page-wide"><ReviewQueue snapshot={snapshot} loading={!snapshotLoaded} overview={overview} onSelect={selectNode} onReview={review} /></div> : null}
-            {view === "config" ? <div className="page page-narrow"><Tabs value={settingsTab} onValueChange={setSettingsTab} className="settings-tabs">
-              <TabsList aria-label="Settings sections"><TabsTrigger value="colors">Graph colors</TabsTrigger><TabsTrigger value="project">Project</TabsTrigger><TabsTrigger value="summary">Model summary</TabsTrigger></TabsList>
-              <TabsContent value="colors"><GraphColors config={config} transport={transport} overview={overview} onSaved={setConfig} /></TabsContent>
-              <TabsContent value="summary"><ModelSummary overview={overview} transport={transport} scanning={scanning} /></TabsContent>
-              <TabsContent value="project">{activeProject ? <DesktopProjectView api={desktopApi} project={activeProject} overview={overview} config={config} transport={transport} scanning={scanning} onScan={applyScan} onChange={closeDesktopProject} onRefresh={load} onSaved={setConfig} /> : <ConfigView transport={transport} config={config} onSaved={setConfig} onScan={applyScan} scanning={scanning} />}</TabsContent></Tabs></div> : null}
+            {view === "graph" ? <GraphView session={graphSession} onSession={setGraphSession} colors={graphColors} transport={transport} overview={overview} snapshot={snapshot} selectedId={selectedId} onSelect={selectNode} /> : null}
+            {view === "inspector" ? <div className="page page-wide">{selectedId ? <><Button variant="ghost" size="sm" className="inspector-back" onClick={() => { if (inspectorOrigin === "inspector") { setSelectedId(null); setInspectedObject(null); } else setView(inspectorOrigin); }}><ArrowLeft aria-hidden="true" />{inspectorOrigin === "search" ? "Back to results" : inspectorOrigin === "inspector" ? "Browse objects" : `Back to ${VIEWS.find(([key]) => key === inspectorOrigin)?.[1]?.toLowerCase() || "overview"}`}</Button><Inspector key={selectedId} transport={transport} scanning={scanning} colors={graphColors} node={selected} details={inspectedDetails} loading={Boolean(selectedId && !inspectedDetails && !inspectorError)} error={inspectorError} snapshot={snapshot} snapshotLoaded={snapshotLoaded} snapshotError={snapshotError} onEvidenceRetry={() => loadSnapshot().catch(() => {})} overview={overview} onSelect={selectNode} onRetry={() => selectNode(selectedId)} onReview={review} onGraph={() => setView("graph")} /></> : <SearchView browse session={inspectorSession} onSession={setInspectorSession} colors={graphColors} transport={transport} overview={overview} onSelect={(id) => { setInspectorOrigin("inspector"); selectNode(id); }} />}</div> : null}
+            {view === "review" ? <div className="page page-wide"><ReviewQueue scanning={scanning} session={reviewSession} onSession={setReviewSession} snapshot={snapshot} loaded={snapshotLoaded} loading={!snapshotLoaded && (snapshotLoading || !snapshotError)} error={snapshotError} onRetry={() => loadSnapshot().catch(() => {})} overview={overview} onSelect={selectNode} onReview={review} /></div> : null}
+            {view === "config" ? <div className="page page-narrow"><PageHeading title="Settings" description="Manage project sources, graph appearance, and model context." />{configError && !config ? <Card className="panel"><EmptyState icon={<TriangleAlert />} tone="bad" title="Project settings unavailable" detail="Retry to load your saved sources and appearance." action={<Button variant="outline" onClick={load}>Retry settings</Button>} /></Card> : <Tabs value={settingsTab} onValueChange={setSettingsTab} className="settings-tabs">
+              <TabsList aria-label="Settings sections"><TabsTrigger value="project">Project</TabsTrigger><TabsTrigger value="colors">Graph colors</TabsTrigger><TabsTrigger value="summary">Model summary</TabsTrigger></TabsList>
+              <TabsContent value="colors"><Suspense fallback={<ViewLoading />}><GraphColors config={config} transport={transport} overview={overview} onSaved={setConfig} /></Suspense></TabsContent>
+              <TabsContent value="summary"><Suspense fallback={<ViewLoading />}><ModelSummary overview={overview} transport={transport} scanning={scanning} /></Suspense></TabsContent>
+              <TabsContent value="project">{activeProject ? <DesktopProjectView api={desktopApi} project={activeProject} overview={overview} config={config} transport={transport} scanning={scanning} onScan={applyScan} onChange={closeDesktopProject} onRefresh={load} onSaved={setConfig} /> : <ConfigView transport={transport} config={config} onSaved={setConfig} onScan={applyScan} scanning={scanning} />}</TabsContent></Tabs>}</div> : null}
+            </Suspense>
           </div>
         </main>
       </div>
     </div>
   );
+}
+
+function ViewLoading() {
+  return <div className="view-loading" role="status"><RefreshCw className="spin" aria-hidden="true" />Loading view…</div>;
 }
 
 function DesktopConnecting({ error, onRetry }) {
@@ -584,7 +631,7 @@ function PageHeading({ kicker, title, description, action, children }) {
       <div className="page-heading-copy">
         {kicker ? <p className="eyebrow">{kicker}</p> : null}
         {children}
-        <h2>{title}</h2>
+        <h1>{title}</h1>
         {description ? <p className="page-description">{description}</p> : null}
       </div>
       {action ? <div className="page-heading-action">{action}</div> : null}
@@ -601,7 +648,7 @@ function Overview({ overview, config, counts, loading, projectName, onView, onSe
   const validationState = overview.validation_state || "not_run";
   const validationLabel = { valid: "Graph validation passed", invalid: "Graph validation failed", warning: "Graph validation warnings", not_run: "Graph validation not run" }[validationState] || "Graph validation unavailable";
   const issues = overview.validation_issues || [];
-  const pending = counts.candidates + counts.warnings;
+  const pending = counts.review;
   const ValidationIcon = validationState === "valid" ? ShieldCheck : ShieldAlert;
   const validation = <Card className={`overview-card validation-card tone-${validationState}`} role={validationState === "invalid" ? "alert" : "status"}>
     <div className="overview-card-head"><span className="icon-tile" aria-hidden="true"><ValidationIcon /></span><h3>{validationLabel}</h3></div>
@@ -647,7 +694,7 @@ function Overview({ overview, config, counts, loading, projectName, onView, onSe
           <div className="overview-main">
             <Card className={`project-review-card ${pending ? "has-pending" : ""}`}>
               <div className="review-card-count" aria-hidden="true"><strong>{pending}</strong><span>{pending === 1 ? "open item" : "open items"}</span></div>
-              <div className="review-card-copy"><h3>{validationState === "invalid" ? "Resolve graph issues before review" : counts.candidates || counts.warnings ? "Ready for review" : "No pending reviews"}</h3><p>{counts.candidates || counts.warnings ? "Check suggested meanings and resolve uncertain matches." : "All suggestions have been reviewed."}</p>{counts.warnings ? <p className="review-card-split"><span>{counts.candidates} suggestions</span><span>{counts.warnings} conflicts</span></p> : null}</div>
+              <div className="review-card-copy"><h3>{validationState === "invalid" ? "Resolve graph issues before review" : pending ? "Ready for review" : "No pending reviews"}</h3><p>{pending ? "Check suggested meanings and resolve uncertain matches." : "All suggestions have been reviewed."}</p>{counts.warnings || counts.stale ? <p className="review-card-split"><span>{counts.candidates} suggestions</span>{counts.warnings ? <span>{counts.warnings} conflicts</span> : null}{counts.stale ? <span>{counts.stale} outdated decisions</span> : null}</p> : null}</div>
               <Button variant={pending ? "default" : "outline"} onClick={onReview}>Open review queue <ArrowRight aria-hidden="true" /></Button>
             </Card>
             <div className="quick-actions">
@@ -664,6 +711,8 @@ function Overview({ overview, config, counts, loading, projectName, onView, onSe
 
 function SearchView({ transport, overview, onSelect, colors, session, onSession, browse = false }) {
   const { query, modelId, reportId, objectType = "" } = session;
+  const active = Boolean(browse || query.trim() || modelId || reportId || objectType);
+  const inputId = browse ? "browse-object-query" : "brain-search-query";
   const [pending, setPending] = useState(false);
   const [failure, setFailure] = useState(null);
   const request = useRef(0);
@@ -677,10 +726,10 @@ function SearchView({ transport, overview, onSelect, colors, session, onSession,
   requestedKey.current = key;
   const result = session.result?.key === key ? session.result.data : null;
   const error = failure?.key === key ? failure : null;
-  const loading = pending || Boolean((browse || query.trim()) && !result && !error);
+  const loading = pending || Boolean(active && !result && !error);
   const change = (values) => onSession((current) => ({ ...current, ...values, selectedId: null, scrollY: 0 }));
   const runSearch = useCallback(async (offset = 0) => {
-    if ((!browse && !query.trim()) || inFlight.current?.key === key) return;
+    if (!active || inFlight.current?.key === key) return;
     const requestId = ++request.current;
     inFlight.current = { key, requestId };
     setPending(true); setFailure(null);
@@ -698,13 +747,13 @@ function SearchView({ transport, overview, onSelect, colors, session, onSession,
     } finally {
       if (requestId === request.current) { setPending(false); inFlight.current = null; }
     }
-  }, [key, modelId, query, reportId, objectType, transport, onSession, browse]);
+  }, [key, modelId, query, reportId, objectType, transport, onSession, active]);
   useEffect(() => {
     setPending(false);
-    if ((!browse && !query.trim()) || latest.current.result?.key === key) return undefined;
+    if (!active || latest.current.result?.key === key) return undefined;
     const timer = setTimeout(() => runSearch(), 220);
     return () => { clearTimeout(timer); request.current += 1; inFlight.current = null; };
-  }, [key, query, runSearch, browse]);
+  }, [key, runSearch, active]);
   useEffect(() => {
     const frame = requestAnimationFrame(() => {
       const current = latest.current;
@@ -717,11 +766,12 @@ function SearchView({ transport, overview, onSelect, colors, session, onSession,
   const models = scopeOptions(overview, "model");
   const reports = scopeOptions(overview, "report");
   const scopeName = (object) => [...models, ...reports].find((item) => item.id === (object.report_id || object.model_id))?.name;
-  const active = browse || query.trim();
   return <div ref={panel}>
+    <PageHeading title={browse ? "Browse objects" : "Search"} description={browse ? "Choose an object to inspect its formula, dependencies, and report usage." : "Find objects by name, description, or part of a DAX formula."} />
     <Card className="panel search-panel" aria-busy={loading}>
       <div className="search-toolbar">
-        <Label className="search-field"><NavIcon name="search" size={18} /><Input type="search" value={query} onChange={(event) => change({ query: event.target.value })} onKeyDown={(event) => { if (event.key === "Enter") runSearch(); }} placeholder={browse ? "Filter objects by name…" : "Measure, table, column, or visual…"} aria-label="Search the brain" />{loading && active ? <RefreshCw className="search-spinner spin" aria-hidden="true" /> : null}</Label>
+        <Label htmlFor={inputId} className="search-query-label">{browse ? "Filter by name or formula" : "Name or formula"}</Label>
+        <div className="search-field"><NavIcon name="search" size={18} /><Input id={inputId} type="search" value={query} onChange={(event) => change({ query: event.target.value })} onKeyDown={(event) => { if (event.key === "Enter") runSearch(); }} placeholder={browse ? "Filter objects by name…" : "Measure, table, column, or visual…"} aria-label="Search the brain" />{loading && active ? <RefreshCw className="search-spinner spin" aria-hidden="true" /> : null}</div>
         <div className="search-filters">
           <Label className="select-field"><span>Model</span><NativeSelect aria-label="Model" value={modelId} onChange={(event) => change({ modelId: event.target.value, reportId: "" })}><option value="">All models</option>{models.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</NativeSelect></Label>
           <Label className="select-field"><span>Report</span><NativeSelect aria-label="Report" value={reportId} onChange={(event) => change({ reportId: event.target.value, modelId: "" })}><option value="">All reports</option>{reports.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</NativeSelect></Label>
@@ -729,7 +779,7 @@ function SearchView({ transport, overview, onSelect, colors, session, onSession,
           {modelId || reportId || objectType ? <Button variant="ghost" size="sm" className="clear-filters" onClick={() => change({ modelId: "", reportId: "", objectType: "" })}><X />Clear filters</Button> : null}
         </div>
       </div>
-      <div className="search-status" role="status" aria-live="polite">{active ? loading ? "Searching…" : result ? `${result.items.length} of ${result.total} ${browse && !query.trim() ? "objects" : "matches"}` : "" : "Search by name or paste part of a formula."}</div>
+      <div className="search-status" role="status" aria-live="polite">{active ? loading ? "Searching…" : result ? `${result.items.length} of ${result.total} ${!query.trim() ? "objects" : "matches"}` : "" : "Search by name, paste part of a formula, or choose a filter."}</div>
       {error ? <div className="search-error" role="alert"><TriangleAlert aria-hidden="true" /><span>{readableText(error.message)}</span><Button variant="outline" size="sm" onClick={() => runSearch(error.offset)}>Retry search</Button></div> : null}
       {!active ? <EmptyState icon={<NavIcon name="search" size={20} />} title="What are you looking for?" detail="Find a measure to inspect its formula and dependencies." action={<p className="empty-hint"><kbd>Ctrl</kbd><kbd>K</kbd> jumps here from anywhere</p>} /> : null}
       {active && !loading && !result?.items?.length && !error ? <EmptyState icon={<NavIcon name="search" size={20} />} title="No matches" detail="Try a shorter name or clear the filters." /> : null}
@@ -751,6 +801,7 @@ function ConfigView({ transport, config, onSaved, onScan, scanning }) {
   }, [config]);
   if (!draft) return <Card className="panel"><EmptyState title="Loading configuration" detail="Reading the local project settings." /></Card>;
   const updateSource = (index, value) => setDraft((current) => ({ ...current, sources: current.sources.map((source, sourceIndex) => sourceIndex === index ? value : source) }));
+  const dirty = draft.name !== config?.name || JSON.stringify(draft.sources) !== JSON.stringify(config?.sources || []);
   const save = async () => {
     setSaving(true); setMessage("");
     try { const saved = await transport.saveConfig(draft); setDraft(saved); onSaved(saved); setMessage("Saved"); }
@@ -770,12 +821,12 @@ function ConfigView({ transport, config, onSaved, onScan, scanning }) {
           <Button variant="outline" size="sm" className="add-source" onClick={() => setDraft({ ...draft, sources: [...draft.sources, ""] })}><Plus />Add source</Button>
         </div>
       </div>
-      <div className="config-actions"><Button onClick={save} disabled={saving}>{saving ? "Saving…" : "Save configuration"}</Button><Button variant="outline" onClick={onScan} disabled={scanning}><ScanLine />Scan saved sources</Button>{message ? <span className={message === "Saved" ? "success-text" : "error-copy"}>{message === "Saved" ? <Check aria-hidden="true" /> : null}{message}</span> : null}</div>
+      <div className="config-actions"><Button onClick={save} disabled={saving || scanning || !dirty}>{saving ? "Saving…" : "Save configuration"}</Button><Button variant="outline" onClick={onScan} disabled={scanning || saving || dirty || !config?.sources?.length}><ScanLine />{scanning ? "Scanning…" : "Scan saved sources"}</Button>{dirty ? <span className="muted-copy compact">Save changes before scanning.</span> : null}{message ? <span role={message === "Saved" ? "status" : "alert"} className={message === "Saved" ? "success-text" : "error-copy"}>{message === "Saved" ? <Check aria-hidden="true" /> : null}{message}</span> : null}</div>
     </Card>
   </>;
 }
 
-function Inspector({ node, details, loading, error, snapshot, snapshotLoaded, overview, onSelect, onRetry, onReview, onGraph, colors, transport }) {
+function Inspector({ node, details, loading, error, snapshot, snapshotLoaded, snapshotError, overview, onSelect, onRetry, onEvidenceRetry, onReview, onGraph, colors, scanning, transport }) {
   if (error) return <Card className="panel inspector-state"><div className="empty-state tone-bad"><span className="empty-icon" aria-hidden="true"><TriangleAlert /></span><h2>Object unavailable</h2><p>{readableText(error)}</p><Button variant="outline" onClick={onRetry}><RefreshCw />Retry object</Button></div></Card>;
   if (loading) return <div className="inspector-loading"><div className="skeleton skeleton-title" /><div className="skeleton-grid"><div className="skeleton skeleton-block" /><div className="skeleton skeleton-block" /></div><p role="status" className="loading-label">Loading object details…</p></div>;
   if (!node) return <><PageHeading title="Select an object" description="Choose an object from Search or the graph." action={<Button onClick={onGraph}>Open graph</Button>} /></>;
@@ -806,8 +857,8 @@ function Inspector({ node, details, loading, error, snapshot, snapshotLoaded, ov
           {expression ? <ExpressionBlock expression={formatValue(expression)} /> : !node.description ? <p className="muted-copy">No description recorded.</p> : null}
           {fields.length ? <dl className="metadata-grid">{fields.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl> : null}
         </Card>
-        {candidates.length || warnings.length ? <details className="object-metadata object-review panel" open><summary><span>Review &amp; evidence</span><span className="summary-count">{candidates.length} suggestions{warnings.length ? ` · ${warnings.length} warnings` : ""}</span></summary>{candidates.map((item) => <div className="object-review-item" key={item.id || item.target}><CandidateActions item={item} onReview={onReview} /><EvidenceCard item={item} /></div>)}{warnings.map((warning) => <div className="warning-card" key={warning.id || formatEvidence(warning.reason)}><strong><TriangleAlert aria-hidden="true" />Conflict</strong><p>{formatEvidence(warning.reason || warning.message || warning.description || "Conflicting evidence needs review.")}</p></div>)}</details> : null}
-        {!snapshotLoaded ? <p className="muted-copy object-review" role="status">Review evidence has not loaded yet.</p> : null}
+        {candidates.length || warnings.length ? <details className="object-metadata object-review panel" open><summary><span>Review &amp; evidence</span><span className="summary-count">{candidates.length} suggestions{warnings.length ? ` · ${warnings.length} warnings` : ""}</span></summary>{candidates.map((item) => <div className="object-review-item" key={item.id || item.target}><CandidateActions item={item} onReview={onReview} disabled={scanning} /><EvidenceCard item={item} /></div>)}{warnings.map((warning) => <div className="warning-card" key={warning.id || formatEvidence(warning.reason)}><strong><TriangleAlert aria-hidden="true" />Conflict</strong><p>{formatEvidence(warning.reason || warning.message || warning.description || "Conflicting evidence needs review.")}</p></div>)}</details> : null}
+        {snapshotError ? <div className="inline-error" role="alert"><p>{snapshotLoaded ? "Review evidence could not be refreshed. Showing last loaded evidence." : "Review evidence unavailable."} {readableText(snapshotError)}</p><Button variant="outline" size="sm" onClick={onEvidenceRetry}>Retry evidence</Button></div> : !snapshotLoaded ? <p className="muted-copy object-review" role="status">Loading review evidence…</p> : null}
         {connected.some((edge) => !usageTypes.has(edge.type) && edge.type !== "OBSERVED_WITH") ? <details className="object-metadata object-other panel"><summary><span>Other relationships</span></summary><RelationshipGroup title="Connected objects" nodeId={node.id} edges={connected.filter((edge) => !usageTypes.has(edge.type) && edge.type !== "OBSERVED_WITH")} nodes={relatedNodes} onSelect={onSelect} empty="No other relationships." /></details> : null}
         {observations.length ? <details className="object-metadata object-observed panel"><summary><span>Observed report usage</span><span className="summary-count">{observations.length}</span></summary>{observations.map((edge) => <div className="usage-row" key={edge.id}><span>{scopeName(edge.from_id === node.id ? edge.to_id : edge.from_id)}</span><strong>{formatValue(edge.properties?.count || edge.count || "observed")}</strong></div>)}<p className="footnote">Co-occurrence does not establish compatibility.</p></details> : null}
       </div>
@@ -867,18 +918,23 @@ function itemScopeValue(item, node, key) {
   return item?.[key] ?? item?.properties?.[key] ?? node?.[key] ?? node?.properties?.[key] ?? "";
 }
 
-function ReviewQueue({ snapshot, loading, overview, onSelect, onReview }) {
-  const [issue, setIssue] = useState("ALL");
-  const [objectType, setObjectType] = useState("ALL");
-  const [modelId, setModelId] = useState("ALL");
-  const [reportId, setReportId] = useState("ALL");
-  const [sort, setSort] = useState("confidence-high");
+function ReviewQueue({ session, onSession, snapshot, loaded, loading, error, onRetry, overview, onSelect, onReview, scanning }) {
+  const { issue, objectType, modelId, reportId, sort } = session;
+  const change = (values) => onSession((current) => ({ ...current, ...values }));
+  const panel = useRef(null);
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => {
+      const selected = [...(panel.current?.querySelectorAll("[data-review-id]") || [])].find((element) => element.dataset.reviewId === session.selectedId);
+      if (selected) { selected.focus({ preventScroll: true }); window.scrollTo(0, session.scrollY || 0); }
+    });
+    return () => cancelAnimationFrame(frame);
+  }, []);
   const external = snapshot.review_items.map((item) => ({ ...item, issue: reviewIssue(item) }));
   const candidates = snapshot.semantic_candidates.map((item) => ({ ...item, issue: "candidate" }));
   const conflicts = snapshot.conflicts.map((item) => ({ ...item, issue: "conflict", status: item.status || "candidate", confidence: item.confidence ?? 0 }));
   const staleRecords = [...snapshot.stale_overrides, ...snapshot.overrides.filter((item) => item.status === "stale"), ...external.filter((item) => item.issue === "stale")];
   const stale = staleRecords.map((item) => ({ ...item, issue: "stale", status: item.status || "candidate", confidence: item.confidence ?? 0 }));
-  const all = mergeReviewItems(external.length ? external : [...candidates, ...conflicts, ...stale]);
+  const all = mergeReviewItems(external.length ? external : [...candidates, ...conflicts, ...stale]).filter((item) => !["rejected", "approved", "overridden"].includes(item.status));
   const types = [...new Set(all.map((item) => snapshot.nodes.find((node) => node.id === itemTarget(item))?.type).filter(Boolean))].sort();
   const models = [...new Set(all.map((item) => itemScopeValue(item, snapshot.nodes.find((node) => node.id === itemTarget(item)), "model_id")).filter(Boolean))].sort();
   const reports = [...new Set(all.map((item) => itemScopeValue(item, snapshot.nodes.find((node) => node.id === itemTarget(item)), "report_id")).filter(Boolean))].sort();
@@ -887,8 +943,7 @@ function ReviewQueue({ snapshot, loading, overview, onSelect, onReview }) {
     return (issue === "ALL" || item.issue === issue)
       && (objectType === "ALL" || targetNode?.type === objectType)
       && (modelId === "ALL" || itemScopeValue(item, targetNode, "model_id") === modelId)
-      && (reportId === "ALL" || itemScopeValue(item, targetNode, "report_id") === reportId)
-      && !["rejected", "approved", "overridden"].includes(item.status);
+      && (reportId === "ALL" || itemScopeValue(item, targetNode, "report_id") === reportId);
   }).sort((a, b) => {
     if (sort === "confidence-low") return itemConfidence(a) - itemConfidence(b);
     if (sort === "impact-high") return itemImpact(b) - itemImpact(a);
@@ -897,54 +952,62 @@ function ReviewQueue({ snapshot, loading, overview, onSelect, onReview }) {
   });
   const scopes = [...scopeOptions(overview, "model"), ...scopeOptions(overview, "report"), ...snapshot.nodes];
   const scopeName = (id, kind, index) => scopes.find((node) => node.id === id)?.name || `${kind} ${index + 1}`;
-  return <>
+  const hasFilters = issue !== "ALL" || objectType !== "ALL" || modelId !== "ALL" || reportId !== "ALL";
+  return <div ref={panel}>
+    <PageHeading title="Review queue" description="Confirm suggested meanings with the evidence behind each one." />
+    {error && !loaded ? <Card className="panel" role="alert"><EmptyState icon={<TriangleAlert />} tone="bad" title="Review queue unavailable" detail={readableText(error)} action={<Button variant="outline" onClick={onRetry}><RefreshCw />Retry review queue</Button>} /></Card> : <>
+    {error ? <Card className="panel" role="alert"><EmptyState icon={<TriangleAlert />} tone="bad" title="Review refresh failed" detail={`Showing last loaded reviews. ${readableText(error)}`} action={<Button variant="outline" onClick={onRetry}><RefreshCw />Retry review queue</Button>} /></Card> : null}
     <div className="review-purpose"><span className="icon-tile" aria-hidden="true"><ShieldCheck /></span><p>Confirm the meanings PBIBrain inferred. Approval saves a trusted label for search and context; rejection excludes it. Your Power BI files stay unchanged.</p><span className="queue-count"><strong>{loading ? "…" : filtered.length}</strong>{loading ? "Loading…" : " to review"}</span></div>
     <div className="queue-toolbar">
-      <Label className="select-field"><span>Issue</span><NativeSelect value={issue} onChange={(event) => setIssue(event.target.value)}><option value="ALL">All issues</option><option value="candidate">Suggestions</option><option value="conflict">Conflicts</option><option value="stale">Outdated decisions</option></NativeSelect></Label>
-      <Label className="select-field"><span>Object</span><NativeSelect value={objectType} onChange={(event) => setObjectType(event.target.value)}><option value="ALL">All types</option>{types.map((type) => <option key={type} value={type}>{typeLabel(type)}</option>)}</NativeSelect></Label>
-      {models.length > 1 ? <Label className="select-field"><span>Model</span><NativeSelect value={modelId} onChange={(event) => setModelId(event.target.value)}><option value="ALL">All models</option>{models.map((value, index) => <option key={value} value={value}>{scopeName(value, "Model", index)}</option>)}</NativeSelect></Label> : null}
-      {reports.length > 1 ? <Label className="select-field"><span>Report</span><NativeSelect value={reportId} onChange={(event) => setReportId(event.target.value)}><option value="ALL">All reports</option>{reports.map((value, index) => <option key={value} value={value}>{scopeName(value, "Report", index)}</option>)}</NativeSelect></Label> : null}
-      <Label className="select-field select-sort"><span>Sort</span><NativeSelect value={sort} onChange={(event) => setSort(event.target.value)}><option value="confidence-high">Most certain first</option><option value="confidence-low">Least certain first</option><option value="impact-high">Highest impact first</option><option value="impact-low">Lowest impact first</option></NativeSelect></Label>
+      <Label className="select-field"><span>Issue</span><NativeSelect aria-label="Issue" value={issue} onChange={(event) => change({ issue: event.target.value })}><option value="ALL">All issues</option><option value="candidate">Suggestions</option><option value="conflict">Conflicts</option><option value="stale">Outdated decisions</option></NativeSelect></Label>
+      <Label className="select-field"><span>Object</span><NativeSelect aria-label="Object" value={objectType} onChange={(event) => change({ objectType: event.target.value })}><option value="ALL">All types</option>{types.map((type) => <option key={type} value={type}>{typeLabel(type)}</option>)}</NativeSelect></Label>
+      {models.length > 1 ? <Label className="select-field"><span>Model</span><NativeSelect aria-label="Model" value={modelId} onChange={(event) => change({ modelId: event.target.value, reportId: "ALL" })}><option value="ALL">All models</option>{models.map((value, index) => <option key={value} value={value}>{scopeName(value, "Model", index)}</option>)}</NativeSelect></Label> : null}
+      {reports.length > 1 ? <Label className="select-field"><span>Report</span><NativeSelect aria-label="Report" value={reportId} onChange={(event) => change({ reportId: event.target.value, modelId: "ALL" })}><option value="ALL">All reports</option>{reports.map((value, index) => <option key={value} value={value}>{scopeName(value, "Report", index)}</option>)}</NativeSelect></Label> : null}
+      {hasFilters ? <Button variant="ghost" size="sm" onClick={() => change({ issue: "ALL", objectType: "ALL", modelId: "ALL", reportId: "ALL" })}><X />Clear filters</Button> : null}
+      <Label className="select-field select-sort"><span>Sort</span><NativeSelect aria-label="Sort" value={sort} onChange={(event) => change({ sort: event.target.value })}><option value="confidence-high">Most certain first</option><option value="confidence-low">Least certain first</option><option value="impact-high">Highest impact first</option><option value="impact-low">Lowest impact first</option></NativeSelect></Label>
     </div>
     <Card className="panel queue-panel" aria-busy={loading}>
       {loading ? <div className="queue-loading">{[0, 1, 2].map((index) => <div className="skeleton skeleton-row-item" key={index} />)}<p className="sr-only" role="status">Loading suggestions…</p></div> : filtered.length ? <>
         <div className="review-columns" aria-hidden="true"><span>Object &amp; suggestion</span><span>Why review this?</span><span>Confidence</span><span>Decision</span></div>
-        <div className="queue-list">{filtered.map((item) => <ReviewItem key={item.id || `${item.issue}-${itemTarget(item)}`} item={item} nodes={snapshot.nodes} onSelect={onSelect} onReview={onReview} />)}</div>
-      </> : <EmptyState icon={<CircleCheck />} tone="ok" title="Queue is clear" detail="No unresolved suggestions match these filters." />}
+        <div className="queue-list">{filtered.map((item) => <ReviewItem key={item.id || `${item.issue}-${itemTarget(item)}`} item={item} nodes={snapshot.nodes} disabled={scanning} onSelect={(id, nextView) => { change({ selectedId: item.id || itemTarget(item), scrollY: window.scrollY }); onSelect(id, nextView); }} onReview={onReview} />)}</div>
+      </> : <EmptyState icon={hasFilters ? <ShieldCheck /> : <CircleCheck />} tone={hasFilters ? undefined : "ok"} title={hasFilters ? "No matching reviews" : "Queue is clear"} detail={hasFilters ? "Choose different filters to see the remaining reviews." : "All suggestions have been reviewed."} action={hasFilters ? <Button variant="outline" onClick={() => change({ issue: "ALL", objectType: "ALL", modelId: "ALL", reportId: "ALL" })}>Clear filters</Button> : null} />}
     </Card>
-  </>;
+    </>}
+  </div>;
 }
 
-function ReviewItem({ item, nodes, onSelect, onReview }) {
+function ReviewItem({ item, nodes, onSelect, onReview, disabled = false }) {
   const targetNode = nodes.find((node) => node.id === itemTarget(item));
   const [pending, setPending] = useState(false);
-  const decide = async (action) => { if (pending) return; setPending(true); try { await onReview(action, item); } finally { setPending(false); } };
+  const [error, setError] = useState("");
+  const decide = async (action) => { if (pending || disabled) return; setPending(true); setError(""); try { if (!await onReview(action, item)) setError("Decision could not be saved. Try again."); } finally { setPending(false); } };
   const evidence = readableText(item.evidence?.length ? item.evidence : item.item?.evidence, nodes);
   const reason = item.reason || (item.source === "object_name" ? "Only the object name supports this meaning; no description confirms it." : item.source === "description" ? "The source description suggests this meaning. Confirm that the label fits." : "An inference rule proposed this meaning. Confirm it using the recorded evidence.");
   const score = confidence(item.confidence ?? item.properties?.confidence);
   const level = score === null ? "none" : score >= 80 ? "high" : score >= 50 ? "mid" : "low";
   return <div className={`review-item issue-${item.issue}`} aria-busy={pending}>
-    <Button variant="ghost" className="review-target" disabled={!targetNode} onClick={() => onSelect(targetNode.id, "inspector")}><span className={`review-dot ${item.issue}`} /><span className="review-target-copy"><strong>{targetNode ? labelFor(targetNode) : "Source object unavailable"}</strong><small className="review-scope">{objectScope(targetNode, nodes)}</small><small className="review-suggestion">{item.issue === "conflict" ? "Conflicting suggestions" : item.issue === "stale" ? "Outdated saved decision" : suggestionLabel(item)}</small>{targetNode ? <small className="review-type">{typeLabel(targetNode.type)}</small> : null}</span></Button>
+    <Button variant="ghost" className="review-target" data-review-id={item.id || itemTarget(item)} disabled={!targetNode} onClick={() => onSelect(targetNode.id, "inspector")}><span className={`review-dot ${item.issue}`} /><span className="review-target-copy"><strong>{targetNode ? labelFor(targetNode) : "Source object unavailable"}</strong><small className="review-scope">{objectScope(targetNode, nodes)}</small><small className="review-suggestion">{item.issue === "conflict" ? "Conflicting suggestions" : item.issue === "stale" ? "Outdated saved decision" : suggestionLabel(item)}</small>{targetNode ? <small className="review-type">{typeLabel(targetNode.type)}</small> : null}</span></Button>
     <div className="review-evidence"><p>{readableText(reason, nodes)}</p>{evidence ? <small>{evidence}</small> : null}</div>
     <div className={`review-score level-${level}`}><strong>{score === null ? "—" : `${confidence(itemConfidence(item))}%`}</strong><span className="meter" aria-hidden="true"><i style={{ width: `${score ?? 0}%` }} /></span><small>{item.issue === "conflict" ? "Conflict" : item.issue === "stale" ? "Outdated" : "Suggested"}</small></div>
-    <div className="review-actions">{item.issue === "stale" ? <Button variant="outline" size="sm" disabled={pending} onClick={() => decide("remove")}>Remove decision</Button> : <><Button variant="outline" size="sm" className="approve-button" disabled={pending} onClick={() => decide("approve")}><Check aria-hidden="true" />Approve</Button><Button variant="ghost" size="sm" className="reject-button" disabled={pending} onClick={() => decide("reject")}><X aria-hidden="true" />Reject</Button></>}</div>
+    <div className="review-actions">{item.issue === "stale" ? <Button variant="outline" size="sm" disabled={pending || disabled} onClick={() => decide("remove")}>Remove decision</Button> : <><Button variant="outline" size="sm" className="approve-button" disabled={pending || disabled} onClick={() => decide("approve")}><Check aria-hidden="true" />Approve</Button><Button variant="ghost" size="sm" className="reject-button" disabled={pending || disabled} onClick={() => decide("reject")}><X aria-hidden="true" />Reject</Button></>}</div>
+    {error ? <p className="review-decision-error" role="alert">{error}</p> : null}
   </div>;
 }
 
 
-function CandidateActions({ item, onReview }) {
+function CandidateActions({ item, onReview, disabled = false }) {
   const [editingAction, setEditingAction] = useState("");
   const [value, setValue] = useState(readableText(item.value || item.meaning));
   const [pending, setPending] = useState(false);
   const beginEdit = (action) => { setValue(readableText(item.value || item.meaning)); setEditingAction(action); };
   const decide = async (action, nextValue) => {
-    if (pending) return;
+    if (pending || disabled) return;
     setPending(true);
     try { if (await onReview(action, item, nextValue)) setEditingAction(""); }
     finally { setPending(false); }
   };
   const score = confidence(item.confidence ?? item.properties?.confidence);
-  return <fieldset className="candidate-actions" disabled={pending}>
+  return <fieldset className="candidate-actions" disabled={pending || disabled}>
     <div className="candidate-action-title"><span>{suggestionLabel(item)}</span><span className="count-pill">{score === null ? "" : `${score}%`}</span></div>
     {editingAction ? <div className="edit-row"><Input value={value} onChange={(event) => setValue(event.target.value)} aria-label={`${editingAction} semantic value`} /><Button variant="outline" size="sm" disabled={!value.trim()} onClick={() => decide(editingAction, value)}>Save meaning</Button><Button variant="link" size="sm" onClick={() => setEditingAction("")}>Cancel</Button></div> : <div className="action-buttons"><Button variant="outline" size="sm" onClick={() => decide("approve")}>Approve</Button><Button variant="ghost" size="sm" onClick={() => beginEdit("edit")}>Edit</Button><Button variant="ghost" size="sm" onClick={() => decide("reject")}>Reject</Button><Button variant="link" size="sm" onClick={() => beginEdit("override")}>Set meaning</Button></div>}
   </fieldset>;
@@ -955,7 +1018,7 @@ function EvidenceCard({ item }) {
 }
 
 function StatusBadge({ value, large = false }) { return <Badge variant="outline" className={`status-badge ${large ? "large" : ""} ${statusClass(value)}`}><i />{statusLabel(value)}</Badge>; }
-function EmptyState({ title, detail, action, icon, tone }) { return <div className={`empty-state ${tone ? `tone-${tone}` : ""}`}>{icon ? <span className="empty-icon" aria-hidden="true">{icon}</span> : null}<strong>{title}</strong><p>{detail}</p>{action}</div>; }
+function EmptyState({ title, detail, action, icon, tone }) { return <div className={`empty-state ${tone ? `tone-${tone}` : ""}`}>{icon ? <span className="empty-icon" aria-hidden="true">{icon}</span> : null}<h2>{title}</h2><p>{detail}</p>{action}</div>; }
 function formatDate(value) { if (!value || value === "Not scanned") return value || "Not scanned"; const date = new Date(value); return Number.isNaN(date.valueOf()) ? String(value) : date.toLocaleString([], { dateStyle: "medium", timeStyle: "short" }); }
 function formatValue(value) { return readableText(value) || "—"; }
 
