@@ -25,13 +25,13 @@ The app must show clearly what it will create, delete, and modify before it writ
 
 | Term | Meaning |
 |---|---|
-| Merge Session | One saved work unit. It holds the sources, the target, the alignment, the decisions, and the plan. |
+| Merge Session | One saved work unit. It holds the sources, the target, the alignment, the merge choices, and the plan. |
 | Source | One loaded model or report. Kinds: local PBIP (TMDL or TMSL), local PBIR report, cloud model (XMLA), cloud report (Fabric REST definition). |
 | Target | The model and the report that receive the changes. A target is an existing source, or a new empty item, or a copy of a source. |
 | Donor | A source that is not the target. Donors are read-only. |
 | Alignment | The link between "the same object" in different sources (for example, `[Total Sales]` in Model A and in Model B). |
-| Decision | The choice for one aligned row (for example, "take from Model B"). |
-| Change Plan | The ordered list of operations that the decisions produce, with the prerequisites added. |
+| Merge Choice | The choice for one aligned row (for example, "take from Model B"). |
+| Change Plan | The ordered list of operations that the merge choices produce, with the prerequisites added. |
 | Impact | The objects that a change breaks, changes, or needs. |
 
 ## 4. Sources and connections
@@ -116,11 +116,11 @@ Example row: `[Total Sales]`: Model A = target, Model B = Missing, Model C = Dif
 
 The user can filter and select rows by: object type, table, display folder, state, source, page, and "changed since <snapshot>".
 
-## 7. Decisions
+## 7. Merge Choices
 
-### 7.1 Decision types
+### 7.1 Merge Choice types
 
-| Decision | Result in the target |
+| Merge Choice | Result in the target |
 |---|---|
 | Keep target | No change. |
 | Take from <source> | Add the object, or replace the target version. |

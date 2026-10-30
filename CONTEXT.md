@@ -39,3 +39,35 @@ _Avoid_: Remote connection
 **Remote Model Reference**:
 A report binding to a semantic model outside the project.
 _Avoid_: Local model link
+
+**Merge Session**:
+One saved unit of work that brings objects from many sources into one target model and one target report.
+_Avoid_: Merge project, workspace
+
+**Target**:
+The semantic model or report that receives the changes in a merge session. It can be an existing source, a new empty item, or a copy of a source.
+_Avoid_: Master, baseline
+
+**Donor**:
+A source in a merge session that is not the target. A donor is never changed.
+_Avoid_: Source model, origin
+
+**Alignment**:
+The link between objects in different sources that are "the same object", also when their names are different.
+_Avoid_: Mapping, match
+
+**Change Plan**:
+The ordered list of operations that the merge session will do to the target, with the prerequisites included.
+_Avoid_: Script, deployment
+
+**Breaks**:
+The objects that stop to work or change their result because of a change.
+_Avoid_: Downstream impact
+
+**Needs**:
+The objects that the target must have before an added object can work.
+_Avoid_: Upstream impact, dependencies
+
+**Merge Choice**:
+The choice for one aligned row in a merge session: keep the target, take from a donor, take some parts, add with a new name, remove, or skip.
+_Avoid_: Decision (that word means review decisions)
