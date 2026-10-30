@@ -25,6 +25,7 @@ A technical design document (`docs/DEV_CENTER_TECHNICAL_DESIGN.md`) plus short d
 
 - [How does the app read and write cloud reports through the Fabric REST API?](issues/03-fabric-report-api.md): getDefinition / updateDefinition (long-running, full replace, PBIR only for write); read also needs write permission, so "Read" access can fail.
 - [What happens when the app changes files while Power BI Desktop has the project open?](issues/05-desktop-open.md): Desktop shows an "Apply external changes" banner and reloads all; unsaved Desktop work can be lost, so apply needs an "open in Desktop" check.
+- [How does the app read and write cloud models through XMLA?](issues/02-xmla-access.md): TOM + MSAL (WAM) in the .NET bridge; `SaveChanges()` sends only changes, but the app must apply the plan to TOM itself; write conditions are found only from the write error.
 
 ## Not yet specified
 
