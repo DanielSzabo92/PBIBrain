@@ -23,6 +23,8 @@ A technical design document (`docs/DEV_CENTER_TECHNICAL_DESIGN.md`) plus short d
 
 <!-- one line per closed ticket -->
 
+- [How does the app read and write cloud reports through the Fabric REST API?](issues/03-fabric-report-api.md): getDefinition / updateDefinition (long-running, full replace, PBIR only for write); read also needs write permission, so "Read" access can fail.
+
 ## Not yet specified
 
 - Optional value check: run the same measure in a donor and in the target through a live connection, and compare a sample of results. Depends on the XMLA research and the first-version scope.
