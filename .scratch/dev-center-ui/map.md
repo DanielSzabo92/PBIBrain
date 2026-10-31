@@ -32,11 +32,16 @@ A UI design document (`docs/DEV_CENTER_UI_DESIGN.md`) for version 1 of the Devel
 <!-- one line per closed ticket -->
 - 01 (2026-10-31): Render gates work after `npm install` in the kit folder. Theme text and status tokens pass AA in both themes. `line`, `line-strong` (`input`) and `line-focus` are below 3:1, so new controls use `control-border`. axe fails on Graph (2 rules) and on the light Inspector type chip (4.15:1). No page overflow from 1024 to 1440. Full values: [01-render-gates](issues/01-render-gates.md).
 - 02 (2026-10-31): The sidebar item opens a "Merge sessions" table. A 3-step create page (Sources, Target, Name and create) calls the JS API only at the end. The work area has a header (plan status, Check sources, More), banners, and 6 tabs (Compare, Impact, Plan, Agent, Sources, Log). Side panes are a 360 px column at 1280 px and wider, and a sheet below. Measured: 0 overflow in 120 runs, 0 axe violations. Full answer: [02-shell-and-session-flow](issues/02-shell-and-session-flow.md).
+- 10 (2026-10-31): Data seam in `frontend/src/devcenter/`: HTTP read client, queued JS API client with revision, no state library (`useSyncExternalStore` store). Mock state lives in a new fake server (port 8766), and a test shim forwards the JS API calls to it. `stale_revision`: no retry, refetch, toast. Poll `GET session` every 5 s. Unit, contract and e2e tests run in a new CI workflow. Full answer: [10-data-layer-and-tests](issues/10-data-layer-and-tests.md).
 
 ## Backend change requests
 
 <!-- one line each: endpoint, fields, reason, ticket. Ticket 11 carries this list into the design. -->
 - `GET /api/devcenter/sessions`. Fields for each session: ID, display name, updated time, target model and report names, source count, plan status (null permitted), lock state, schema state (ok, newer, damaged). Reason: `GET session` returns only the open session, so the session list has no data. Ticket 02.
+- All `/api/devcenter/*` reads: add a `revision` field. Reason: the UI drops replies that are older than its last state change. Ticket 10.
+- `GET /api/devcenter/session`: keep it cheap. Return the cached plan status, or null with `plan_state: "computing"`, and never run a plan compute. Reason: the UI polls it every 5 s. Ticket 10.
+- `backend/devcenter/contracts/`: add one JSON Schema for each section 14.2 JS API call (request and reply), plus the error shape `{error:{code,message,details}}`. Reason: the contract test validates each mock reply. Ticket 10.
+- `GET /api/devcenter/apply/progress`: fields `apply_id`, `step` (section 13 step ID), `step_index`, `step_count`, `state` (running, done, failed). Reason: the Apply dialog shows the current step, with a poll every 500 ms. Tickets 08 and 10.
 
 ## Not yet specified
 
