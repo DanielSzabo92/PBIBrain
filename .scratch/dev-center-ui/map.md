@@ -30,6 +30,7 @@ A UI design document (`docs/DEV_CENTER_UI_DESIGN.md`) for version 1 of the Devel
 ## Decisions so far
 
 <!-- one line per closed ticket -->
+- 01 (2026-10-31): Render gates work after `npm install` in the kit folder. Theme text and status tokens pass AA in both themes. `line`, `line-strong` (`input`) and `line-focus` are below 3:1, so new controls use `control-border`. axe fails on Graph (2 rules) and on the light Inspector type chip (4.15:1). No page overflow from 1024 to 1440. Full values: [01-render-gates](issues/01-render-gates.md).
 
 ## Not yet specified
 

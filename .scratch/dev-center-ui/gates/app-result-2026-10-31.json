@@ -1,0 +1,358 @@
+{
+  "axe": {
+    "overview/dark": [],
+    "search/dark": [],
+    "graph/dark": [
+      {
+        "id": "aria-valid-attr-value",
+        "impact": "critical",
+        "nodes": 2,
+        "sample": [
+          "#radix-\\:r0\\:-trigger-all",
+          "#radix-\\:r5\\:-trigger-overview"
+        ]
+      },
+      {
+        "id": "nested-interactive",
+        "impact": "serious",
+        "nodes": 3,
+        "sample": [
+          "div[data-id=\"model:finance-model\"]",
+          "div[aria-label=\"Select Sales\"]",
+          "div[data-id=\"report:sales-report\"]"
+        ],
+        "why": "Element has focusable descendants"
+      }
+    ],
+    "inspector/dark": [],
+    "review/dark": [],
+    "settings/dark": [],
+    "overview/light": [],
+    "search/light": [],
+    "graph/light": [
+      {
+        "id": "aria-valid-attr-value",
+        "impact": "critical",
+        "nodes": 2,
+        "sample": [
+          "#radix-\\:r0\\:-trigger-all",
+          "#radix-\\:r5\\:-trigger-overview"
+        ]
+      },
+      {
+        "id": "nested-interactive",
+        "impact": "serious",
+        "nodes": 3,
+        "sample": [
+          "div[data-id=\"model:finance-model\"]",
+          "div[aria-label=\"Select Sales\"]",
+          "div[data-id=\"report:sales-report\"]"
+        ],
+        "why": "Element has focusable descendants"
+      }
+    ],
+    "inspector/light": [
+      {
+        "id": "color-contrast",
+        "impact": "serious",
+        "nodes": 1,
+        "sample": [
+          ".type-chip"
+        ],
+        "why": "Element has insufficient color contrast of 4.15 (foreground color: #7e715b, background color: #f2efe8, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1"
+      }
+    ],
+    "review/light": [],
+    "settings/light": []
+  },
+  "overflow": {
+    "overview@1024x640": {
+      "scrollWidth": 1024,
+      "clientWidth": 1024,
+      "bodyScroll": 1024,
+      "offenders": [],
+      "offenderCount": 0,
+      "overflowPx": 0
+    },
+    "search@1024x640": {
+      "scrollWidth": 1024,
+      "clientWidth": 1024,
+      "bodyScroll": 1024,
+      "offenders": [],
+      "offenderCount": 0,
+      "overflowPx": 0
+    },
+    "graph@1024x640": {
+      "scrollWidth": 1024,
+      "clientWidth": 1024,
+      "bodyScroll": 1024,
+      "offenders": [],
+      "offenderCount": 0,
+      "overflowPx": 0
+    },
+    "inspector@1024x640": {
+      "scrollWidth": 1024,
+      "clientWidth": 1024,
+      "bodyScroll": 1024,
+      "offenders": [],
+      "offenderCount": 0,
+      "overflowPx": 0
+    },
+    "review@1024x640": {
+      "scrollWidth": 1024,
+      "clientWidth": 1024,
+      "bodyScroll": 1024,
+      "offenders": [],
+      "offenderCount": 0,
+      "overflowPx": 0
+    },
+    "settings@1024x640": {
+      "scrollWidth": 1024,
+      "clientWidth": 1024,
+      "bodyScroll": 1024,
+      "offenders": [],
+      "offenderCount": 0,
+      "overflowPx": 0
+    },
+    "overview@1024x900": {
+      "scrollWidth": 1024,
+      "clientWidth": 1024,
+      "bodyScroll": 1024,
+      "offenders": [],
+      "offenderCount": 0,
+      "overflowPx": 0
+    },
+    "search@1024x900": {
+      "scrollWidth": 1024,
+      "clientWidth": 1024,
+      "bodyScroll": 1024,
+      "offenders": [],
+      "offenderCount": 0,
+      "overflowPx": 0
+    },
+    "graph@1024x900": {
+      "scrollWidth": 1024,
+      "clientWidth": 1024,
+      "bodyScroll": 1024,
+      "offenders": [],
+      "offenderCount": 0,
+      "overflowPx": 0
+    },
+    "inspector@1024x900": {
+      "scrollWidth": 1024,
+      "clientWidth": 1024,
+      "bodyScroll": 1024,
+      "offenders": [],
+      "offenderCount": 0,
+      "overflowPx": 0
+    },
+    "review@1024x900": {
+      "scrollWidth": 1024,
+      "clientWidth": 1024,
+      "bodyScroll": 1024,
+      "offenders": [],
+      "offenderCount": 0,
+      "overflowPx": 0
+    },
+    "settings@1024x900": {
+      "scrollWidth": 1024,
+      "clientWidth": 1024,
+      "bodyScroll": 1024,
+      "offenders": [],
+      "offenderCount": 0,
+      "overflowPx": 0
+    },
+    "overview@1152x900": {
+      "scrollWidth": 1152,
+      "clientWidth": 1152,
+      "bodyScroll": 1152,
+      "offenders": [],
+      "offenderCount": 0,
+      "overflowPx": 0
+    },
+    "search@1152x900": {
+      "scrollWidth": 1152,
+      "clientWidth": 1152,
+      "bodyScroll": 1152,
+      "offenders": [],
+      "offenderCount": 0,
+      "overflowPx": 0
+    },
+    "graph@1152x900": {
+      "scrollWidth": 1152,
+      "clientWidth": 1152,
+      "bodyScroll": 1152,
+      "offenders": [],
+      "offenderCount": 0,
+      "overflowPx": 0
+    },
+    "inspector@1152x900": {
+      "scrollWidth": 1152,
+      "clientWidth": 1152,
+      "bodyScroll": 1152,
+      "offenders": [],
+      "offenderCount": 0,
+      "overflowPx": 0
+    },
+    "review@1152x900": {
+      "scrollWidth": 1152,
+      "clientWidth": 1152,
+      "bodyScroll": 1152,
+      "offenders": [],
+      "offenderCount": 0,
+      "overflowPx": 0
+    },
+    "settings@1152x900": {
+      "scrollWidth": 1152,
+      "clientWidth": 1152,
+      "bodyScroll": 1152,
+      "offenders": [],
+      "offenderCount": 0,
+      "overflowPx": 0
+    },
+    "overview@1280x900": {
+      "scrollWidth": 1280,
+      "clientWidth": 1280,
+      "bodyScroll": 1280,
+      "offenders": [],
+      "offenderCount": 0,
+      "overflowPx": 0
+    },
+    "search@1280x900": {
+      "scrollWidth": 1280,
+      "clientWidth": 1280,
+      "bodyScroll": 1280,
+      "offenders": [],
+      "offenderCount": 0,
+      "overflowPx": 0
+    },
+    "graph@1280x900": {
+      "scrollWidth": 1280,
+      "clientWidth": 1280,
+      "bodyScroll": 1280,
+      "offenders": [],
+      "offenderCount": 0,
+      "overflowPx": 0
+    },
+    "inspector@1280x900": {
+      "scrollWidth": 1280,
+      "clientWidth": 1280,
+      "bodyScroll": 1280,
+      "offenders": [],
+      "offenderCount": 0,
+      "overflowPx": 0
+    },
+    "review@1280x900": {
+      "scrollWidth": 1280,
+      "clientWidth": 1280,
+      "bodyScroll": 1280,
+      "offenders": [],
+      "offenderCount": 0,
+      "overflowPx": 0
+    },
+    "settings@1280x900": {
+      "scrollWidth": 1280,
+      "clientWidth": 1280,
+      "bodyScroll": 1280,
+      "offenders": [],
+      "offenderCount": 0,
+      "overflowPx": 0
+    },
+    "overview@1366x900": {
+      "scrollWidth": 1366,
+      "clientWidth": 1366,
+      "bodyScroll": 1366,
+      "offenders": [],
+      "offenderCount": 0,
+      "overflowPx": 0
+    },
+    "search@1366x900": {
+      "scrollWidth": 1366,
+      "clientWidth": 1366,
+      "bodyScroll": 1366,
+      "offenders": [],
+      "offenderCount": 0,
+      "overflowPx": 0
+    },
+    "graph@1366x900": {
+      "scrollWidth": 1366,
+      "clientWidth": 1366,
+      "bodyScroll": 1366,
+      "offenders": [],
+      "offenderCount": 0,
+      "overflowPx": 0
+    },
+    "inspector@1366x900": {
+      "scrollWidth": 1366,
+      "clientWidth": 1366,
+      "bodyScroll": 1366,
+      "offenders": [],
+      "offenderCount": 0,
+      "overflowPx": 0
+    },
+    "review@1366x900": {
+      "scrollWidth": 1366,
+      "clientWidth": 1366,
+      "bodyScroll": 1366,
+      "offenders": [],
+      "offenderCount": 0,
+      "overflowPx": 0
+    },
+    "settings@1366x900": {
+      "scrollWidth": 1366,
+      "clientWidth": 1366,
+      "bodyScroll": 1366,
+      "offenders": [],
+      "offenderCount": 0,
+      "overflowPx": 0
+    },
+    "overview@1440x900": {
+      "scrollWidth": 1440,
+      "clientWidth": 1440,
+      "bodyScroll": 1440,
+      "offenders": [],
+      "offenderCount": 0,
+      "overflowPx": 0
+    },
+    "search@1440x900": {
+      "scrollWidth": 1440,
+      "clientWidth": 1440,
+      "bodyScroll": 1440,
+      "offenders": [],
+      "offenderCount": 0,
+      "overflowPx": 0
+    },
+    "graph@1440x900": {
+      "scrollWidth": 1440,
+      "clientWidth": 1440,
+      "bodyScroll": 1440,
+      "offenders": [],
+      "offenderCount": 0,
+      "overflowPx": 0
+    },
+    "inspector@1440x900": {
+      "scrollWidth": 1440,
+      "clientWidth": 1440,
+      "bodyScroll": 1440,
+      "offenders": [],
+      "offenderCount": 0,
+      "overflowPx": 0
+    },
+    "review@1440x900": {
+      "scrollWidth": 1440,
+      "clientWidth": 1440,
+      "bodyScroll": 1440,
+      "offenders": [],
+      "offenderCount": 0,
+      "overflowPx": 0
+    },
+    "settings@1440x900": {
+      "scrollWidth": 1440,
+      "clientWidth": 1440,
+      "bodyScroll": 1440,
+      "offenders": [],
+      "offenderCount": 0,
+      "overflowPx": 0
+    }
+  }
+}

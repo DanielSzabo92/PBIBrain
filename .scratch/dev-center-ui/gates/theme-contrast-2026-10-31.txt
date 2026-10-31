@@ -1,0 +1,77 @@
+== dark
+  text          bg=16.74  bg-sidebar=16.39  surface=15.64  surface-2=14.90  surface-3=13.77  surface-hover=14.26
+  text-2        bg=8.12  bg-sidebar=7.95  surface=7.59  surface-2=7.23  surface-3=6.68  surface-hover=6.92
+  text-3        bg=6.76  bg-sidebar=6.62  surface=6.32  surface-2=6.02  surface-3=5.56  surface-hover=5.76
+  brand         bg=7.47  bg-sidebar=7.32  surface=6.98  surface-2=6.65  surface-3=6.15  surface-hover=6.36
+  brand-strong  bg=9.63  bg-sidebar=9.43  surface=9.00  surface-2=8.57  surface-3=7.92  surface-hover=8.20
+  ok            bg=10.10  bg-sidebar=9.89  surface=9.44  surface-2=8.99  surface-3=8.31  surface-hover=8.60
+  warn          bg=10.85  bg-sidebar=10.62  surface=10.14  surface-2=9.65  surface-3=8.92  surface-hover=9.24
+  bad           bg=7.49  bg-sidebar=7.34  surface=7.00  surface-2=6.67  surface-3=6.17  surface-hover=6.38
+  info          bg=8.94  bg-sidebar=8.76  surface=8.36  surface-2=7.96  surface-3=7.36  surface-hover=7.62
+  ok on ok-soft over surface (#1c2b28): 7.61
+  ok on ok-soft over bg (#152320): 8.39
+  warn on warn-soft over surface (#2d2921): 8.03
+  warn on warn-soft over bg (#262118): 8.87
+  bad on bad-soft over surface (#2e2225): 5.87
+  bad on bad-soft over bg (#261a1c): 6.45
+  info on info-soft over surface (#1e2833): 6.83
+  info on info-soft over bg (#17202a): 7.52
+  brand on brand-soft over surface (#222535): 5.80
+  brand on brand-soft over bg (#1b1d2c): 6.37
+  brand-ink on brand: 7.41
+  brand-ink on brand-strong: 9.56
+  text-inverse on text: 16.74
+  non-text control-border on bg: 4.01 pass 3:1
+  non-text control-border on surface: 3.74 pass 3:1
+  non-text control-border on surface-2: 3.57 pass 3:1
+  non-text line-strong on bg: 1.46 below 3:1
+  non-text line-strong on surface: 1.36 below 3:1
+  non-text line-strong on surface-2: 1.30 below 3:1
+  non-text line on bg: 1.23 below 3:1
+  non-text line on surface: 1.15 below 3:1
+  non-text line on surface-2: 1.09 below 3:1
+  non-text line-focus on bg: 1.85 below 3:1
+  non-text line-focus on surface: 1.73 below 3:1
+  non-text line-focus on surface-2: 1.65 below 3:1
+  non-text brand on bg: 7.47 pass 3:1
+  non-text brand on surface: 6.98 pass 3:1
+  non-text brand on surface-2: 6.65 pass 3:1
+== light
+  text          bg=16.55  bg-sidebar=15.55  surface=17.91  surface-2=17.00  surface-3=15.70  surface-hover=15.84
+  text-2        bg=5.90  bg-sidebar=5.54  surface=6.38  surface-2=6.06  surface-3=5.59  surface-hover=5.64
+  text-3        bg=5.01  bg-sidebar=4.71  surface=5.42  surface-2=5.15  surface-3=4.75  surface-hover=4.80
+  brand         bg=5.10  bg-sidebar=4.79  surface=5.52  surface-2=5.24  surface-3=4.84  surface-hover=4.88
+  brand-strong  bg=6.71  bg-sidebar=6.30  surface=7.26  surface-2=6.89  surface-3=6.36  surface-hover=6.42
+  ok            bg=5.43  bg-sidebar=5.10  surface=5.87  surface-2=5.58  surface-3=5.15  surface-hover=5.19
+  warn          bg=5.79  bg-sidebar=5.43  surface=6.26  surface-2=5.94  surface-3=5.49  surface-hover=5.54
+  bad           bg=5.35  bg-sidebar=5.02  surface=5.79  surface-2=5.49  surface-3=5.07  surface-hover=5.12
+  info          bg=5.35  bg-sidebar=5.03  surface=5.79  surface-2=5.50  surface-3=5.07  surface-hover=5.12
+  ok on ok-soft over surface (#e9f5f0): 5.25
+  ok on ok-soft over bg (#e0ede6): 4.87
+  warn on warn-soft over surface (#f8f1e7): 5.58
+  warn on warn-soft over bg (#f0e9dd): 5.19
+  bad on bad-soft over surface (#fbefef): 5.15
+  bad on bad-soft over bg (#f3e7e5): 4.79
+  info on info-soft over surface (#eaf2f9): 5.12
+  info on info-soft over bg (#e2eaef): 4.76
+  brand on brand-soft over surface (#eff0fc): 4.87
+  brand on brand-soft over bg (#e7e8f2): 4.53
+  brand-ink on brand: 5.52
+  brand-ink on brand-strong: 7.26
+  text-inverse on text: 17.91
+  non-text control-border on bg: 3.25 pass 3:1
+  non-text control-border on surface: 3.52 pass 3:1
+  non-text control-border on surface-2: 3.34 pass 3:1
+  non-text line-strong on bg: 1.36 below 3:1
+  non-text line-strong on surface: 1.47 below 3:1
+  non-text line-strong on surface-2: 1.40 below 3:1
+  non-text line on bg: 1.16 below 3:1
+  non-text line on surface: 1.26 below 3:1
+  non-text line on surface-2: 1.20 below 3:1
+  non-text line-focus on bg: 1.76 below 3:1
+  non-text line-focus on surface: 1.90 below 3:1
+  non-text line-focus on surface-2: 1.81 below 3:1
+  non-text brand on bg: 5.10 pass 3:1
+  non-text brand on surface: 5.52 pass 3:1
+  non-text brand on surface-2: 5.24 pass 3:1
+TEXT FAILS: 0
