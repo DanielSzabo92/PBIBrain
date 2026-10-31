@@ -1,0 +1,3861 @@
+{
+  "browser": "156.0.8078.49",
+  "overflow": [
+    {
+      "theme": "dark",
+      "w": 1024,
+      "h": 640,
+      "id": "sign-out",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1024,
+      "h": 640,
+      "id": "signing",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1024,
+      "h": 640,
+      "id": "sign-fail",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1024,
+      "h": 640,
+      "id": "sign-fail-consent",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1024,
+      "h": 640,
+      "id": "sign-fail-network",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1024,
+      "h": 640,
+      "id": "select",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1024,
+      "h": 640,
+      "id": "select-nocap",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1024,
+      "h": 640,
+      "id": "select-none",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1024,
+      "h": 640,
+      "id": "select-paste",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1024,
+      "h": 640,
+      "id": "access",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1024,
+      "h": 640,
+      "id": "testing",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1024,
+      "h": 640,
+      "id": "result",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1024,
+      "h": 640,
+      "id": "test-fail",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1024,
+      "h": 640,
+      "id": "report-refused",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1024,
+      "h": 640,
+      "id": "pull-confirm",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1024,
+      "h": 640,
+      "id": "pull-notempty",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1024,
+      "h": 640,
+      "id": "pull-running",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1024,
+      "h": 640,
+      "id": "pull-done",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1024,
+      "h": 640,
+      "id": "pull-fail",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1024,
+      "h": 640,
+      "id": "rules",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1024,
+      "h": 640,
+      "id": "rules-select",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1024,
+      "h": 640,
+      "id": "rules-menu",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1024,
+      "h": 640,
+      "id": "rules-editor",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": {
+        "mode": "sheet",
+        "width": 400
+      }
+    },
+    {
+      "theme": "dark",
+      "w": 1024,
+      "h": 640,
+      "id": "rules-editor-error",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": {
+        "mode": "sheet",
+        "width": 400
+      }
+    },
+    {
+      "theme": "dark",
+      "w": 1024,
+      "h": 640,
+      "id": "rules-empty",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1024,
+      "h": 640,
+      "id": "rules-notarget",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1024,
+      "h": 640,
+      "id": "rules-detecting",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1024,
+      "h": 640,
+      "id": "rules-locked",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1024,
+      "h": 640,
+      "id": "rules-stale",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1024,
+      "h": 640,
+      "id": "rules-copy",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1024,
+      "h": 640,
+      "id": "rules-delete",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1152,
+      "h": 900,
+      "id": "sign-out",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1152,
+      "h": 900,
+      "id": "signing",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1152,
+      "h": 900,
+      "id": "sign-fail",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1152,
+      "h": 900,
+      "id": "sign-fail-consent",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1152,
+      "h": 900,
+      "id": "sign-fail-network",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1152,
+      "h": 900,
+      "id": "select",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1152,
+      "h": 900,
+      "id": "select-nocap",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1152,
+      "h": 900,
+      "id": "select-none",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1152,
+      "h": 900,
+      "id": "select-paste",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1152,
+      "h": 900,
+      "id": "access",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1152,
+      "h": 900,
+      "id": "testing",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1152,
+      "h": 900,
+      "id": "result",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1152,
+      "h": 900,
+      "id": "test-fail",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1152,
+      "h": 900,
+      "id": "report-refused",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1152,
+      "h": 900,
+      "id": "pull-confirm",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1152,
+      "h": 900,
+      "id": "pull-notempty",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1152,
+      "h": 900,
+      "id": "pull-running",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1152,
+      "h": 900,
+      "id": "pull-done",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1152,
+      "h": 900,
+      "id": "pull-fail",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1152,
+      "h": 900,
+      "id": "rules",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1152,
+      "h": 900,
+      "id": "rules-select",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1152,
+      "h": 900,
+      "id": "rules-menu",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1152,
+      "h": 900,
+      "id": "rules-editor",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": {
+        "mode": "sheet",
+        "width": 400
+      }
+    },
+    {
+      "theme": "dark",
+      "w": 1152,
+      "h": 900,
+      "id": "rules-editor-error",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": {
+        "mode": "sheet",
+        "width": 400
+      }
+    },
+    {
+      "theme": "dark",
+      "w": 1152,
+      "h": 900,
+      "id": "rules-empty",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1152,
+      "h": 900,
+      "id": "rules-notarget",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1152,
+      "h": 900,
+      "id": "rules-detecting",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1152,
+      "h": 900,
+      "id": "rules-locked",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1152,
+      "h": 900,
+      "id": "rules-stale",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1152,
+      "h": 900,
+      "id": "rules-copy",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1152,
+      "h": 900,
+      "id": "rules-delete",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1279,
+      "h": 900,
+      "id": "sign-out",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1279,
+      "h": 900,
+      "id": "signing",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1279,
+      "h": 900,
+      "id": "sign-fail",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1279,
+      "h": 900,
+      "id": "sign-fail-consent",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1279,
+      "h": 900,
+      "id": "sign-fail-network",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1279,
+      "h": 900,
+      "id": "select",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1279,
+      "h": 900,
+      "id": "select-nocap",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1279,
+      "h": 900,
+      "id": "select-none",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1279,
+      "h": 900,
+      "id": "select-paste",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1279,
+      "h": 900,
+      "id": "access",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1279,
+      "h": 900,
+      "id": "testing",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1279,
+      "h": 900,
+      "id": "result",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1279,
+      "h": 900,
+      "id": "test-fail",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1279,
+      "h": 900,
+      "id": "report-refused",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1279,
+      "h": 900,
+      "id": "pull-confirm",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1279,
+      "h": 900,
+      "id": "pull-notempty",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1279,
+      "h": 900,
+      "id": "pull-running",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1279,
+      "h": 900,
+      "id": "pull-done",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1279,
+      "h": 900,
+      "id": "pull-fail",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1279,
+      "h": 900,
+      "id": "rules",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1279,
+      "h": 900,
+      "id": "rules-select",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1279,
+      "h": 900,
+      "id": "rules-menu",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1279,
+      "h": 900,
+      "id": "rules-editor",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": {
+        "mode": "sheet",
+        "width": 400
+      }
+    },
+    {
+      "theme": "dark",
+      "w": 1279,
+      "h": 900,
+      "id": "rules-editor-error",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": {
+        "mode": "sheet",
+        "width": 400
+      }
+    },
+    {
+      "theme": "dark",
+      "w": 1279,
+      "h": 900,
+      "id": "rules-empty",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1279,
+      "h": 900,
+      "id": "rules-notarget",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1279,
+      "h": 900,
+      "id": "rules-detecting",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1279,
+      "h": 900,
+      "id": "rules-locked",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1279,
+      "h": 900,
+      "id": "rules-stale",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1279,
+      "h": 900,
+      "id": "rules-copy",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1279,
+      "h": 900,
+      "id": "rules-delete",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1280,
+      "h": 900,
+      "id": "sign-out",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1280,
+      "h": 900,
+      "id": "signing",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1280,
+      "h": 900,
+      "id": "sign-fail",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1280,
+      "h": 900,
+      "id": "sign-fail-consent",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1280,
+      "h": 900,
+      "id": "sign-fail-network",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1280,
+      "h": 900,
+      "id": "select",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1280,
+      "h": 900,
+      "id": "select-nocap",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1280,
+      "h": 900,
+      "id": "select-none",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1280,
+      "h": 900,
+      "id": "select-paste",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1280,
+      "h": 900,
+      "id": "access",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1280,
+      "h": 900,
+      "id": "testing",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1280,
+      "h": 900,
+      "id": "result",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1280,
+      "h": 900,
+      "id": "test-fail",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1280,
+      "h": 900,
+      "id": "report-refused",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1280,
+      "h": 900,
+      "id": "pull-confirm",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1280,
+      "h": 900,
+      "id": "pull-notempty",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1280,
+      "h": 900,
+      "id": "pull-running",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1280,
+      "h": 900,
+      "id": "pull-done",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1280,
+      "h": 900,
+      "id": "pull-fail",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1280,
+      "h": 900,
+      "id": "rules",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1280,
+      "h": 900,
+      "id": "rules-select",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1280,
+      "h": 900,
+      "id": "rules-menu",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1280,
+      "h": 900,
+      "id": "rules-editor",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": {
+        "mode": "column",
+        "width": 360
+      }
+    },
+    {
+      "theme": "dark",
+      "w": 1280,
+      "h": 900,
+      "id": "rules-editor-error",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": {
+        "mode": "column",
+        "width": 360
+      }
+    },
+    {
+      "theme": "dark",
+      "w": 1280,
+      "h": 900,
+      "id": "rules-empty",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1280,
+      "h": 900,
+      "id": "rules-notarget",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1280,
+      "h": 900,
+      "id": "rules-detecting",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1280,
+      "h": 900,
+      "id": "rules-locked",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1280,
+      "h": 900,
+      "id": "rules-stale",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1280,
+      "h": 900,
+      "id": "rules-copy",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1280,
+      "h": 900,
+      "id": "rules-delete",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1366,
+      "h": 900,
+      "id": "sign-out",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1366,
+      "h": 900,
+      "id": "signing",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1366,
+      "h": 900,
+      "id": "sign-fail",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1366,
+      "h": 900,
+      "id": "sign-fail-consent",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1366,
+      "h": 900,
+      "id": "sign-fail-network",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1366,
+      "h": 900,
+      "id": "select",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1366,
+      "h": 900,
+      "id": "select-nocap",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1366,
+      "h": 900,
+      "id": "select-none",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1366,
+      "h": 900,
+      "id": "select-paste",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1366,
+      "h": 900,
+      "id": "access",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1366,
+      "h": 900,
+      "id": "testing",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1366,
+      "h": 900,
+      "id": "result",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1366,
+      "h": 900,
+      "id": "test-fail",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1366,
+      "h": 900,
+      "id": "report-refused",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1366,
+      "h": 900,
+      "id": "pull-confirm",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1366,
+      "h": 900,
+      "id": "pull-notempty",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1366,
+      "h": 900,
+      "id": "pull-running",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1366,
+      "h": 900,
+      "id": "pull-done",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1366,
+      "h": 900,
+      "id": "pull-fail",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1366,
+      "h": 900,
+      "id": "rules",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1366,
+      "h": 900,
+      "id": "rules-select",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1366,
+      "h": 900,
+      "id": "rules-menu",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1366,
+      "h": 900,
+      "id": "rules-editor",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": {
+        "mode": "column",
+        "width": 360
+      }
+    },
+    {
+      "theme": "dark",
+      "w": 1366,
+      "h": 900,
+      "id": "rules-editor-error",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": {
+        "mode": "column",
+        "width": 360
+      }
+    },
+    {
+      "theme": "dark",
+      "w": 1366,
+      "h": 900,
+      "id": "rules-empty",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1366,
+      "h": 900,
+      "id": "rules-notarget",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1366,
+      "h": 900,
+      "id": "rules-detecting",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1366,
+      "h": 900,
+      "id": "rules-locked",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1366,
+      "h": 900,
+      "id": "rules-stale",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1366,
+      "h": 900,
+      "id": "rules-copy",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1366,
+      "h": 900,
+      "id": "rules-delete",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1440,
+      "h": 900,
+      "id": "sign-out",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1440,
+      "h": 900,
+      "id": "signing",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1440,
+      "h": 900,
+      "id": "sign-fail",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1440,
+      "h": 900,
+      "id": "sign-fail-consent",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1440,
+      "h": 900,
+      "id": "sign-fail-network",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1440,
+      "h": 900,
+      "id": "select",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1440,
+      "h": 900,
+      "id": "select-nocap",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1440,
+      "h": 900,
+      "id": "select-none",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1440,
+      "h": 900,
+      "id": "select-paste",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1440,
+      "h": 900,
+      "id": "access",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1440,
+      "h": 900,
+      "id": "testing",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1440,
+      "h": 900,
+      "id": "result",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1440,
+      "h": 900,
+      "id": "test-fail",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1440,
+      "h": 900,
+      "id": "report-refused",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1440,
+      "h": 900,
+      "id": "pull-confirm",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1440,
+      "h": 900,
+      "id": "pull-notempty",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1440,
+      "h": 900,
+      "id": "pull-running",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1440,
+      "h": 900,
+      "id": "pull-done",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1440,
+      "h": 900,
+      "id": "pull-fail",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1440,
+      "h": 900,
+      "id": "rules",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1440,
+      "h": 900,
+      "id": "rules-select",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1440,
+      "h": 900,
+      "id": "rules-menu",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1440,
+      "h": 900,
+      "id": "rules-editor",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": {
+        "mode": "column",
+        "width": 360
+      }
+    },
+    {
+      "theme": "dark",
+      "w": 1440,
+      "h": 900,
+      "id": "rules-editor-error",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": {
+        "mode": "column",
+        "width": 360
+      }
+    },
+    {
+      "theme": "dark",
+      "w": 1440,
+      "h": 900,
+      "id": "rules-empty",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1440,
+      "h": 900,
+      "id": "rules-notarget",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1440,
+      "h": 900,
+      "id": "rules-detecting",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1440,
+      "h": 900,
+      "id": "rules-locked",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1440,
+      "h": 900,
+      "id": "rules-stale",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1440,
+      "h": 900,
+      "id": "rules-copy",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "dark",
+      "w": 1440,
+      "h": 900,
+      "id": "rules-delete",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1024,
+      "h": 640,
+      "id": "sign-out",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1024,
+      "h": 640,
+      "id": "signing",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1024,
+      "h": 640,
+      "id": "sign-fail",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1024,
+      "h": 640,
+      "id": "sign-fail-consent",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1024,
+      "h": 640,
+      "id": "sign-fail-network",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1024,
+      "h": 640,
+      "id": "select",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1024,
+      "h": 640,
+      "id": "select-nocap",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1024,
+      "h": 640,
+      "id": "select-none",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1024,
+      "h": 640,
+      "id": "select-paste",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1024,
+      "h": 640,
+      "id": "access",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1024,
+      "h": 640,
+      "id": "testing",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1024,
+      "h": 640,
+      "id": "result",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1024,
+      "h": 640,
+      "id": "test-fail",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1024,
+      "h": 640,
+      "id": "report-refused",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1024,
+      "h": 640,
+      "id": "pull-confirm",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1024,
+      "h": 640,
+      "id": "pull-notempty",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1024,
+      "h": 640,
+      "id": "pull-running",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1024,
+      "h": 640,
+      "id": "pull-done",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1024,
+      "h": 640,
+      "id": "pull-fail",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1024,
+      "h": 640,
+      "id": "rules",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1024,
+      "h": 640,
+      "id": "rules-select",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1024,
+      "h": 640,
+      "id": "rules-menu",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1024,
+      "h": 640,
+      "id": "rules-editor",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": {
+        "mode": "sheet",
+        "width": 400
+      }
+    },
+    {
+      "theme": "light",
+      "w": 1024,
+      "h": 640,
+      "id": "rules-editor-error",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": {
+        "mode": "sheet",
+        "width": 400
+      }
+    },
+    {
+      "theme": "light",
+      "w": 1024,
+      "h": 640,
+      "id": "rules-empty",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1024,
+      "h": 640,
+      "id": "rules-notarget",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1024,
+      "h": 640,
+      "id": "rules-detecting",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1024,
+      "h": 640,
+      "id": "rules-locked",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1024,
+      "h": 640,
+      "id": "rules-stale",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1024,
+      "h": 640,
+      "id": "rules-copy",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1024,
+      "h": 640,
+      "id": "rules-delete",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1152,
+      "h": 900,
+      "id": "sign-out",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1152,
+      "h": 900,
+      "id": "signing",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1152,
+      "h": 900,
+      "id": "sign-fail",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1152,
+      "h": 900,
+      "id": "sign-fail-consent",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1152,
+      "h": 900,
+      "id": "sign-fail-network",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1152,
+      "h": 900,
+      "id": "select",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1152,
+      "h": 900,
+      "id": "select-nocap",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1152,
+      "h": 900,
+      "id": "select-none",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1152,
+      "h": 900,
+      "id": "select-paste",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1152,
+      "h": 900,
+      "id": "access",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1152,
+      "h": 900,
+      "id": "testing",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1152,
+      "h": 900,
+      "id": "result",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1152,
+      "h": 900,
+      "id": "test-fail",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1152,
+      "h": 900,
+      "id": "report-refused",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1152,
+      "h": 900,
+      "id": "pull-confirm",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1152,
+      "h": 900,
+      "id": "pull-notempty",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1152,
+      "h": 900,
+      "id": "pull-running",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1152,
+      "h": 900,
+      "id": "pull-done",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1152,
+      "h": 900,
+      "id": "pull-fail",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1152,
+      "h": 900,
+      "id": "rules",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1152,
+      "h": 900,
+      "id": "rules-select",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1152,
+      "h": 900,
+      "id": "rules-menu",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1152,
+      "h": 900,
+      "id": "rules-editor",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": {
+        "mode": "sheet",
+        "width": 400
+      }
+    },
+    {
+      "theme": "light",
+      "w": 1152,
+      "h": 900,
+      "id": "rules-editor-error",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": {
+        "mode": "sheet",
+        "width": 400
+      }
+    },
+    {
+      "theme": "light",
+      "w": 1152,
+      "h": 900,
+      "id": "rules-empty",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1152,
+      "h": 900,
+      "id": "rules-notarget",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1152,
+      "h": 900,
+      "id": "rules-detecting",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1152,
+      "h": 900,
+      "id": "rules-locked",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1152,
+      "h": 900,
+      "id": "rules-stale",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1152,
+      "h": 900,
+      "id": "rules-copy",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1152,
+      "h": 900,
+      "id": "rules-delete",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1279,
+      "h": 900,
+      "id": "sign-out",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1279,
+      "h": 900,
+      "id": "signing",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1279,
+      "h": 900,
+      "id": "sign-fail",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1279,
+      "h": 900,
+      "id": "sign-fail-consent",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1279,
+      "h": 900,
+      "id": "sign-fail-network",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1279,
+      "h": 900,
+      "id": "select",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1279,
+      "h": 900,
+      "id": "select-nocap",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1279,
+      "h": 900,
+      "id": "select-none",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1279,
+      "h": 900,
+      "id": "select-paste",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1279,
+      "h": 900,
+      "id": "access",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1279,
+      "h": 900,
+      "id": "testing",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1279,
+      "h": 900,
+      "id": "result",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1279,
+      "h": 900,
+      "id": "test-fail",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1279,
+      "h": 900,
+      "id": "report-refused",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1279,
+      "h": 900,
+      "id": "pull-confirm",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1279,
+      "h": 900,
+      "id": "pull-notempty",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1279,
+      "h": 900,
+      "id": "pull-running",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1279,
+      "h": 900,
+      "id": "pull-done",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1279,
+      "h": 900,
+      "id": "pull-fail",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1279,
+      "h": 900,
+      "id": "rules",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1279,
+      "h": 900,
+      "id": "rules-select",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1279,
+      "h": 900,
+      "id": "rules-menu",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1279,
+      "h": 900,
+      "id": "rules-editor",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": {
+        "mode": "sheet",
+        "width": 400
+      }
+    },
+    {
+      "theme": "light",
+      "w": 1279,
+      "h": 900,
+      "id": "rules-editor-error",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": {
+        "mode": "sheet",
+        "width": 400
+      }
+    },
+    {
+      "theme": "light",
+      "w": 1279,
+      "h": 900,
+      "id": "rules-empty",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1279,
+      "h": 900,
+      "id": "rules-notarget",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1279,
+      "h": 900,
+      "id": "rules-detecting",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1279,
+      "h": 900,
+      "id": "rules-locked",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1279,
+      "h": 900,
+      "id": "rules-stale",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1279,
+      "h": 900,
+      "id": "rules-copy",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1279,
+      "h": 900,
+      "id": "rules-delete",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1280,
+      "h": 900,
+      "id": "sign-out",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1280,
+      "h": 900,
+      "id": "signing",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1280,
+      "h": 900,
+      "id": "sign-fail",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1280,
+      "h": 900,
+      "id": "sign-fail-consent",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1280,
+      "h": 900,
+      "id": "sign-fail-network",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1280,
+      "h": 900,
+      "id": "select",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1280,
+      "h": 900,
+      "id": "select-nocap",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1280,
+      "h": 900,
+      "id": "select-none",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1280,
+      "h": 900,
+      "id": "select-paste",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1280,
+      "h": 900,
+      "id": "access",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1280,
+      "h": 900,
+      "id": "testing",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1280,
+      "h": 900,
+      "id": "result",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1280,
+      "h": 900,
+      "id": "test-fail",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1280,
+      "h": 900,
+      "id": "report-refused",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1280,
+      "h": 900,
+      "id": "pull-confirm",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1280,
+      "h": 900,
+      "id": "pull-notempty",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1280,
+      "h": 900,
+      "id": "pull-running",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1280,
+      "h": 900,
+      "id": "pull-done",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1280,
+      "h": 900,
+      "id": "pull-fail",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1280,
+      "h": 900,
+      "id": "rules",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1280,
+      "h": 900,
+      "id": "rules-select",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1280,
+      "h": 900,
+      "id": "rules-menu",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1280,
+      "h": 900,
+      "id": "rules-editor",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": {
+        "mode": "column",
+        "width": 360
+      }
+    },
+    {
+      "theme": "light",
+      "w": 1280,
+      "h": 900,
+      "id": "rules-editor-error",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": {
+        "mode": "column",
+        "width": 360
+      }
+    },
+    {
+      "theme": "light",
+      "w": 1280,
+      "h": 900,
+      "id": "rules-empty",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1280,
+      "h": 900,
+      "id": "rules-notarget",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1280,
+      "h": 900,
+      "id": "rules-detecting",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1280,
+      "h": 900,
+      "id": "rules-locked",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1280,
+      "h": 900,
+      "id": "rules-stale",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1280,
+      "h": 900,
+      "id": "rules-copy",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1280,
+      "h": 900,
+      "id": "rules-delete",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1366,
+      "h": 900,
+      "id": "sign-out",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1366,
+      "h": 900,
+      "id": "signing",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1366,
+      "h": 900,
+      "id": "sign-fail",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1366,
+      "h": 900,
+      "id": "sign-fail-consent",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1366,
+      "h": 900,
+      "id": "sign-fail-network",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1366,
+      "h": 900,
+      "id": "select",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1366,
+      "h": 900,
+      "id": "select-nocap",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1366,
+      "h": 900,
+      "id": "select-none",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1366,
+      "h": 900,
+      "id": "select-paste",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1366,
+      "h": 900,
+      "id": "access",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1366,
+      "h": 900,
+      "id": "testing",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1366,
+      "h": 900,
+      "id": "result",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1366,
+      "h": 900,
+      "id": "test-fail",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1366,
+      "h": 900,
+      "id": "report-refused",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1366,
+      "h": 900,
+      "id": "pull-confirm",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1366,
+      "h": 900,
+      "id": "pull-notempty",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1366,
+      "h": 900,
+      "id": "pull-running",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1366,
+      "h": 900,
+      "id": "pull-done",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1366,
+      "h": 900,
+      "id": "pull-fail",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1366,
+      "h": 900,
+      "id": "rules",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1366,
+      "h": 900,
+      "id": "rules-select",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1366,
+      "h": 900,
+      "id": "rules-menu",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1366,
+      "h": 900,
+      "id": "rules-editor",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": {
+        "mode": "column",
+        "width": 360
+      }
+    },
+    {
+      "theme": "light",
+      "w": 1366,
+      "h": 900,
+      "id": "rules-editor-error",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": {
+        "mode": "column",
+        "width": 360
+      }
+    },
+    {
+      "theme": "light",
+      "w": 1366,
+      "h": 900,
+      "id": "rules-empty",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1366,
+      "h": 900,
+      "id": "rules-notarget",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1366,
+      "h": 900,
+      "id": "rules-detecting",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1366,
+      "h": 900,
+      "id": "rules-locked",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1366,
+      "h": 900,
+      "id": "rules-stale",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1366,
+      "h": 900,
+      "id": "rules-copy",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1366,
+      "h": 900,
+      "id": "rules-delete",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1440,
+      "h": 900,
+      "id": "sign-out",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1440,
+      "h": 900,
+      "id": "signing",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1440,
+      "h": 900,
+      "id": "sign-fail",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1440,
+      "h": 900,
+      "id": "sign-fail-consent",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1440,
+      "h": 900,
+      "id": "sign-fail-network",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1440,
+      "h": 900,
+      "id": "select",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1440,
+      "h": 900,
+      "id": "select-nocap",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1440,
+      "h": 900,
+      "id": "select-none",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1440,
+      "h": 900,
+      "id": "select-paste",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1440,
+      "h": 900,
+      "id": "access",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1440,
+      "h": 900,
+      "id": "testing",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1440,
+      "h": 900,
+      "id": "result",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1440,
+      "h": 900,
+      "id": "test-fail",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1440,
+      "h": 900,
+      "id": "report-refused",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1440,
+      "h": 900,
+      "id": "pull-confirm",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1440,
+      "h": 900,
+      "id": "pull-notempty",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1440,
+      "h": 900,
+      "id": "pull-running",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1440,
+      "h": 900,
+      "id": "pull-done",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1440,
+      "h": 900,
+      "id": "pull-fail",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1440,
+      "h": 900,
+      "id": "rules",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1440,
+      "h": 900,
+      "id": "rules-select",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1440,
+      "h": 900,
+      "id": "rules-menu",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1440,
+      "h": 900,
+      "id": "rules-editor",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": {
+        "mode": "column",
+        "width": 360
+      }
+    },
+    {
+      "theme": "light",
+      "w": 1440,
+      "h": 900,
+      "id": "rules-editor-error",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": {
+        "mode": "column",
+        "width": 360
+      }
+    },
+    {
+      "theme": "light",
+      "w": 1440,
+      "h": 900,
+      "id": "rules-empty",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1440,
+      "h": 900,
+      "id": "rules-notarget",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1440,
+      "h": 900,
+      "id": "rules-detecting",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1440,
+      "h": 900,
+      "id": "rules-locked",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1440,
+      "h": 900,
+      "id": "rules-stale",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1440,
+      "h": 900,
+      "id": "rules-copy",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    },
+    {
+      "theme": "light",
+      "w": 1440,
+      "h": 900,
+      "id": "rules-delete",
+      "over": 0,
+      "past": 0,
+      "dialogOff": false,
+      "pane": null
+    }
+  ],
+  "axe": {
+    "sign-out-dark": [],
+    "signing-dark": [],
+    "sign-fail-dark": [],
+    "sign-fail-consent-dark": [],
+    "sign-fail-network-dark": [],
+    "select-dark": [],
+    "select-nocap-dark": [],
+    "select-none-dark": [],
+    "select-paste-dark": [],
+    "access-dark": [],
+    "testing-dark": [],
+    "result-dark": [],
+    "test-fail-dark": [],
+    "report-refused-dark": [],
+    "pull-confirm-dark": [],
+    "pull-notempty-dark": [],
+    "pull-running-dark": [],
+    "pull-done-dark": [],
+    "pull-fail-dark": [],
+    "rules-dark": [],
+    "rules-select-dark": [],
+    "rules-menu-dark": [],
+    "rules-editor-dark": [],
+    "rules-editor-error-dark": [],
+    "rules-empty-dark": [],
+    "rules-notarget-dark": [],
+    "rules-detecting-dark": [],
+    "rules-locked-dark": [],
+    "rules-stale-dark": [],
+    "rules-copy-dark": [],
+    "rules-delete-dark": [],
+    "sign-out-light": [],
+    "signing-light": [],
+    "sign-fail-light": [],
+    "sign-fail-consent-light": [],
+    "sign-fail-network-light": [],
+    "select-light": [],
+    "select-nocap-light": [],
+    "select-none-light": [],
+    "select-paste-light": [],
+    "access-light": [],
+    "testing-light": [],
+    "result-light": [],
+    "test-fail-light": [],
+    "report-refused-light": [],
+    "pull-confirm-light": [],
+    "pull-notempty-light": [],
+    "pull-running-light": [],
+    "pull-done-light": [],
+    "pull-fail-light": [],
+    "rules-light": [],
+    "rules-select-light": [],
+    "rules-menu-light": [],
+    "rules-editor-light": [],
+    "rules-editor-error-light": [],
+    "rules-empty-light": [],
+    "rules-notarget-light": [],
+    "rules-detecting-light": [],
+    "rules-locked-light": [],
+    "rules-stale-light": [],
+    "rules-copy-light": [],
+    "rules-delete-light": []
+  }
+}

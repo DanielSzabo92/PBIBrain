@@ -1,0 +1,127 @@
+/* Copy of the token blocks of frontend/src/theme.css (via prototype 02). Prototype 07 only. */
+:root {
+  --font-ui: "Inter Variable", "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  --font-code: "JetBrains Mono Variable", "Cascadia Code", Consolas, ui-monospace, monospace;
+  --radius: 0.5rem;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-spring: cubic-bezier(0.34, 1.4, 0.64, 1);
+  --dur-fast: 120ms;
+  --dur: 200ms;
+  --dur-slow: 320ms;
+
+  /* Canvas & surfaces */
+  --bg: #0b0c0f;
+  --bg-sidebar: #0e0f13;
+  --surface: #131519;
+  --surface-2: #181a1f;
+  --surface-3: #1f2127;
+  --surface-hover: #1c1e24;
+  --line: #1f2228;
+  --line-strong: #2b2f37;
+  --line-focus: #3a3f4a;
+  --control-border: #697185;
+
+  /* Text */
+  --text: #ededf0;
+  --text-2: #a3a7b1;
+  --text-3: #9298a5;
+  --text-inverse: #0b0c0f;
+
+  /* Brand accent: calm periwinkle, distinct from every status colour */
+  --brand: #8e97ff;
+  --brand-strong: #a9b0ff;
+  --brand-ink: #0b0c1a;
+  --brand-soft: rgb(142 151 255 / 0.12);
+  --brand-line: rgb(142 151 255 / 0.35);
+  --brand-glow: rgb(142 151 255 / 0.22);
+
+  /* Status */
+  --ok: #5ccf9a;
+  --ok-soft: rgb(92 207 154 / 0.12);
+  --warn: #eeb85c;
+  --warn-soft: rgb(238 184 92 / 0.12);
+  --bad: #f07f7f;
+  --bad-soft: rgb(240 127 127 / 0.12);
+  --info: #6fb6ee;
+  --info-soft: rgb(111 182 238 / 0.12);
+
+  /* Elevation */
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.35);
+  --shadow-md: 0 1px 2px rgb(0 0 0 / 0.3), 0 8px 24px -6px rgb(0 0 0 / 0.45);
+  --shadow-lg: 0 2px 4px rgb(0 0 0 / 0.3), 0 24px 64px -12px rgb(0 0 0 / 0.6);
+  --inset-hi: inset 0 1px 0 rgb(255 255 255 / 0.04);
+
+  /* Graph */
+  --grid-dot: #23262d;
+  --minimap-mask: rgb(11 12 15 / 0.78);
+  --code-bg: #0f1014;
+
+  /* shadcn primitives map onto the tokens above */
+  --background: var(--bg);
+  --foreground: var(--text);
+  --card: var(--surface);
+  --card-foreground: var(--text);
+  --popover: var(--surface-2);
+  --popover-foreground: var(--text);
+  --primary: var(--brand);
+  --primary-foreground: var(--brand-ink);
+  --secondary: var(--surface-3);
+  --secondary-foreground: var(--text);
+  --muted-surface: var(--surface-2);
+  --muted-foreground: var(--text-2);
+  --accent: var(--surface-hover);
+  --accent-foreground: var(--text);
+  --destructive: var(--bad);
+  --border: var(--line);
+  --input: var(--line-strong);
+  --ring: var(--brand);
+  --red: var(--bad);
+
+  color-scheme: dark;
+}
+
+:root[data-theme="light"] {
+  --bg: #f6f6f4;
+  --bg-sidebar: #efefec;
+  --surface: #ffffff;
+  --surface-2: #f9f9f8;
+  --surface-3: #f0f0ee;
+  --surface-hover: #f1f1ef;
+  --line: #e6e5e1;
+  --line-strong: #d6d5d0;
+  --line-focus: #bdbcb6;
+  --control-border: #838994;
+
+  --text: #16171b;
+  --text-2: #5c5f68;
+  --text-3: #656a75;
+  --text-inverse: #ffffff;
+
+  --brand: #4f58e0;
+  --brand-strong: #3d45c9;
+  --brand-ink: #ffffff;
+  --brand-soft: rgb(79 88 224 / 0.09);
+  --brand-line: rgb(79 88 224 / 0.35);
+  --brand-glow: rgb(79 88 224 / 0.16);
+
+  --ok: #157347;
+  --ok-soft: rgb(31 157 100 / 0.1);
+  --warn: #8a540d;
+  --warn-soft: rgb(184 116 18 / 0.1);
+  --bad: #bd3030;
+  --bad-soft: rgb(207 60 60 / 0.08);
+  --info: #216a9f;
+  --info-soft: rgb(42 127 192 / 0.1);
+
+  --shadow-sm: 0 1px 2px rgb(20 20 30 / 0.06);
+  --shadow-md: 0 1px 2px rgb(20 20 30 / 0.05), 0 8px 24px -8px rgb(20 20 30 / 0.12);
+  --shadow-lg: 0 2px 4px rgb(20 20 30 / 0.05), 0 24px 56px -12px rgb(20 20 30 / 0.2);
+  --inset-hi: inset 0 1px 0 rgb(255 255 255 / 0.6);
+
+  --grid-dot: #d9d8d3;
+  --minimap-mask: rgb(246 246 244 / 0.75);
+  --code-bg: #fafaf8;
+
+  color-scheme: light;
+}
+
