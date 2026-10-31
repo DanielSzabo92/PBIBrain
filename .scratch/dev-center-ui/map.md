@@ -36,6 +36,7 @@ A UI design document (`docs/DEV_CENTER_UI_DESIGN.md`) for version 1 of the Devel
 - 08 (2026-10-31): The Plan tab has a status strip with "Apply plan", a block list (one fix action for each block), then the summary, plan steps, and warnings. The Apply dialog has one approval checkbox and uses the destructive token when the plan deletes objects. Progress comes from polling. A result panel gives Undo and the change report. Measured: 0 overflow, 0 axe violations, state gate passes in both themes. Full answer: [08-plan-apply-undo](issues/08-plan-apply-undo.md).
 - 06 (2026-10-31): The Agent tab shows one leading question card, then a proposals table (Kind, Status, search, sticky Accept and Reject, Accept selected, Accept all). Accept all shows a summary: kinds, plan now and after, skipped items. The grid cell has one "bot" badge with a tooltip. Revision poll every 5 s with a notice. Log table with filters. Measured: 0 overflow, 0 axe violations, states pass in both themes. Full answer: [06-agent-proposals-and-log](issues/06-agent-proposals-and-log.md).
 - 07 (2026-10-31): Cloud sources use one dialog: Sign in, Select (list from `cloud_items_list`, paste fallback), Access type (Read default; Read/Write saved, no write in 1.0, no later change), Test (Checked and Not checked groups). Unreadable cloud reports are not added. Pull to local adds a local source (path relative to the project root). Naming rules: Sources tab table, status filter, side-pane editor. Measured: 0 overflow, 0 axe, states pass. Full answer: [07-sources-connect-naming](issues/07-sources-connect-naming.md).
+- 04 (2026-10-31): The row detail pane shows notices, the agent card, then one Merge Choice radio group. Source Select, name field with the proposer, folder Combobox and property picker show inside the selected choice. A modal dialog sets the removal policy (Block, Cascade, Repoint). Save is immediate. Measured: 0 overflow, 0 axe violations, states pass. Full answer: [04-row-detail-and-merge-choice](issues/04-row-detail-and-merge-choice.md).
 
 ## Backend change requests
 
@@ -58,6 +59,10 @@ A UI design document (`docs/DEV_CENTER_UI_DESIGN.md`) for version 1 of the Devel
 - JS API `naming_rule_reject` on a user rule removes the rule; on a detected rule it keeps it as rejected. `naming_rule_edit` with no rule ID creates a user rule (origin user, status confirmed); an edit of a proposed rule sets it to confirmed. Reason: the naming rules screen. Ticket 07.
 - JS API `pull_to_local`: store the new source path relative to the project root; a failed pull removes the partial folder. Ticket 07.
 - `GET /api/devcenter/naming-rules`: add the rule count for each session source model. Reason: the "Copy rules from" dialog. Ticket 07.
+- `POST /api/devcenter/name-propose`: add optional input `candidate`; the reply adds `breaks` (rule ID, rule text) and `clash` (object or null). Reason: no contract checks a name that the user types. Ticket 04.
+- `GET /api/devcenter/display-folders?source=<id>` (new, optional object type filter): returns display folder paths. Reason: the folder Combobox needs the folders of the target and the selected source (spec 7.2). Ticket 04.
+- JS API `alignment_override` (break): remove the Merge Choice of the row and return the new row keys. Reason: the UI moves the selection and tells the user. Ticket 04.
+- JS API `merge_choice_set`: accept the values `promote` and `copy_to_report` (with new name and display folder) for report measure rows. Reason: spec 7.4 makes them plan steps, but section 14.2 has no call for them. Ticket 04.
 
 ## Not yet specified
 

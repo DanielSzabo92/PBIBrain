@@ -1,0 +1,377 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Row detail</title>
+<!-- Prototype for ticket 04. Never shipped. Open with ?screen=<id>&theme=dark|light. -->
+<link rel="stylesheet" href="tokens.css">
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--font-ui); font-size: 14px; line-height: 1.45; }
+  button, input { font: inherit; color: inherit; }
+  :focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+  svg.i { width: 16px; height: 16px; flex: none; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .spin { animation: spin 0.9s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { .spin { animation: none; } }
+
+  .shell { display: grid; grid-template-columns: 236px minmax(0, 1fr); min-height: 100vh; }
+  .sidebar { background: var(--bg-sidebar); border-right: 1px solid var(--line); padding: 16px 10px; display: flex; flex-direction: column; gap: 2px; }
+  .brand { font-weight: 600; padding: 4px 10px 16px; }
+  .nav { display: flex; align-items: center; gap: 10px; padding: 0 10px; min-height: 32px; border-radius: var(--radius); color: var(--text-2); border: 0; background: none; text-align: left; width: 100%; }
+  .nav[aria-current="page"] { background: var(--surface-3); color: var(--text); }
+  .main { min-width: 0; display: flex; flex-direction: column; }
+  .topbar { height: 48px; display: flex; align-items: center; gap: 8px; padding: 0 20px; border-bottom: 1px solid var(--line); color: var(--text-2); }
+  .content { padding: 24px; min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 16px; }
+  h1 { font-size: 28px; line-height: 1.2; margin: 0; font-weight: 600; letter-spacing: -0.01em; }
+  h2 { font-size: 16px; margin: 0; font-weight: 600; }
+  h3 { font-size: 13px; margin: 0; font-weight: 600; }
+  .muted { color: var(--text-2); }
+  .small { font-size: 12px; }
+  p { margin: 0; }
+
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 32px; padding: 0 12px; border-radius: var(--radius); border: 1px solid var(--control-border); background: var(--surface); cursor: pointer; white-space: nowrap; }
+  .btn:hover { background: var(--surface-hover); }
+  .btn:active { background: var(--surface-3); }
+  .btn:disabled { opacity: 0.55; cursor: not-allowed; }
+  .btn-primary { background: var(--brand); color: var(--brand-ink); border-color: var(--brand); }
+  .btn-primary:hover { background: var(--brand-strong); border-color: var(--brand-strong); }
+  .btn-danger-solid { background: var(--bad); color: var(--text-inverse); border-color: var(--bad); }
+  .btn-danger-solid:hover { background: var(--bad); border-color: var(--text); }
+  .btn-ghost { border-color: transparent; background: none; }
+  .btn-sm { min-height: 28px; padding: 0 10px; font-size: 13px; }
+  .btn-icon { width: 32px; padding: 0; }
+  .link { background: none; border: 0; padding: 0; color: var(--brand); cursor: pointer; text-decoration: underline; text-underline-offset: 2px; min-height: 24px; display: inline-flex; align-items: center; gap: 4px; }
+
+  .status { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 500; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
+  .s-ok { color: var(--ok); background: var(--ok-soft); }
+  .s-warn { color: var(--warn); background: var(--warn-soft); }
+  .s-bad { color: var(--bad); background: var(--bad-soft); }
+  .s-info { color: var(--info); background: var(--info-soft); }
+  .s-brand { color: var(--brand-strong); background: var(--brand-soft); }
+  .s-plain { color: var(--text-2); background: var(--surface-3); }
+  .status svg.i { width: 14px; height: 14px; }
+
+  /* Work area frame (from ticket 02) */
+  .tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--line); }
+  .tab { min-height: 36px; padding: 0 12px; background: none; border: 0; border-bottom: 2px solid transparent; color: var(--text-2); }
+  .tab[aria-selected="true"] { color: var(--text); border-bottom-color: var(--brand); }
+  .body { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; flex: 1; min-height: 0; }
+  .region { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); min-width: 0; min-height: 360px; display: flex; flex-direction: column; }
+  .grid-scroll { overflow: auto; flex: 1; }
+  .fake-grid { border-collapse: collapse; min-width: 720px; width: 100%; font-size: 13px; }
+  .fake-grid th, .fake-grid td { padding: 7px 12px; border-bottom: 1px solid var(--line); text-align: left; white-space: nowrap; }
+  .fake-grid th { color: var(--text-2); font-weight: 500; font-size: 12px; background: var(--surface-2); }
+  .fake-grid tr[aria-selected="true"] td { background: var(--brand-soft); }
+
+  /* Row detail pane */
+  .pane { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); display: flex; flex-direction: column; min-width: 0; }
+  .pane-head { display: flex; align-items: flex-start; gap: 8px; padding: 12px 12px 12px 16px; border-bottom: 1px solid var(--line); }
+  .pane-title { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+  .pane-title h2 { overflow-wrap: anywhere; }
+  .meta { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; color: var(--text-2); font-size: 12px; }
+  .meta span { display: inline-flex; gap: 4px; align-items: center; }
+  .pane-nav { display: flex; gap: 2px; }
+  .pane-body { display: flex; flex-direction: column; overflow-y: auto; }
+  .sec { padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; border-bottom: 1px solid var(--line); }
+  .sec:last-child { border-bottom: 0; }
+  .sec-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  details.sec > summary { list-style: none; display: flex; align-items: center; gap: 6px; cursor: pointer; font-weight: 600; font-size: 13px; min-height: 24px; }
+  details.sec > summary::-webkit-details-marker { display: none; }
+  details.sec > summary svg.i { transition: transform var(--dur-fast) var(--ease-out); }
+  details.sec[open] > summary svg.i { transform: rotate(90deg); }
+
+  /* Notice: full hairline border, icon plus text */
+  .notice { display: flex; gap: 10px; padding: 10px 12px; border-radius: var(--radius); border: 1px solid var(--line-strong); background: var(--surface-2); }
+  .notice > svg.i { margin-top: 2px; }
+  .notice .n-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+  .notice .n-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  .n-warn > svg.i { color: var(--warn); } .n-bad > svg.i { color: var(--bad); } .n-info > svg.i { color: var(--info); } .n-brand > svg.i { color: var(--brand); }
+  .n-list { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 4px; font-size: 13px; }
+
+  /* Proposal card */
+  .proposal { border: 1px solid var(--brand-line); border-radius: var(--radius); background: var(--brand-soft); padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+  .proposal .p-head { display: flex; gap: 8px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+  .proposal .p-change { font-weight: 600; }
+  .kv { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 12px; font-size: 13px; margin: 0; }
+  .kv dt { color: var(--text-2); } .kv dd { margin: 0; overflow-wrap: anywhere; }
+
+  /* Merge Choice radio group */
+  fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
+  legend { font-weight: 600; font-size: 13px; padding: 0; margin-bottom: 6px; }
+  .grp-label { font-size: 12px; color: var(--text-2); padding: 8px 8px 2px; }
+  .rc { display: grid; grid-template-columns: 16px minmax(0, 1fr); gap: 2px 10px; padding: 7px 8px; border-radius: var(--radius); align-items: start; position: relative; }
+  .rc:hover:not(.is-disabled) { background: var(--surface-hover); }
+  .rc.is-selected { background: var(--surface-3); }
+  .rc .lbl { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .rc .why { grid-column: 2; font-size: 12px; color: var(--text-2); }
+  .rc.is-disabled .lbl { color: var(--text-3); }
+  .rc .sub { grid-column: 2; margin-top: 6px; display: flex; flex-direction: column; gap: 8px; }
+  input[type="radio"] { appearance: none; margin: 2px 0 0; width: 16px; height: 16px; border-radius: 50%; border: 1.5px solid var(--control-border); background: var(--surface); cursor: pointer; }
+  input[type="radio"]:checked { border-color: var(--brand); background: radial-gradient(circle, var(--brand) 0 3.5px, transparent 4px); }
+  input[type="radio"]:disabled { opacity: 0.5; cursor: not-allowed; }
+  input[type="radio"][aria-busy="true"] { border-style: dashed; }
+
+  /* Checkbox (real input, drawn box with pointer-events none) */
+  .cb { display: grid; grid-template-columns: 16px minmax(0, 1fr); gap: 2px 10px; padding: 6px 8px; border-radius: var(--radius); align-items: start; position: relative; cursor: pointer; }
+  .cb:hover:not(.is-disabled) { background: var(--surface-hover); }
+  .cb input { position: absolute; opacity: 0; width: 16px; height: 16px; margin: 2px 0 0; }
+  .cb .box { width: 16px; height: 16px; margin-top: 2px; border-radius: 4px; border: 1.5px solid var(--control-border); background: var(--surface); display: grid; place-items: center; pointer-events: none; }
+  .cb .box svg { width: 11px; height: 11px; stroke: var(--brand-ink); fill: none; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; visibility: hidden; }
+  .cb input:checked + .box { background: var(--brand); border-color: var(--brand); }
+  .cb input:checked + .box svg { visibility: visible; }
+  .cb input:focus-visible + .box { outline: 2px solid var(--ring); outline-offset: 2px; }
+  .cb.is-disabled { cursor: not-allowed; color: var(--text-3); }
+  .cb.is-disabled .box { opacity: 0.5; }
+  .cb .why { grid-column: 2; font-size: 12px; color: var(--text-2); }
+  .props[aria-invalid="true"] { border: 1px solid var(--bad); border-radius: var(--radius); }
+
+  /* Text field */
+  .field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+  .field > label, .field > .flabel { font-size: 13px; font-weight: 500; }
+  .inrow { display: flex; gap: 6px; min-width: 0; }
+  .tf { flex: 1; min-width: 0; min-height: 32px; padding: 0 10px; border-radius: var(--radius); border: 1px solid var(--control-border); background: var(--surface); color: var(--text); }
+  .tf:hover { border-color: var(--text-3); }
+  .tf:focus-visible { outline: 2px solid var(--ring); outline-offset: 0; border-color: var(--brand); }
+  .tf[aria-invalid="true"] { border-color: var(--bad); }
+  .tf:disabled { opacity: 0.55; }
+  .hint { font-size: 12px; color: var(--text-2); display: flex; gap: 6px; align-items: flex-start; }
+  .hint svg.i { width: 14px; height: 14px; margin-top: 1px; }
+  .hint.warn svg.i { color: var(--warn); } .hint.bad { color: var(--bad); } .hint.ok svg.i { color: var(--ok); }
+
+  /* Select and Combobox (Radix pattern) */
+  .sel-trigger { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; min-height: 32px; padding: 0 8px 0 10px; border-radius: var(--radius); border: 1px solid var(--control-border); background: var(--surface); cursor: pointer; text-align: left; }
+  .sel-trigger:hover { background: var(--surface-hover); }
+  .sel-trigger[aria-expanded="true"] { border-color: var(--brand); }
+  .pop { position: relative; }
+  .listbox { position: absolute; z-index: 6; left: 0; right: 0; top: calc(100% + 4px); background: var(--surface-2); border: 1px solid var(--line-strong); border-radius: var(--radius); box-shadow: var(--shadow-md); padding: 4px; margin: 0; list-style: none; max-height: 260px; overflow-y: auto; }
+  .listbox [role="group"] { padding: 0; margin: 0; list-style: none; }
+  .lb-head { font-size: 12px; color: var(--text-2); padding: 6px 8px 2px; }
+  .opt { display: flex; align-items: center; gap: 8px; min-height: 30px; padding: 4px 8px; border-radius: 6px; cursor: pointer; }
+  .opt .ck { width: 14px; height: 14px; visibility: hidden; }
+  .opt[aria-selected="true"] .ck { visibility: visible; color: var(--brand); }
+  .opt.active, .opt:hover { background: var(--surface-hover); }
+  .opt[aria-disabled="true"] { color: var(--text-3); cursor: not-allowed; }
+  .opt .o-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .opt .o-sub { font-size: 12px; color: var(--text-2); }
+  .opt .o-sub.warn { color: var(--warn); display: inline-flex; gap: 4px; align-items: center; }
+  .opt-sep { height: 1px; background: var(--line); margin: 4px 0; }
+
+  .src-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; font-size: 13px; }
+  .src-list li { display: flex; flex-direction: column; gap: 2px; }
+  .src-list .s-line { display: flex; justify-content: space-between; gap: 8px; align-items: center; }
+  .phr { color: var(--text-2); font-size: 12px; padding-left: 2px; }
+  code, .mono { font-family: var(--font-code); font-size: 12px; }
+
+  .skel { background: var(--surface-3); border-radius: 6px; height: 12px; }
+
+  /* Dialog */
+  .scrim { position: fixed; inset: 0; background: rgb(0 0 0 / 0.5); z-index: 30; display: grid; place-items: center; padding: 16px; }
+  .dialog { width: min(640px, 100%); max-height: calc(100vh - 32px); background: var(--surface); border: 1px solid var(--line-strong); border-radius: var(--radius); box-shadow: var(--shadow-lg); display: flex; flex-direction: column; }
+  .d-head { padding: 16px 20px 8px; display: flex; flex-direction: column; gap: 4px; }
+  .d-head h2 { font-size: 18px; }
+  .d-body { padding: 8px 20px 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
+  .d-foot { padding: 12px 20px; border-top: 1px solid var(--line); display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
+  .dep-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .dep-table th, .dep-table td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  .dep-table th { font-weight: 500; font-size: 12px; color: var(--text-2); background: var(--surface-2); }
+  .dep-wrap { border: 1px solid var(--line); border-radius: var(--radius); overflow: auto; max-height: 240px; }
+
+  @media (min-width: 1280px) {
+    .body.has-pane { grid-template-columns: minmax(0, 1fr) 360px; }
+    .pane-body { max-height: calc(100vh - 210px); }
+  }
+  @media (max-width: 1279.98px) {
+    .body.has-pane .pane { position: fixed; top: 0; right: 0; bottom: 0; width: min(400px, 92vw); border-radius: 0; box-shadow: var(--shadow-lg); z-index: 20; }
+    .body.has-pane .pane .pane-body { flex: 1; }
+  }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+const P = {
+  alert: '<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
+  checkc: '<circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>',
+  check: '<path d="M20 6 9 17l-5-5"/>',
+  x: '<circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/>',
+  lock: '<rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
+  info: '<circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>',
+  loader: '<path d="M21 12a9 9 0 1 1-6.22-8.56"/>',
+  close: '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
+  chevr: '<path d="m9 18 6-6-6-6"/>',
+  chevl: '<path d="m15 18-6-6 6-6"/>',
+  chevd: '<path d="m6 9 6 6 6-6"/>',
+  chevu: '<path d="m18 15-6-6-6 6"/>',
+  bot: '<path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/>',
+  sigma: '<path d="M18 7V5a1 1 0 0 0-1-1H6.5a.5.5 0 0 0-.4.8l4.5 6a2 2 0 0 1 0 2.4l-4.5 6a.5.5 0 0 0 .4.8H17a1 1 0 0 0 1-1v-2"/>',
+  wand: '<path d="M15 4V2"/><path d="M15 16v-2"/><path d="M8 9h2"/><path d="M20 9h2"/><path d="M17.8 11.8 19 13"/><path d="M15 9h.01"/><path d="M17.8 6.2 19 5"/><path d="m3 21 9-9"/><path d="M12.2 6.2 11 5"/>',
+  code: '<polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>',
+  arrow: '<path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>',
+  unlink: '<path d="m18.84 12.25 1.72-1.71h-.02a5.004 5.004 0 0 0-.12-7.07 5.006 5.006 0 0 0-6.95 0l-1.72 1.71"/><path d="m5.17 11.75-1.71 1.71a5.004 5.004 0 0 0 .12 7.07 5.006 5.006 0 0 0 6.95 0l1.71-1.71"/><path d="M8 2v3"/><path d="M2 8h3"/><path d="M16 22v-3"/><path d="M22 16h-3"/>',
+  search: '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>',
+  table: '<path d="M12 3v18"/><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/>',
+  file: '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/>',
+};
+const I = (n, label, cls = '') => `<svg class="i ${cls}" viewBox="0 0 24 24" ${label ? `role="img" aria-label="${label}"` : 'aria-hidden="true"'}>${P[n]}</svg>`;
+const st = (cls, icon, text) => `<span class="status ${cls}">${I(icon)}${text}</span>`;
+const q = new URLSearchParams(location.search);
+const screen = q.get('screen') || 'take';
+document.documentElement.dataset.theme = q.get('theme') || 'dark';
+const locked = screen === 'locked';
+const D = locked ? 'disabled' : '';
+const CK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>';
+
+/* ---------- Shared parts ---------- */
+const notice = (kind, icon, body, actions = '', role = 'status') => `<div class="notice n-${kind}" role="${role}">${I(icon)}<div class="n-body">${body}${actions ? `<div class="n-actions">${actions}</div>` : ''}</div></div>`;
+const cb = (id, label, why, { checked = false, disabled = false } = {}) => `<label class="cb ${disabled ? 'is-disabled' : ''}" for="${id}"><input type="checkbox" id="${id}" ${checked ? 'checked' : ''} ${disabled || locked ? 'disabled' : ''} ${why ? `aria-describedby="${id}-w"` : ''}><span class="box">${CK}</span><span>${label}</span>${why ? `<span class="why" id="${id}-w">${why}</span>` : ''}</label>`;
+
+function radio(id, label, { checked = false, disabled = false, why = '', badge = '', sub = '', busy = false } = {}) {
+  return `<div class="rc ${checked ? 'is-selected' : ''} ${disabled ? 'is-disabled' : ''}"><input type="radio" name="mc" id="${id}" ${checked ? 'checked' : ''} ${disabled || locked ? 'disabled' : ''} ${why ? `aria-describedby="${id}-w"` : ''} ${busy ? 'aria-busy="true"' : ''}>
+  <label class="lbl" for="${id}">${label}${badge}${busy ? `<span class="status s-plain">${I('loader', '', 'spin')}Saving</span>` : ''}</label>${why ? `<span class="why" id="${id}-w">${why}</span>` : ''}${sub ? `<div class="sub">${sub}</div>` : ''}</div>`;
+}
+const proposedBadge = `<span class="status s-brand">${I('bot')}Proposed</span>`;
+
+function sourceSelect(open, value = 'Sales B') {
+  const opts = [['Sales A', 'Different: expression'], ['Sales B', 'Different: expression, format string'], ['Finance (cloud)', 'Missing', true]];
+  return `<div class="field"><span class="flabel" id="srcl">Source</span><div class="pop"><button type="button" class="sel-trigger" role="combobox" aria-labelledby="srcl" aria-haspopup="listbox" aria-expanded="${open}" aria-controls="srclb" ${D}><span>${value}</span>${I('chevd')}</button>
+  ${open ? `<ul class="listbox" role="listbox" id="srclb" aria-labelledby="srcl">${opts.map(([n, s, dis], i) => `<li class="opt ${i === 1 ? 'active' : ''}" role="option" aria-selected="${n === value}" ${dis ? 'aria-disabled="true"' : ''}>${I('check', '', 'ck')}<span class="o-main"><span>${n}</span><span class="o-sub">${s}${dis ? '. Cannot take from this source.' : ''}</span></span></li>`).join('')}</ul>` : ''}</div></div>`;
+}
+
+function folderField(open, value = 'Margin', newText = '') {
+  const groups = [['In target', ['Margin', 'Sales', 'Sales\\Ratios']], ['In Sales B', ['KPI\\Margin', 'Margin']]];
+  return `<div class="field"><label for="dfin">Display folder</label><div class="pop"><input class="tf" style="width:100%" id="dfin" role="combobox" aria-autocomplete="list" aria-expanded="${open}" aria-controls="dflb" value="${newText || value}" ${D}>
+  ${open ? `<div class="listbox" role="listbox" id="dflb" aria-label="Display folders">${newText ? `<div class="opt active" role="option" aria-selected="false">${I('check', '', 'ck')}<span class="o-main"><span>Use new folder "${newText}"</span></span></div><div class="opt-sep" aria-hidden="true"></div>` : ''}${groups.map(([g, fs], gi) => `<div role="group" aria-labelledby="dfg${gi}"><div class="lb-head" id="dfg${gi}">${g}</div>${fs.filter(f => !newText || f.toLowerCase().includes(newText.toLowerCase().slice(0, 3))).map(f => `<div class="opt" role="option" aria-selected="${f === value && !newText}">${I('check', '', 'ck')}<span class="o-main"><span class="mono">${f}</span></span></div>`).join('')}</div>`).join('')}</div>` : ''}</div></div>`;
+}
+
+function nameField({ value, required, note = '', state = '' } = {}) {
+  const hints = {
+    proposed: `<p class="hint ok">${I('checkc')}<span>Proposed from naming rules: Measure prefix, Title Case.</span></p>`,
+    warn: `<p class="hint warn" id="nm-h">${I('alert')}<span>This name breaks 1 naming rule: Measure names start with a capital letter. You can keep it.</span></p>`,
+    clash: `<p class="hint bad" id="nm-h">${I('x')}<span>The target already has a measure "Net Margin" in Sales. Use a different name. The plan stays not valid until you change it.</span></p><div><button class="btn btn-sm" ${D}>${I('wand')}Use proposed name "Net Margin (Sales B)"</button></div>`,
+    checking: `<p class="hint" id="nm-h">${I('loader', '', 'spin')}<span>Checking the name</span></p>`,
+    empty: `<p class="hint bad" id="nm-h">${I('x')}<span>Type a name. "Add as new name" needs a new name.</span></p>`,
+  };
+  return `<div class="field"><label for="nm">New name${required ? '' : ''}</label><div class="inrow"><input class="tf" id="nm" value="${value}" ${required ? 'aria-required="true"' : ''} ${state === 'clash' || state === 'empty' ? 'aria-invalid="true"' : ''} ${state && state !== 'proposed' ? 'aria-describedby="nm-h"' : ''} ${D}><button class="btn btn-icon" aria-label="Propose name" title="Propose name" ${D}>${I('wand')}</button></div>${hints[state] || ''}${note}</div>`;
+}
+
+function propPicker(noneSelected) {
+  const rows = [
+    ['expression', 'Expression', 'Different: expression changed', true],
+    ['fmt', 'Format string', 'Different: "0.0%" to "0.00%"', true],
+    ['folder', 'Display folder', 'Same', false, true],
+    ['desc', 'Description', 'Same', false, true],
+    ['hidden', 'Hidden', 'Same', false, true],
+    ['cat', 'Data category', 'Same', false, true],
+  ];
+  return `<fieldset class="props" ${noneSelected ? 'aria-invalid="true" aria-describedby="pp-err"' : ''}><legend class="small muted" style="font-weight:500">Properties to take from Sales B</legend>${rows.map(([id, l, w, c, dis]) => cb('pp-' + id, l, w, { checked: c && !noneSelected, disabled: dis })).join('')}</fieldset>${noneSelected ? `<p class="hint bad" id="pp-err">${I('x')}<span>Select at least one property.</span></p>` : ''}`;
+}
+
+const sourcesSec = (open = false) => `<details class="sec" ${open ? 'open' : ''}><summary>${I('chevr')}Sources</summary><ul class="src-list">
+  <li><div class="s-line"><span>Sales Master <span class="muted small">target</span></span>${st('s-plain', 'checkc', 'Target')}</div></li>
+  <li><div class="s-line"><span>Sales A</span>${st('s-warn', 'alert', 'Different')}</div><span class="phr">Expression changed</span></li>
+  <li><div class="s-line"><span>Sales B</span>${st('s-warn', 'alert', 'Different')}</div><span class="phr">Expression changed. Format string: "0.0%" to "0.00%"</span></li>
+  <li><div class="s-line"><span>Finance (cloud)</span>${st('s-plain', 'x', 'Missing')}</div></li></ul>
+  <div><button class="btn btn-sm" ${''}>${I('code')}Show code diff</button></div></details>`;
+const matchSec = (open = false, extra = '') => `<details class="sec" ${open ? 'open' : ''}><summary>${I('chevr')}Match</summary>${extra || `<dl class="kv"><dt>Matched by</dt><dd>Same lineage tag</dd><dt>Sources</dt><dd>Sales A, Sales B</dd></dl>`}<div class="n-actions" style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-sm" ${D}>${I('unlink')}Break match</button><button class="btn btn-sm" ${D}>${I('search')}Match with</button></div></details>`;
+const impactSec = `<div class="sec"><button class="link">${I('arrow')}Show impact of this row</button></div>`;
+
+function proposalCard({ hasChoice = true, value = 'Take from Sales B', marked = false } = {}) {
+  return `<section class="proposal" aria-label="Agent proposal"><div class="p-head">${st('s-brand', 'bot', 'Proposed by agent')}<span class="small muted">Claude Code, today 10:31</span></div>
+  <p class="p-change">${value}</p>
+  <dl class="kv"><dt>Confidence</dt><dd>94%</dd><dt>Reason</dt><dd>Sales B has the newer margin formula. It divides by net revenue after returns. Sales A and the target divide by gross revenue.</dd>${hasChoice ? `<dt>Your choice</dt><dd>Keep target</dd>` : ''}</dl>
+  ${marked ? `<p class="hint warn">${I('alert')}<span>The source changed after the agent made this proposal. Examine the row before you accept.</span></p>` : ''}
+  <div class="n-actions" style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-sm btn-primary" ${D}>${hasChoice ? 'Replace with agent choice' : 'Accept'}</button><button class="btn btn-sm" ${D}>Reject</button></div></section>`;
+}
+
+function paneShell({ title = '[Net Margin]', type = 'Measure', table = 'Sales', state = st('s-warn', 'alert', 'Different'), body }) {
+  return `<aside class="pane" aria-labelledby="pane-h"><div class="pane-head"><div class="pane-title"><h2 id="pane-h">${title}</h2><div class="meta"><span>${I(type === 'Measure' || type === 'Report measure' ? 'sigma' : 'table')}${type}</span><span>in ${table}</span>${state}</div></div>
+  <div class="pane-nav"><button class="btn btn-ghost btn-icon" aria-label="Previous row">${I('chevu')}</button><button class="btn btn-ghost btn-icon" aria-label="Next row">${I('chevd')}</button><button class="btn btn-ghost btn-icon" aria-label="Close row detail">${I('close')}</button></div></div>
+  <div class="pane-body">${body}</div></aside>`;
+}
+
+/* ---------- Choice groups ---------- */
+function choices(sel, opt = {}) {
+  const t = opt.targetMissing;
+  const take = sel === 'take' ? (opt.takeSub ?? `${sourceSelect(!!opt.srcOpen)}<div><button class="btn btn-sm" ${D}>Change name</button></div>${folderField(!!opt.folderOpen)}`) : '';
+  const props = sel === 'props' ? `${sourceSelect(false)}${propPicker(!!opt.noneSel)}` : '';
+  const addn = sel === 'add' ? `${nameField({ value: opt.nameVal ?? 'Net Margin After Returns', required: true, state: opt.nameState ?? 'proposed' })}${folderField(!!opt.folderOpen, 'Margin', opt.folderNew || '')}` : '';
+  const rem = sel === 'remove' ? opt.removeSub || '' : '';
+  return `<fieldset ${opt.invalid ? '' : ''}><legend>Merge Choice</legend>
+  ${radio('mc-keep', t ? 'Do not add (keep target)' : 'Keep target', { checked: sel === 'keep', why: t ? 'The target stays without this object.' : '' })}
+  ${radio('mc-take', 'Take from source', { checked: sel === 'take', badge: opt.proposed === 'take' ? proposedBadge : '', sub: take, busy: opt.busy === 'take' })}
+  ${radio('mc-props', 'Take properties from source', { checked: sel === 'props', disabled: t || opt.noProps, why: t ? 'The target does not have this object. Nothing to change.' : opt.noProps ? 'Only for measures, columns, and relationships.' : '', sub: props })}
+  ${radio('mc-add', 'Add as new name', { checked: sel === 'add', sub: addn })}
+  ${radio('mc-remove', 'Remove from target', { checked: sel === 'remove', disabled: t, why: t ? 'The target does not have this object.' : '', sub: rem })}
+  ${radio('mc-skip', 'Skip', { checked: sel === 'skip', why: 'No change now. The row stays open.' })}
+  ${opt.reportMeasure ? `<div class="grp-label" role="presentation">Report measure</div>${radio('mc-promote', 'Promote to target model', { checked: sel === 'promote', why: 'Creates a model measure and moves the visuals of the target report to it.' })}${radio('mc-copyr', 'Copy into target report', { checked: sel === 'copyr', why: 'Adds this report measure to the target report.' })}` : ''}
+  </fieldset>`;
+}
+
+/* ---------- Screens ---------- */
+const S = {};
+S.take = () => paneShell({ body: `
+  <div class="sec">${notice('warn', 'alert', '<p>Sales B changed since the last check. Examine this row, then confirm it.</p>', `<button class="btn btn-sm" ${D}>Confirm row</button>`)}</div>
+  <div class="sec">${proposalCard({ hasChoice: true })}</div>
+  <div class="sec">${choices('take', { proposed: 'take', srcOpen: q.get('open') === 'src', folderOpen: q.get('open') === 'folder' })}</div>
+  ${matchSec()}${sourcesSec()}${impactSec}` });
+S.props = (none) => paneShell({ body: `<div class="sec">${choices('props', { noneSel: none })}</div>${matchSec()}${sourcesSec(true)}${impactSec}` });
+S['props-none'] = () => S.props(true);
+S.newname = () => paneShell({ body: `<div class="sec">${notice('warn', 'alert', '<p>1 warning for this row.</p><ul class="n-list"><li>The new name breaks 1 naming rule.</li></ul>', '', 'status')}</div><div class="sec">${choices('add', { nameVal: 'net margin v2', nameState: 'warn', folderOpen: true, folderNew: 'Margin\\Returns' })}</div>${matchSec()}${sourcesSec()}${impactSec}` });
+S['newname-clash'] = () => paneShell({ body: `<div class="sec">${notice('bad', 'x', '<p>1 blocking item for this row.</p><ul class="n-list"><li>Name clash: the target already has "Net Margin".</li></ul>', '', 'alert')}</div><div class="sec">${choices('add', { nameVal: 'Net Margin', nameState: 'clash' })}</div>${matchSec()}${sourcesSec()}${impactSec}` });
+S.rename = () => paneShell({ title: '[Gross Margin %]', state: st('s-info', 'info', 'Possible rename'), body: `
+  <div class="sec">${notice('info', 'info', '<p>Possible rename. "[GM %]" in Sales B has the same expression as "[Gross Margin %]" in the target. Is it the same measure?</p>', `<button class="btn btn-sm btn-primary" ${D}>Confirm rename</button><button class="btn btn-sm" ${D}>Reject rename</button>`)}</div>
+  <div class="sec">${choices('skip', {})}</div>
+  ${matchSec(true, `<dl class="kv"><dt>Matched by</dt><dd>Same expression, different name (not confirmed)</dd><dt>Sales B name</dt><dd>[GM %]</dd></dl>`)}${sourcesSec()}${impactSec}` });
+S.missing = () => paneShell({ title: '[Returns Rate]', state: st('s-plain', 'x', 'Missing in target'), body: `<div class="sec">${choices('take', { targetMissing: true, takeSub: `${sourceSelect(false, 'Sales B')}<div><button class="btn btn-sm" ${D}>Change name</button></div>${folderField(false, 'Returns')}`, busy: 'take' })}</div>${matchSec()}${impactSec}` });
+const removeBlock = `<div class="notice n-bad" role="status">${I('x')}<div class="n-body"><p><b>Removal policy: Block.</b> 7 objects use this measure. The plan is not valid until you resolve each one.</p><div class="n-actions"><button class="btn btn-sm" ${D}>Select removal policy</button></div></div></div>`;
+S.remove = () => paneShell({ title: '[Old Margin]', state: st('s-plain', 'info', 'Only in target'), body: `<div class="sec">${notice('bad', 'x', '<p>1 blocking item for this row.</p><ul class="n-list"><li>7 objects use this measure. Removal policy is Block.</li></ul>', '', 'alert')}</div><div class="sec">${choices('remove', { removeSub: removeBlock })}</div>${matchSec()}${sourcesSec()}${impactSec}` });
+S['remove-none'] = () => paneShell({ title: '[Unused Ratio]', body: `<div class="sec">${choices('remove', { removeSub: `<p class="hint ok">${I('checkc')}<span>No object uses this. It is removed with no other change.</span></p>` })}</div>${matchSec()}${impactSec}` });
+S['remove-cascade'] = () => paneShell({ title: '[Old Margin]', state: st('s-plain', 'info', 'Only in target'), body: `<div class="sec">${choices('remove', { removeSub: `<div class="notice n-warn" role="status">${I('alert')}<div class="n-body"><p><b>Removal policy: Cascade.</b> 7 other objects are removed with it.</p><div class="n-actions"><button class="btn btn-sm" ${D}>Change removal policy</button></div></div></div>` })}</div>${matchSec()}${impactSec}` });
+S.report = () => paneShell({ title: '[Target Gap]', type: 'Report measure', table: 'Sales (Sales Overview report)', state: st('s-plain', 'x', 'Missing in target'), body: `<div class="sec">${choices('promote', { targetMissing: true, reportMeasure: true, noProps: true })}</div>${matchSec()}${impactSec}` });
+S.locked = () => paneShell({ body: `<div class="sec">${notice('info', 'lock', '<p>This session is read-only. Another PBIBrain window has it open.</p>')}</div><div class="sec">${choices('take', {})}</div>${matchSec()}${sourcesSec()}${impactSec}` });
+S.multi = () => `<aside class="pane" aria-labelledby="pane-h"><div class="pane-head"><div class="pane-title"><h2 id="pane-h">24 rows selected</h2></div><button class="btn btn-ghost btn-icon" aria-label="Close row detail">${I('close')}</button></div><div class="pane-body"><div class="sec"><p>Use the bar above the grid to set one Merge Choice for all selected rows.</p><p class="muted small">Name, display folder, properties, and removal policy are set on one row at a time.</p><div><button class="btn btn-sm">Clear selection</button></div></div></div></aside>`;
+S.loading = () => paneShell({ state: '', body: `<div class="sec" aria-busy="true"><span class="hint">${I('loader', '', 'spin')}<span>Loading row</span></span><div class="skel" style="width:60%"></div><div class="skel" style="width:80%"></div><div class="skel" style="width:70%"></div><div class="skel" style="width:50%"></div></div>` });
+S.error = () => paneShell({ state: '', body: `<div class="sec">${notice('bad', 'x', '<p>Cannot load this row. The local API did not answer. Make sure PBIBrain is running, then try again.</p>', '<button class="btn btn-sm">Try again</button>', 'alert')}</div>` });
+S.stale = () => paneShell({ body: `<div class="sec">${notice('warn', 'alert', '<p>This row changed in another place. Examine it, then set your Merge Choice again.</p>', '', 'alert')}</div><div class="sec">${choices('keep', {})}</div>${matchSec()}${sourcesSec()}${impactSec}` });
+
+/* ---------- Dialogs ---------- */
+function policyDialog(kind) {
+  const deps = [
+    ['[Margin YoY]', 'Measure', 'Removed'],
+    ['[Margin Target Gap]', 'Measure', 'Keeps its own Merge Choice: Take from Sales B'],
+    ['Margin by month', 'Visual, page Overview', 'Field removed from visual'],
+    ['Margin card', 'Visual, page Overview', 'Visual removed (no field stays)'],
+    ['Page filter on Detail', 'Filter', 'Filter removed'],
+    ['Region RLS', 'RLS filter', 'Removed'],
+    ['[Margin Rank]', 'Measure', 'Removed'],
+  ];
+  const cands = [['[Net Margin]', 'Decimal number', false], ['[Gross Margin %]', 'Decimal number', false], ['[Margin Count]', 'Whole number', true]];
+  const cascade = kind === 'cascade' ? `<div class="sub"><p class="small muted">These objects are also removed or changed:</p><div class="dep-wrap" tabindex="0" aria-label="Dependents, scroll area"><table class="dep-table"><thead><tr><th scope="col">Object</th><th scope="col">Kind</th><th scope="col">Effect</th></tr></thead><tbody>${deps.map(d => `<tr><td>${d[0]}</td><td class="muted">${d[1]}</td><td>${d[2]}</td></tr>`).join('')}</tbody></table></div></div>` : '';
+  const repoint = kind === 'repoint' ? `<div class="sub"><div class="field"><label for="rp">Replace each reference with</label><div class="pop"><input class="tf" style="width:100%" id="rp" role="combobox" aria-autocomplete="list" aria-expanded="true" aria-controls="rplb" value="Margin"><ul class="listbox" role="listbox" id="rplb" aria-label="Measures">${cands.map(([n, t, w], i) => `<li class="opt ${i === 2 ? 'active' : ''}" role="option" aria-selected="${i === 2}">${I('check', '', 'ck')}<span class="o-main"><span>${n}</span>${w ? `<span class="o-sub warn">${I('alert')}Data type is different: Whole number, not Decimal number</span>` : `<span class="o-sub">${t}</span>`}</span></li>`).join('')}</ul></div></div><div style="height:150px"></div></div>` : '';
+  const confirm = { block: `<button class="btn btn-primary">Use Block</button>`, cascade: `<button class="btn btn-danger-solid">Use Cascade (remove 7 objects)</button>`, repoint: `<button class="btn btn-primary">Use Repoint</button>` }[kind];
+  return `<div class="scrim"><div class="dialog" role="dialog" aria-modal="true" aria-labelledby="dlg-h" aria-describedby="dlg-d"><div class="d-head"><h2 id="dlg-h">Removal policy for [Old Margin]</h2><p class="muted" id="dlg-d">7 objects use this measure. Select what happens to them when you remove it.</p></div>
+  <div class="d-body"><fieldset><legend>Policy</legend>
+  ${radio('rp-block', 'Block', { checked: kind === 'block', why: 'Keep the plan not valid until you resolve each object yourself.' }).replaceAll('name="mc"', 'name="rp"')}
+  ${radio('rp-cascade', 'Cascade', { checked: kind === 'cascade', why: 'Remove the objects that use it too.', sub: cascade }).replaceAll('name="mc"', 'name="rp"')}
+  ${radio('rp-repoint', 'Repoint', { checked: kind === 'repoint', why: 'Replace each reference with one other measure.', sub: repoint }).replaceAll('name="mc"', 'name="rp"')}
+  </fieldset></div><div class="d-foot"><button class="btn">Cancel</button>${confirm}</div></div></div>`;
+}
+const breakDialog = () => `<div class="scrim"><div class="dialog" role="alertdialog" aria-modal="true" aria-labelledby="dlg-h" aria-describedby="dlg-d" style="width:min(480px,100%)"><div class="d-head"><h2 id="dlg-h">Break the match of [Net Margin]?</h2></div><div class="d-body"><p id="dlg-d">The row splits into one row for each object. The Merge Choice of this row is removed.</p></div><div class="d-foot"><button class="btn">Cancel</button><button class="btn btn-primary">Break match</button></div></div></div>`;
+
+/* ---------- Frame ---------- */
+const DIALOGS = { 'dlg-block': ['remove', () => policyDialog('block')], 'dlg-cascade': ['remove', () => policyDialog('cascade')], 'dlg-repoint': ['remove', () => policyDialog('repoint')], 'dlg-break': ['take', breakDialog] };
+const [paneKey, dlg] = DIALOGS[screen] || [screen, null];
+const navItems = ['Overview', 'Search', 'Graph', 'Inspector', 'Review queue', 'Development Center', 'Settings'];
+const rowsG = [['[Total Sales]', 'Measure', 'Same', 'Same', 'Different'], ['[Net Margin]', 'Measure', 'Different', 'Different', 'Missing'], ['[Old Margin]', 'Measure', 'Missing', 'Missing', 'Missing'], ['[Gross Margin %]', 'Measure', 'Same', 'Possible rename', 'Missing'], ['Sales[Amount]', 'Column', 'Same', 'Same', 'Same'], ['[Returns Rate]', 'Measure', 'Only here', 'Same', 'Missing'], ['Date[Year]', 'Column', 'Same', 'Same', 'Same']];
+const selRow = { take: 1, props: 1, 'props-none': 1, newname: 1, 'newname-clash': 1, rename: 3, missing: 5, remove: 2, 'remove-none': 2, 'remove-cascade': 2, locked: 1, loading: 1, error: 1, stale: 1 }[paneKey];
+const grid = `<div class="region" role="tabpanel" aria-label="Compare"><div class="grid-scroll" tabindex="0" aria-label="Compare rows, scroll area"><table class="fake-grid" aria-label="Compare rows (placeholder, ticket 03)"><thead><tr><th scope="col">Object</th><th scope="col">Type</th><th scope="col">Sales A</th><th scope="col">Sales B</th><th scope="col">Finance (cloud)</th><th scope="col">Merge Choice</th></tr></thead><tbody>${rowsG.map((r, i) => `<tr aria-selected="${paneKey === 'multi' ? i < 4 : i === selRow}"><td>${r[0]}</td><td class="muted">${r[1]}</td><td>${r[2]}</td><td>${r[3]}</td><td>${r[4]}</td><td class="muted">Not set</td></tr>`).join('')}</tbody></table></div></div>`;
+const paneHtml = (S[paneKey] || S.take)();
+document.getElementById('app').innerHTML = `<div class="shell"><aside class="sidebar"><div class="brand">PBIBrain</div><nav aria-label="Main navigation">${navItems.map(n => `<button class="nav" ${n === 'Development Center' ? 'aria-current="page"' : ''}>${n}</button>`).join('')}</nav></aside>
+<div class="main"><header class="topbar"><span>Development Center</span>${I('chevr')}<span>Sales master merge</span>${I('chevr')}<span style="color:var(--text)">Compare</span></header>
+<main class="content" id="main"><h1>Sales master merge</h1><div class="tabs" role="tablist" aria-label="Session views">${['Compare', 'Impact', 'Plan', 'Agent', 'Sources', 'Log'].map(t => `<button class="tab" role="tab" aria-selected="${t === 'Compare'}" ${t === 'Compare' ? '' : 'tabindex="-1"'}>${t}</button>`).join('')}</div>
+<div class="body has-pane">${grid}${paneHtml}</div></main></div></div>${dlg ? dlg() : ''}`;
+</script>
+</body>
+</html>

@@ -1,0 +1,346 @@
+<!doctype html><html lang="en" data-theme="dark"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Row detail</title>
+<!-- Prototype for ticket 04. Never shipped. Open with ?screen=<id>&theme=dark|light. -->
+<style>/* Copy of the token blocks of frontend/src/theme.css (lines 39-164). Prototype only. */
+:root {
+  --font-ui: "Inter Variable", "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  --font-code: "JetBrains Mono Variable", "Cascadia Code", Consolas, ui-monospace, monospace;
+  --radius: 0.5rem;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-spring: cubic-bezier(0.34, 1.4, 0.64, 1);
+  --dur-fast: 120ms;
+  --dur: 200ms;
+  --dur-slow: 320ms;
+
+  /* Canvas & surfaces */
+  --bg: #0b0c0f;
+  --bg-sidebar: #0e0f13;
+  --surface: #131519;
+  --surface-2: #181a1f;
+  --surface-3: #1f2127;
+  --surface-hover: #1c1e24;
+  --line: #1f2228;
+  --line-strong: #2b2f37;
+  --line-focus: #3a3f4a;
+  --control-border: #697185;
+
+  /* Text */
+  --text: #ededf0;
+  --text-2: #a3a7b1;
+  --text-3: #9298a5;
+  --text-inverse: #0b0c0f;
+
+  /* Brand accent: calm periwinkle, distinct from every status colour */
+  --brand: #8e97ff;
+  --brand-strong: #a9b0ff;
+  --brand-ink: #0b0c1a;
+  --brand-soft: rgb(142 151 255 / 0.12);
+  --brand-line: rgb(142 151 255 / 0.35);
+  --brand-glow: rgb(142 151 255 / 0.22);
+
+  /* Status */
+  --ok: #5ccf9a;
+  --ok-soft: rgb(92 207 154 / 0.12);
+  --warn: #eeb85c;
+  --warn-soft: rgb(238 184 92 / 0.12);
+  --bad: #f07f7f;
+  --bad-soft: rgb(240 127 127 / 0.12);
+  --info: #6fb6ee;
+  --info-soft: rgb(111 182 238 / 0.12);
+
+  /* Elevation */
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.35);
+  --shadow-md: 0 1px 2px rgb(0 0 0 / 0.3), 0 8px 24px -6px rgb(0 0 0 / 0.45);
+  --shadow-lg: 0 2px 4px rgb(0 0 0 / 0.3), 0 24px 64px -12px rgb(0 0 0 / 0.6);
+  --inset-hi: inset 0 1px 0 rgb(255 255 255 / 0.04);
+
+  /* Graph */
+  --grid-dot: #23262d;
+  --minimap-mask: rgb(11 12 15 / 0.78);
+  --code-bg: #0f1014;
+
+  /* shadcn primitives map onto the tokens above */
+  --background: var(--bg);
+  --foreground: var(--text);
+  --card: var(--surface);
+  --card-foreground: var(--text);
+  --popover: var(--surface-2);
+  --popover-foreground: var(--text);
+  --primary: var(--brand);
+  --primary-foreground: var(--brand-ink);
+  --secondary: var(--surface-3);
+  --secondary-foreground: var(--text);
+  --muted-surface: var(--surface-2);
+  --muted-foreground: var(--text-2);
+  --accent: var(--surface-hover);
+  --accent-foreground: var(--text);
+  --destructive: var(--bad);
+  --border: var(--line);
+  --input: var(--line-strong);
+  --ring: var(--brand);
+  --red: var(--bad);
+
+  color-scheme: dark;
+}
+
+:root[data-theme="light"] {
+  --bg: #f6f6f4;
+  --bg-sidebar: #efefec;
+  --surface: #ffffff;
+  --surface-2: #f9f9f8;
+  --surface-3: #f0f0ee;
+  --surface-hover: #f1f1ef;
+  --line: #e6e5e1;
+  --line-strong: #d6d5d0;
+  --line-focus: #bdbcb6;
+  --control-border: #838994;
+
+  --text: #16171b;
+  --text-2: #5c5f68;
+  --text-3: #656a75;
+  --text-inverse: #ffffff;
+
+  --brand: #4f58e0;
+  --brand-strong: #3d45c9;
+  --brand-ink: #ffffff;
+  --brand-soft: rgb(79 88 224 / 0.09);
+  --brand-line: rgb(79 88 224 / 0.35);
+  --brand-glow: rgb(79 88 224 / 0.16);
+
+  --ok: #157347;
+  --ok-soft: rgb(31 157 100 / 0.1);
+  --warn: #8a540d;
+  --warn-soft: rgb(184 116 18 / 0.1);
+  --bad: #bd3030;
+  --bad-soft: rgb(207 60 60 / 0.08);
+  --info: #216a9f;
+  --info-soft: rgb(42 127 192 / 0.1);
+
+  --shadow-sm: 0 1px 2px rgb(20 20 30 / 0.06);
+  --shadow-md: 0 1px 2px rgb(20 20 30 / 0.05), 0 8px 24px -8px rgb(20 20 30 / 0.12);
+  --shadow-lg: 0 2px 4px rgb(20 20 30 / 0.05), 0 24px 56px -12px rgb(20 20 30 / 0.2);
+  --inset-hi: inset 0 1px 0 rgb(255 255 255 / 0.6);
+
+  --grid-dot: #d9d8d3;
+  --minimap-mask: rgb(246 246 244 / 0.75);
+  --code-bg: #fafaf8;
+
+  color-scheme: light;
+}
+
+</style>
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--font-ui); font-size: 14px; line-height: 1.45; }
+  button, input { font: inherit; color: inherit; }
+  :focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+  svg.i { width: 16px; height: 16px; flex: none; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .spin { animation: spin 0.9s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { .spin { animation: none; } }
+
+  .shell { display: grid; grid-template-columns: 236px minmax(0, 1fr); min-height: 100vh; }
+  .sidebar { background: var(--bg-sidebar); border-right: 1px solid var(--line); padding: 16px 10px; display: flex; flex-direction: column; gap: 2px; }
+  .brand { font-weight: 600; padding: 4px 10px 16px; }
+  .nav { display: flex; align-items: center; gap: 10px; padding: 0 10px; min-height: 32px; border-radius: var(--radius); color: var(--text-2); border: 0; background: none; text-align: left; width: 100%; }
+  .nav[aria-current="page"] { background: var(--surface-3); color: var(--text); }
+  .main { min-width: 0; display: flex; flex-direction: column; }
+  .topbar { height: 48px; display: flex; align-items: center; gap: 8px; padding: 0 20px; border-bottom: 1px solid var(--line); color: var(--text-2); }
+  .content { padding: 24px; min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 16px; }
+  h1 { font-size: 28px; line-height: 1.2; margin: 0; font-weight: 600; letter-spacing: -0.01em; }
+  h2 { font-size: 16px; margin: 0; font-weight: 600; }
+  h3 { font-size: 13px; margin: 0; font-weight: 600; }
+  .muted { color: var(--text-2); }
+  .small { font-size: 12px; }
+  p { margin: 0; }
+
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 32px; padding: 0 12px; border-radius: var(--radius); border: 1px solid var(--control-border); background: var(--surface); cursor: pointer; white-space: nowrap; }
+  .btn:hover { background: var(--surface-hover); }
+  .btn:active { background: var(--surface-3); }
+  .btn:disabled { opacity: 0.55; cursor: not-allowed; }
+  .btn-primary { background: var(--brand); color: var(--brand-ink); border-color: var(--brand); }
+  .btn-primary:hover { background: var(--brand-strong); border-color: var(--brand-strong); }
+  .btn-danger-solid { background: var(--bad); color: var(--text-inverse); border-color: var(--bad); }
+  .btn-danger-solid:hover { background: var(--bad); border-color: var(--text); }
+  .btn-ghost { border-color: transparent; background: none; }
+  .btn-sm { min-height: 28px; padding: 0 10px; font-size: 13px; }
+  .btn-icon { width: 32px; padding: 0; }
+  .link { background: none; border: 0; padding: 0; color: var(--brand); cursor: pointer; text-decoration: underline; text-underline-offset: 2px; min-height: 24px; display: inline-flex; align-items: center; gap: 4px; }
+
+  .status { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 500; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
+  .s-ok { color: var(--ok); background: var(--ok-soft); }
+  .s-warn { color: var(--warn); background: var(--warn-soft); }
+  .s-bad { color: var(--bad); background: var(--bad-soft); }
+  .s-info { color: var(--info); background: var(--info-soft); }
+  .s-brand { color: var(--brand-strong); background: var(--brand-soft); }
+  .s-plain { color: var(--text-2); background: var(--surface-3); }
+  .status svg.i { width: 14px; height: 14px; }
+
+  /* Work area frame (from ticket 02) */
+  .tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--line); }
+  .tab { min-height: 36px; padding: 0 12px; background: none; border: 0; border-bottom: 2px solid transparent; color: var(--text-2); }
+  .tab[aria-selected="true"] { color: var(--text); border-bottom-color: var(--brand); }
+  .body { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; flex: 1; min-height: 0; }
+  .region { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); min-width: 0; min-height: 360px; display: flex; flex-direction: column; }
+  .grid-scroll { overflow: auto; flex: 1; }
+  .fake-grid { border-collapse: collapse; min-width: 720px; width: 100%; font-size: 13px; }
+  .fake-grid th, .fake-grid td { padding: 7px 12px; border-bottom: 1px solid var(--line); text-align: left; white-space: nowrap; }
+  .fake-grid th { color: var(--text-2); font-weight: 500; font-size: 12px; background: var(--surface-2); }
+  .fake-grid tr[aria-selected="true"] td { background: var(--brand-soft); }
+
+  /* Row detail pane */
+  .pane { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); display: flex; flex-direction: column; min-width: 0; }
+  .pane-head { display: flex; align-items: flex-start; gap: 8px; padding: 12px 12px 12px 16px; border-bottom: 1px solid var(--line); }
+  .pane-title { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+  .pane-title h2 { overflow-wrap: anywhere; }
+  .meta { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; color: var(--text-2); font-size: 12px; }
+  .meta span { display: inline-flex; gap: 4px; align-items: center; }
+  .pane-nav { display: flex; gap: 2px; }
+  .pane-body { display: flex; flex-direction: column; overflow-y: auto; }
+  .sec { padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; border-bottom: 1px solid var(--line); }
+  .sec:last-child { border-bottom: 0; }
+  .sec-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  details.sec > summary { list-style: none; display: flex; align-items: center; gap: 6px; cursor: pointer; font-weight: 600; font-size: 13px; min-height: 24px; }
+  details.sec > summary::-webkit-details-marker { display: none; }
+  details.sec > summary svg.i { transition: transform var(--dur-fast) var(--ease-out); }
+  details.sec[open] > summary svg.i { transform: rotate(90deg); }
+
+  /* Notice: full hairline border, icon plus text */
+  .notice { display: flex; gap: 10px; padding: 10px 12px; border-radius: var(--radius); border: 1px solid var(--line-strong); background: var(--surface-2); }
+  .notice > svg.i { margin-top: 2px; }
+  .notice .n-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+  .notice .n-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  .n-warn > svg.i { color: var(--warn); } .n-bad > svg.i { color: var(--bad); } .n-info > svg.i { color: var(--info); } .n-brand > svg.i { color: var(--brand); }
+  .n-list { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 4px; font-size: 13px; }
+
+  /* Proposal card */
+  .proposal { border: 1px solid var(--brand-line); border-radius: var(--radius); background: var(--brand-soft); padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+  .proposal .p-head { display: flex; gap: 8px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+  .proposal .p-change { font-weight: 600; }
+  .kv { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 12px; font-size: 13px; margin: 0; }
+  .kv dt { color: var(--text-2); } .kv dd { margin: 0; overflow-wrap: anywhere; }
+
+  /* Merge Choice radio group */
+  fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
+  legend { font-weight: 600; font-size: 13px; padding: 0; margin-bottom: 6px; }
+  .grp-label { font-size: 12px; color: var(--text-2); padding: 8px 8px 2px; }
+  .rc { display: grid; grid-template-columns: 16px minmax(0, 1fr); gap: 2px 10px; padding: 7px 8px; border-radius: var(--radius); align-items: start; position: relative; }
+  .rc:hover:not(.is-disabled) { background: var(--surface-hover); }
+  .rc.is-selected { background: var(--surface-3); }
+  .rc .lbl { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .rc .why { grid-column: 2; font-size: 12px; color: var(--text-2); }
+  .rc.is-disabled .lbl { color: var(--text-3); }
+  .rc .sub { grid-column: 2; margin-top: 6px; display: flex; flex-direction: column; gap: 8px; }
+  input[type="radio"] { appearance: none; margin: 2px 0 0; width: 16px; height: 16px; border-radius: 50%; border: 1.5px solid var(--control-border); background: var(--surface); cursor: pointer; }
+  input[type="radio"]:checked { border-color: var(--brand); background: radial-gradient(circle, var(--brand) 0 3.5px, transparent 4px); }
+  input[type="radio"]:disabled { opacity: 0.5; cursor: not-allowed; }
+  input[type="radio"][aria-busy="true"] { border-style: dashed; }
+
+  /* Checkbox (real input, drawn box with pointer-events none) */
+  .cb { display: grid; grid-template-columns: 16px minmax(0, 1fr); gap: 2px 10px; padding: 6px 8px; border-radius: var(--radius); align-items: start; position: relative; cursor: pointer; }
+  .cb:hover:not(.is-disabled) { background: var(--surface-hover); }
+  .cb input { position: absolute; opacity: 0; width: 16px; height: 16px; margin: 2px 0 0; }
+  .cb .box { width: 16px; height: 16px; margin-top: 2px; border-radius: 4px; border: 1.5px solid var(--control-border); background: var(--surface); display: grid; place-items: center; pointer-events: none; }
+  .cb .box svg { width: 11px; height: 11px; stroke: var(--brand-ink); fill: none; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; visibility: hidden; }
+  .cb input:checked + .box { background: var(--brand); border-color: var(--brand); }
+  .cb input:checked + .box svg { visibility: visible; }
+  .cb input:focus-visible + .box { outline: 2px solid var(--ring); outline-offset: 2px; }
+  .cb.is-disabled { cursor: not-allowed; color: var(--text-3); }
+  .cb.is-disabled .box { opacity: 0.5; }
+  .cb .why { grid-column: 2; font-size: 12px; color: var(--text-2); }
+  .props[aria-invalid="true"] { border: 1px solid var(--bad); border-radius: var(--radius); }
+
+  /* Text field */
+  .field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+  .field > label, .field > .flabel { font-size: 13px; font-weight: 500; }
+  .inrow { display: flex; gap: 6px; min-width: 0; }
+  .tf { flex: 1; min-width: 0; min-height: 32px; padding: 0 10px; border-radius: var(--radius); border: 1px solid var(--control-border); background: var(--surface); color: var(--text); }
+  .tf:hover { border-color: var(--text-3); }
+  .tf:focus-visible { outline: 2px solid var(--ring); outline-offset: 0; border-color: var(--brand); }
+  .tf[aria-invalid="true"] { border-color: var(--bad); }
+  .tf:disabled { opacity: 0.55; }
+  .hint { font-size: 12px; color: var(--text-2); display: flex; gap: 6px; align-items: flex-start; }
+  .hint svg.i { width: 14px; height: 14px; margin-top: 1px; }
+  .hint.warn svg.i { color: var(--warn); } .hint.bad { color: var(--bad); } .hint.ok svg.i { color: var(--ok); }
+
+  /* Select and Combobox (Radix pattern) */
+  .sel-trigger { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; min-height: 32px; padding: 0 8px 0 10px; border-radius: var(--radius); border: 1px solid var(--control-border); background: var(--surface); cursor: pointer; text-align: left; }
+  .sel-trigger:hover { background: var(--surface-hover); }
+  .sel-trigger[aria-expanded="true"] { border-color: var(--brand); }
+  .pop { position: relative; }
+  .listbox { position: absolute; z-index: 6; left: 0; right: 0; top: calc(100% + 4px); background: var(--surface-2); border: 1px solid var(--line-strong); border-radius: var(--radius); box-shadow: var(--shadow-md); padding: 4px; margin: 0; list-style: none; max-height: 260px; overflow-y: auto; }
+  .listbox [role="group"] { padding: 0; margin: 0; list-style: none; }
+  .lb-head { font-size: 12px; color: var(--text-2); padding: 6px 8px 2px; }
+  .opt { display: flex; align-items: center; gap: 8px; min-height: 30px; padding: 4px 8px; border-radius: 6px; cursor: pointer; }
+  .opt .ck { width: 14px; height: 14px; visibility: hidden; }
+  .opt[aria-selected="true"] .ck { visibility: visible; color: var(--brand); }
+  .opt.active, .opt:hover { background: var(--surface-hover); }
+  .opt[aria-disabled="true"] { color: var(--text-3); cursor: not-allowed; }
+  .opt .o-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .opt .o-sub { font-size: 12px; color: var(--text-2); }
+  .opt .o-sub.warn { color: var(--warn); display: inline-flex; gap: 4px; align-items: center; }
+  .opt-sep { height: 1px; background: var(--line); margin: 4px 0; }
+
+  .src-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; font-size: 13px; }
+  .src-list li { display: flex; flex-direction: column; gap: 2px; }
+  .src-list .s-line { display: flex; justify-content: space-between; gap: 8px; align-items: center; }
+  .phr { color: var(--text-2); font-size: 12px; padding-left: 2px; }
+  code, .mono { font-family: var(--font-code); font-size: 12px; }
+
+  .skel { background: var(--surface-3); border-radius: 6px; height: 12px; }
+
+  /* Dialog */
+  .scrim { position: fixed; inset: 0; background: rgb(0 0 0 / 0.5); z-index: 30; display: grid; place-items: center; padding: 16px; }
+  .dialog { width: min(640px, 100%); max-height: calc(100vh - 32px); background: var(--surface); border: 1px solid var(--line-strong); border-radius: var(--radius); box-shadow: var(--shadow-lg); display: flex; flex-direction: column; }
+  .d-head { padding: 16px 20px 8px; display: flex; flex-direction: column; gap: 4px; }
+  .d-head h2 { font-size: 18px; }
+  .d-body { padding: 8px 20px 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
+  .d-foot { padding: 12px 20px; border-top: 1px solid var(--line); display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
+  .dep-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .dep-table th, .dep-table td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  .dep-table th { font-weight: 500; font-size: 12px; color: var(--text-2); background: var(--surface-2); }
+  .dep-wrap { border: 1px solid var(--line); border-radius: var(--radius); overflow: auto; max-height: 240px; }
+
+  @media (min-width: 1280px) {
+    .body.has-pane { grid-template-columns: minmax(0, 1fr) 360px; }
+    .pane-body { max-height: calc(100vh - 210px); }
+  }
+  @media (max-width: 1279.98px) {
+    .body.has-pane .pane { position: fixed; top: 0; right: 0; bottom: 0; width: min(400px, 92vw); border-radius: 0; box-shadow: var(--shadow-lg); z-index: 20; }
+    .body.has-pane .pane .pane-body { flex: 1; }
+  }
+</style>
+<style type="text/css">*{animation:none!important;transition:none!important}</style></head>
+<body>
+<div id="app"><div class="shell"><aside class="sidebar"><div class="brand">PBIBrain</div><nav aria-label="Main navigation"><button class="nav">Overview</button><button class="nav">Search</button><button class="nav">Graph</button><button class="nav">Inspector</button><button class="nav">Review queue</button><button class="nav" aria-current="page">Development Center</button><button class="nav">Settings</button></nav></aside>
+<div class="main"><header class="topbar"><span>Development Center</span><svg class="i " viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"></path></svg><span>Sales master merge</span><svg class="i " viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"></path></svg><span style="color:var(--text)">Compare</span></header>
+<main class="content" id="main"><h1>Sales master merge</h1><div class="tabs" role="tablist" aria-label="Session views"><button class="tab" role="tab" aria-selected="true">Compare</button><button class="tab" role="tab" aria-selected="false" tabindex="-1">Impact</button><button class="tab" role="tab" aria-selected="false" tabindex="-1">Plan</button><button class="tab" role="tab" aria-selected="false" tabindex="-1">Agent</button><button class="tab" role="tab" aria-selected="false" tabindex="-1">Sources</button><button class="tab" role="tab" aria-selected="false" tabindex="-1">Log</button></div>
+<div class="body has-pane"><div class="region" role="tabpanel" aria-label="Compare"><div class="grid-scroll" tabindex="0" aria-label="Compare rows, scroll area"><table class="fake-grid" aria-label="Compare rows (placeholder, ticket 03)"><thead><tr><th scope="col">Object</th><th scope="col">Type</th><th scope="col">Sales A</th><th scope="col">Sales B</th><th scope="col">Finance (cloud)</th><th scope="col">Merge Choice</th></tr></thead><tbody><tr aria-selected="false"><td>[Total Sales]</td><td class="muted">Measure</td><td>Same</td><td>Same</td><td>Different</td><td class="muted">Not set</td></tr><tr aria-selected="true"><td>[Net Margin]</td><td class="muted">Measure</td><td>Different</td><td>Different</td><td>Missing</td><td class="muted">Not set</td></tr><tr aria-selected="false"><td>[Old Margin]</td><td class="muted">Measure</td><td>Missing</td><td>Missing</td><td>Missing</td><td class="muted">Not set</td></tr><tr aria-selected="false"><td>[Gross Margin %]</td><td class="muted">Measure</td><td>Same</td><td>Possible rename</td><td>Missing</td><td class="muted">Not set</td></tr><tr aria-selected="false"><td>Sales[Amount]</td><td class="muted">Column</td><td>Same</td><td>Same</td><td>Same</td><td class="muted">Not set</td></tr><tr aria-selected="false"><td>[Returns Rate]</td><td class="muted">Measure</td><td>Only here</td><td>Same</td><td>Missing</td><td class="muted">Not set</td></tr><tr aria-selected="false"><td>Date[Year]</td><td class="muted">Column</td><td>Same</td><td>Same</td><td>Same</td><td class="muted">Not set</td></tr></tbody></table></div></div><aside class="pane" aria-labelledby="pane-h"><div class="pane-head"><div class="pane-title"><h2 id="pane-h">[Net Margin]</h2><div class="meta"><span><svg class="i " viewBox="0 0 24 24" aria-hidden="true"><path d="M18 7V5a1 1 0 0 0-1-1H6.5a.5.5 0 0 0-.4.8l4.5 6a2 2 0 0 1 0 2.4l-4.5 6a.5.5 0 0 0 .4.8H17a1 1 0 0 0 1-1v-2"></path></svg>Measure</span><span>in Sales</span><span class="status s-warn"><svg class="i " viewBox="0 0 24 24" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path></svg>Different</span></div></div>
+  <div class="pane-nav"><button class="btn btn-ghost btn-icon" aria-label="Previous row"><svg class="i " viewBox="0 0 24 24" aria-hidden="true"><path d="m18 15-6-6-6 6"></path></svg></button><button class="btn btn-ghost btn-icon" aria-label="Next row"><svg class="i " viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg></button><button class="btn btn-ghost btn-icon" aria-label="Close row detail"><svg class="i " viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg></button></div></div>
+  <div class="pane-body"><div class="sec"><div class="notice n-warn" role="status"><svg class="i " viewBox="0 0 24 24" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path></svg><div class="n-body"><p>1 warning for this row.</p><ul class="n-list"><li>The new name breaks 1 naming rule.</li></ul></div></div></div><div class="sec"><fieldset><legend>Merge Choice</legend>
+  <div class="rc  "><input type="radio" name="mc" id="mc-keep" style="">
+  <label class="lbl" for="mc-keep">Keep target</label></div>
+  <div class="rc  "><input type="radio" name="mc" id="mc-take" style="">
+  <label class="lbl" for="mc-take">Take from source</label></div>
+  <div class="rc  "><input type="radio" name="mc" id="mc-props" style="">
+  <label class="lbl" for="mc-props">Take properties from source</label></div>
+  <div class="rc is-selected "><input type="radio" name="mc" id="mc-add" checked="" style="">
+  <label class="lbl" for="mc-add">Add as new name</label><div class="sub"><div class="field"><label for="nm">New name</label><div class="inrow"><input class="tf" id="nm" value="net margin v2" aria-required="true" aria-describedby="nm-h" style=""><button class="btn btn-icon" aria-label="Propose name" title="Propose name"><svg class="i " viewBox="0 0 24 24" aria-hidden="true"><path d="M15 4V2"></path><path d="M15 16v-2"></path><path d="M8 9h2"></path><path d="M20 9h2"></path><path d="M17.8 11.8 19 13"></path><path d="M15 9h.01"></path><path d="M17.8 6.2 19 5"></path><path d="m3 21 9-9"></path><path d="M12.2 6.2 11 5"></path></svg></button></div><p class="hint warn" id="nm-h"><svg class="i " viewBox="0 0 24 24" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path></svg><span>This name breaks 1 naming rule: Measure names start with a capital letter. You can keep it.</span></p></div><div class="field"><label for="dfin">Display folder</label><div class="pop"><input class="tf" style="width: 100%;" id="dfin" role="combobox" aria-autocomplete="list" aria-expanded="true" aria-controls="dflb" value="Margin\Returns">
+  <div class="listbox" role="listbox" id="dflb" aria-label="Display folders"><div class="opt active" role="option" aria-selected="false"><svg class="i ck" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg><span class="o-main"><span>Use new folder "Margin\Returns"</span></span></div><div class="opt-sep" aria-hidden="true"></div><div role="group" aria-labelledby="dfg0"><div class="lb-head" id="dfg0">In target</div><div class="opt" role="option" aria-selected="false"><svg class="i ck" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg><span class="o-main"><span class="mono">Margin</span></span></div></div><div role="group" aria-labelledby="dfg1"><div class="lb-head" id="dfg1">In Sales B</div><div class="opt" role="option" aria-selected="false"><svg class="i ck" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg><span class="o-main"><span class="mono">KPI\Margin</span></span></div><div class="opt" role="option" aria-selected="false"><svg class="i ck" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg><span class="o-main"><span class="mono">Margin</span></span></div></div></div></div></div></div></div>
+  <div class="rc  "><input type="radio" name="mc" id="mc-remove" style="">
+  <label class="lbl" for="mc-remove">Remove from target</label></div>
+  <div class="rc  "><input type="radio" name="mc" id="mc-skip" aria-describedby="mc-skip-w" style="">
+  <label class="lbl" for="mc-skip">Skip</label><span class="why" id="mc-skip-w">No change now. The row stays open.</span></div>
+  
+  </fieldset></div><details class="sec"><summary><svg class="i " viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"></path></svg>Match</summary><dl class="kv"><dt>Matched by</dt><dd>Same lineage tag</dd><dt>Sources</dt><dd>Sales A, Sales B</dd></dl><div class="n-actions" style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-sm"><svg class="i " viewBox="0 0 24 24" aria-hidden="true"><path d="m18.84 12.25 1.72-1.71h-.02a5.004 5.004 0 0 0-.12-7.07 5.006 5.006 0 0 0-6.95 0l-1.72 1.71"></path><path d="m5.17 11.75-1.71 1.71a5.004 5.004 0 0 0 .12 7.07 5.006 5.006 0 0 0 6.95 0l1.71-1.71"></path><path d="M8 2v3"></path><path d="M2 8h3"></path><path d="M16 22v-3"></path><path d="M22 16h-3"></path></svg>Break match</button><button class="btn btn-sm"><svg class="i " viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg>Match with</button></div></details><details class="sec"><summary><svg class="i " viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"></path></svg>Sources</summary><ul class="src-list">
+  <li><div class="s-line"><span>Sales Master <span class="muted small">target</span></span><span class="status s-plain"><svg class="i " viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="m9 12 2 2 4-4"></path></svg>Target</span></div></li>
+  <li><div class="s-line"><span>Sales A</span><span class="status s-warn"><svg class="i " viewBox="0 0 24 24" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path></svg>Different</span></div><span class="phr">Expression changed</span></li>
+  <li><div class="s-line"><span>Sales B</span><span class="status s-warn"><svg class="i " viewBox="0 0 24 24" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path></svg>Different</span></div><span class="phr">Expression changed. Format string: "0.0%" to "0.00%"</span></li>
+  <li><div class="s-line"><span>Finance (cloud)</span><span class="status s-plain"><svg class="i " viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="m15 9-6 6"></path><path d="m9 9 6 6"></path></svg>Missing</span></div></li></ul>
+  <div><button class="btn btn-sm"><svg class="i " viewBox="0 0 24 24" aria-hidden="true"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>Show code diff</button></div></details><div class="sec"><button class="link"><svg class="i " viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg>Show impact of this row</button></div></div></aside></div></main></div></div></div>
+
+
+
+</body></html>
