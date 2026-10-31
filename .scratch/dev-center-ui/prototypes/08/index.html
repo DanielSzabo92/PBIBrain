@@ -1,0 +1,337 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Plan and apply</title>
+<!-- Prototype for ticket 08. Never shipped. Open with ?screen=<id>&theme=dark|light. -->
+<link rel="stylesheet" href="tokens.css">
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--font-ui); font-size: 14px; line-height: 1.45; }
+  button { font: inherit; color: inherit; }
+  :focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+  svg.i { width: 16px; height: 16px; flex: none; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .shell { display: grid; grid-template-columns: 236px minmax(0, 1fr); min-height: 100vh; }
+  .sidebar { background: var(--bg-sidebar); border-right: 1px solid var(--line); padding: 16px 10px; display: flex; flex-direction: column; gap: 2px; }
+  .brand { font-weight: 600; padding: 4px 10px 16px; }
+  .nav { display: flex; align-items: center; gap: 10px; padding: 0 10px; min-height: 32px; border-radius: var(--radius); color: var(--text-2); border: 0; background: none; text-align: left; cursor: pointer; width: 100%; }
+  .nav:hover { background: var(--surface-hover); color: var(--text); }
+  .nav[aria-current="page"] { background: var(--surface-3); color: var(--text); }
+  .main { min-width: 0; display: flex; flex-direction: column; }
+  .topbar { height: 48px; display: flex; align-items: center; gap: 8px; padding: 0 20px; border-bottom: 1px solid var(--line); color: var(--text-2); min-width: 0; }
+  .crumb { color: var(--text-2); background: none; border: 0; padding: 4px 6px; border-radius: 6px; cursor: pointer; white-space: nowrap; }
+  .crumb-now { color: var(--text); white-space: nowrap; }
+  .content { padding: 24px; min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 16px; }
+  h1 { font-size: 28px; line-height: 1.2; margin: 0; font-weight: 600; letter-spacing: -0.01em; }
+  h2 { font-size: 16px; margin: 0; font-weight: 600; }
+  h3 { font-size: 13px; margin: 0; font-weight: 600; color: var(--text-2); }
+  .muted { color: var(--text-2); }
+  .small { font-size: 12px; }
+  p { margin: 0; }
+  .btn { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 0 12px; border-radius: var(--radius); border: 1px solid var(--control-border); background: var(--surface); cursor: pointer; white-space: nowrap; }
+  .btn:hover { background: var(--surface-hover); }
+  .btn:disabled { opacity: 0.55; cursor: not-allowed; }
+  .btn-primary { background: var(--brand); color: var(--brand-ink); border-color: var(--brand); }
+  .btn-primary:hover { background: var(--brand-strong); border-color: var(--brand-strong); }
+  .btn-destructive { background: var(--bad); color: var(--text-inverse); border-color: var(--bad); }
+  .btn-destructive:hover { filter: brightness(1.08); background: var(--bad); }
+  .btn-destructive-outline { color: var(--bad); border-color: var(--bad); }
+  .btn-ghost { border-color: transparent; background: none; }
+  .btn-sm { min-height: 28px; padding: 0 10px; font-size: 13px; }
+  .status { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 500; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
+  .s-ok { color: var(--ok); background: var(--ok-soft); } .s-warn { color: var(--warn); background: var(--warn-soft); }
+  .s-bad { color: var(--bad); background: var(--bad-soft); } .s-info { color: var(--info); background: var(--info-soft); }
+  .s-plain { color: var(--text-2); background: var(--surface-3); }
+  .status svg.i { width: 14px; height: 14px; }
+  /* Opaque soft tints for the header status button: the soft token composited over bg, without alpha. */
+  :root { --ok-soft-solid: color-mix(in srgb, rgb(92 207 154) 12%, var(--bg)); --warn-soft-solid: color-mix(in srgb, rgb(238 184 92) 12%, var(--bg)); --bad-soft-solid: color-mix(in srgb, rgb(240 127 127) 12%, var(--bg)); }
+  :root[data-theme="light"] { --ok-soft-solid: color-mix(in srgb, rgb(31 157 100) 10%, var(--bg)); --warn-soft-solid: color-mix(in srgb, rgb(184 116 18) 10%, var(--bg)); --bad-soft-solid: color-mix(in srgb, rgb(207 60 60) 8%, var(--bg)); }
+  button.status.s-ok { background: var(--ok-soft-solid); }
+  button.status.s-warn { background: var(--warn-soft-solid); }
+  button.status.s-bad { background: var(--bad-soft-solid); }
+  button.status:hover { background: var(--surface-hover); }
+  .banner { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: var(--radius); border: 1px solid var(--line); background: var(--surface); flex-wrap: wrap; }
+  .banner .msg { flex: 1 1 320px; min-width: 0; }
+  .banner-warn > svg.i:first-child { color: var(--warn); } .banner-bad > svg.i:first-child { color: var(--bad); }
+  .banner-info > svg.i:first-child { color: var(--info); } .banner-ok > svg.i:first-child { color: var(--ok); }
+  .ok-c { color: var(--ok); } .bad-c { color: var(--bad); } .warn-c { color: var(--warn); } .run-c { color: var(--info); }
+
+  .work-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+  .target-line { display: flex; gap: 12px; flex-wrap: wrap; color: var(--text-2); font-size: 13px; margin-top: 6px; }
+  .target-line span { display: inline-flex; gap: 6px; align-items: center; }
+  .head-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--line); overflow-x: auto; }
+  .tab { min-height: 36px; padding: 0 12px; background: none; border: 0; border-bottom: 2px solid transparent; color: var(--text-2); cursor: pointer; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+  .tab[aria-selected="true"] { color: var(--text); border-bottom-color: var(--brand); }
+  .count { font-size: 11px; padding: 0 6px; border-radius: 999px; background: var(--surface-3); color: var(--text-2); }
+  .count.bad { background: var(--bad-soft); color: var(--bad); }
+  .sr { position: absolute; left: -9999px; }
+  @media (max-width: 1279.98px) { .only-wide { display: none !important; } }
+
+  /* Plan tab */
+  .plan { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+  .strip { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 12px 16px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); }
+  .strip .grow { flex: 1 1 260px; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+  .strip .lead { font-size: 18px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+  .strip .acts { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+  .why-dis { font-size: 12px; color: var(--text-2); }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); min-width: 0; }
+  .card-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 12px 16px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+  .blocks { list-style: none; margin: 0; padding: 0; }
+  .blocks li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px; align-items: start; padding: 10px 16px; border-bottom: 1px solid var(--line); }
+  .blocks li:last-child { border-bottom: 0; }
+  .blocks li > svg.i { margin-top: 2px; color: var(--bad); }
+  .blocks .sub { font-size: 12px; color: var(--text-2); margin-top: 2px; }
+  .blocks .files { font-family: var(--font-code); font-size: 12px; color: var(--text-2); margin-top: 4px; overflow-wrap: anywhere; }
+  .two { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  @media (min-width: 1280px) { .two { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); align-items: start; } }
+  .sum-wrap { overflow-x: auto; }
+  .sum { border-collapse: collapse; width: 100%; font-size: 13px; font-variant-numeric: tabular-nums; }
+  .sum th, .sum td { padding: 6px 12px; text-align: right; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  .sum th:first-child, .sum td:first-child { text-align: left; }
+  .sum thead th { font-size: 12px; font-weight: 500; color: var(--text-2); background: var(--surface-2); }
+  .sum tbody th { font-weight: 500; }
+  .sum tr.grp th { text-align: left; font-size: 12px; color: var(--text-2); background: var(--surface-2); font-weight: 600; }
+  .sum .zero { color: var(--text-3); }
+  .sum .del { color: var(--bad); font-weight: 600; }
+  .filters { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .seg { display: inline-flex; border: 1px solid var(--control-border); border-radius: var(--radius); overflow: hidden; }
+  .seg button { border: 0; background: none; min-height: 28px; padding: 0 10px; cursor: pointer; color: var(--text-2); }
+  .seg button[aria-pressed="true"] { background: var(--surface-3); color: var(--text); }
+  .search { min-height: 28px; padding: 0 10px; border-radius: var(--radius); border: 1px solid var(--control-border); background: var(--surface); color: var(--text); font: inherit; font-size: 13px; width: 180px; }
+  .steps-scroll { max-height: 440px; overflow: auto; }
+  .phase { padding: 8px 16px; font-size: 12px; font-weight: 600; color: var(--text-2); background: var(--surface-2); border-bottom: 1px solid var(--line); position: sticky; top: 0; display: flex; gap: 8px; }
+  .step { border-bottom: 1px solid var(--line); }
+  .step > button { width: 100%; display: grid; grid-template-columns: 16px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 8px 16px; background: none; border: 0; text-align: left; cursor: pointer; }
+  .step > button:hover { background: var(--surface-hover); }
+  .step .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .step .ty { color: var(--text-2); font-size: 12px; }
+  .step[data-open="true"] > button svg.i:first-child { transform: rotate(90deg); }
+  .ops { padding: 4px 16px 12px 42px; display: flex; flex-direction: column; gap: 8px; }
+  .op { font-size: 12px; color: var(--text-2); }
+  .op code { font-family: var(--font-code); color: var(--text); }
+  .diff { font-family: var(--font-code); font-size: 12px; background: var(--code-bg); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; overflow-x: auto; white-space: pre; margin: 4px 0 0; }
+  .diff .rm { color: var(--bad); } .diff .ad { color: var(--ok); }
+  .warns { list-style: none; margin: 0; padding: 0; }
+  .warns li { display: flex; gap: 10px; padding: 8px 16px; border-bottom: 1px solid var(--line); font-size: 13px; }
+  .warns li:last-child { border-bottom: 0; }
+  .warns li svg.i { color: var(--warn); margin-top: 2px; }
+
+  /* Result panel */
+  .result { border: 1px solid var(--line); background: var(--surface); border-radius: var(--radius); padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+  .result-head { display: flex; gap: 10px; align-items: flex-start; }
+  .result-head > svg.i { width: 20px; height: 20px; margin-top: 2px; }
+  .result-head .t { font-size: 18px; font-weight: 600; }
+  .result-head .grow { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+  .result .acts { display: flex; gap: 8px; flex-wrap: wrap; }
+  .dtable { border-collapse: collapse; width: 100%; font-size: 13px; }
+  .dtable th, .dtable td { padding: 6px 10px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+  .dtable th { font-size: 12px; color: var(--text-2); font-weight: 500; background: var(--surface-2); }
+  .dtable td code { font-family: var(--font-code); font-size: 12px; overflow-wrap: anywhere; }
+
+  /* Dialog */
+  .scrim { position: fixed; inset: 0; background: rgb(0 0 0 / 0.55); z-index: 30; display: grid; place-items: center; padding: 16px; }
+  .dialog { background: var(--surface-2); border: 1px solid var(--line-strong); border-radius: 12px; box-shadow: var(--shadow-lg); width: min(600px, 100%); max-height: calc(100vh - 32px); display: flex; flex-direction: column; }
+  .dlg-head { padding: 18px 20px 8px; display: flex; flex-direction: column; gap: 4px; }
+  .dlg-head h2 { font-size: 20px; }
+  .dlg-body { padding: 8px 20px 12px; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; }
+  .dlg-foot { padding: 12px 20px 18px; display: flex; justify-content: flex-end; gap: 8px; border-top: 1px solid var(--line); flex-wrap: wrap; }
+  .facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 8px; }
+  .fact { border: 1px solid var(--line); border-radius: var(--radius); padding: 8px 10px; background: var(--surface); }
+  .fact b { display: block; font-size: 20px; font-variant-numeric: tabular-nums; }
+  .fact span { font-size: 12px; color: var(--text-2); }
+  .fact.del b { color: var(--bad); }
+  .risk { list-style: none; margin: 0; padding: 0; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+  .risk li { display: grid; grid-template-columns: 104px minmax(0, 1fr); gap: 4px 10px; padding: 8px 12px; border-bottom: 1px solid var(--line); font-size: 13px; }
+  .risk li:last-child { border-bottom: 0; }
+  .risk .r { grid-column: 2; font-size: 12px; color: var(--text-2); }
+  .approve { display: grid; grid-template-columns: 20px minmax(0, 1fr); gap: 8px; padding: 10px 12px; border: 1px solid var(--control-border); border-radius: var(--radius); background: var(--surface); cursor: pointer; }
+  .approve input { width: 16px; height: 16px; margin: 2px 0 0; accent-color: var(--brand); }
+  .note { display: flex; gap: 8px; font-size: 13px; align-items: flex-start; }
+  .note svg.i { margin-top: 2px; }
+  .prog { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; font-size: 13px; }
+  .prog li { display: flex; gap: 8px; align-items: center; }
+  .prog .grp { font-size: 12px; font-weight: 600; color: var(--text-2); margin-top: 6px; }
+  .prog .wait { color: var(--text-3); }
+  .flist { font-family: var(--font-code); font-size: 12px; margin: 0; padding: 8px 12px 8px 28px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+  .empty { padding: 32px 16px; text-align: center; display: flex; flex-direction: column; gap: 8px; align-items: center; }
+  .empty svg.i { width: 28px; height: 28px; color: var(--ok); }
+  .toast { position: fixed; right: 24px; bottom: 24px; z-index: 40; display: flex; gap: 10px; align-items: center; padding: 10px 14px; background: var(--surface-3); border: 1px solid var(--line-strong); border-radius: var(--radius); box-shadow: var(--shadow-md); max-width: calc(100vw - 48px); }
+  .toast > svg.i { color: var(--ok); }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+const P = {
+  alert: '<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
+  check: '<circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>',
+  x: '<circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/>',
+  chev: '<path d="m9 18 6-6-6-6"/>',
+  more: '<circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/>',
+  merge: '<circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M6 21V9a9 9 0 0 0 9 9"/>',
+  db: '<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5V19A9 3 0 0 0 21 19V5"/><path d="M3 12A9 3 0 0 0 21 12"/>',
+  file: '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/>',
+  info: '<circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>',
+  loader: '<path d="M21 12a9 9 0 1 1-6.22-8.56"/>',
+  close: '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
+  refresh: '<path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/>',
+  undo: '<path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5 5.5 5.5 0 0 1-5.5 5.5H11"/>',
+  doc: '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/>',
+  play: '<path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>',
+  circle: '<circle cx="12" cy="12" r="10"/>',
+  shield: '<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/>',
+};
+const I = (n, label) => `<svg class="i" viewBox="0 0 24 24" ${label ? `role="img" aria-label="${label}"` : 'aria-hidden="true"'}>${P[n]}</svg>`;
+const q = new URLSearchParams(location.search);
+const screen = q.get('screen') || 'ready';
+document.documentElement.dataset.theme = q.get('theme') || 'dark';
+const st = (cls, icon, text) => `<span class="status ${cls}">${I(icon)}${text}</span>`;
+
+const navItems = ['Overview', 'Search', 'Graph', 'Inspector', 'Review queue', 'Development Center', 'Settings'];
+const sidebar = `<aside class="sidebar"><div class="brand">PBIBrain</div><nav aria-label="Main navigation">${navItems.map(n => `<button class="nav" ${n === 'Development Center' ? 'aria-current="page"' : ''}>${n === 'Development Center' ? I('merge') : ''}<span>${n}</span></button>`).join('')}</nav></aside>`;
+const crumbs = `<header class="topbar"><nav aria-label="Breadcrumb" style="display:flex;align-items:center;gap:2px;min-width:0"><button class="crumb">Development Center</button>${I('chev')}<button class="crumb">Sales master merge</button>${I('chev')}<span class="crumb-now" aria-current="page">Plan</span></nav></header>`;
+
+const blocked = screen === 'blocked' || screen === 'format';
+const applied = ['success', 'diff', 'undo', 'undo-refused', 'report'].includes(screen);
+const empty = ['success', 'undo', 'undo-refused', 'report'].includes(screen);
+const planStatus = blocked ? st('s-bad', 'x', 'Plan not valid: 2 blocking') : empty ? st('s-ok', 'check', 'Valid') : st('s-warn', 'alert', 'Valid with 2 warnings');
+const tabs = [['Compare'], ['Impact'], ['Plan', blocked ? '2' : '', true], ['Agent', '4'], ['Sources'], ['Log']];
+
+function header() {
+  return `<div class="work-head"><div><h1>Sales master merge</h1><div class="target-line"><span>${I('db')}Target model: Sales Master</span><span>${I('file')}Target report: Sales Overview</span></div></div>
+  <div class="head-actions"><button class="status ${blocked ? 's-bad' : empty ? 's-ok' : 's-warn'}" style="border:0;cursor:pointer;min-height:28px;font-size:13px">${planStatus.replace(/^<span class="status [^"]+">/, '').replace(/<\/span>$/, '')}</button>
+  <button class="btn only-wide">${I('refresh')}Check sources</button><button class="btn" aria-label="More actions">${I('more')}</button></div></div>`;
+}
+const tabRow = () => `<div class="tabs" role="tablist" aria-label="Session views">${tabs.map(([t, c, bad]) => `<button class="tab" role="tab" aria-selected="${t === 'Plan'}" ${t === 'Plan' ? 'aria-controls="tp"' : 'tabindex="-1"'}>${t}${c ? `<span class="count ${bad ? 'bad' : ''}">${c}<span class="sr"> blocking</span></span>` : ''}</button>`).join('')}</div>`;
+
+function strip() {
+  const checking = screen === 'checking';
+  let apply;
+  if (blocked) apply = `<button class="btn btn-destructive" disabled aria-describedby="why">${I('play')}Apply plan</button>`;
+  else if (empty) apply = `<button class="btn btn-primary" disabled aria-describedby="why">${I('play')}Apply plan</button>`;
+  else if (checking) apply = `<button class="btn btn-destructive" disabled aria-busy="true">${I('loader')}Checking before apply</button>`;
+  else apply = `<button class="btn btn-destructive">${I('play')}Apply plan</button>`;
+  const why = blocked ? '<span class="why-dis" id="why">Fix 5 items before you apply.</span>' : empty ? '<span class="why-dis" id="why">Nothing to apply.</span>' : '';
+  const sub = blocked ? '2 blocking items in the plan. Full check 10:42.' : empty ? 'The target matches your Merge Choices. Full check 11:07.' : '41 plan steps, 2 warnings. Full check 10:58.';
+  return `<div class="strip"><div class="grow"><div class="lead">${planStatus}</div><span class="muted small">${sub}</span></div>
+  <div class="acts">${why}<button class="btn">${I('refresh')}Check plan</button>${apply}</div></div>`;
+}
+
+function blockList() {
+  return `<section class="card" aria-labelledby="bh"><div class="card-head"><h2 id="bh">Before you apply</h2><span class="muted small">5 items stop the apply</span></div><ul class="blocks">
+  <li>${I('alert')}<div><div>14 rows changed in their source, and you did not confirm them.</div><div class="sub">Examine each row, then confirm its Merge Choice.</div></div><button class="btn btn-sm">Show these rows</button></li>
+  <li>${I('x')}<div><div>[Net Margin] uses [Gross Profit], which this plan deletes.</div><div class="sub">Blocking. Set a removal policy for [Gross Profit], or keep it.</div></div><button class="btn btn-sm">Show impact</button></li>
+  <li>${I('x')}<div><div>Name clash: Customer[Region] exists in Sales A and in Sales B.</div><div class="sub">Blocking. Give a new name or select "Keep target".</div></div><button class="btn btn-sm">Show row</button></li>
+  <li>${I('alert')}<div><div>Power BI Desktop has unsaved changes in Sales Master.</div><div class="sub">Save or close the target in Power BI Desktop. Then check again.</div></div><button class="btn btn-sm">${I('refresh')}Check again</button></li>
+  <li>${I('file')}<div><div>3 target files are not in the Power BI Desktop format.</div><div class="sub">The app must format them first. The model does not change.</div><div class="files">definition/tables/Sales.tmdl, definition/tables/Date.tmdl, definition/relationships.tmdl</div></div><button class="btn btn-sm">Format files first</button></li>
+  </ul></section>`;
+}
+const zero = (v, del) => v ? `<td class="${del ? 'del' : ''}">${v}</td>` : '<td class="zero">0</td>';
+function summary() {
+  const model = [['Table', 1, 0, 2, 0], ['Column', 6, 1, 3, 1], ['Measure', 9, 2, 5, 2], ['Relationship', 2, 0, 1, 0], ['Calculation group', 0, 0, 1, 0]];
+  const report = [['Page', 2, 0, 0, 0], ['Visual', 5, 1, 0, 0], ['Field binding', 0, 0, 12, 0]];
+  const rows = (r) => r.map(([n, c, d, m, rn]) => `<tr><th scope="row">${n}</th>${zero(c)}${zero(d, true)}${zero(m)}${zero(rn)}</tr>`).join('');
+  return `<section class="card" aria-labelledby="sh"><div class="card-head"><h2 id="sh">Summary</h2><span class="muted small">Plan steps for each object type</span></div>
+  <div class="sum-wrap"><table class="sum"><thead><tr><th scope="col">Object type</th><th scope="col">Created</th><th scope="col">Deleted</th><th scope="col">Modified</th><th scope="col">Renamed</th></tr></thead>
+  <tbody><tr class="grp"><th colspan="5" scope="colgroup">Model</th></tr>${rows(model)}<tr class="grp"><th colspan="5" scope="colgroup">Report</th></tr>${rows(report)}</tbody></table></div></section>`;
+}
+function stepList() {
+  const s = (name, type, n, open, ops) => `<div class="step" data-open="${!!open}"><button aria-expanded="${!!open}">${I('chev')}<span class="nm">${name} <span class="ty">${type}</span></span><span class="muted small">${n} operation${n > 1 ? 's' : ''}</span></button>${open ? `<div class="ops">${ops}</div>` : ''}</div>`;
+  return `<section class="card" aria-labelledby="ph"><div class="card-head"><h2 id="ph">Plan steps</h2><div class="filters"><div class="seg" role="group" aria-label="Show steps for"><button aria-pressed="true">All</button><button aria-pressed="false">Model</button><button aria-pressed="false">Report</button></div><label class="sr" for="sf">Filter plan steps</label><input class="search" id="sf" placeholder="Filter by name"></div></div>
+  <div class="steps-scroll" tabindex="0" aria-label="Plan steps, scroll area">
+  <div class="phase">Deletes <span class="muted">(4)</span></div>
+  ${s('[Gross Profit]', 'Measure', 1)}${s('Sales[Old Key]', 'Column', 1)}${s('Visual "Old trend" on Overview', 'Visual', 1)}${s('[Margin old]', 'Measure', 1)}
+  <div class="phase">Renames <span class="muted">(3)</span></div>
+  ${s('[Sales Amt] to [Total Sales]', 'Measure', 4, true, `<div class="op"><code>RENAME</code> Measure [Sales Amt] to [Total Sales]</div><div class="op"><code>REWRITE_EXPRESSION</code> [Net Margin]<pre class="diff"><span class="rm">- DIVIDE([Sales Amt] - [Cost], [Sales Amt])</span>
+<span class="ad">+ DIVIDE([Total Sales] - [Cost], [Total Sales])</span></pre></div><div class="op"><code>REBIND_FIELD</code> Overview, visual "Sales by month", Values</div><div class="op"><code>REBIND_FIELD</code> Overview, visual "KPI card", Value</div>`)}
+  ${s('Customer[Cust Name] to Customer[Customer Name]', 'Column', 2)}
+  <div class="phase">Creates <span class="muted">(18)</span></div>
+  ${s('Budget', 'Table', 1)}${s('Budget[Amount]', 'Column', 1)}${s('[Budget Variance]', 'Measure', 1)}
+  </div></section>`;
+}
+function warnings() {
+  return `<section class="card" aria-labelledby="wh"><div class="card-head"><h2 id="wh">Warnings</h2></div><ul class="warns">
+  <li>${I('alert')}<span>[Budget Variance] needs Budget[Amount]. The plan adds it from Sales B.</span></li>
+  <li>${I('alert')}<span>Repoint of [Margin old] to [Net Margin] changes the data type from Integer to Decimal.</span></li></ul></section>`;
+}
+const proposalsLine = `<div class="banner banner-info" role="status">${I('info')}<span class="msg">This plan uses accepted choices only. 4 agent proposals are open and are not in it.</span><button class="btn btn-sm">Open Agent</button></div>`;
+
+function resultPanel() {
+  if (screen === 'diff') return `<section class="result" aria-labelledby="rh" role="status"><div class="result-head">${I('alert').replace('class="i"', 'class="i warn-c"')}<div class="grow"><div class="t" id="rh">Plan applied with 2 differences</div><span class="muted">The rescan of the target does not match the plan in 2 places. Examine them. If they are not correct, undo the apply.</span></div><button class="btn btn-ghost" aria-label="Close result">${I('close')}</button></div>
+  <div style="overflow-x:auto"><table class="dtable"><thead><tr><th scope="col">Object</th><th scope="col">Expected</th><th scope="col">Found</th></tr></thead><tbody>
+  <tr><td>[Total Sales] format string</td><td><code>#,0.00</code></td><td><code>#,0</code></td></tr><tr><td>Visual "KPI card" on Overview</td><td>Bound to [Total Sales]</td><td>Not found</td></tr></tbody></table></div>
+  <div class="acts"><button class="btn btn-destructive">${I('undo')}Undo apply</button><button class="btn">${I('doc')}Write change report</button></div></section>`;
+  if (screen === 'fail') return `<section class="result" aria-labelledby="rh" role="alert"><div class="result-head">${I('x').replace('class="i"', 'class="i bad-c"')}<div class="grow"><div class="t" id="rh">Nothing was written</div><span class="muted">The guard check stopped the apply. The candidate has a change that is not in the plan: Sales[Amount] summarize by. Your target files are the same as before.</span></div><button class="btn btn-ghost" aria-label="Close result">${I('close')}</button></div>
+  <p class="small muted">Failed step: Guard check. Run "Check plan", then apply again. If it fails again, open the Log tab and copy the details.</p>
+  <div class="acts"><button class="btn">${I('refresh')}Check plan</button><button class="btn btn-ghost">Open Log</button></div></section>`;
+  if (screen === 'undo-refused') return `<section class="result" aria-labelledby="rh" role="alert"><div class="result-head">${I('x').replace('class="i"', 'class="i bad-c"')}<div class="grow"><div class="t" id="rh">Cannot undo this apply</div><span class="muted">2 target files changed after the apply. An undo would remove those changes. Undo them by hand, or keep the current files.</span></div><button class="btn btn-ghost" aria-label="Close result">${I('close')}</button></div>
+  <ul class="flist"><li>definition/tables/Sales.tmdl</li><li>definition/pages/Overview/page.json</li></ul></section>`;
+  if (screen === 'undo-done') return '';
+  return `<section class="result" aria-labelledby="rh" role="status"><div class="result-head">${I('check').replace('class="i"', 'class="i ok-c"')}<div class="grow"><div class="t" id="rh">Plan applied</div><span class="muted">The target matches the plan. 41 plan steps, 26 files written at 11:06. A backup is kept for undo.</span></div><button class="btn btn-ghost" aria-label="Close result">${I('close')}</button></div>
+  <div class="acts"><button class="btn btn-primary">${I('doc')}Write change report</button><button class="btn btn-destructive-outline">${I('undo')}Undo apply</button></div></section>`;
+}
+const desktopBanner = `<div class="banner banner-warn" role="status">${I('alert')}<span class="msg">In Power BI Desktop, select "Apply external changes" to load the new files.</span><button class="btn btn-ghost" aria-label="Close message">${I('close')}</button></div>`;
+
+function dialog() {
+  const facts = `<div class="facts"><div class="fact"><b>27</b><span>Created</span></div><div class="fact del"><b>4</b><span>Deleted</span></div><div class="fact"><b>25</b><span>Modified</span></div><div class="fact"><b>3</b><span>Renamed</span></div></div>`;
+  if (screen === 'dialog' || screen === 'dialog-unchecked') {
+    const ok = screen === 'dialog-unchecked' ? '' : 'checked';
+    return `<div class="scrim"><div class="dialog" role="dialog" aria-modal="true" aria-labelledby="dt" aria-describedby="dd">
+    <div class="dlg-head"><h2 id="dt">Apply the plan to Sales Master?</h2><p class="muted" id="dd">The app writes the model and report files together, or writes nothing. You can undo the full apply.</p></div>
+    <div class="dlg-body">${facts}
+    <p class="note bad-c">${I('alert')}<span>Deletes 4 objects: 2 measures, 1 column, 1 visual.</span></p>
+    <div><h3 style="margin-bottom:6px">Needs your approval (3)</h3><ul class="risk">
+    <li>${st('s-bad', 'alert', 'Critical')}<span>Delete [Gross Profit]</span><span class="r">2 report visuals outside the target report use it.</span></li>
+    <li>${st('s-warn', 'alert', 'High')}<span>Rename [Sales Amt] to [Total Sales]</span><span class="r">Changes 1 expression and 2 field bindings.</span></li>
+    <li>${st('s-plain', 'info', 'Not checked')}<span>Bookmarks on Overview</span><span class="r">The app cannot check bookmarks. One may refer to a renamed object.</span></li></ul></div>
+    <p class="note">${I('alert').replace('class="i"', 'class="i warn-c"')}<span>Power BI Desktop has the target open. After the apply, select "Apply external changes" in Power BI Desktop.</span></p>
+    <label class="approve"><input type="checkbox" ${ok}><span>I examined the high-risk and not-checked items. I approve them.</span></label>
+    </div><div class="dlg-foot"><button class="btn">Cancel</button><button class="btn btn-destructive" ${ok ? '' : 'disabled'}>${I('play')}Apply plan</button></div></div></div>`;
+  }
+  if (screen === 'progress') {
+    const done = (t) => `<li>${I('check').replace('class="i"', 'class="i ok-c"')}<span>${t}</span></li>`;
+    const wait = (t) => `<li class="wait">${I('circle')}<span>${t}</span></li>`;
+    return `<div class="scrim"><div class="dialog" role="dialog" aria-modal="true" aria-labelledby="dt" aria-describedby="dd">
+    <div class="dlg-head"><h2 id="dt">Applying the plan</h2><p class="muted" id="dd">Do not close PBIBrain. If a step fails, the app writes nothing.</p></div>
+    <div class="dlg-body"><ol class="prog" aria-live="polite">
+    <li class="grp">Checks</li>${done('Sources are the same as at the last check')}${done('Plan is valid')}${done('Power BI Desktop has no unsaved changes')}${done('Target files are in the Power BI Desktop format')}${done('Full check passed')}${done('You approved 3 items')}
+    <li class="grp">Write</li>${done('Write a candidate copy')}<li>${I('loader').replace('class="i"', 'class="i run-c"')}<span>Guard check</span></li>${wait('Write the files')}${wait('Rescan and compare')}${wait('Save the new fingerprints')}
+    </ol></div><div class="dlg-foot"><span class="muted small">Step 8 of 11. 0:09 elapsed.</span></div></div></div>`;
+  }
+  if (screen === 'progress-fallback') return `<div class="scrim"><div class="dialog" role="dialog" aria-modal="true" aria-labelledby="dt" aria-describedby="dd">
+    <div class="dlg-head"><h2 id="dt">Applying the plan</h2><p class="muted" id="dd">Do not close PBIBrain. If a step fails, the app writes nothing.</p></div>
+    <div class="dlg-body"><p class="note" aria-live="polite">${I('loader').replace('class="i"', 'class="i run-c"')}<span>Applying plan. 0:14 elapsed.</span></p></div></div></div>`;
+  if (screen === 'stale') return `<div class="scrim"><div class="dialog" role="dialog" aria-modal="true" aria-labelledby="dt"><div class="dlg-head"><h2 id="dt">Apply the plan to Sales Master?</h2></div>
+    <div class="dlg-body"><div class="banner banner-warn" role="alert">${I('alert')}<span class="msg">The plan changed after you opened this dialog. Check it again.</span></div></div>
+    <div class="dlg-foot"><button class="btn">Cancel</button><button class="btn btn-primary">${I('refresh')}Check plan</button></div></div></div>`;
+  if (screen === 'undo') return `<div class="scrim"><div class="dialog" role="dialog" aria-modal="true" aria-labelledby="dt" aria-describedby="dd">
+    <div class="dlg-head"><h2 id="dt">Undo the apply of 11:06?</h2><p class="muted" id="dd">The app restores all 26 target files from the backup. The Merge Choices stay in the session, so the plan shows the same steps again.</p></div>
+    <div class="dlg-body"><p class="note">${I('alert').replace('class="i"', 'class="i warn-c"')}<span>Power BI Desktop has the target open. After the undo, select "Apply external changes" in Power BI Desktop.</span></p></div>
+    <div class="dlg-foot"><button class="btn">Cancel</button><button class="btn btn-destructive">${I('undo')}Undo apply</button></div></div></div>`;
+  if (screen === 'format') return `<div class="scrim"><div class="dialog" role="dialog" aria-modal="true" aria-labelledby="dt" aria-describedby="dd">
+    <div class="dlg-head"><h2 id="dt">Format 3 target files?</h2><p class="muted" id="dd">Rewrites 3 files in the Power BI Desktop format. The model does not change. The guard stops the write if it finds a model change. You can undo it.</p></div>
+    <div class="dlg-body"><ul class="flist"><li>definition/tables/Sales.tmdl</li><li>definition/tables/Date.tmdl</li><li>definition/relationships.tmdl</li></ul>
+    <p class="note muted">${I('info')}<span>Comments and hand-made line order in these files go away.</span></p></div>
+    <div class="dlg-foot"><button class="btn">Cancel</button><button class="btn btn-primary">Format files</button></div></div></div>`;
+  return '';
+}
+
+function planTab() {
+  let body = '';
+  if (['success', 'diff', 'report'].includes(screen)) body += desktopBanner;
+  if (['success', 'diff', 'report', 'fail', 'undo-refused', 'undo'].includes(screen)) body += resultPanel();
+  body += strip();
+  if (blocked) body += blockList();
+  if (empty) body += `<section class="card"><div class="empty">${I('check')}<h2>Nothing to apply</h2><p class="muted">The target matches your Merge Choices. Change a Merge Choice in Compare to build a new plan.</p><button class="btn">Open Compare</button></div></section>`;
+  else body += `<div class="two"><div style="display:flex;flex-direction:column;gap:16px;min-width:0">${summary()}${warnings()}</div>${stepList()}</div>`;
+  if (!empty) body += proposalsLine;
+  return `<div class="plan" id="tp" role="tabpanel">${body}</div>`;
+}
+const toast = screen === 'report' ? `<div class="toast" role="status">${I('check')}<span>Change report saved</span><button class="btn btn-sm">Show in folder</button></div>` : '';
+document.getElementById('app').innerHTML = `<div class="shell">${sidebar}<div class="main">${crumbs}<main class="content" id="main">${header()}${tabRow()}${planTab()}</main></div></div>${dialog()}${toast}`;
+if (dialog()) document.querySelector('.shell').setAttribute('aria-hidden', 'true');
+</script>
+</body>
+</html>
