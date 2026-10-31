@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pbibrain.local/devcenter/contracts/jsapi/sources_check.request.json",
+  "title": "JS API sources_check: request",
+  "type": "object",
+  "properties": {
+    "base_revision": {
+      "$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/base_revision"
+    }
+  },
+  "required": [
+    "base_revision"
+  ],
+  "additionalProperties": false
+}

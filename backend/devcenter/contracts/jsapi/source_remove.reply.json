@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pbibrain.local/devcenter/contracts/jsapi/source_remove.reply.json",
+  "title": "JS API source_remove: reply (an error reply uses error.json)",
+  "type": "object",
+  "properties": {
+    "revision": {
+      "$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/revision"
+    },
+    "source_id": {
+      "$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/source_id"
+    },
+    "choice_count": {
+      "type": "integer",
+      "minimum": 0
+    }
+  },
+  "required": [
+    "choice_count",
+    "revision",
+    "source_id"
+  ],
+  "additionalProperties": false
+}

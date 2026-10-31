@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pbibrain.local/devcenter/contracts/jsapi/session_create.request.json",
+  "title": "JS API session_create: request",
+  "type": "object",
+  "properties": {
+    "display_name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "location": {
+      "$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/location"
+    },
+    "base_revision": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    }
+  },
+  "required": [
+    "display_name"
+  ],
+  "additionalProperties": false
+}

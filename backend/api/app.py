@@ -11,6 +11,7 @@ from typing import Any, Mapping, Sequence
 from urllib.parse import parse_qs, unquote, urlsplit
 
 from backend.context import get_context as build_context
+from backend.devcenter.http_routes import dispatch as devcenter_dispatch
 from backend.graph.repository import GraphRepository
 
 from .graph import find_path, get_graph
@@ -424,6 +425,8 @@ class BrainApp:
         try:
             if method == "OPTIONS":
                 return 204, None
+            if parts and parts[0] == "devcenter":
+                return devcenter_dispatch(self, method, parts[1:], query, body)
             if method == "POST" and parts == ["impact"]:
                 payload = self._json_body(body)
                 if set(payload) - {"target_id", "proposed_changes", "include_report_usage"} or not isinstance(payload.get("target_id"), str):

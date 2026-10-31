@@ -30,3 +30,29 @@ Extension points: create `backend/devcenter/jsapi.py` (one registry of JS API me
   - UC2: each read reply of this step carries `revision`, equal to the session revision.
   - UC4: each JS API call of this step has a request and reply JSON Schema, and each error reply validates against the error shape.
   - UC27: `row_confirm` with a list of row keys confirms each row in one revision step.
+
+## Build record
+
+Built:
+
+- `backend/devcenter/jsapi.py`: the one registry of JS API methods. An area adds one line to `AREA_MODULES`. `DevCenterJSAPI` is a mixin of `DesktopController`, with one public method for each registered name. Each call checks the request and the reply against `contracts/jsapi/<method>.request.json` and `.reply.json`, and gives the error shape on each failure.
+- `backend/devcenter/http_routes.py`: the one table of read routes (GET) and proposal routes (POST). `BrainApp.handle` mounts it with one line. The order of checks: unknown path 404, wrong method 405, then the session check (409 `session_not_open`). The desktop host gives the same 404 or 405 when no project is open.
+- `backend/devcenter/session/`: `store.py` (canonical bytes, atomic save, lock file with process ID and owner, schema version check, migration with backup, conflict marker and invalid JSON refusal, `.pbibrain/.gitignore`), `secrets.py` (token, full path, user profile, and e-mail check before each save and each log line), `manager.py` (the open session, revision, `log.jsonl`, sources, target, source check, marks, row confirm, `apply_source_check` for apply step 1), `jsapi_methods.py`.
+- `backend/devcenter/sources/`: `kinds.py` (source kinds and the fixed refusal messages), `objects.py` (row hashes for TMDL, TMSL, PBIR, and PBIR-Legacy), `fingerprint.py` (reuses `source_manifest` and `content_hash`), `targets.py` ("Empty" skeleton and "Copy of").
+- JS API methods: `session_create`, `session_open`, `session_close`, `source_add`, `source_remove`, `source_relink`, `target_set`, `sources_check`, `row_confirm`. HTTP reads: `GET /api/devcenter/sessions`, `GET /api/devcenter/session`.
+- `packaging/pbibrain.spec`: the contracts folder and the area module go into the build.
+
+Notes for later steps:
+
+- Row keys of S2 are object keys of one source: `<type>:<qualified name>`, for example `measure:Sales/Total Sales`. S3 must map its aligned row keys to these keys (or replace the index).
+- `source_remove` keeps the Merge Choices and gives `choice_count`. The blocking plan item `choice_source_removed` (UC33) is S5.
+- `GET session` gives `plan_status: null`. `plan_state` and the cached plan status (UC3) are S5. Proposal and question fields (UC9) are S10.
+- The "Empty" skeleton has `model.tmdl` with only `model Model`. A model property (for example `culture`) on a model with no tables fails the round trip check of the bridge ("TOM roundtrip changed properties"). TOM also writes no `model.tmdl` for such a model, so the canonical check of S9 must permit this file.
+- The migration test patches `store.SCHEMA_VERSION` and `store.MIGRATIONS`, because version 1 is the first version.
+
+Tests:
+
+- `python -m unittest tests.test_devcenter_session_store`: 35 tests, OK.
+- `python -m unittest tests.test_devcenter_http_routes`: 5 tests, OK (the route list test reads the method names from section 14.2 and 14.4 of the design and sends POST, PUT, PATCH, DELETE to the real app).
+- `python -m unittest discover -s tests`: 359 tests, OK (319 before this step).
+- Frontend: no change in this step.
