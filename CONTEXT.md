@@ -111,3 +111,7 @@ _Avoid_: Suggestion, agent decision
 **Agent Question**:
 A question that the agent adds to a row or an Impact item when its confidence is below the threshold. It has options, and the user selects one in the app.
 _Avoid_: Prompt, query
+
+**Source Fingerprint**:
+The record of one source as it was when a merge session started or when the user last confirmed it. The app compares it with the current source to find a source that changed. It holds no copy of the source content.
+_Avoid_: Snapshot (that word means a guard snapshot), checksum
