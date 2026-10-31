@@ -10,7 +10,8 @@ import subprocess
 from typing import Any, Mapping
 
 SCHEMA_VERSION = 1
-SCANNER_VERSION = "guarded-2"
+# guarded-3 (S1): new object types, links, and PBIR positions.
+SCANNER_VERSION = "guarded-3"
 # Each PBIP semantic model folder has a "definition.pbism" settings file (JSON).
 SOURCE_SUFFIXES = {".pbip", ".tmdl", ".pbir", ".pbism", ".json", ".bim"}
 OPAQUE_RESOURCE_SUFFIXES = {".png", ".jpg", ".jpeg", ".gif", ".svg", ".ico", ".woff", ".woff2"}

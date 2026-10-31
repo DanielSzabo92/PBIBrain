@@ -11,7 +11,9 @@ from referencing.jsonschema import DRAFT7
 
 SCHEMA_ROOT = Path(__file__).parent / "schemas"
 PREFIX = "https://developer.microsoft.com/json-schemas/fabric/item/report/"
-UNCERTIFIED_USAGE = {"bookmark", "bookmarksMetadata", "reportExtension"}
+# Schema families that the usage extraction does not cover. The scanner now reads
+# bookmarks and report extensions (S1), thus no family stays in this set.
+UNCERTIFIED_USAGE: set[str] = set()
 
 
 @lru_cache(maxsize=1)

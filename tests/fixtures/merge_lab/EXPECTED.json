@@ -260,7 +260,49 @@
     {
       "report": "SalesA",
       "name": "ytdview",
-      "display_name": "YTD view"
+      "display_name": "YTD view",
+      "page": "overview",
+      "visuals": [
+        "timeslicer"
+      ],
+      "filter_fields": [
+        {
+          "table": "Store",
+          "column": "Region"
+        }
+      ]
+    }
+  ],
+  "shared_expressions": [
+    {
+      "model": "Finance",
+      "name": "SalesRows",
+      "lineage_tag": "e-sales-rows",
+      "used_by_partitions": [
+        {
+          "table": "Sales",
+          "partition": "Sales"
+        }
+      ]
+    }
+  ],
+  "visual_hierarchies": [
+    {
+      "report": "SalesA",
+      "page": "detail",
+      "visual": "calendarmatrix",
+      "table": "Date",
+      "hierarchy": "Calendar"
+    }
+  ],
+  "visual_groups": [
+    {
+      "report": "SalesA",
+      "page": "detail",
+      "group": "targetgroup",
+      "visuals": [
+        "target"
+      ]
     }
   ],
   "report_measures": [
@@ -282,16 +324,7 @@
   ],
   "guarded_scan_gaps": {
     "SalesA": [
-      "CALCULATED_TABLE_DEPENDENCIES:Metric Selector",
-      "CALCULATION_GROUP_EXTRACTION:Time Intelligence",
-      "DIAGNOSTIC:parse_error",
-      "IMPACT_METADATA_COVERAGE_INCOMPLETE",
-      "PBIR_UNSUPPORTED_ARTIFACT:SalesA.Report/definition/bookmarks/bookmarks.json",
-      "PBIR_UNSUPPORTED_ARTIFACT:SalesA.Report/definition/bookmarks/ytdview.bookmark.json",
-      "PBIR_UNSUPPORTED_ARTIFACT:SalesA.Report/definition/reportExtensions.json",
-      "RLS_OLS_RUNTIME_VERIFICATION_REQUIRED",
-      "VALIDATION:dax_parse_failure",
-      "VALIDATION:missing_object_reference"
+      "RLS_OLS_RUNTIME_VERIFICATION_REQUIRED"
     ],
     "SalesB": [],
     "Finance": [],
@@ -304,10 +337,7 @@
     ]
   },
   "guarded_scan_gap_reasons": {
-    "DIAGNOSTIC:parse_error": "The DAX parser does not read the UDF syntax (parameters and =>).",
-    "VALIDATION:dax_parse_failure": "The same UDF parse gap.",
-    "VALIDATION:missing_object_reference": "The scanner does not read report measures (reportExtensions.json) yet.",
-    "PBIR_UNSUPPORTED_ARTIFACT": "The usage extraction does not cover bookmarks and report extensions yet. The schema check passes.",
+    "RLS_OLS_RUNTIME_VERIFICATION_REQUIRED": "The graph holds the role, its table filter, and its OLS permission. But only a query that runs as the role can prove the effect of a change on the visible data. Thus a model with roles stays blocked for the guard.",
     "Legacy": "The guarded scan certifies PBIR only. A PBIR-Legacy report fails closed."
   }
 }
