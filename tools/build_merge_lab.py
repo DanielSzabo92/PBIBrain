@@ -140,12 +140,15 @@ def finance():
         "tables": [
             date_table(hierarchy="Fiscal"),
             {"name": "Sales", "lineageTag": "t-sales", "columns": [column("Order Date", "dateTime", "OrderDate", "c-sales-order-date"), column("Amount", "decimal", tag="c-sales-amount")],
-             "partitions": [m_partition("Sales", ["OrderDate", "Amount"])],
+             # The partition uses the shared expression SalesRows (a partition to shared expression link).
+             "partitions": [{"name": "Sales", "mode": "import", "source": {"type": "m", "expression": "let\n    Source = SalesRows\nin\n    Source"}}],
              "measures": [measure("Revenue", "SUM(Sales[Amount])", "m-revenue-finance", formatString="#,0"),
                           measure("Margin", "[Revenue] - [Budget]")]},
             {"name": "Budget", "lineageTag": "t-budget", "columns": [column("Month", "string", tag="c-budget-month"), column("Budget Amount", "decimal", "BudgetAmount", "c-budget-amount")],
              "partitions": [m_partition("Budget", ["Month", "BudgetAmount"])],
              "measures": [measure("Budget", "SUM(Budget[Budget Amount])", "m-budget", formatString="#,0")]}],
+        "expressions": [{"name": "SalesRows", "kind": "m", "lineageTag": "e-sales-rows",
+                         "expression": "let\n    Source = #table({\"OrderDate\", \"Amount\"}, {})\nin\n    Source"}],
         "relationships": relationships(store=False)}}
 
 
@@ -225,11 +228,27 @@ def report_a(project: Path) -> None:
     visual(visuals, "2.13.0", "timeslicer", "slicer", {"Values": [projection("Column", "Time Intelligence", "Time Calculation", active=True)]}, x=0, y=260)
     visual(visuals, "2.13.0", "metrictable", "tableEx",
            {"Values": [projection("Column", "Store", "Store Name"), projection("Column", "Metric Selector", "Metric Selector")]}, x=420, y=260)
-    visual(definition / "pages" / "detail" / "visuals", "2.13.0", "target", "card", {"Values": [projection("Measure", "Sales", "Sales Target")]}, x=0, y=0)
+    detail = definition / "pages" / "detail" / "visuals"
+    visual(detail, "2.13.0", "target", "card", {"Values": [projection("Measure", "Sales", "Sales Target")]}, x=0, y=0)
+    # The target card is in a visual group.
+    target = json.loads((detail / "target" / "visual.json").read_text(encoding="utf-8"))
+    target["parentGroupName"] = "targetgroup"
+    write_json(detail / "target" / "visual.json", target)
+    write_json(detail / "targetgroup" / "visual.json", {"$schema": SCHEMA + "definition/visualContainer/2.13.0/schema.json", "name": "targetgroup",
+                                                        "position": {"x": 0, "y": 0, "z": 1000, "width": 400, "height": 240, "tabOrder": 1000},
+                                                        "visualGroup": {"displayName": "Target group", "groupMode": "ScaleMode"}})
+    # A matrix that uses the Calendar hierarchy (a visual to hierarchy link).
+    level = {"HierarchyLevel": {"Expression": {"Hierarchy": {"Expression": {"SourceRef": {"Entity": "Date"}}, "Hierarchy": "Calendar"}}, "Level": "Year"}}
+    visual(detail, "2.13.0", "calendarmatrix", "pivotTable",
+           {"Rows": [{"field": level, "queryRef": "Date.Calendar.Year", "nativeQueryRef": "Calendar Year", "active": True}],
+            "Values": [projection("Measure", "Sales", "Total Sales")]}, x=420, y=0)
     bookmarks = definition / "bookmarks"
     write_json(bookmarks / "bookmarks.json", {"$schema": SCHEMA + "definition/bookmarksMetadata/1.0.0/schema.json", "items": [{"name": "ytdview"}]})
     write_json(bookmarks / "ytdview.bookmark.json", {"$schema": SCHEMA + "definition/bookmark/2.1.0/schema.json", "name": "ytdview", "displayName": "YTD view",
-                                                     "explorationState": {"version": "1.3", "activeSection": "overview", "sections": {"overview": {"visualContainers": {}}}},
+                                                     "explorationState": {"version": "1.3", "activeSection": "overview",
+                                                                          "filters": {"byExpr": [{"name": "regionfilter", "type": "Categorical",
+                                                                                                  "expression": {"Column": {"Expression": {"SourceRef": {"Entity": "Store"}}, "Property": "Region"}}}]},
+                                                                          "sections": {"overview": {"visualContainers": {"timeslicer": {}}}}},
                                                      "options": {"targetVisualNames": ["timeslicer"]}})
 
 
@@ -333,19 +352,19 @@ EXPECTED = {
                "ols": [{"table": "Store", "column": "Manager Email", "permission": "none"}]}],
     "hierarchies": [{"model": "SalesA", "table": "Date", "name": "Calendar", "levels": ["Year", "Month"]},
                     {"model": "Finance", "table": "Date", "name": "Fiscal", "levels": ["Year", "Month"]}],
-    "bookmarks": [{"report": "SalesA", "name": "ytdview", "display_name": "YTD view"}],
+    "bookmarks": [{"report": "SalesA", "name": "ytdview", "display_name": "YTD view", "page": "overview", "visuals": ["timeslicer"],
+                   "filter_fields": [{"table": "Store", "column": "Region"}]}],
+    "shared_expressions": [{"model": "Finance", "name": "SalesRows", "lineage_tag": "e-sales-rows", "used_by_partitions": [{"table": "Sales", "partition": "Sales"}]}],
+    "visual_hierarchies": [{"report": "SalesA", "page": "detail", "visual": "calendarmatrix", "table": "Date", "hierarchy": "Calendar"}],
+    "visual_groups": [{"report": "SalesA", "page": "detail", "group": "targetgroup", "visuals": ["target"]}],
     "report_measures": [{"report": "SalesA", "entity": "Sales", "name": "Sales Target"}],
     "non_canonical_tmdl": [{"path": "Finance/Finance.SemanticModel/definition/tables/Budget.tmdl",
                             "differences": ["LF line ends", "quoted table name", "blank line before lineageTag"]}],
     # The guarded snapshot scan reads each project without a failure. These
-    # blocking items are scanner coverage gaps, not faults in the fixtures.
-    # When a later step (for example S1) closes a gap, remove its item here.
+    # blocking items stay after S1. Each item has a reason below. When a later
+    # step closes an item, remove it here.
     "guarded_scan_gaps": {
-        "SalesA": ["CALCULATED_TABLE_DEPENDENCIES:Metric Selector", "CALCULATION_GROUP_EXTRACTION:Time Intelligence", "DIAGNOSTIC:parse_error",
-                   "IMPACT_METADATA_COVERAGE_INCOMPLETE", "PBIR_UNSUPPORTED_ARTIFACT:SalesA.Report/definition/bookmarks/bookmarks.json",
-                   "PBIR_UNSUPPORTED_ARTIFACT:SalesA.Report/definition/bookmarks/ytdview.bookmark.json",
-                   "PBIR_UNSUPPORTED_ARTIFACT:SalesA.Report/definition/reportExtensions.json", "RLS_OLS_RUNTIME_VERIFICATION_REQUIRED",
-                   "VALIDATION:dax_parse_failure", "VALIDATION:missing_object_reference"],
+        "SalesA": ["RLS_OLS_RUNTIME_VERIFICATION_REQUIRED"],
         "SalesB": [],
         "Finance": [],
         "Legacy": ["PBIR_ACTIVE_PAGE_UNRESOLVED:Legacy.Report/definition/pages/pages.json", "PBIR_REQUIRED_ARTIFACT_MISSING:Legacy.Report/definition/pages/pages.json",
@@ -353,10 +372,7 @@ EXPECTED = {
                    "PBIR_SCHEMA_UNSUPPORTED:Legacy.Report/report.json"],
     },
     "guarded_scan_gap_reasons": {
-        "DIAGNOSTIC:parse_error": "The DAX parser does not read the UDF syntax (parameters and =>).",
-        "VALIDATION:dax_parse_failure": "The same UDF parse gap.",
-        "VALIDATION:missing_object_reference": "The scanner does not read report measures (reportExtensions.json) yet.",
-        "PBIR_UNSUPPORTED_ARTIFACT": "The usage extraction does not cover bookmarks and report extensions yet. The schema check passes.",
+        "RLS_OLS_RUNTIME_VERIFICATION_REQUIRED": "The graph holds the role, its table filter, and its OLS permission. But only a query that runs as the role can prove the effect of a change on the visible data. Thus a model with roles stays blocked for the guard.",
         "Legacy": "The guarded scan certifies PBIR only. A PBIR-Legacy report fails closed.",
     },
 }

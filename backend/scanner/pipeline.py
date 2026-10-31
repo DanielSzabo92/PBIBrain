@@ -237,6 +237,9 @@ class Scanner:
                 "SHARED_EXPRESSION",
                 "USER_DEFINED_FUNCTION",
                 "COLUMN",
+                "REPORT_MEASURE",
+                "ROLE_FILTER",
+                "PARTITION",
             }
         ]
         for node in expression_nodes:

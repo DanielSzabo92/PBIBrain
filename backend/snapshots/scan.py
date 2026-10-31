@@ -19,9 +19,14 @@ ALIASES = {"dataType": "datatype", "isHidden": "hidden", "isActive": "active", "
            "fromCardinality": "from_cardinality", "toCardinality": "to_cardinality", "securityFilteringBehavior": "security_filter_behavior",
            "formatString": "format_string", "displayFolder": "display_folder", "sortByColumn": "sort_by", "summarizeBy": "summarize_by",
            "sourceColumn": "source_column", "dataCategory": "data_category", "lineageTag": "lineage_tag"}
-CHILD_COLLECTIONS = {"MODEL": {"tables", "relationships", "measures"}, "TABLE": {"columns", "measures"}, "REPORT": {"pages"}, "PAGE": {"visuals"}}
+CHILD_COLLECTIONS = {"MODEL": {"tables", "relationships", "measures"}, "TABLE": {"columns", "measures"}, "REPORT": {"pages", "bookmarks", "report_extensions"},
+                     "PAGE": {"visuals"}, "HIERARCHY": {"levels"}, "SECURITY_ROLE": {"tablePermissions", "members"}}
 FACT_TYPES = {"MODEL", "TABLE", "COLUMN", "MEASURE", "RELATIONSHIP", "SHARED_EXPRESSION", "USER_DEFINED_FUNCTION", "CALCULATION_GROUP", "CALCULATION_ITEM", "FIELD_PARAMETER",
-              "REPORT", "PAGE", "VISUAL", "VISUAL_CALCULATION", "VISUAL_FILTER", "PAGE_FILTER", "REPORT_FILTER"}
+              "REPORT", "PAGE", "VISUAL", "VISUAL_CALCULATION", "VISUAL_FILTER", "PAGE_FILTER", "REPORT_FILTER",
+              "HIERARCHY", "LEVEL", "PARTITION", "SECURITY_ROLE", "ROLE_FILTER", "OLS_PERMISSION", "REPORT_MEASURE", "BOOKMARK"}
+# Model collections that the scanner reads into graph nodes (version 1 object types).
+SUPPORTED_MODEL_PROPERTIES = {"tables", "relationships", "measures", "expressions", "functions", "calculationGroups", "culture", "name", "id", "lineageTag",
+                              "source_path", "annotations", "defaultPowerBIDataSourceVersion", "discourageImplicitMeasures", "dataAccessOptions", "roles"}
 
 
 def validate_paths(root: Path, manifest: list[dict[str, Any]]) -> None:
@@ -163,21 +168,35 @@ def scan_snapshot(root: str | Path, *, identities: dict[str, Any] | None = None,
             for node in graph.nodes:
                 if node.properties.get("unresolved_bindings"):
                     blocking.append("UNRESOLVED_REPORT_BINDING:" + node.id)
-            supported = {"tables", "relationships", "measures", "expressions", "functions", "calculationGroups", "culture", "name", "id", "lineageTag", "source_path", "annotations",
-                         "defaultPowerBIDataSourceVersion", "discourageImplicitMeasures", "dataAccessOptions"}
-            unknown_properties = sorted({key for model in models for key in model if key not in supported})
+            unknown_properties = sorted({key for model in models for key in model if key not in SUPPORTED_MODEL_PROPERTIES})
+            # An unknown object type is an area that the app did not examine ("not checked").
+            # It is not an error. The scan reads the rest of the model.
+            not_checked = [{"area": "model." + key, "model_id": model.get("id"), "reason": "The scanner does not read this object type."}
+                           for model in models for key in sorted(model) if key not in SUPPORTED_MODEL_PROPERTIES]
+            not_checked.extend({"area": "report_artifact", "source_file": item["source_file"], "reason": "The scanner does not read this report file."}
+                               for item in report_validation["issues"] if item["code"] == "PBIR_UNSUPPORTED_ARTIFACT")
             unsupported_structures = []
+            extracted = {(node.model_id, node.type, str(node.properties.get("table_id"))): node for node in graph.nodes if node.type in {"CALCULATION_GROUP", "PARTITION"}}
+            table_ids = {(node.model_id, node.name): node.id for node in graph.nodes if node.type == "TABLE"}
+            model_nodes = {node.source_id: node.id for node in graph.nodes if node.type == "MODEL"}
             for model in models:
+                model_node = model_nodes.get(str(model.get("id")))
                 for table in model.get("tables", []):
-                    if table.get("calculationGroup"):
+                    table_id = table_ids.get((model_node, table.get("name")))
+                    if table.get("calculationGroup") and (model_node, "CALCULATION_GROUP", str(table_id)) not in extracted:
                         unsupported_structures.append("CALCULATION_GROUP_EXTRACTION:" + str(table.get("name")))
                     for partition in table.get("partitions", []):
                         if partition.get("source", {}).get("type") == "calculated":
                             from .literal_tables import literal_table
                             literal = literal_table(partition["source"].get("expression", ""))
-                            if not literal or set(literal["columns"]) != {column.get("name") for column in table.get("columns", [])}:
+                            node = extracted.get((model_node, "PARTITION", str(table_id)))
+                            # The DAX analysis of the calculated partition gives its dependencies.
+                            analyzed = node is not None and node.properties.get("dax_ast") is not None
+                            if not analyzed and (not literal or set(literal["columns"]) != {column.get("name") for column in table.get("columns", [])}):
                                 unsupported_structures.append("CALCULATED_TABLE_DEPENDENCIES:" + str(table.get("name")))
                 if model.get("roles"):
+                    # The graph holds the roles, the filters, and the OLS permissions. But only a
+                    # query that runs as the role can prove the effect of a change on the visible data.
                     unsupported_structures.append("RLS_OLS_RUNTIME_VERIFICATION_REQUIRED")
             blocking.extend(unsupported_structures)
             blocking.extend(topology_unknowns)
@@ -193,4 +212,4 @@ def scan_snapshot(root: str | Path, *, identities: dict[str, Any] | None = None,
                                       "opaque_artifacts": [item["path"] for item in manifest if Path(item["path"]).suffix.casefold() in OPAQUE_RESOURCE_SUFFIXES],
                                       "source_files": len(manifest), "scan_scope": "FULL_PROJECT",
                                      "unknown_metadata_properties": unknown_properties, "unsupported_object_types": unsupported_structures, "unresolved_references": graph.diagnostics,
-                                     "analysis_truncated": False, "scanner_errors": []}}
+                                     "not_checked": not_checked, "analysis_truncated": False, "scanner_errors": []}}

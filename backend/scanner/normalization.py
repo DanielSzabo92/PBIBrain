@@ -159,6 +159,21 @@ def _visual_title(raw: Mapping[str, Any]) -> str | None:
     return None
 
 
+def _visual_position(raw: Mapping[str, Any]) -> dict[str, Any]:
+    """Read the PBIR position (or the legacy container fields) and the group name."""
+
+    position = pick(raw, "position")
+    source = position if isinstance(position, Mapping) else raw
+    result = {key: pick(source, key) for key in ("x", "y", "z", "width", "height")}
+    result["tab_order"] = pick(source, "tabOrder")
+    result["parentGroupName"] = pick(raw, "parentGroupName")
+    group = pick(raw, "visualGroup")
+    if isinstance(group, Mapping):
+        result["is_group"] = True
+        result["group_mode"] = pick(group, "groupMode")
+    return {key: value for key, value in result.items() if value is not None}
+
+
 def _report_filters(raw: Mapping[str, Any], *keys: str) -> list[Any]:
     """Read both legacy JSON-string filters and PBIR filterConfig."""
     value = _decode_json_field(pick(raw, *keys))
@@ -231,6 +246,19 @@ def _semantic_binding(value: Any, entities: Mapping[str, str]) -> tuple[str, Any
             if len(text) >= 2 and text[0] == "[" and text[-1] == "]":
                 text = text[1:-1]
             return "MEASURE", text
+    level = pick(value, "hierarchyLevel")
+    if isinstance(level, Mapping):
+        hierarchy_expression = pick(level, "expression")
+        hierarchy = pick(hierarchy_expression, "hierarchy") if isinstance(hierarchy_expression, Mapping) else None
+        if isinstance(hierarchy, Mapping):
+            inner = pick(hierarchy, "expression")
+            source_ref = pick(inner, "sourceRef") if isinstance(inner, Mapping) else None
+            alias = pick(source_ref, "source", "name") if isinstance(source_ref, Mapping) else None
+            table = entities.get(_norm(alias)) if alias is not None else None
+            table = table or (pick(source_ref, "entity", "table") if isinstance(source_ref, Mapping) else None)
+            name = pick(hierarchy, "hierarchy", "name")
+            if name is not None:
+                return "HIERARCHY", {"table": table, "hierarchy": name, "level": pick(level, "level")}
     aggregation = pick(value, "aggregation")
     if isinstance(aggregation, Mapping):
         return _semantic_binding(aggregation, entities)
@@ -358,6 +386,7 @@ class Normalizer:
         self._model_refs: dict[str, str] = {}
         self._model_ids: list[str] = []
         self._report_ids: list[str] = []
+        self._current_report: str | None = None
 
     @property
     def model_ids(self) -> list[str]:
@@ -380,7 +409,7 @@ class Normalizer:
             key = _norm(value)
             self._lookup.setdefault((model_scope, node.type, key), node.id)
             self._lookup.setdefault(("global", node.type, key), node.id)
-            if node.type == "COLUMN" and node.properties.get("table_id"):
+            if node.type in {"COLUMN", "HIERARCHY"} and node.properties.get("table_id"):
                 table_id = str(node.properties["table_id"])
                 self._lookup.setdefault((model_scope, node.type, f"{_norm(table_id)}|{key}"), node.id)
                 self._lookup.setdefault(("global", node.type, f"{_norm(table_id)}|{key}"), node.id)
@@ -452,6 +481,12 @@ class Normalizer:
             if explicit_type:
                 expected_types = [str(explicit_type).upper()]
             table_ref = pick(ref, "table", "table_id", "tableId", "entity")
+            hierarchy_ref = pick(ref, "hierarchy")
+            if hierarchy_ref is not None:
+                table_id = self._resolve_ref(table_ref, ["TABLE"], model_id) if table_ref is not None else None
+                if table_id:
+                    return self._lookup.get((scope, "HIERARCHY", f"{_norm(table_id)}|{_norm(hierarchy_ref)}"))
+                return self._lookup.get((scope, "HIERARCHY", _norm(hierarchy_ref)))
             column_ref = pick(ref, "column", "column_id", "columnId", "field", "property")
             measure_ref = pick(ref, "measure", "measure_id", "measureId")
             if measure_ref is not None:
@@ -492,6 +527,9 @@ class Normalizer:
             found = self._lookup.get(("global", object_type, _norm(text)))
             if found:
                 return found
+        if "MEASURE" in expected_types and self._current_report:
+            # A report measure (reportExtensions.json) is visible only in its own report.
+            return self._lookup.get(("report:" + self._current_report, "REPORT_MEASURE", _norm(text)))
         return None
 
     def normalize_model(self, source: Any, *, source_key: Any = 0) -> NormalizationResult:
@@ -509,7 +547,8 @@ class Normalizer:
             source_id=model_effective_source,
             properties=_raw_properties(
                 raw,
-                exclude=("tables", "entities", "relationships", "measures"),
+                # Roles are SECURITY_ROLE nodes. Their members stay out of the graph.
+                exclude=("tables", "entities", "relationships", "measures", "roles"),
                 workspace_id=pick(raw, "workspace_id", "workspaceId"),
                 compatibility_level=pick(raw, "compatibility_level", "compatibilityLevel"),
             ),
@@ -592,6 +631,7 @@ class Normalizer:
                     ),
                     aliases=(measure_source, measure_name),
                 )
+            self._normalize_table_parts(table_raw, table, model_id)
 
         # A few APIs expose measures at model level rather than inside tables.
         for measure_index, measure_raw in enumerate(collection(raw, "measures", "calculations")):
@@ -629,7 +669,191 @@ class Normalizer:
         self.identity.save()
         return NormalizationResult(list(self.nodes.values()), self.model_ids, self.report_ids)
 
+    def _normalize_table_parts(self, table_raw: Mapping[str, Any], table: Node, model_id: str) -> None:
+        """Read the hierarchies, partitions, and calculation group of one TOM table."""
+
+        table_id = table.id
+        for hierarchy_index, hierarchy_raw in enumerate(collection(table_raw, "hierarchies")):
+            if not isinstance(hierarchy_raw, Mapping):
+                continue
+            hierarchy_name = display_name(hierarchy_raw, default=f"hierarchy_{hierarchy_index}")
+            hierarchy = self._new_node(
+                "HIERARCHY",
+                hierarchy_raw,
+                parent_id=table_id,
+                model_id=model_id,
+                fallback=f"hierarchy:{hierarchy_name}",
+                properties=_raw_properties(
+                    hierarchy_raw,
+                    exclude=("levels",),
+                    table_id=table_id,
+                    hidden=_bool(pick(hierarchy_raw, "hidden", "isHidden")),
+                    display_folder=pick(hierarchy_raw, "displayFolder", "display_folder"),
+                ),
+                aliases=(hierarchy_name,),
+            )
+            for level_index, level_raw in enumerate(collection(hierarchy_raw, "levels")):
+                if not isinstance(level_raw, Mapping):
+                    continue
+                level_name = display_name(level_raw, default=f"level_{level_index}")
+                column_ref = pick(level_raw, "column", "columnName")
+                column_id = self._resolve_ref({"table": table_id, "column": column_ref}, ["COLUMN"], model_id) if column_ref is not None else None
+                self._new_node(
+                    "LEVEL",
+                    level_raw,
+                    parent_id=hierarchy.id,
+                    model_id=model_id,
+                    fallback=f"level:{level_name}",
+                    properties=_raw_properties(
+                        level_raw,
+                        hierarchy_id=hierarchy.id,
+                        level_table_id=table_id,
+                        column_id=column_id,
+                        column_ref=_safe_value(column_ref),
+                        ordinal=pick(level_raw, "ordinal"),
+                    ),
+                    aliases=(level_name,),
+                )
+        for partition_index, partition_raw in enumerate(collection(table_raw, "partitions")):
+            if not isinstance(partition_raw, Mapping):
+                continue
+            partition_name = display_name(partition_raw, default=f"partition_{partition_index}")
+            source_raw = pick(partition_raw, "source")
+            source_raw = source_raw if isinstance(source_raw, Mapping) else {}
+            source_type = str(pick(source_raw, "type") or pick(partition_raw, "sourceType") or "").strip() or None
+            text = expression(source_raw) if source_raw else expression(partition_raw)
+            self._new_node(
+                "PARTITION",
+                partition_raw,
+                parent_id=table_id,
+                model_id=model_id,
+                fallback=f"partition:{partition_name}",
+                properties=_raw_properties(
+                    partition_raw,
+                    table_id=table_id,
+                    source_type=source_type,
+                    mode=pick(partition_raw, "mode"),
+                    expression=text,
+                    # Only a calculated partition holds DAX. M text is not parsed.
+                    expression_language="DAX" if (source_type or "").casefold() == "calculated" else ("M" if text else None),
+                ),
+                aliases=(partition_name,),
+            )
+        group_raw = pick(table_raw, "calculationGroup", "calculation_group")
+        if isinstance(group_raw, Mapping):
+            group = self._new_node(
+                "CALCULATION_GROUP",
+                {"name": table.name, **{key: value for key, value in group_raw.items() if key != "calculationItems"}},
+                parent_id=table_id,
+                model_id=model_id,
+                fallback=f"calculation_group:{table.name}",
+                properties=_raw_properties(group_raw, exclude=("calculationItems",), table_id=table_id, precedence=pick(group_raw, "precedence")),
+                aliases=(table.name,),
+            )
+            for item_index, item_raw in enumerate(collection(group_raw, "calculationItems", "calculation_items", "items")):
+                if not isinstance(item_raw, Mapping):
+                    continue
+                item_name = display_name(item_raw, default=f"calculation_item_{item_index}")
+                format_raw = pick(item_raw, "formatStringDefinition", "format_string_definition")
+                self._new_node(
+                    "CALCULATION_ITEM",
+                    item_raw,
+                    parent_id=group.id,
+                    model_id=model_id,
+                    fallback=f"calculation_item:{item_name}",
+                    properties=_raw_properties(
+                        item_raw,
+                        calculation_group_id=group.id,
+                        expression=expression(item_raw),
+                        format_expression=expression(format_raw) if isinstance(format_raw, Mapping) else format_raw,
+                        ordinal=pick(item_raw, "ordinal"),
+                    ),
+                    aliases=(item_name,),
+                )
+
+    def _normalize_roles(self, raw: Mapping[str, Any], model_id: str) -> None:
+        """Read RLS roles, their table filters, and their OLS permissions."""
+
+        for role_index, role_raw in enumerate(collection(raw, "roles")):
+            if not isinstance(role_raw, Mapping):
+                continue
+            role_name = display_name(role_raw, default=f"role_{role_index}")
+            # Role members can be user names or e-mail addresses. Keep them out of the graph.
+            role = self._new_node(
+                "SECURITY_ROLE",
+                role_raw,
+                parent_id=model_id,
+                model_id=model_id,
+                fallback=f"security_role:{role_name}",
+                properties=_raw_properties(
+                    role_raw,
+                    exclude=("tablePermissions", "members"),
+                    model_permission=pick(role_raw, "modelPermission"),
+                    member_count=len(collection(role_raw, "members")),
+                ),
+                aliases=(role_name,),
+            )
+            for permission_raw in collection(role_raw, "tablePermissions", "table_permissions"):
+                if not isinstance(permission_raw, Mapping):
+                    continue
+                table_name = display_name(permission_raw)
+                table_id = self._resolve_ref(table_name, ["TABLE"], model_id)
+                filter_text = pick(permission_raw, "filterExpression", "filter_expression")
+                if _present(filter_text):
+                    self._new_node(
+                        "ROLE_FILTER",
+                        {"name": table_name},
+                        parent_id=role.id,
+                        model_id=model_id,
+                        fallback=f"role_filter:{table_name}",
+                        properties=_raw_properties(
+                            permission_raw,
+                            exclude=("columnPermissions",),
+                            role_id=role.id,
+                            table_id=table_id,
+                            table_ref=table_name,
+                            expression=str(filter_text),
+                        ),
+                    )
+                table_permission = pick(permission_raw, "metadataPermission")
+                if _present(table_permission):
+                    self._new_node(
+                        "OLS_PERMISSION",
+                        {"name": table_name},
+                        parent_id=role.id,
+                        model_id=model_id,
+                        fallback=f"ols_permission:{table_name}",
+                        properties=_raw_properties(
+                            {"table": table_name, "metadataPermission": table_permission},
+                            role_id=role.id,
+                            target_id=table_id,
+                            target_ref=table_name,
+                            permission=table_permission,
+                        ),
+                    )
+                for column_raw in collection(permission_raw, "columnPermissions", "column_permissions"):
+                    if not isinstance(column_raw, Mapping):
+                        continue
+                    column_name = display_name(column_raw)
+                    column_id = self._resolve_ref({"table": table_id, "column": column_name}, ["COLUMN"], model_id) if table_id else None
+                    label = f"{table_name}[{column_name}]"
+                    self._new_node(
+                        "OLS_PERMISSION",
+                        {"name": label},
+                        parent_id=role.id,
+                        model_id=model_id,
+                        fallback=f"ols_permission:{label}",
+                        properties=_raw_properties(
+                            {"table": table_name, **column_raw},
+                            role_id=role.id,
+                            target_id=column_id,
+                            target_ref={"table": table_name, "column": column_name},
+                            permission=pick(column_raw, "metadataPermission"),
+                        ),
+                    )
+
     def _normalize_model_extras(self, raw: Mapping[str, Any], model_id: str) -> None:
+        self._normalize_roles(raw, model_id)
         for relationship_index, relationship_raw in enumerate(collection(raw, "relationships", "relations")):
             if not isinstance(relationship_raw, Mapping):
                 continue
@@ -817,7 +1041,7 @@ class Normalizer:
             source_id=report_effective_source,
             properties=_raw_properties(
                 raw,
-                exclude=("sections", "pages", "visualContainers"),
+                exclude=("sections", "pages", "visualContainers", "report_extensions", "reportExtensions", "bookmarks"),
                 model_ref=_safe_value(model_ref),
             ),
             source="report_metadata",
@@ -825,6 +1049,9 @@ class Normalizer:
         self._add(report, aliases=(report_source,))
         if report_id not in self._report_ids:
             self._report_ids.append(report_id)
+        self._current_report = report_id
+        # Visuals and filters can use a report measure. Thus read the measures first.
+        self._normalize_report_measures(raw, report, model_id)
 
         for page_index, page_raw in enumerate(collection(raw, "pages", "sections")):
             if not isinstance(page_raw, Mapping):
@@ -848,6 +1075,9 @@ class Normalizer:
                     parent_id=report_id,
                     display_name=pick(page_raw, "display_name", "displayName", "name"),
                     order=pick(page_raw, "order", "ordinal", "pageOrder"),
+                    width=pick(page_raw, "width"),
+                    height=pick(page_raw, "height"),
+                    display_option=pick(page_raw, "displayOption", "display_option"),
                 ),
                 source="report_metadata",
             )
@@ -859,8 +1089,119 @@ class Normalizer:
             self._normalize_filters(_report_filters(page_raw, "filters", "page_filters", "pageFilters"), "PAGE_FILTER", page, model_id)
 
         self._normalize_filters(_report_filters(raw, "filters", "report_filters", "reportFilters"), "REPORT_FILTER", report, model_id)
+        self._normalize_bookmarks(raw, report, model_id)
+        self._current_report = None
         self.identity.save()
         return NormalizationResult(list(self.nodes.values()), self.model_ids, self.report_ids)
+
+    def _normalize_report_measures(self, raw: Mapping[str, Any], report: Node, model_id: str | None) -> None:
+        """Read the report-level measures of reportExtensions.json."""
+
+        for entity_raw in collection(raw, "report_extensions", "reportExtensions"):
+            if not isinstance(entity_raw, Mapping):
+                continue
+            entity = display_name(entity_raw)
+            table_id = self._resolve_ref(entity, ["TABLE"], model_id) if _present(entity) else None
+            for measure_raw in collection(entity_raw, "measures"):
+                if not isinstance(measure_raw, Mapping):
+                    continue
+                name = display_name(measure_raw)
+                measure_id, effective_source = self.identity.object_id(
+                    "REPORT_MEASURE", source_id(measure_raw), parent_id=report.id, fallback=f"report_measure:{entity}|{name}"
+                )
+                node = Node(
+                    id=measure_id,
+                    type="REPORT_MEASURE",
+                    name=name or effective_source,
+                    description=description(measure_raw),
+                    model_id=model_id,
+                    report_id=report.id,
+                    source_id=effective_source,
+                    properties=_raw_properties(
+                        measure_raw,
+                        parent_id=report.id,
+                        entity=entity,
+                        entity_table_id=table_id,
+                        expression=expression(measure_raw),
+                        datatype=pick(measure_raw, "dataType"),
+                        format_string=pick(measure_raw, "formatString"),
+                        hidden=_bool(pick(measure_raw, "hidden", "isHidden")),
+                    ),
+                    source="report_metadata",
+                )
+                self._add(node)
+                self._lookup.setdefault(("report:" + report.id, "REPORT_MEASURE", _norm(name)), node.id)
+
+    def _normalize_bookmarks(self, raw: Mapping[str, Any], report: Node, model_id: str | None) -> None:
+        """Read PBIR bookmarks: the page, the target visuals, and the filter fields. Read only."""
+
+        pages = {_norm(node.source_id): node.id for node in self.nodes.values() if node.type == "PAGE" and node.report_id == report.id}
+        visuals: dict[tuple[str, str], str] = {}
+        for node in self.nodes.values():
+            if node.type == "VISUAL" and node.report_id == report.id:
+                visuals[(str(node.properties.get("parent_id")), _norm(node.source_id))] = node.id
+        for bookmark_index, bookmark_raw in enumerate(collection(raw, "bookmarks")):
+            if not isinstance(bookmark_raw, Mapping):
+                continue
+            state = pick(bookmark_raw, "explorationState")
+            state = state if isinstance(state, Mapping) else {}
+            options = pick(bookmark_raw, "options")
+            options = options if isinstance(options, Mapping) else {}
+            active = pick(state, "activeSection")
+            page_id = pages.get(_norm(active)) if active is not None else None
+            visual_names: list[tuple[str | None, str]] = [(page_id, str(name)) for name in collection(options, "targetVisualNames")]
+            sections = pick(state, "sections")
+            for section_name, section in (sections.items() if isinstance(sections, Mapping) else ()):
+                section_page = pages.get(_norm(section_name))
+                if isinstance(section, Mapping):
+                    for key in ("visualContainers", "visualContainerGroups"):
+                        containers = pick(section, key)
+                        visual_names.extend((section_page, str(name)) for name in (containers or {}) if isinstance(containers, Mapping))
+            visual_ids: list[str] = []
+            unresolved: list[dict[str, Any]] = []
+            for page_ref, name in visual_names:
+                found = visuals.get((str(page_ref), _norm(name))) if page_ref else None
+                if found is None:
+                    candidates = [value for (_, visual_name), value in visuals.items() if visual_name == _norm(name)]
+                    found = candidates[0] if len(candidates) == 1 else None
+                if found and found not in visual_ids:
+                    visual_ids.append(found)
+                elif not found:
+                    unresolved.append({"kind": "VISUAL", "reference": name, "source": "report_metadata", "status": "candidate"})
+            bindings, _, _ = _collect_semantic_bindings(state)
+            field_ids: list[str] = []
+            for kind, ref in bindings:
+                resolved = self._resolve_ref(ref, [kind] if kind else None, model_id)
+                if resolved and resolved not in field_ids:
+                    field_ids.append(resolved)
+                elif not resolved:
+                    unresolved.append({"kind": kind, "reference": _safe_value(ref), "source": "report_metadata", "status": "candidate"})
+            if active is not None and page_id is None:
+                unresolved.append({"kind": "PAGE", "reference": active, "source": "report_metadata", "status": "candidate"})
+            name = str(pick(bookmark_raw, "name") or f"bookmark_{bookmark_index}")
+            bookmark_id, effective_source = self.identity.object_id("BOOKMARK", name, parent_id=report.id)
+            self._add(Node(
+                id=bookmark_id,
+                type="BOOKMARK",
+                name=str(pick(bookmark_raw, "displayName") or name),
+                model_id=model_id,
+                report_id=report.id,
+                source_id=effective_source,
+                source="report_metadata",
+                properties=_raw_properties(
+                    bookmark_raw,
+                    parent_id=report.id,
+                    display_name=pick(bookmark_raw, "displayName"),
+                    order=pick(bookmark_raw, "order"),
+                    group_name=pick(bookmark_raw, "group_name"),
+                    page_id=page_id,
+                    visual_ids=visual_ids,
+                    field_ids=field_ids,
+                    unresolved_field_refs=unresolved,
+                    # The app reads bookmarks for impact only. It does not copy them.
+                    read_only=True,
+                ),
+            ))
 
     def _normalize_visual(
         self, raw: Mapping[str, Any], visual_index: int, page: Node, model_id: str | None
@@ -920,6 +1261,7 @@ class Normalizer:
                 measure_ids.append(resolved)
             if resolved_node and resolved_node.type == "COLUMN" and resolved not in column_ids:
                 column_ids.append(resolved)
+        hierarchy_ids = [item for item in field_ids if self.nodes[item].type == "HIERARCHY"]
         visual = Node(
             id=visual_id,
             type="VISUAL",
@@ -936,6 +1278,8 @@ class Normalizer:
                 field_ids=field_ids,
                 measure_ids=measure_ids,
                 column_ids=column_ids,
+                hierarchy_ids=hierarchy_ids,
+                **_visual_position(source_raw),
                 field_refs=[_safe_value(ref) for _, ref in fields],
                 unresolved_field_refs=unresolved_bindings,
                 binding_evidence=[

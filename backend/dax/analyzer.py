@@ -347,7 +347,8 @@ class DaxAnalysisBatch:
     as_dict = to_dict
 
 
-_REFERENCE_OBJECT_TYPES = {"MEASURE", "CALCULATION_ITEM", "SHARED_EXPRESSION", "USER_DEFINED_FUNCTION", "COLUMN"}
+_REFERENCE_OBJECT_TYPES = {"MEASURE", "CALCULATION_ITEM", "SHARED_EXPRESSION", "USER_DEFINED_FUNCTION", "COLUMN",
+                           "REPORT_MEASURE", "ROLE_FILTER", "PARTITION"}
 _SELECTOR_FUNCTIONS = {"SELECTEDVALUE", "VALUES", "HASONEVALUE", "ISFILTERED", "ISCROSSFILTERED", "FILTERS"}
 _FILTER_FUNCTIONS = {
     "CALCULATE",
@@ -385,7 +386,7 @@ class DaxAnalyzer:
         target_nodes = [value if isinstance(value, Node) else node_from_dict(value) for value in target_values]
         result = DaxAnalysisBatch()
         for node in sorted(target_nodes, key=lambda item: str(item.id)):
-            if node.type not in _REFERENCE_OBJECT_TYPES or self._is_m_shared_expression(node):
+            if node.type not in _REFERENCE_OBJECT_TYPES or self._is_m_shared_expression(node) or self._is_m_partition(node):
                 continue
             expression = _node_value(node, "expression", "dax", "formula", "expression_text")
             if not isinstance(expression, str) or not expression.strip():
@@ -410,6 +411,11 @@ class DaxAnalyzer:
                 kind = raw_source.get("kind")
         return str(kind or "").strip().casefold() == "m"
 
+    @staticmethod
+    def _is_m_partition(node: Node) -> bool:
+        # Only a calculated partition holds DAX. M and other partition text is not parsed.
+        return node.type == "PARTITION" and str(_node_value(node, "expression_language") or "").upper() != "DAX"
+
     def analyze_object(self, node: Node | str, expression: str | None = None, ast: Any = None) -> DaxAnalysis:
         source = self.nodes.get(str(node)) if isinstance(node, str) else node
         if source is None:
@@ -420,12 +426,12 @@ class DaxAnalyzer:
             self.resolver = ObjectResolver(self.nodes)
         text = expression if expression is not None else _node_value(source, "expression", "dax", "formula", "expression_text")
         text = str(text or "")
-        if self._is_m_shared_expression(source):
+        if self._is_m_shared_expression(source) or self._is_m_partition(source):
             analysis = DaxAnalysis(source.id, text)
             self._store_analysis(source, analysis)
             return analysis
         if ast is None:
-            ast, parse_diagnostic = self._parse(text)
+            ast, parse_diagnostic = self._parse(text, function=source.type == "USER_DEFINED_FUNCTION")
         else:
             parse_diagnostic = None
         analysis = DaxAnalysis(source.id, text, ast=ast)
@@ -462,8 +468,8 @@ class DaxAnalyzer:
     def analyze_ast(self, source_object: Node | str, ast: Any, expression: str = "") -> DaxAnalysis:
         return self.analyze_object(source_object, expression, ast)
 
-    def _parse(self, expression: str) -> tuple[Any, dict[str, Any] | None]:
-        key = expression
+    def _parse(self, expression: str, *, function: bool = False) -> tuple[Any, dict[str, Any] | None]:
+        key = ("function:" if function else "") + expression
         if key in self._ast_cache:
             return self._ast_cache[key], None
         parser = self.parser
@@ -472,6 +478,9 @@ class DaxAnalyzer:
                 from . import parser as parser_module  # type: ignore
 
                 parser = parser_module
+                if function:
+                    # A user-defined function has a "(parameters) =>" header before the DAX body.
+                    parser = parser_module.parse_dax_function
             except Exception as exc:
                 diagnostic = {
                     "code": "parser_unavailable",
@@ -546,7 +555,28 @@ class DaxAnalyzer:
             if isinstance(value, str) and value.strip() and value.strip() != primary.strip():
                 yield key, value
 
+    def _report_measure_resolution(self, source: Node, info: ReferenceInfo, fallback: Resolution) -> Resolution:
+        """Resolve [Name] in a report measure to another measure of the same report."""
+
+        if info.name is None:
+            return fallback
+        names = self.resolver._lookup_names(str(info.name), ("REPORT_MEASURE",), str(source.model_id or "global"))
+        candidates = tuple(
+            self.nodes[item] for item in sorted(names)
+            if self.nodes[item].report_id == source.report_id and item != source.id
+        )
+        return Resolution(fallback.reference, ("REPORT_MEASURE",), candidates) if len(candidates) == 1 else fallback
+
     def _contextual_reference(self, source: Node, info: ReferenceInfo) -> ReferenceInfo:
+        if source.type == "ROLE_FILTER" and info.kind == "MEASURE" and info.table is None:
+            # In a role filter, [Name] is a column of the filtered table when that column exists.
+            table_id = _node_value(source, "table_id", "tableId")
+            table = self.nodes.get(str(table_id)) if table_id is not None else None
+            if table is not None:
+                candidate = ReferenceInfo("COLUMN", info.name, table.name, info.node, info.extractor, info.text)
+                if self.resolver.resolve_detailed(candidate, ("COLUMN",), source.model_id).resolved:
+                    return candidate
+            return info
         if source.type != "COLUMN" or info.kind != "MEASURE" or info.table is not None:
             return info
         table_id = _node_value(source, "table_id", "tableId")
@@ -586,6 +616,8 @@ class DaxAnalyzer:
                 (contextual_info.kind,),
                 source.model_id,
             )
+            if not resolution.resolved and source.type == "REPORT_MEASURE" and contextual_info.kind == "MEASURE":
+                resolution = self._report_measure_resolution(source, contextual_info, resolution)
             if not resolution.resolved:
                 analysis.diagnostics.append(self._resolution_diagnostic(source, contextual_info, resolution))
                 analysis.references.append(self._reference_record(source, info, None))
