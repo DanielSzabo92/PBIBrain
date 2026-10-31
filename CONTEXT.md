@@ -103,3 +103,11 @@ _Avoid_: Delete mode
 **Naming Rule**:
 A rule for the names of one object type in a target model, for example a prefix, a letter case, or a display folder. The app detects it or the user writes it. Only a confirmed rule marks a name.
 _Avoid_: Naming convention, naming pattern (a pattern is only a proposed rule)
+
+**Agent Proposal**:
+A change to the merge session state that the agent submits through MCP, with a confidence and a reason. It has no effect on apply until the user accepts it.
+_Avoid_: Suggestion, agent decision
+
+**Agent Question**:
+A question that the agent adds to a row or an Impact item when its confidence is below the threshold. It has options, and the user selects one in the app.
+_Avoid_: Prompt, query
