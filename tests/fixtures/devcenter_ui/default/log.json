@@ -1,0 +1,36 @@
+{
+  "entries": [
+    {
+      "action": "merge_choice_set",
+      "after": {
+        "choice": "take_from",
+        "source": "src-finance"
+      },
+      "author": "user",
+      "before": null,
+      "mcp_client": null,
+      "proposal_id": null,
+      "reason": null,
+      "revision_after": 11,
+      "target": "row-gross-margin",
+      "time_utc": "2026-10-31T09:10:00Z"
+    },
+    {
+      "action": "proposal_submit",
+      "after": {
+        "choice": "take_from",
+        "source": "src-finance"
+      },
+      "author": "agent",
+      "before": null,
+      "mcp_client": "Test agent",
+      "proposal_id": "p-1",
+      "reason": "Finance model has the newer expression.",
+      "revision_after": 12,
+      "target": "row-net-sales",
+      "time_utc": "2026-10-31T09:00:00Z"
+    }
+  ],
+  "has_more": false,
+  "total": 2
+}

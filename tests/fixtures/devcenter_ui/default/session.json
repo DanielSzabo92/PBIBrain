@@ -1,0 +1,73 @@
+{
+  "answered_questions": [],
+  "compare_mode": "names",
+  "counts": {
+    "conflict": 1,
+    "different": 1,
+    "marks": 0,
+    "merge_choices_set": 2,
+    "missing": 1,
+    "open_proposals": 1,
+    "open_questions": 0,
+    "renamed": 1,
+    "rows": 6,
+    "same": 2
+  },
+  "display_name": "Sales and finance merge",
+  "id": "s-merge-lab",
+  "lock": "free",
+  "open_proposals": [
+    {
+      "blocked": null,
+      "confidence": 0.94,
+      "created_utc": "2026-10-31T09:00:00Z",
+      "id": "p-1",
+      "kind": "merge_choice",
+      "mcp_client": "Test agent",
+      "payload": {
+        "choice": "take_from",
+        "source": "src-finance"
+      },
+      "reason": "Finance model has the newer expression.",
+      "status": "proposed",
+      "summary": "Take from Finance model",
+      "target_id": "row-net-sales",
+      "target_name": "Net Sales"
+    }
+  ],
+  "open_questions": [],
+  "plan_state": "ready",
+  "plan_status": "valid_with_warnings",
+  "read_only": false,
+  "revision": 12,
+  "schema_version": 1,
+  "sources": [
+    {
+      "access_type": "local",
+      "display_name": "Sales model",
+      "fingerprint_state": "same",
+      "id": "src-sales",
+      "kind": "pbip_folder",
+      "path": "sources/Sales.SemanticModel",
+      "role": "donor",
+      "status": "ok"
+    },
+    {
+      "access_type": "local",
+      "display_name": "Finance model",
+      "fingerprint_state": "same",
+      "id": "src-finance",
+      "kind": "pbip_folder",
+      "path": "sources/Finance.SemanticModel",
+      "role": "donor",
+      "status": "ok"
+    }
+  ],
+  "target": {
+    "kind": "copy_of",
+    "model_name": "Combined model",
+    "path": "target/Combined.SemanticModel",
+    "report_name": "Combined report",
+    "status": "ok"
+  }
+}

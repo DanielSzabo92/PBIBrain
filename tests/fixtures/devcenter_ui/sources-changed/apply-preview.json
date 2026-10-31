@@ -1,0 +1,31 @@
+{
+  "approvals_needed": [],
+  "desktop_state": "not_open",
+  "non_canonical_files": [],
+  "not_checked": [
+    {
+      "object_id": "row-budget",
+      "object_name": "Budget"
+    }
+  ],
+  "plan_hash": "plan-0012",
+  "ready": false,
+  "summary": {
+    "add": 1,
+    "change": 1,
+    "remove": 0,
+    "rename": 1
+  },
+  "unconfirmed_marks": {
+    "count": 3,
+    "row_keys": [
+      "row-net-sales",
+      "row-gross-margin",
+      "row-budget"
+    ]
+  },
+  "validation": {
+    "failed_checks": [],
+    "status": "valid_with_warnings"
+  }
+}

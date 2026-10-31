@@ -1,0 +1,36 @@
+{
+  "blocking": [],
+  "plan_hash": "plan-0012",
+  "status": "valid",
+  "steps": [
+    {
+      "id": "step-1",
+      "object_id": "row-budget",
+      "object_name": "Budget",
+      "operation": "add_table",
+      "source": "src-finance"
+    },
+    {
+      "id": "step-2",
+      "object_id": "row-gross-margin",
+      "object_name": "Gross Margin",
+      "operation": "change_measure",
+      "source": "src-finance"
+    },
+    {
+      "id": "step-3",
+      "object_id": "row-customer",
+      "object_name": "Customer",
+      "operation": "rename_table",
+      "source": "src-finance"
+    }
+  ],
+  "summary": {
+    "add": 1,
+    "change": 1,
+    "remove": 0,
+    "rename": 1,
+    "steps": 3
+  },
+  "warnings": []
+}

@@ -1,10 +1,11 @@
 import { defineConfig } from "@playwright/test";
-import existing from "./playwright.config.js";
+import existing, { devcenterSpecs, graphWebServer, guardedSpec } from "./playwright.config.js";
 
 export default defineConfig({
   ...existing,
   outputDir: ".guard-test-results/compat",
-  testIgnore: "**/guardedDevelopment.spec.js",
+  // The Development Center specs need the fake server on port 8766. The main config runs them.
+  testIgnore: [guardedSpec, devcenterSpecs],
   use: { ...existing.use, channel: "chrome", baseURL: "http://127.0.0.1:8774" },
-  webServer: { ...existing.webServer, command: ".venv\\Scripts\\python.exe -m tests.graph_ui_server --port 8774", url: "http://127.0.0.1:8774/", reuseExistingServer: false },
+  webServer: { ...graphWebServer, command: ".venv\\Scripts\\python.exe -m tests.graph_ui_server --port 8774", url: "http://127.0.0.1:8774/", reuseExistingServer: false },
 });

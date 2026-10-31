@@ -1,0 +1,42 @@
+{
+  "completeness": {
+    "checked": 2,
+    "not_checked": 0
+  },
+  "facets": {
+    "severity": {
+      "high": 1,
+      "low": 1,
+      "not_checked": 0
+    }
+  },
+  "has_more": false,
+  "include_proposals": true,
+  "items": [
+    {
+      "blocking": false,
+      "certainty": "certain",
+      "direction": "downstream",
+      "id": "imp-1",
+      "object_id": "visual-sales",
+      "object_name": "Sales by region",
+      "object_type": "visual",
+      "reason_id": "impact.reason.measure_changed",
+      "severity": "high"
+    },
+    {
+      "blocking": false,
+      "certainty": "possible",
+      "direction": "downstream",
+      "id": "imp-2",
+      "object_id": "measure-margin-pct",
+      "object_name": "Margin %",
+      "object_type": "measure",
+      "reason_id": "impact.reason.reference_changed",
+      "severity": "low"
+    }
+  ],
+  "offers": [],
+  "target": "plan",
+  "total": 2
+}

@@ -1,0 +1,31 @@
+{
+  "pages": [
+    {
+      "height": 720,
+      "id": "page-overview",
+      "name": "Overview",
+      "visuals": [
+        {
+          "height": 320,
+          "id": "visual-sales",
+          "status": "changes",
+          "title": "Sales by region",
+          "width": 560,
+          "x": 40,
+          "y": 40
+        },
+        {
+          "height": 160,
+          "id": "visual-target",
+          "status": "unchanged",
+          "title": "Target card",
+          "width": 280,
+          "x": 640,
+          "y": 40
+        }
+      ],
+      "width": 1280
+    }
+  ],
+  "report": "Combined report"
+}

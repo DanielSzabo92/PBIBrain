@@ -1,0 +1,169 @@
+{
+  "rows": [
+    {
+      "cells": {
+        "src-finance": {
+          "changed": true,
+          "state": "different"
+        },
+        "src-sales": {
+          "changed": true,
+          "state": "different"
+        }
+      },
+      "display_folder": "Revenue",
+      "marks": [
+        "source_changed"
+      ],
+      "merge_choice": null,
+      "name": "Net Sales",
+      "notes": [],
+      "object_type": "measure",
+      "properties": [
+        {
+          "new": "SUM(Sales[Net])",
+          "old": "SUM(Sales[Amount])",
+          "phrase_id": "compare.property.expression"
+        }
+      ],
+      "proposal_status": "proposed",
+      "row_key": "row-net-sales",
+      "row_state": "conflict",
+      "table": "Sales"
+    },
+    {
+      "cells": {
+        "src-finance": {
+          "changed": true,
+          "state": "different"
+        },
+        "src-sales": {
+          "changed": false,
+          "state": "same"
+        }
+      },
+      "display_folder": "Revenue",
+      "marks": [
+        "source_changed"
+      ],
+      "merge_choice": {
+        "choice": "take_from",
+        "source": "src-finance"
+      },
+      "name": "Gross Margin",
+      "notes": [],
+      "object_type": "measure",
+      "properties": [
+        {
+          "new": "0.00%",
+          "old": "0.0%",
+          "phrase_id": "compare.property.format_string"
+        }
+      ],
+      "proposal_status": null,
+      "row_key": "row-gross-margin",
+      "row_state": "different",
+      "table": "Sales"
+    },
+    {
+      "cells": {
+        "src-finance": {
+          "changed": false,
+          "state": "same"
+        },
+        "src-sales": {
+          "changed": false,
+          "state": "missing"
+        }
+      },
+      "display_folder": null,
+      "marks": [
+        "new_since_start"
+      ],
+      "merge_choice": {
+        "choice": "keep"
+      },
+      "name": "Budget",
+      "notes": [],
+      "object_type": "table",
+      "properties": [],
+      "proposal_status": null,
+      "row_key": "row-budget",
+      "row_state": "missing",
+      "table": null
+    },
+    {
+      "cells": {
+        "src-finance": {
+          "changed": true,
+          "state": "renamed"
+        },
+        "src-sales": {
+          "changed": false,
+          "state": "same"
+        }
+      },
+      "display_folder": null,
+      "marks": [],
+      "merge_choice": null,
+      "name": "Customer",
+      "notes": [
+        {
+          "phrase_id": "compare.note.same_after_rename"
+        }
+      ],
+      "object_type": "table",
+      "properties": [],
+      "proposal_status": null,
+      "row_key": "row-customer",
+      "row_state": "renamed",
+      "table": null
+    },
+    {
+      "cells": {
+        "src-finance": {
+          "changed": false,
+          "state": "same"
+        },
+        "src-sales": {
+          "changed": false,
+          "state": "same"
+        }
+      },
+      "display_folder": null,
+      "marks": [],
+      "merge_choice": null,
+      "name": "Date",
+      "notes": [],
+      "object_type": "table",
+      "properties": [],
+      "proposal_status": null,
+      "row_key": "row-date",
+      "row_state": "same",
+      "table": null
+    },
+    {
+      "cells": {
+        "src-finance": {
+          "changed": false,
+          "state": "same"
+        },
+        "src-sales": {
+          "changed": false,
+          "state": "same"
+        }
+      },
+      "display_folder": null,
+      "marks": [],
+      "merge_choice": null,
+      "name": "Region",
+      "notes": [],
+      "object_type": "column",
+      "properties": [],
+      "proposal_status": null,
+      "row_key": "row-region",
+      "row_state": "same",
+      "table": "Customer"
+    }
+  ]
+}
