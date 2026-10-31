@@ -19,11 +19,11 @@ UI lane (UI design section 13): U0, then U1 and U2 in parallel, then U3 (needs S
 | # | Step | Ticket | Depends on | State | Worker branch | Merge commit |
 |---|---|---|---|---|---|---|
 | 01 | S0 | [Foundations](issues/01-s0-foundations.md) | none | done | worktree-agent-a2f5d1541558f2a6d | 30df5e7, 3199fea |
-| 02 | U0 | [Test harness and CI](issues/02-u0-test-harness.md) | none | review | | |
+| 02 | U0 | [Test harness and CI](issues/02-u0-test-harness.md) | none | done | worktree-agent-a4f92e8221c3c04c5 | 2522d6d |
 | 03 | S1 | [Scanner coverage](issues/03-s1-scanner-coverage.md) | 01 | running | | |
 | 04 | S2 | [Session store and local sources](issues/04-s2-session-store.md) | 01 | running | | |
-| 05 | U1 | [Shared fixes, tokens, parts](issues/05-u1-shared-parts.md) | 02 | open | | |
-| 06 | U2 | [Data layer and copy](issues/06-u2-data-layer.md) | 02 | open | | |
+| 05 | U1 | [Shared fixes, tokens, parts](issues/05-u1-shared-parts.md) | 02 | running | | |
+| 06 | U2 | [Data layer and copy](issues/06-u2-data-layer.md) | 02 | running | | |
 | 07 | S3 | [Alignment and compare](issues/07-s3-alignment-compare.md) | 03, 04 | open | | |
 | 08 | S4 | [Naming rules](issues/08-s4-naming-rules.md) | 04 | open | | |
 | 09 | S11 | [Cloud read (fakes)](issues/09-s11-cloud-read.md) | 04 | open | | |
@@ -64,3 +64,4 @@ States: open, running, review, rework, done.
 |---|---|---|---|---|
 | Baseline (build start) | 302 | 1 (stale `test_mcp_adapter`) | not run | not run |
 | 01 (S0) | 319 | 0 | not run | not run |
+| 02 (U0) | 361 | 0 | 38 | 50 main, 7 guard (worker run) |
