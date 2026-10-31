@@ -1,0 +1,113 @@
+# CI gates of the UI design section 10 (step U0). One Windows job on each push and pull request.
+# Gate 1: Python unittest (full suite, with the theme contrast test and the fake server tests).
+# Gate 2: npm test (frontend unit tests).
+# Gate 3: npm run build (production build, with no test shim tag).
+# Gate 4: Playwright e2e (graph fake server on 8765, Development Center fake server on 8766,
+#         and the guarded development spec with its own server on 8773).
+# Gate 5: lint of frontend/src/devcenter/** (no native select, hex color, emoji, em or en dash, one-sided colored border).
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gates:
+    runs-on: windows-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      CI: "1"
+      PYTHONUTF8: "1"
+      LBUG_C_API_LIB_PATH: ${{ github.workspace }}\runtime\native\lbug_shared.dll
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Cache the native runtime downloads
+        uses: actions/cache@v4
+        with:
+          path: .cache/native
+          key: native-${{ hashFiles('scripts/prepare-native-runtime.ps1') }}
+
+      - name: Prepare the native runtime (LadybugDB and OpenSSL DLLs, SHA-256 checked)
+        run: |
+          ./scripts/prepare-native-runtime.ps1
+          "$env:GITHUB_WORKSPACE\runtime\native" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+      - name: Install the Python package
+        run: python -m pip install -e ".[mcp]"
+
+      - name: Build the TOM bridge
+        run: dotnet build -c Release backend/adapters/tabular_metadata/dotnet/TabularMetadata.csproj
+
+      - name: Install the frontend packages
+        working-directory: frontend
+        run: npm ci --no-audit --no-fund
+
+      - name: "Gate 1: Python unittest"
+        run: python -m unittest discover -s tests
+
+      - name: "Gate 2: npm test"
+        working-directory: frontend
+        run: npm test
+
+      - name: "Gate 3: npm run build"
+        working-directory: frontend
+        run: |
+          npm run build
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (Select-String -Path dist/index.html -Pattern "pywebview-shim" -SimpleMatch -Quiet) {
+            throw "The production build must not load the test shim."
+          }
+
+      - name: Install the Playwright browser
+        working-directory: frontend
+        run: npx playwright install chromium
+
+      # One native command in each step: pwsh does not stop at a failed native command,
+      # so a second command in the same step can hide the failure of the first one.
+      - name: "Gate 4: Playwright e2e"
+        working-directory: frontend
+        run: npx playwright test
+
+      - name: "Gate 4: Playwright e2e, guarded development spec"
+        working-directory: frontend
+        run: npx playwright test -c playwright.guard.config.js
+        env:
+          GUARD_PYTHON: python
+
+      - name: "Gate 5: Development Center lint"
+        working-directory: frontend
+        run: node --test test/devcenter-lint.test.js
+
+      - name: Keep the Playwright report of a failed run
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-results
+          path: frontend/test-results
+          if-no-files-found: ignore

@@ -1,0 +1,9 @@
+{
+  "base": "default",
+  "description": "5 sources, 5000 compare rows, and 5000 impact items, made by the fake server.",
+  "generate": {
+    "compare_rows": 5000,
+    "impact_items": 5000,
+    "sources": 5
+  }
+}

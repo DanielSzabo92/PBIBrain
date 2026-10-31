@@ -1,0 +1,26 @@
+{
+  "sessions": [
+    {
+      "display_name": "Sales and finance merge",
+      "id": "s-merge-lab",
+      "lock_state": "free",
+      "plan_status": "valid_with_warnings",
+      "schema_state": "ok",
+      "source_count": 2,
+      "target_model_name": "Combined model",
+      "target_report_name": "Combined report",
+      "updated_utc": "2026-10-31T09:30:00Z"
+    },
+    {
+      "display_name": "Budget merge",
+      "id": "s-budget",
+      "lock_state": "free",
+      "plan_status": null,
+      "schema_state": "ok",
+      "source_count": 3,
+      "target_model_name": "Budget model",
+      "target_report_name": null,
+      "updated_utc": "2026-10-30T16:05:00Z"
+    }
+  ]
+}

@@ -1,0 +1,5 @@
+{
+  "base": "default",
+  "description": "A session file has a newer schema_version. No session is open.",
+  "revision": 0
+}

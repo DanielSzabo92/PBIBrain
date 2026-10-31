@@ -1,0 +1,12 @@
+{
+  "folders": {
+    "src-finance": [
+      "Revenue",
+      "Cost"
+    ],
+    "src-sales": [
+      "Revenue",
+      "Revenue/Margin"
+    ]
+  }
+}

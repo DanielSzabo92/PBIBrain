@@ -1,0 +1,22 @@
+{
+  "approvals_needed": [],
+  "desktop_state": "not_open",
+  "non_canonical_files": [],
+  "not_checked": [],
+  "plan_hash": "plan-0012",
+  "ready": true,
+  "summary": {
+    "add": 1,
+    "change": 1,
+    "remove": 0,
+    "rename": 1
+  },
+  "unconfirmed_marks": {
+    "count": 0,
+    "row_keys": []
+  },
+  "validation": {
+    "failed_checks": [],
+    "status": "valid"
+  }
+}

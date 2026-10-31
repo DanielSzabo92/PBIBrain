@@ -1,0 +1,33 @@
+{
+  "approvals_needed": [],
+  "desktop_state": "not_open",
+  "non_canonical_files": [],
+  "not_checked": [
+    {
+      "object_id": "row-budget",
+      "object_name": "Budget"
+    }
+  ],
+  "plan_hash": "plan-0012",
+  "ready": false,
+  "summary": {
+    "add": 1,
+    "change": 1,
+    "remove": 0,
+    "rename": 1
+  },
+  "unconfirmed_marks": {
+    "count": 0,
+    "row_keys": []
+  },
+  "validation": {
+    "failed_checks": [
+      {
+        "check": "name_clash",
+        "message": "Two measures have the name Net Sales.",
+        "object_id": "row-net-sales"
+      }
+    ],
+    "status": "not_valid"
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "models": [],
+  "reports": [],
+  "workspaces": [
+    {
+      "capacity_type": "premium",
+      "id": "ws-1",
+      "name": "Finance workspace",
+      "xmla_available": true
+    }
+  ]
+}

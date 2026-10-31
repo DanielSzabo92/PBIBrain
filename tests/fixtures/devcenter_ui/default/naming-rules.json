@@ -1,0 +1,30 @@
+{
+  "rules": [
+    {
+      "breaks": 1,
+      "check": "case",
+      "id": "rule-1",
+      "object_type": "measure",
+      "origin": "detected",
+      "scope": "model",
+      "status": "confirmed",
+      "support": 42,
+      "text": "Measure names use title case."
+    },
+    {
+      "breaks": 0,
+      "check": "prefix",
+      "id": "rule-2",
+      "object_type": "table",
+      "origin": "detected",
+      "scope": "model",
+      "status": "proposed",
+      "support": 9,
+      "text": "Table names have no prefix."
+    }
+  ],
+  "source_rule_counts": {
+    "src-finance": 1,
+    "src-sales": 2
+  }
+}
