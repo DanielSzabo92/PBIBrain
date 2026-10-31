@@ -37,6 +37,7 @@ A UI design document (`docs/DEV_CENTER_UI_DESIGN.md`) for version 1 of the Devel
 - 06 (2026-10-31): The Agent tab shows one leading question card, then a proposals table (Kind, Status, search, sticky Accept and Reject, Accept selected, Accept all). Accept all shows a summary: kinds, plan now and after, skipped items. The grid cell has one "bot" badge with a tooltip. Revision poll every 5 s with a notice. Log table with filters. Measured: 0 overflow, 0 axe violations, states pass in both themes. Full answer: [06-agent-proposals-and-log](issues/06-agent-proposals-and-log.md).
 - 07 (2026-10-31): Cloud sources use one dialog: Sign in, Select (list from `cloud_items_list`, paste fallback), Access type (Read default; Read/Write saved, no write in 1.0, no later change), Test (Checked and Not checked groups). Unreadable cloud reports are not added. Pull to local adds a local source (path relative to the project root). Naming rules: Sources tab table, status filter, side-pane editor. Measured: 0 overflow, 0 axe, states pass. Full answer: [07-sources-connect-naming](issues/07-sources-connect-naming.md).
 - 04 (2026-10-31): The row detail pane shows notices, the agent card, then one Merge Choice radio group. Source Select, name field with the proposer, folder Combobox and property picker show inside the selected choice. A modal dialog sets the removal policy (Block, Cascade, Repoint). Save is immediate. Measured: 0 overflow, 0 axe violations, states pass. Full answer: [04-row-detail-and-merge-choice](issues/04-row-detail-and-merge-choice.md).
+- 03 (2026-10-31): The compare grid is an ARIA grid with 36 px virtual rows and pages of 200. Sticky parts are the header, Object and Target columns. Each state shows icon plus word. Default filter is "not same". A bulk bar sets Merge Choices with explicit row keys. The code diff opens in a modal. Measured: 0 overflow, 0 axe violations, states pass. Jump scroll fails the 50 ms budget in the prototype; build rule: light rows during a fast scroll. Full answer: [03-compare-grid](issues/03-compare-grid.md).
 
 ## Backend change requests
 
@@ -63,6 +64,11 @@ A UI design document (`docs/DEV_CENTER_UI_DESIGN.md`) for version 1 of the Devel
 - `GET /api/devcenter/display-folders?source=<id>` (new, optional object type filter): returns display folder paths. Reason: the folder Combobox needs the folders of the target and the selected source (spec 7.2). Ticket 04.
 - JS API `alignment_override` (break): remove the Merge Choice of the row and return the new row keys. Reason: the UI moves the selection and tells the user. Ticket 04.
 - JS API `merge_choice_set`: accept the values `promote` and `copy_to_report` (with new name and display folder) for report measure rows. Reason: spec 7.4 makes them plan steps, but section 14.2 has no call for them. Ticket 04.
+- `GET /api/devcenter/compare-rows`: add `q` (name contains, case-insensitive). Reason: name search in the filter bar. Ticket 03.
+- `GET /api/devcenter/compare-rows`: add `total` and `state_counts` for the current filter. Reason: `aria-rowcount`, scroll height, "Select all N rows", footer counts. Ticket 03.
+- `GET /api/devcenter/compare-rows`: add `sort` (state, name, type, table; asc or desc). Reason: sortable columns, in place of grouping by table. Ticket 03.
+- `GET /api/devcenter/compare-rows`: add `row_state` for each row (highest precedence over all cells), and use it for the `state` filter. Reason: the Row state column and the filter must agree. Ticket 03.
+- JS API `row_confirm`: accept a list of row keys. Reason: "Confirm N rows" in the bulk bar. Ticket 03.
 
 ## Not yet specified
 
