@@ -4,7 +4,7 @@ Build branch: `claude/dev-center-build-6abbf2` (the `dev-center-build` branch of
 
 Process for each ticket: one worker (Opus 5.5, medium, own worktree) writes the code and the tests. One new independent reviewer (Opus 5.5, medium) returns PASS or FAIL. On FAIL, the same worker fixes the findings and a new reviewer checks again. On PASS, the lead merges into the build branch, runs the full suite, and commits. No push. No pull request. Maximum 4 workers at a time.
 
-Worker rules: [WORKER.md](WORKER.md).
+Worker rules: [WORKER.md](WORKER.md). Reviewer rules: [REVIEWER.md](REVIEWER.md).
 
 ## Lanes and order
 
@@ -18,8 +18,8 @@ UI lane (UI design section 13): U0, then U1 and U2 in parallel, then U3 (needs S
 
 | # | Step | Ticket | Depends on | State | Worker branch | Merge commit |
 |---|---|---|---|---|---|---|
-| 01 | S0 | [Foundations](issues/01-s0-foundations.md) | none | open | | |
-| 02 | U0 | [Test harness and CI](issues/02-u0-test-harness.md) | none | open | | |
+| 01 | S0 | [Foundations](issues/01-s0-foundations.md) | none | running | | |
+| 02 | U0 | [Test harness and CI](issues/02-u0-test-harness.md) | none | running | | |
 | 03 | S1 | [Scanner coverage](issues/03-s1-scanner-coverage.md) | 01 | open | | |
 | 04 | S2 | [Session store and local sources](issues/04-s2-session-store.md) | 01 | open | | |
 | 05 | U1 | [Shared fixes, tokens, parts](issues/05-u1-shared-parts.md) | 02 | open | | |
