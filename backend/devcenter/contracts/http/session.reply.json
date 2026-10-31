@@ -1,0 +1,169 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pbibrain.local/devcenter/contracts/http/session.reply.json",
+  "title": "GET /api/devcenter/session (section 14.1, UC2)",
+  "type": "object",
+  "properties": {
+    "revision": {
+      "$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/revision"
+    },
+    "session_id": {
+      "$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/session_id"
+    },
+    "display_name": {
+      "type": "string"
+    },
+    "location": {
+      "$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/location"
+    },
+    "read_only": {
+      "type": "boolean"
+    },
+    "created_at": {
+      "$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/utc_time"
+    },
+    "updated_at": {
+      "$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/utc_time"
+    },
+    "checked_at": {
+      "anyOf": [
+        {
+          "$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/utc_time"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "sources": {
+      "type": "array",
+      "items": {
+        "$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/source"
+      }
+    },
+    "target": {
+      "$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/target"
+    },
+    "compare_mode": {
+      "enum": [
+        "default",
+        "strict"
+      ]
+    },
+    "plan_status": {
+      "enum": [
+        "valid",
+        "valid_with_warnings",
+        "invalid",
+        null
+      ]
+    },
+    "counts": {
+      "type": "object",
+      "properties": {
+        "sources": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "donors": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "merge_choices": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "marks": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "marks_by_kind": {
+          "type": "object",
+          "properties": {
+            "source_changed": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "source_object_missing": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "new_since_start": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "required": [
+            "new_since_start",
+            "source_changed",
+            "source_object_missing"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "donors",
+        "marks",
+        "marks_by_kind",
+        "merge_choices",
+        "sources"
+      ],
+      "additionalProperties": false
+    },
+    "questions": {
+      "type": "object",
+      "properties": {
+        "open": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "answered": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        }
+      },
+      "required": [
+        "answered",
+        "open"
+      ],
+      "additionalProperties": false
+    },
+    "proposals": {
+      "type": "object",
+      "properties": {
+        "open": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        }
+      },
+      "required": [
+        "open"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "checked_at",
+    "compare_mode",
+    "counts",
+    "created_at",
+    "display_name",
+    "location",
+    "plan_status",
+    "proposals",
+    "questions",
+    "read_only",
+    "revision",
+    "session_id",
+    "sources",
+    "target",
+    "updated_at"
+  ],
+  "additionalProperties": false
+}

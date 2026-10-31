@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pbibrain.local/devcenter/contracts/jsapi/session_close.request.json",
+  "title": "JS API session_close: request",
+  "type": "object",
+  "properties": {
+    "base_revision": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    }
+  },
+  "required": [],
+  "additionalProperties": false
+}

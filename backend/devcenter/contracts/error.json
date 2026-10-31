@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pbibrain.local/devcenter/contracts/error.json",
+  "title": "Error shape (technical design section 12)",
+  "type": "object",
+  "properties": {
+    "error": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "enum": [
+            "not_found",
+            "session_not_open",
+            "stale_revision",
+            "confidence_below_threshold",
+            "reason_required",
+            "user_choice_exists",
+            "naming_rule_violation",
+            "invalid_payload",
+            "action_not_allowed",
+            "source_changed"
+          ]
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1
+        },
+        "details": {
+          "type": "object"
+        }
+      },
+      "required": [
+        "code",
+        "details",
+        "message"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "error"
+  ],
+  "additionalProperties": false
+}

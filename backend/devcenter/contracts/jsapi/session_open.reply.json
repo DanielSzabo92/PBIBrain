@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pbibrain.local/devcenter/contracts/jsapi/session_open.reply.json",
+  "title": "JS API session_open: reply (an error reply uses error.json)",
+  "type": "object",
+  "properties": {
+    "revision": {
+      "$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/revision"
+    },
+    "session_id": {
+      "$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/session_id"
+    },
+    "read_only": {
+      "type": "boolean"
+    },
+    "migrated": {
+      "type": "boolean"
+    },
+    "mark_count": {
+      "type": "integer",
+      "minimum": 0
+    }
+  },
+  "required": [
+    "mark_count",
+    "migrated",
+    "read_only",
+    "revision",
+    "session_id"
+  ],
+  "additionalProperties": false
+}

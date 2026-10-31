@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pbibrain.local/devcenter/contracts/jsapi/source_add.request.json",
+  "title": "JS API source_add: request",
+  "type": "object",
+  "properties": {
+    "base_revision": {
+      "$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/base_revision"
+    },
+    "path": {
+      "$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/full_path"
+    }
+  },
+  "required": [
+    "base_revision",
+    "path"
+  ],
+  "additionalProperties": false
+}
