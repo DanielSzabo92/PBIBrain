@@ -1,0 +1,18 @@
+{
+ "table-breaks-pane": "view=table&group=breaks&pane=item",
+ "table-breaks-bulk": "view=table&group=breaks&bulk=1&toast=1",
+ "table-needs": "view=table&group=needs",
+ "table-proposals": "view=table&group=breaks&proposals=1",
+ "completeness-open": "view=table&group=breaks&compl=open",
+ "cascade-pane": "view=table&group=breaks&pane=cascade",
+ "offers": "group=offers",
+ "graph": "view=graph&group=breaks",
+ "graph-pane": "view=graph&group=breaks&pane=item",
+ "graph-too-many": "view=graph&group=breaks&state=large",
+ "wireframe": "view=wireframe&group=breaks",
+ "wireframe-list": "view=wireframe&group=breaks&wflist=1",
+ "loading": "state=loading",
+ "error": "state=error",
+ "empty-row": "state=empty&scope=row",
+ "large": "view=table&state=large"
+}

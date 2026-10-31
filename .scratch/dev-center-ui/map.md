@@ -38,6 +38,7 @@ A UI design document (`docs/DEV_CENTER_UI_DESIGN.md`) for version 1 of the Devel
 - 07 (2026-10-31): Cloud sources use one dialog: Sign in, Select (list from `cloud_items_list`, paste fallback), Access type (Read default; Read/Write saved, no write in 1.0, no later change), Test (Checked and Not checked groups). Unreadable cloud reports are not added. Pull to local adds a local source (path relative to the project root). Naming rules: Sources tab table, status filter, side-pane editor. Measured: 0 overflow, 0 axe, states pass. Full answer: [07-sources-connect-naming](issues/07-sources-connect-naming.md).
 - 04 (2026-10-31): The row detail pane shows notices, the agent card, then one Merge Choice radio group. Source Select, name field with the proposer, folder Combobox and property picker show inside the selected choice. A modal dialog sets the removal policy (Block, Cascade, Repoint). Save is immediate. Measured: 0 overflow, 0 axe violations, states pass. Full answer: [04-row-detail-and-merge-choice](issues/04-row-detail-and-merge-choice.md).
 - 03 (2026-10-31): The compare grid is an ARIA grid with 36 px virtual rows and pages of 200. Sticky parts are the header, Object and Target columns. Each state shows icon plus word. Default filter is "not same". A bulk bar sets Merge Choices with explicit row keys. The code diff opens in a modal. Measured: 0 overflow, 0 axe violations, states pass. Jump scroll fails the 50 ms budget in the prototype; build rule: light rows during a fast scroll. Full answer: [03-compare-grid](issues/03-compare-grid.md).
+- 05 (2026-10-31): The Impact tab has a scope (whole plan or row), Breaks, Needs and Offers groups, and Table, Graph and Wireframe views. Items use two-line rows with one primary action. The graph reuses the dagre layout with a new impact node. The wireframe shows status as pattern, icon and text. A completeness strip shows in all views. Measured: 0 overflow, 0 axe, states pass. Full answer: [05-impact-views](issues/05-impact-views.md).
 
 ## Backend change requests
 
@@ -69,6 +70,9 @@ A UI design document (`docs/DEV_CENTER_UI_DESIGN.md`) for version 1 of the Devel
 - `GET /api/devcenter/compare-rows`: add `sort` (state, name, type, table; asc or desc). Reason: sortable columns, in place of grouping by table. Ticket 03.
 - `GET /api/devcenter/compare-rows`: add `row_state` for each row (highest precedence over all cells), and use it for the `state` filter. Reason: the Row state column and the filter must agree. Ticket 03.
 - JS API `row_confirm`: accept a list of row keys. Reason: "Confirm N rows" in the bulk bar. Ticket 03.
+- JS API `impact_action_apply` for many items: `item_ids` (array), `action`, `base_revision`; one revision step, all or nothing; the reply lists the items it could not change. Reason: bulk "Include in rewrite" and "Add from donor". Ticket 05.
+- `GET /api/devcenter/impact` filters and totals: parameters `direction`, `blocking`, `severity`, `certainty`, `source`, `object_type`, `q`, with `limit` and `offset`; the reply adds `total` and facet counts for the full result before paging. Reason: filters and counts on large lists without a download of all pages. Ticket 05.
+- `GET /api/devcenter/impact/{item}/paths` (new): all paths of one Impact item, paged; each step has object ID, name, type, and edge phrase. Reason: "Show other paths" in the item pane. Ticket 05.
 
 ## Not yet specified
 
