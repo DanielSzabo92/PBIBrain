@@ -99,3 +99,7 @@ _Avoid_: Step, action
 **Removal Policy**:
 The rule that tells what happens to the dependents of a removed object: Block, Cascade, or Repoint. The user sets it for each removed object.
 _Avoid_: Delete mode
+
+**Naming Rule**:
+A rule for the names of one object type in a target model, for example a prefix, a letter case, or a display folder. The app detects it or the user writes it. Only a confirmed rule marks a name.
+_Avoid_: Naming convention, naming pattern (a pattern is only a proposed rule)
