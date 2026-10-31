@@ -1,0 +1,531 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Development Center parts</title>
+<!-- Specimen for ticket 09: every new part in its states. Prototype only, never shipped. Theme: ?theme=dark|light. -->
+<link rel="stylesheet" href="tokens.css">
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--font-ui); font-size: var(--fs-base); line-height: 1.45; }
+  button, input { font: inherit; color: inherit; }
+  ul, ol { margin: 0; padding: 0; list-style: none; }
+  :focus-visible { outline: var(--ring-w) solid var(--ring); outline-offset: var(--ring-w); }
+  .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+  svg.i { width: var(--icon); height: var(--icon); flex: none; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  svg.i-sm { width: var(--icon-sm); height: var(--icon-sm); }
+  main { max-width: 1240px; margin: 0 auto; padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-5); }
+  h1 { font-size: var(--fs-h1); line-height: 1.2; margin: 0; font-weight: 600; letter-spacing: -0.01em; }
+  h2 { font-size: var(--fs-base); margin: 0 0 var(--space-3); font-weight: 600; }
+  h3 { font-size: var(--fs-sm); margin: 0; font-weight: 600; color: var(--text-2); }
+  .lede { color: var(--text-2); margin: var(--space-2) 0 0; max-width: 72ch; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(380px, 100%), 1fr)); gap: var(--space-4); }
+  .spec { background: var(--surface); border: var(--hairline) solid var(--line); border-radius: var(--radius); padding: var(--space-4); min-width: 0; position: relative; }
+  .spec.wide { grid-column: 1 / -1; }
+  .row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); margin-bottom: var(--space-2); }
+  .lbl { color: var(--text-2); font-size: var(--fs-sm); min-width: min(96px, 100%); }
+  .muted { color: var(--text-2); }
+  .small { font-size: var(--fs-sm); }
+
+  /* Button (changed: destructive and destructive-outline variants) */
+  .btn { display: inline-flex; align-items: center; gap: var(--space-2); min-height: var(--control-h); padding: 0 var(--space-3); border-radius: calc(var(--radius) - 1px); border: var(--hairline) solid transparent; font-size: var(--fs-md); font-weight: 500; cursor: pointer; white-space: nowrap; background: transparent; }
+  .btn:disabled { opacity: var(--disabled-opacity); cursor: not-allowed; }
+  .btn[aria-busy="true"] { cursor: progress; }
+  .btn-primary { background: var(--brand); color: var(--brand-ink); }
+  .btn-primary:hover:not(:disabled) { background: var(--brand-strong); }
+  .btn-secondary { background: var(--surface-3); color: var(--text); }
+  .btn-secondary:hover:not(:disabled) { background: var(--surface-hover); }
+  .btn-outline { background: var(--surface-2); color: var(--text); border-color: var(--control-border); }
+  .btn-outline:hover:not(:disabled) { background: var(--surface-3); }
+  .btn-ghost { color: var(--text-2); }
+  .btn-ghost:hover:not(:disabled) { background: var(--surface-hover); color: var(--text); }
+  .btn-destructive { background: var(--bad); color: var(--bad-ink); }
+  .btn-destructive:hover:not(:disabled) { background: var(--bad-strong); }
+  .btn-destructive-outline { background: var(--surface); color: var(--bad); border-color: var(--bad); }
+  .btn-destructive-outline:hover:not(:disabled) { background: var(--bad-tint); }
+  .btn-status { border-color: currentColor; font-weight: 600; }
+  .btn-status.warn { background: var(--warn-tint); color: var(--warn); }
+  .btn-status.warn:hover { background: var(--surface-hover); }
+  .btn-status.bad { background: var(--bad-tint); color: var(--bad); }
+  .btn-status.bad:hover { background: var(--surface-hover); }
+  .btn-status.ok { background: var(--ok-tint); color: var(--ok); }
+  .btn-status.ok:hover { background: var(--surface-hover); }
+  .btn-icon { width: var(--control-h); padding: 0; justify-content: center; }
+  .spin { animation: spin 0.9s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { .spin { animation: none; } * { transition: none !important; } }
+
+  /* StatusBadge (new): icon plus text, opaque tint */
+  .badge { display: inline-flex; align-items: center; gap: var(--space-1); height: 22px; padding: 0 var(--space-2); border-radius: 99px; font-size: var(--fs-xs); font-weight: 500; white-space: nowrap; border: var(--hairline) solid transparent; }
+  .badge svg.i { width: 12px; height: 12px; }
+  .t-ok { background: var(--ok-tint); color: var(--ok); }
+  .t-warn { background: var(--warn-tint); color: var(--warn); }
+  .t-bad { background: var(--bad-tint); color: var(--bad); }
+  .t-info { background: var(--info-tint); color: var(--info); }
+  .t-plain { background: var(--surface-3); color: var(--text-2); }
+  .t-proposal { background: var(--proposal-tint); color: var(--proposal); }
+  button.badge { cursor: help; }
+  .badge[tabindex]:hover, button.badge:hover { border-color: currentColor; }
+
+  /* StateCell and grid rows (new) */
+  .mini-grid { width: 100%; border-collapse: collapse; font-size: var(--fs-md); }
+  .mini-grid th { text-align: left; font-size: var(--fs-sm); color: var(--text-2); font-weight: 500; padding: var(--space-1) var(--space-2); border-bottom: var(--hairline) solid var(--line-strong); }
+  .mini-grid td { height: var(--row-h); padding: 0 var(--space-2); border-bottom: var(--hairline) solid var(--line); white-space: nowrap; }
+  .mini-grid tr.r-hover td { background: var(--row-hover); }
+  .mini-grid tr[aria-selected="true"] td { background: var(--row-selected); }
+  .mini-grid tr.r-active td { background: var(--row-active); }
+  .cell { display: inline-flex; align-items: center; gap: var(--space-1); }
+  .c-conflict { color: var(--cmp-conflict); font-weight: 600; }
+  .c-missing { color: var(--cmp-missing); }
+  .c-renamed { color: var(--cmp-renamed); }
+  .c-moved { color: var(--cmp-moved); }
+  .c-different { color: var(--cmp-different); }
+  .c-same { color: var(--cmp-same); }
+  .c-target { color: var(--text); }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--cmp-changed); display: inline-block; }
+
+  /* Notice (new, shared with Banner): full hairline border, icon carries the color */
+  .notice { display: flex; gap: var(--space-3); align-items: flex-start; padding: var(--space-3); border: var(--hairline) solid var(--line-strong); border-radius: var(--radius); background: var(--surface-2); margin-bottom: var(--space-2); }
+  .notice .body { flex: 1; min-width: 0; }
+  .notice .act { margin-top: var(--space-2); display: flex; gap: var(--space-2); flex-wrap: wrap; }
+  .n-info > svg { color: var(--info); } .n-warn > svg { color: var(--warn); } .n-bad > svg { color: var(--bad); } .n-brand > svg { color: var(--proposal); }
+
+  /* Select and Combobox (new, Radix) */
+  .field { display: flex; flex-direction: column; gap: var(--space-1); min-width: min(220px, 100%); }
+  .field > label, .field > .flabel { font-size: var(--fs-sm); color: var(--text-2); font-weight: 500; }
+  .trigger { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); min-height: var(--control-h); padding: 0 var(--space-2) 0 var(--space-3); border: var(--hairline) solid var(--control-border); border-radius: calc(var(--radius) - 1px); background: var(--surface-2); color: var(--text); cursor: pointer; text-align: left; }
+  .trigger:hover:not(:disabled) { background: var(--surface-hover); }
+  .trigger[aria-expanded="true"] { border-color: var(--brand); }
+  .trigger:disabled { opacity: var(--disabled-opacity); cursor: not-allowed; }
+  .trigger[aria-invalid="true"], .input[aria-invalid="true"] { border-color: var(--bad); }
+  .input { min-height: var(--control-h); padding: 0 var(--space-3); border: var(--hairline) solid var(--control-border); border-radius: calc(var(--radius) - 1px); background: var(--surface-2); color: var(--text); width: 100%; }
+  .input:hover:not(:disabled) { border-color: var(--text-3); }
+  .input:focus-visible { border-color: var(--brand); background: var(--surface); }
+  .listbox { margin-top: var(--space-1); border: var(--hairline) solid var(--line-strong); border-radius: var(--radius); background: var(--surface-2); box-shadow: var(--shadow-md); padding: var(--space-1); }
+  .opt { display: flex; align-items: center; gap: var(--space-2); min-height: 30px; padding: var(--space-1) var(--space-2); border-radius: calc(var(--radius) - 3px); cursor: default; }
+  .opt[data-active="true"] { background: var(--surface-hover); }
+  .opt[aria-disabled="true"] { color: var(--text-3); }
+  .opt .check { color: var(--brand); visibility: hidden; }
+  .opt[aria-selected="true"] .check { visibility: visible; }
+  .opt .sub { display: block; font-size: var(--fs-sm); color: var(--text-2); }
+  .grp-h { font-size: var(--fs-sm); color: var(--text-2); font-weight: 600; padding: var(--space-1) var(--space-2); }
+  .code { font-family: var(--font-code); font-size: var(--fs-sm); }
+  .hint { font-size: var(--fs-sm); display: flex; gap: var(--space-1); align-items: center; }
+  .hint.bad { color: var(--bad); } .hint.ok { color: var(--ok); } .hint.warn { color: var(--warn); }
+
+  /* SegmentedControl (new) */
+  .seg { display: inline-flex; flex-wrap: wrap; max-width: 100%; gap: 2px; padding: 3px; border: var(--hairline) solid var(--control-border); border-radius: 9px; background: var(--surface-2); }
+  .seg button, .seg label { min-height: 26px; padding: 0 var(--space-3); border: 0; border-radius: 6px; background: transparent; color: var(--text-2); cursor: pointer; display: inline-flex; align-items: center; gap: var(--space-1); font-size: var(--fs-md); }
+  .seg button:hover, .seg label:hover { color: var(--text); background: var(--surface-hover); }
+  .seg button[aria-pressed="true"], .seg label:has(input:checked) { background: var(--surface-3); color: var(--text); box-shadow: inset 0 0 0 var(--hairline) var(--control-border); }
+  .seg input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+  .seg label:has(input:focus-visible) { outline: var(--ring-w) solid var(--ring); outline-offset: 1px; }
+  .seg .count-bad { color: var(--bad); font-weight: 600; }
+
+  /* Tabs (reused, active = fill) */
+  .tabs { display: inline-flex; max-width: 100%; overflow-x: auto; gap: 2px; padding: 3px; border: var(--hairline) solid var(--line); border-radius: 9px; background: var(--surface-2); }
+  .tab { flex: none; min-height: 28px; padding: 0 var(--space-3); border: 0; border-radius: 6px; background: transparent; color: var(--text-2); cursor: pointer; display: inline-flex; align-items: center; gap: var(--space-1); font-size: var(--fs-md); }
+  .tab:hover { color: var(--text); }
+  .tab[aria-selected="true"] { background: var(--surface-3); color: var(--text); box-shadow: inset 0 0 0 var(--hairline) var(--line-strong); }
+  .tab .n { font-size: var(--fs-xs); padding: 0 6px; border-radius: 99px; }
+
+  /* Switch (new) */
+  .switch { display: inline-flex; align-items: center; gap: var(--space-2); background: none; border: 0; padding: 2px; cursor: pointer; color: var(--text); font-size: var(--fs-md); min-height: var(--target-min); }
+  .switch .track { width: 32px; height: 18px; border-radius: 99px; border: var(--hairline) solid var(--control-border); background: var(--surface-3); position: relative; flex: none; }
+  .switch .thumb { position: absolute; top: 2px; left: 2px; width: 12px; height: 12px; border-radius: 50%; background: var(--text-2); transition: transform var(--dur-fast) var(--ease-out); }
+  .switch[aria-checked="true"] .track { background: var(--brand); border-color: var(--brand); }
+  .switch[aria-checked="true"] .thumb { transform: translateX(14px); background: var(--brand-ink); }
+  .switch:hover .track { border-color: var(--text-2); }
+  .switch:disabled { opacity: var(--disabled-opacity); cursor: not-allowed; }
+
+  /* Checkbox with 24 px target (changed: target wrapper) */
+  .cb { position: relative; display: inline-flex; align-items: center; gap: var(--space-2); min-height: var(--target-min); cursor: pointer; font-size: var(--fs-md); }
+  .cb input { position: absolute; left: 0; top: 50%; width: var(--target-min); height: var(--target-min); margin: 0; transform: translateY(-50%); opacity: 0; cursor: pointer; }
+  .cb .box { width: var(--target-min); height: var(--target-min); display: grid; place-items: center; pointer-events: none; flex: none; }
+  .cb .box::before { content: ""; grid-area: 1 / 1; width: 16px; height: 16px; border: 1.5px solid var(--control-border); border-radius: 4px; background: var(--surface-2); }
+  .cb .box svg { grid-area: 1 / 1; width: 11px; height: 11px; stroke: var(--brand-ink); fill: none; stroke-width: 2.5; stroke-linecap: round; position: relative; }
+  .cb .box svg path { display: none; }
+  .cb input:checked + .box::before, .cb input:indeterminate + .box::before { background: var(--brand); border-color: var(--brand); }
+  .cb input:checked + .box .p-check { display: block; }
+  .cb input:indeterminate + .box .p-dash { display: block; }
+  .cb input:checked + .box .p-dash { display: none; }
+  .cb:hover .box::before { border-color: var(--brand); }
+  .cb input:focus-visible + .box { outline: var(--ring-w) solid var(--ring); outline-offset: -2px; border-radius: 6px; }
+  .cb:has(input:disabled) { cursor: not-allowed; }
+  .cb input:disabled ~ * { opacity: var(--disabled-opacity); cursor: not-allowed; }
+  fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
+  fieldset[aria-invalid="true"] { border: var(--hairline) solid var(--bad); border-radius: var(--radius); padding: var(--space-2); }
+  legend { font-size: var(--fs-sm); font-weight: 600; color: var(--text-2); padding: 0; margin-bottom: var(--space-1); }
+
+  /* ChoiceRadio (new) */
+  .choice { display: block; border-radius: var(--radius); padding: var(--space-2); margin-bottom: 2px; }
+  .choice:hover { background: var(--surface-hover); }
+  .choice.is-selected { background: var(--surface-3); }
+  .choice label { display: flex; align-items: center; gap: var(--space-2); cursor: pointer; min-height: var(--target-min); }
+  .choice input[type="radio"] { width: 16px; height: 16px; margin: 4px; accent-color: var(--brand); }
+  .choice .reason { margin: 0 0 0 32px; font-size: var(--fs-sm); color: var(--text-2); }
+  .choice.is-disabled label { color: var(--text-3); cursor: not-allowed; }
+  .choice.is-disabled:hover { background: transparent; }
+  .choice .subf { margin: var(--space-2) 0 0 32px; display: flex; flex-direction: column; gap: var(--space-2); }
+  .saving { font-size: var(--fs-sm); color: var(--text-2); display: inline-flex; gap: var(--space-1); align-items: center; margin-left: auto; }
+
+  /* FilterButton and FilterChip (new) */
+  .fbtn { display: inline-flex; align-items: center; gap: var(--space-1); min-height: 28px; padding: 0 var(--space-2); border: var(--hairline) solid var(--control-border); border-radius: 6px; background: var(--surface-2); color: var(--text); cursor: pointer; font-size: var(--fs-md); }
+  .fbtn:hover { background: var(--surface-hover); }
+  .fbtn.is-active { border-color: var(--brand); color: var(--brand-strong); background: var(--brand-tint); }
+  .chip { display: inline-flex; align-items: center; gap: var(--space-1); min-height: 26px; padding: 0 2px 0 var(--space-2); border: var(--hairline) solid var(--line-strong); border-radius: 99px; background: var(--surface-3); font-size: var(--fs-sm); }
+  .chip button { width: var(--target-min); height: var(--target-min); border: 0; background: none; border-radius: 50%; display: grid; place-items: center; cursor: pointer; color: var(--text-2); padding: 0; }
+  .chip button:hover { background: var(--surface-hover); color: var(--text); }
+  .link { background: none; border: 0; padding: 0 var(--space-1); min-height: var(--target-min); color: var(--brand-strong); cursor: pointer; text-decoration: underline; text-underline-offset: 3px; font-size: var(--fs-md); }
+  .link:hover { color: var(--text); }
+
+  /* BulkBar (new) */
+  .bulkbar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-3); border: var(--hairline) solid var(--brand); border-radius: var(--radius); background: var(--brand-tint); }
+  .bulkbar strong { font-weight: 600; margin-right: var(--space-2); }
+
+  /* StepIndicator (new) */
+  .steps { display: flex; flex-wrap: wrap; gap: var(--space-4); counter-reset: s; }
+  .steps li { display: flex; align-items: center; gap: var(--space-2); color: var(--text-2); font-size: var(--fs-md); }
+  .steps .num { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; border: var(--hairline) solid var(--control-border); font-size: var(--fs-sm); }
+  .steps li[aria-current="step"] { color: var(--text); font-weight: 600; }
+  .steps li[aria-current="step"] .num { background: var(--brand); color: var(--brand-ink); border-color: var(--brand); }
+  .steps li.done .num { background: var(--ok-tint); color: var(--ok); border-color: var(--ok); }
+
+  /* ProgressList (new) */
+  .plist li { display: flex; align-items: center; gap: var(--space-2); min-height: 26px; font-size: var(--fs-md); }
+  .plist .ok { color: var(--ok); } .plist .run { color: var(--brand); } .plist .pend { color: var(--text-3); } .plist .fail { color: var(--bad); }
+
+  /* ResultPanel and CompletenessStrip (new) */
+  .panel { border: var(--hairline) solid var(--line-strong); border-radius: var(--radius); background: var(--surface-2); padding: var(--space-3) var(--space-4); }
+  .panel .head { display: flex; align-items: center; gap: var(--space-2); font-weight: 600; font-size: var(--fs-base); }
+  .panel .head .ok { color: var(--ok); }
+  .strip { display: flex; width: 100%; align-items: center; gap: var(--space-3); padding: var(--space-2) var(--space-3); border: var(--hairline) solid var(--line-strong); border-radius: var(--radius); background: var(--surface-2); color: var(--text); cursor: pointer; text-align: left; font-size: var(--fs-md); }
+  .strip:hover { background: var(--surface-hover); }
+  .strip .grow { flex: 1; min-width: 0; color: var(--text-2); }
+
+  /* WireframeBox (new): pattern plus icon plus text */
+  .wf { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(150px, 100%), 1fr)); gap: var(--space-3); }
+  .wbox { min-height: 72px; min-width: var(--target-min); padding: var(--space-2); border-radius: 4px; background: var(--surface); color: var(--text); text-align: left; cursor: pointer; font-size: var(--fs-sm); display: flex; flex-direction: column; gap: 2px; }
+  .wbox .st { display: inline-flex; gap: var(--space-1); align-items: center; font-weight: 600; }
+  .wbox:hover { box-shadow: inset 0 0 0 var(--hairline) var(--text-2); }
+  .w-removed { border: var(--hairline) solid var(--impact-removed); background: repeating-linear-gradient(45deg, var(--impact-removed-tint) 0 6px, var(--surface) 6px 12px); }
+  .w-removed .st { color: var(--impact-removed); } .w-removed .ttl { text-decoration: line-through; }
+  .w-breaks { border: 3px solid var(--impact-breaks); } .w-breaks .st { color: var(--impact-breaks); }
+  .w-changes { border: 2px dashed var(--impact-changes); } .w-changes .st { color: var(--impact-changes); }
+  .w-new { border: 2px dotted var(--impact-new); background: var(--impact-new-tint); } .w-new .st { color: var(--impact-new); }
+  .w-unchecked { border: var(--hairline) dashed var(--impact-unchecked); } .w-unchecked .st { color: var(--impact-unchecked); }
+  .w-unchanged { border: var(--hairline) solid var(--impact-unchanged); }
+  .wbox[aria-pressed="true"] { outline: var(--ring-w) solid var(--brand); outline-offset: 2px; }
+
+  /* ImpactNode (new) */
+  .nodes { display: flex; flex-wrap: wrap; gap: var(--space-3); }
+  .inode { width: 224px; max-width: 100%; height: 76px; padding: var(--space-2) var(--space-3); border: var(--hairline) solid var(--control-border); border-radius: var(--radius); background: var(--surface); color: var(--text); text-align: left; cursor: pointer; display: flex; flex-direction: column; justify-content: center; gap: 2px; font-size: var(--fs-sm); }
+  .inode:hover { background: var(--surface-hover); }
+  .inode .nm { font-size: var(--fs-md); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .inode .ty { color: var(--text-2); display: inline-flex; gap: var(--space-1); align-items: center; }
+  .inode.cause { background: var(--surface-3); }
+  .inode[aria-pressed="true"] { border: var(--ring-w) solid var(--brand); }
+  .inode .s-bad { color: var(--bad); display: inline-flex; gap: var(--space-1); align-items: center; }
+  .inode .s-warn { color: var(--warn); display: inline-flex; gap: var(--space-1); align-items: center; }
+
+  /* Dialog, SidePane, Toast, EmptyState (static views) */
+  .dialog { border: var(--hairline) solid var(--line-strong); border-radius: 12px; background: var(--surface); box-shadow: var(--shadow-lg); width: min(600px, 100%); }
+  .dialog header { padding: var(--space-4) var(--space-4) var(--space-2); }
+  .dialog header h3 { color: var(--text); font-size: var(--fs-lg); }
+  .dialog .db { padding: 0 var(--space-4) var(--space-3); color: var(--text-2); }
+  .dialog footer { display: flex; justify-content: flex-end; gap: var(--space-2); padding: var(--space-3) var(--space-4); border-top: var(--hairline) solid var(--line); }
+  .pane { width: 100%; max-width: var(--pane-w); border: var(--hairline) solid var(--line); border-radius: var(--radius); background: var(--surface); }
+  .pane .ph { display: flex; align-items: center; gap: var(--space-1); padding: var(--space-3); border-bottom: var(--hairline) solid var(--line); }
+  .pane .ph h3 { flex: 1; color: var(--text); font-size: var(--fs-base); }
+  .pane .pb { padding: var(--space-3); display: flex; flex-direction: column; gap: var(--space-2); }
+  .sk { height: 12px; border-radius: 4px; background: var(--surface-3); }
+  .toast { display: inline-flex; align-items: center; gap: var(--space-2); min-height: 42px; padding: 0 var(--space-4) 0 var(--space-3); border: var(--hairline) solid var(--line-strong); border-radius: 10px; background: var(--surface-3); box-shadow: var(--shadow-lg); font-size: var(--fs-md); font-weight: 500; max-width: 100%; }
+  .toast > svg { color: var(--warn); }
+  .empty { display: flex; flex-direction: column; align-items: center; text-align: center; gap: var(--space-2); padding: var(--space-6) var(--space-4); }
+  .empty > svg { width: 28px; height: 28px; color: var(--text-2); }
+  .empty p { margin: 0; max-width: 52ch; color: var(--text-2); }
+  .empty strong { font-size: var(--fs-base); }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="bot" viewBox="0 0 24 24"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></symbol>
+  <symbol id="cdash" viewBox="0 0 24 24"><path d="M10.1 2.182a10 10 0 0 1 3.8 0"/><path d="M13.9 21.818a10 10 0 0 1-3.8 0"/><path d="M17.609 3.721a10 10 0 0 1 2.69 2.7"/><path d="M2.182 13.9a10 10 0 0 1 0-3.8"/><path d="M20.279 17.609a10 10 0 0 1-2.7 2.69"/><path d="M21.818 10.1a10 10 0 0 1 0 3.8"/><path d="M3.721 6.391a10 10 0 0 1 2.7-2.69"/><path d="M6.391 20.279a10 10 0 0 1-2.69-2.7"/></symbol>
+  <symbol id="eq" viewBox="0 0 24 24"><line x1="5" x2="19" y1="9" y2="9"/><line x1="5" x2="19" y1="15" y2="15"/></symbol>
+  <symbol id="neq" viewBox="0 0 24 24"><line x1="5" x2="19" y1="9" y2="9"/><line x1="5" x2="19" y1="15" y2="15"/><line x1="19" x2="5" y1="5" y2="19"/></symbol>
+  <symbol id="arl" viewBox="0 0 24 24"><path d="m16 3 4 4-4 4"/><path d="M20 7H4"/><path d="m8 21-4-4 4-4"/><path d="M4 17h16"/></symbol>
+  <symbol id="octx" viewBox="0 0 24 24"><path d="m15 9-6 6"/><path d="M2.586 16.726A2 2 0 0 1 2 15.312V8.688a2 2 0 0 1 .586-1.414l4.688-4.688A2 2 0 0 1 8.688 2h6.624a2 2 0 0 1 1.414.586l4.688 4.688A2 2 0 0 1 22 8.688v6.624a2 2 0 0 1-.586 1.414l-4.688 4.688a2 2 0 0 1-1.414.586H8.688a2 2 0 0 1-1.414-.586z"/><path d="m9 9 6 6"/></symbol>
+  <symbol id="pencil" viewBox="0 0 24 24"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/></symbol>
+  <symbol id="target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/></symbol>
+  <symbol id="ccheck" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></symbol>
+  <symbol id="cx" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></symbol>
+  <symbol id="alert" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></symbol>
+  <symbol id="info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></symbol>
+  <symbol id="help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></symbol>
+  <symbol id="cminus" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/></symbol>
+  <symbol id="trash" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></symbol>
+  <symbol id="plus" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M12 5v14"/></symbol>
+  <symbol id="check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+  <symbol id="x" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></symbol>
+  <symbol id="chev" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+  <symbol id="loader" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-6.22-8.56"/></symbol>
+  <symbol id="lock" viewBox="0 0 24 24"><rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></symbol>
+  <symbol id="flag" viewBox="0 0 24 24"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><path d="M4 22v-7"/></symbol>
+  <symbol id="search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></symbol>
+</svg>
+
+<main>
+  <header>
+    <h1>Development Center parts</h1>
+    <p class="lede">Each new and changed part of ticket 09, in its states. Hover and focus come from the pointer and the keyboard. Each status shows an icon and a word.</p>
+  </header>
+
+  <div class="grid">
+    <section class="spec wide" aria-labelledby="h-btn">
+      <h2 id="h-btn">Button (changed: destructive, destructive outline, status)</h2>
+      <div class="row"><span class="lbl">Default</span>
+        <button class="btn btn-primary" type="button">Apply plan</button>
+        <button class="btn btn-secondary" type="button">Check plan</button>
+        <button class="btn btn-outline" type="button">Check sources</button>
+        <button class="btn btn-ghost" type="button">Open row</button>
+        <button class="btn btn-destructive" type="button"><svg class="i"><use href="#trash"/></svg>Remove source</button>
+        <button class="btn btn-destructive-outline" type="button">Undo apply</button>
+      </div>
+      <div class="row"><span class="lbl">Disabled</span>
+        <button class="btn btn-primary" type="button" disabled aria-describedby="why">Apply plan</button>
+        <span id="why" class="small muted">Fix 5 items before you apply.</span>
+        <button class="btn btn-destructive" type="button" disabled>Remove source</button>
+      </div>
+      <div class="row"><span class="lbl">Loading</span>
+        <button class="btn btn-primary" type="button" aria-busy="true" aria-disabled="true"><svg class="i spin"><use href="#loader"/></svg>Checking before apply</button>
+        <button class="btn btn-outline" type="button" aria-busy="true" aria-disabled="true"><svg class="i spin"><use href="#loader"/></svg>Checking sources</button>
+      </div>
+      <div class="row"><span class="lbl">Status button</span>
+        <button class="btn btn-status bad" type="button"><svg class="i"><use href="#cx"/></svg>Plan not valid: 3 blocking</button>
+        <button class="btn btn-status warn" type="button"><svg class="i"><use href="#alert"/></svg>Valid with 5 warnings</button>
+        <button class="btn btn-status ok" type="button"><svg class="i"><use href="#ccheck"/></svg>Valid</button>
+        <button class="btn btn-ghost btn-icon" type="button" aria-label="More actions: Sales master merge"><svg class="i"><use href="#chev"/></svg></button>
+      </div>
+    </section>
+
+    <section class="spec" aria-labelledby="h-badge">
+      <h2 id="h-badge">StatusBadge (new)</h2>
+      <div class="row"><span class="lbl">Tones</span>
+        <span class="badge t-ok"><svg class="i"><use href="#ccheck"/></svg>Ready</span>
+        <span class="badge t-warn"><svg class="i"><use href="#flag"/></svg>Confirm</span>
+        <span class="badge t-bad"><svg class="i"><use href="#cx"/></svg>Not found</span>
+        <span class="badge t-info"><svg class="i"><use href="#lock"/></svg>Open in another window</span>
+        <span class="badge t-plain"><svg class="i"><use href="#cminus"/></svg>Not checked</span>
+      </div>
+      <div class="row"><span class="lbl">Severity</span>
+        <span class="badge t-bad"><svg class="i"><use href="#alert"/></svg>Critical</span>
+        <span class="badge t-warn"><svg class="i"><use href="#alert"/></svg>High</span>
+        <span class="badge t-plain"><svg class="i"><use href="#info"/></svg>Not checked</span>
+        <span class="badge t-plain"><svg class="i"><use href="#help"/></svg>Possible</span>
+      </div>
+      <div class="row"><span class="lbl">Proposal</span>
+        <button class="badge t-proposal" type="button" aria-describedby="tip1"><svg class="i"><use href="#bot"/></svg>Proposed</button>
+        <span id="tip1" class="small muted">Tooltip: Agent proposes: Take from Sales B</span>
+      </div>
+    </section>
+
+    <section class="spec" aria-labelledby="h-notice">
+      <h2 id="h-notice">Notice and Banner (new)</h2>
+      <div class="notice n-info" role="status"><svg class="i"><use href="#lock"/></svg><div class="body">Another PBIBrain window has this session open. You can read it, but you cannot change it.<div class="act"><button class="btn btn-outline" type="button">Try again</button></div></div></div>
+      <div class="notice n-warn" role="status"><svg class="i"><use href="#alert"/></svg><div class="body">2 sources changed since the last check. 14 rows need your confirm.<div class="act"><button class="btn btn-outline" type="button">Show these rows</button></div></div></div>
+      <div class="notice n-bad" role="alert"><svg class="i"><use href="#cx"/></svg><div class="body">1 source was not found: Sales B. Find it again or remove it.</div></div>
+      <div class="notice n-brand"><svg class="i"><use href="#bot"/></svg><div class="body">This view includes 4 open agent proposals. Apply uses only accepted choices.</div></div>
+    </section>
+
+    <section class="spec wide" aria-labelledby="h-cells">
+      <h2 id="h-cells">StateCell and ProposalBadge on each row state (new)</h2>
+      <div style="overflow-x:auto; position:relative">
+      <table class="mini-grid">
+        <caption class="sr-only">Compare states on default, hover, selected and active rows</caption>
+        <thead><tr><th scope="col">Row</th><th scope="col">Sales A</th><th scope="col">Sales B</th><th scope="col">Sales C</th><th scope="col">Target</th><th scope="col">Merge Choice</th></tr></thead>
+        <tbody>
+          <tr><td>Default</td><td><span class="cell c-conflict"><svg class="i"><use href="#octx"/></svg>Type conflict</span></td><td><span class="cell c-missing"><svg class="i"><use href="#cdash"/></svg>Missing</span></td><td><span class="cell c-renamed"><svg class="i"><use href="#pencil"/></svg>Renamed</span></td><td><span class="cell c-target"><svg class="i"><use href="#target"/></svg>Target</span></td><td><span class="cell">Not set <button class="badge t-proposal" type="button" aria-label="Proposed. Agent proposes: Take from Sales B"><svg class="i"><use href="#bot"/></svg>Proposed</button></span></td></tr>
+          <tr class="r-hover"><td>Hover</td><td><span class="cell c-moved"><svg class="i"><use href="#arl"/></svg>Moved</span></td><td><span class="cell c-different"><svg class="i"><use href="#neq"/></svg>Different <span class="muted">(2)</span></span></td><td><span class="cell c-same"><svg class="i"><use href="#eq"/></svg>Same</span></td><td><span class="cell c-target"><svg class="i"><use href="#target"/></svg>Target</span></td><td><span class="cell">Take from Sales B <button class="badge t-proposal" type="button" aria-label="Proposed. Agent proposes: Keep target"><svg class="i"><use href="#bot"/></svg>Proposed</button></span></td></tr>
+          <tr aria-selected="true"><td>Selected</td><td><span class="cell c-conflict"><svg class="i"><use href="#octx"/></svg>Type conflict</span></td><td><span class="cell c-different"><svg class="i"><use href="#neq"/></svg>Different <span class="muted">(1)</span> <span class="dot" aria-hidden="true"></span><span class="sr-only">, changed</span></span></td><td><span class="cell c-same"><svg class="i"><use href="#eq"/></svg>Same</span></td><td><span class="cell c-missing"><svg class="i"><use href="#cdash"/></svg>Missing</span></td><td><span class="cell"><span class="c-same">Not set</span> <button class="badge t-proposal" type="button" aria-label="Proposed. Agent proposes: Add as new name"><svg class="i"><use href="#bot"/></svg>Proposed</button></span></td></tr>
+          <tr class="r-active"><td>Active</td><td><span class="cell c-renamed"><svg class="i"><use href="#pencil"/></svg>Renamed</span></td><td><span class="cell c-moved"><svg class="i"><use href="#arl"/></svg>Moved</span></td><td><span class="cell c-different"><svg class="i"><use href="#neq"/></svg>Different <span class="muted">(3)</span></span></td><td><span class="cell c-target"><svg class="i"><use href="#target"/></svg>Target</span></td><td><span class="cell">Keep target <button class="badge t-warn" type="button" aria-label="Confirm row first. The source changed."><svg class="i"><use href="#alert"/></svg>Confirm row first</button> <button class="badge t-proposal" type="button" aria-label="Proposed. Agent proposes: Skip"><svg class="i"><use href="#bot"/></svg>Proposed</button></span></td></tr>
+        </tbody>
+      </table>
+      </div>
+    </section>
+
+    <section class="spec" aria-labelledby="h-select">
+      <h2 id="h-select">Select (new, Radix)</h2>
+      <div class="row">
+        <div class="field"><span class="flabel" id="sl1">Source</span>
+          <button class="trigger" type="button" role="combobox" aria-labelledby="sl1 sv1" aria-haspopup="listbox" aria-expanded="false"><span id="sv1">Sales B</span><svg class="i i-sm"><use href="#chev"/></svg></button></div>
+        <div class="field"><span class="flabel" id="sl2">Kind</span>
+          <button class="trigger" type="button" role="combobox" aria-labelledby="sl2 sv2" aria-haspopup="listbox" aria-expanded="false" disabled><span id="sv2">All</span><svg class="i i-sm"><use href="#chev"/></svg></button></div>
+      </div>
+      <div class="field"><span class="flabel" id="sl3">Source (open)</span>
+        <button class="trigger" type="button" role="combobox" aria-labelledby="sl3 sv3" aria-haspopup="listbox" aria-expanded="true" aria-controls="lb3"><span id="sv3">Sales B</span><svg class="i i-sm"><use href="#chev"/></svg></button>
+        <div class="listbox" role="listbox" id="lb3" aria-labelledby="sl3">
+          <div class="opt" role="option" aria-selected="false" data-active="true"><svg class="i check"><use href="#check"/></svg><span>Sales A<span class="sub">Different: expression, format string</span></span></div>
+          <div class="opt" role="option" aria-selected="true"><svg class="i check"><use href="#check"/></svg><span>Sales B<span class="sub">Different: expression</span></span></div>
+          <div class="opt" role="option" aria-selected="false" aria-disabled="true"><svg class="i check"><use href="#check"/></svg><span>Sales C<span class="sub">Missing. Cannot take from this source.</span></span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="spec" aria-labelledby="h-combo">
+      <h2 id="h-combo">Combobox (new, Radix based)</h2>
+      <div class="field"><label for="cb1">Display folder</label>
+        <input class="input code" id="cb1" role="combobox" aria-autocomplete="list" aria-expanded="true" aria-controls="lb4" value="Margin\Ne">
+        <div class="listbox" role="listbox" id="lb4" aria-label="Display folders">
+          <div class="opt" role="option" aria-selected="false" data-active="true"><svg class="i check"><use href="#plus"/></svg><span>Use new folder "Margin\Ne"</span></div>
+          <div role="group" aria-labelledby="g1"><div class="grp-h" id="g1">In target</div>
+            <div class="opt" role="option" aria-selected="true"><svg class="i check"><use href="#check"/></svg><span class="code">Margin\Net</span></div></div>
+          <div role="group" aria-labelledby="g2"><div class="grp-h" id="g2">In Sales B</div>
+            <div class="opt" role="option" aria-selected="false"><svg class="i check"><use href="#check"/></svg><span class="code">Margin\New KPIs</span></div></div>
+        </div>
+      </div>
+      <div class="field" style="margin-top:var(--space-3)"><label for="nm">New name</label>
+        <input class="input" id="nm" aria-invalid="true" aria-describedby="nmh" value="Total Sales">
+        <span class="hint bad" id="nmh"><svg class="i i-sm"><use href="#cx"/></svg>The target already has a measure "Total Sales" in Sales. Use a different name.</span></div>
+    </section>
+
+    <section class="spec" aria-labelledby="h-seg">
+      <h2 id="h-seg">SegmentedControl, Switch, Tabs</h2>
+      <div class="row"><span class="lbl">Toggle buttons</span>
+        <div class="seg" role="group" aria-label="View"><button type="button" aria-pressed="true">Table</button><button type="button" aria-pressed="false">Graph</button><button type="button" aria-pressed="false">Wireframe</button></div></div>
+      <div class="row"><span class="lbl">Radio group</span>
+        <div class="seg" role="radiogroup" aria-label="Compare mode"><label><input type="radio" name="cm" checked>Default</label><label><input type="radio" name="cm">Strict</label></div></div>
+      <div class="row"><span class="lbl">Groups</span>
+        <div class="seg" role="group" aria-label="Impact group"><button type="button" aria-pressed="true">Breaks 8 <span class="count-bad">(4 blocking)</span></button><button type="button" aria-pressed="false">Needs 6</button><button type="button" aria-pressed="false">Offers 7</button></div></div>
+      <div class="row"><span class="lbl">Switch</span>
+        <button class="switch" type="button" role="switch" aria-checked="false"><span class="track"><span class="thumb"></span></span>Include open proposals</button>
+        <button class="switch" type="button" role="switch" aria-checked="true"><span class="track"><span class="thumb"></span></span>On</button>
+        <button class="switch" type="button" role="switch" aria-checked="false" disabled><span class="track"><span class="thumb"></span></span>Locked</button></div>
+      <div class="row"><span class="lbl">Tabs</span>
+        <div class="tabs" role="tablist" aria-label="Session views"><button class="tab" role="tab" type="button" aria-selected="true">Compare</button><button class="tab" role="tab" type="button" aria-selected="false" tabindex="-1">Impact</button><button class="tab" role="tab" type="button" aria-selected="false" tabindex="-1">Plan <span class="n t-bad">3</span></button><button class="tab" role="tab" type="button" aria-selected="false" tabindex="-1">Agent <span class="n t-plain">4</span></button></div></div>
+    </section>
+
+    <section class="spec" aria-labelledby="h-cb">
+      <h2 id="h-cb">Checkbox with 24 px target (changed)</h2>
+      <div class="row">
+        <label class="cb"><input type="checkbox"><span class="box"><svg viewBox="0 0 12 12"><path class="p-check" d="M2.5 6.2 5 8.5l4.5-5"/><path class="p-dash" d="M3 6h6"/></svg></span>Select Net Margin</label>
+        <label class="cb"><input type="checkbox" checked><span class="box"><svg viewBox="0 0 12 12"><path class="p-check" d="M2.5 6.2 5 8.5l4.5-5"/><path class="p-dash" d="M3 6h6"/></svg></span>Select Total Sales</label>
+        <label class="cb"><input type="checkbox" id="indet"><span class="box"><svg viewBox="0 0 12 12"><path class="p-check" d="M2.5 6.2 5 8.5l4.5-5"/><path class="p-dash" d="M3 6h6"/></svg></span>Select page Overview</label>
+        <label class="cb"><input type="checkbox" disabled><span class="box"><svg viewBox="0 0 12 12"><path class="p-check" d="M2.5 6.2 5 8.5l4.5-5"/><path class="p-dash" d="M3 6h6"/></svg></span>Not ready</label>
+      </div>
+      <fieldset aria-invalid="true" aria-describedby="pperr"><legend>Properties to take from Sales B</legend>
+        <label class="cb"><input type="checkbox"><span class="box"><svg viewBox="0 0 12 12"><path class="p-check" d="M2.5 6.2 5 8.5l4.5-5"/><path class="p-dash" d="M3 6h6"/></svg></span>Expression</label>
+        <span class="hint bad" id="pperr"><svg class="i i-sm"><use href="#cx"/></svg>Select at least one property.</span>
+      </fieldset>
+    </section>
+
+    <section class="spec" aria-labelledby="h-radio">
+      <h2 id="h-radio">ChoiceRadio group (new)</h2>
+      <fieldset><legend>Merge Choice</legend>
+        <div class="choice"><label><input type="radio" name="mc">Keep target</label></div>
+        <div class="choice is-selected"><label><input type="radio" name="mc" checked aria-busy="true">Take from Sales B <button class="badge t-proposal" type="button" aria-label="Proposed by agent"><svg class="i"><use href="#bot"/></svg>Proposed</button><span class="saving" role="status"><svg class="i i-sm spin"><use href="#loader"/></svg>Saving</span></label>
+          <div class="subf"><button class="link" type="button">Change name</button></div></div>
+        <div class="choice is-disabled"><label><input type="radio" name="mc" disabled aria-describedby="r1">Remove from target</label><p class="reason" id="r1">The target does not have this object.</p></div>
+        <div class="choice"><label><input type="radio" name="mc">Skip</label><p class="reason">No change now. The row stays open.</p></div>
+      </fieldset>
+    </section>
+
+    <section class="spec" aria-labelledby="h-filter">
+      <h2 id="h-filter">FilterButton, FilterChip, BulkBar (new)</h2>
+      <div class="row">
+        <button class="fbtn" type="button" aria-haspopup="dialog" aria-expanded="false">Type<svg class="i i-sm"><use href="#chev"/></svg></button>
+        <button class="fbtn is-active" type="button" aria-haspopup="dialog" aria-expanded="false">State: not same<span class="sr-only"> (active)</span><svg class="i i-sm"><use href="#chev"/></svg></button>
+      </div>
+      <div class="row">
+        <span class="chip">State: not same<button type="button" aria-label="Remove filter State: not same"><svg class="i i-sm"><use href="#x"/></svg></button></span>
+        <span class="chip">Proposal P-0007<button type="button" aria-label="Remove filter Proposal P-0007"><svg class="i i-sm"><use href="#x"/></svg></button></span>
+        <button class="link" type="button">Clear filters</button>
+      </div>
+      <div class="bulkbar" role="region" aria-label="Bulk actions"><strong>3 selected</strong>
+        <button class="btn btn-outline" type="button" aria-haspopup="menu">Set Merge Choice<svg class="i i-sm"><use href="#chev"/></svg></button>
+        <button class="btn btn-ghost" type="button">Clear selection</button></div>
+    </section>
+
+    <section class="spec" aria-labelledby="h-steps">
+      <h2 id="h-steps">StepIndicator and ProgressList (new)</h2>
+      <ol class="steps" aria-label="Create steps">
+        <li class="done"><span class="num"><svg class="i i-sm"><use href="#check"/></svg></span>Sources<span class="sr-only"> (done)</span></li>
+        <li aria-current="step"><span class="num">2</span>Target</li>
+        <li><span class="num">3</span>Name and create</li>
+      </ol>
+      <div aria-live="polite" style="margin-top:var(--space-3)">
+        <ul class="plist">
+          <li><svg class="i ok"><use href="#ccheck"/></svg>Write a candidate copy<span class="sr-only">: done</span></li>
+          <li><svg class="i run spin"><use href="#loader"/></svg>Guard check<span class="sr-only">: running</span></li>
+          <li><svg class="i pend"><use href="#cdash"/></svg><span class="muted">Write the files</span><span class="sr-only">: not started</span></li>
+          <li><svg class="i fail"><use href="#cx"/></svg>Sales B not added: the folder was not found.</li>
+        </ul>
+        <p class="small muted">Step 8 of 11. 0:09 elapsed.</p>
+      </div>
+    </section>
+
+    <section class="spec" aria-labelledby="h-result">
+      <h2 id="h-result">ResultPanel and CompletenessStrip (new)</h2>
+      <div class="panel" role="status"><div class="head"><svg class="i ok"><use href="#ccheck"/></svg>Plan applied</div>
+        <p class="small muted">The target matches the plan. 41 plan steps, 26 files written at 11:06. A backup is kept for undo.</p>
+        <div class="row"><button class="btn btn-primary" type="button">Write change report</button><button class="btn btn-destructive-outline" type="button">Undo apply</button></div></div>
+      <div style="margin-top:var(--space-3)">
+        <button class="strip" type="button" aria-expanded="false" aria-controls="areas"><span class="badge t-warn"><svg class="i"><use href="#alert"/></svg>Incomplete: 5 areas</span><span class="grow">Static impact is a safe superset. Some areas were not checked.</span>Show areas<svg class="i i-sm"><use href="#chev"/></svg></button>
+        <div id="areas" hidden>Areas</div>
+      </div>
+    </section>
+
+    <section class="spec wide" aria-labelledby="h-wf">
+      <h2 id="h-wf">WireframeBox: pattern, icon and text (new)</h2>
+      <div class="wf">
+        <button class="wbox w-removed" type="button" aria-label="Card, Gross Profit, removed"><span class="st"><svg class="i i-sm"><use href="#trash"/></svg>Removed</span><span class="ttl">Gross Profit</span><span class="muted">Card</span></button>
+        <button class="wbox w-breaks" type="button" aria-label="Line chart, Net Margin trend, breaks"><span class="st"><svg class="i i-sm"><use href="#cx"/></svg>Breaks</span><span>Net Margin trend</span><span class="muted">Line chart</span></button>
+        <button class="wbox w-changes" type="button" aria-label="Table, Sales by region, changes"><span class="st"><svg class="i i-sm"><use href="#alert"/></svg>Changes</span><span>Sales by region</span><span class="muted">Table</span></button>
+        <button class="wbox w-new" type="button" aria-pressed="true" aria-label="Card, Net Amount, new, selected"><span class="st"><svg class="i i-sm"><use href="#plus"/></svg>New</span><span>Net Amount</span><span class="muted">Card</span></button>
+        <button class="wbox w-unchecked" type="button" aria-label="Custom visual, not checked"><span class="st"><svg class="i i-sm"><use href="#help"/></svg>Not checked</span><span>Map</span><span class="muted">Custom visual</span></button>
+        <button class="wbox w-unchanged" type="button" aria-label="Slicer, Year, unchanged"><span>Year</span><span class="muted">Slicer</span></button>
+      </div>
+    </section>
+
+    <section class="spec wide" aria-labelledby="h-node">
+      <h2 id="h-node">ImpactNode (new)</h2>
+      <div class="nodes" role="group" aria-label="Impact graph. Tab moves between objects. Enter opens the item.">
+        <button class="inode cause" type="button" aria-label="Measure [Gross Profit], change: removed"><span class="ty"><svg class="i i-sm"><use href="#trash"/></svg>Change: Removed</span><span class="nm">[Gross Profit]</span><span class="ty">Measure</span></button>
+        <button class="inode" type="button" aria-pressed="true" aria-label="Measure [Net Margin], blocking, Breaks, 1 step from the change"><span class="ty">Measure</span><span class="nm">[Net Margin]</span><span class="s-bad"><svg class="i i-sm"><use href="#cx"/></svg>Blocking, breaks</span></button>
+        <button class="inode" type="button" aria-label="Visual Margin trend, warning, changes value, 2 steps from the change"><span class="ty">Line chart</span><span class="nm">Margin trend</span><span class="s-warn"><svg class="i i-sm"><use href="#alert"/></svg>Warning, changes value</span></button>
+      </div>
+    </section>
+
+    <section class="spec" aria-labelledby="h-dlg">
+      <h2 id="h-dlg">Dialog and AlertDialog (new)</h2>
+      <div class="dialog" role="alertdialog" aria-labelledby="dt" aria-describedby="dd">
+        <header><h3 id="dt">Remove Sales B from this session?</h3></header>
+        <p class="db" id="dd">3 Merge Choices take from Sales B. They stay, but the plan is not valid until you change them.</p>
+        <footer><button class="btn btn-secondary" type="button">Cancel</button><button class="btn btn-destructive" type="button"><svg class="i"><use href="#trash"/></svg>Remove source</button></footer>
+      </div>
+    </section>
+
+    <section class="spec" aria-labelledby="h-pane">
+      <h2 id="h-pane">SidePane, Toast, EmptyState (new)</h2>
+      <aside class="pane" aria-labelledby="pt">
+        <div class="ph"><h3 id="pt" tabindex="-1">Net Margin</h3>
+          <button class="btn btn-ghost btn-icon" type="button" aria-label="Previous row"><svg class="i" style="transform:rotate(180deg)"><use href="#chev"/></svg></button>
+          <button class="btn btn-ghost btn-icon" type="button" aria-label="Next row"><svg class="i"><use href="#chev"/></svg></button>
+          <button class="btn btn-ghost btn-icon" type="button" aria-label="Close row detail"><svg class="i"><use href="#x"/></svg></button></div>
+        <div class="pb" aria-busy="true"><span class="small muted" role="status">Loading row</span><div class="sk"></div><div class="sk" style="width:70%"></div></div>
+      </aside>
+      <div style="margin-top:var(--space-3)"><div class="toast" role="status"><svg class="i"><use href="#alert"/></svg>This session changed in another place. The view shows the latest state. Do the action again.</div></div>
+      <div class="empty"><svg class="i"><use href="#bot"/></svg><strong>No open proposals or questions</strong><p>When an agent connected through MCP proposes a change or asks a question, it shows here. Nothing changes until you accept it.</p><button class="btn btn-outline" type="button">Refresh</button></div>
+    </section>
+  </div>
+</main>
+<script>
+  const q = new URLSearchParams(location.search);
+  if (q.get('theme')) document.documentElement.dataset.theme = q.get('theme');
+  document.getElementById('indet').indeterminate = true;
+  document.querySelectorAll('.seg button').forEach(b => b.addEventListener('click', () => { b.parentElement.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(x === b))); }));
+  document.querySelectorAll('.switch').forEach(b => b.addEventListener('click', () => b.setAttribute('aria-checked', String(b.getAttribute('aria-checked') !== 'true'))));
+  document.querySelectorAll('.choice input').forEach(r => r.addEventListener('change', () => document.querySelectorAll('.choice').forEach(c => c.classList.toggle('is-selected', c.querySelector('input').checked))));
+</script>
+</body>
+</html>
