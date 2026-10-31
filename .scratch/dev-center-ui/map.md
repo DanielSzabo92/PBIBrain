@@ -31,6 +31,12 @@ A UI design document (`docs/DEV_CENTER_UI_DESIGN.md`) for version 1 of the Devel
 
 <!-- one line per closed ticket -->
 - 01 (2026-10-31): Render gates work after `npm install` in the kit folder. Theme text and status tokens pass AA in both themes. `line`, `line-strong` (`input`) and `line-focus` are below 3:1, so new controls use `control-border`. axe fails on Graph (2 rules) and on the light Inspector type chip (4.15:1). No page overflow from 1024 to 1440. Full values: [01-render-gates](issues/01-render-gates.md).
+- 02 (2026-10-31): The sidebar item opens a "Merge sessions" table. A 3-step create page (Sources, Target, Name and create) calls the JS API only at the end. The work area has a header (plan status, Check sources, More), banners, and 6 tabs (Compare, Impact, Plan, Agent, Sources, Log). Side panes are a 360 px column at 1280 px and wider, and a sheet below. Measured: 0 overflow in 120 runs, 0 axe violations. Full answer: [02-shell-and-session-flow](issues/02-shell-and-session-flow.md).
+
+## Backend change requests
+
+<!-- one line each: endpoint, fields, reason, ticket. Ticket 11 carries this list into the design. -->
+- `GET /api/devcenter/sessions`. Fields for each session: ID, display name, updated time, target model and report names, source count, plan status (null permitted), lock state, schema state (ok, newer, damaged). Reason: `GET session` returns only the open session, so the session list has no data. Ticket 02.
 
 ## Not yet specified
 

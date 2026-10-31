@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dev Center shell</title>
+<!-- Prototype for ticket 02. Never shipped. Open with ?screen=<id>&theme=dark|light&w=<pane state>. -->
+<link rel="stylesheet" href="tokens.css">
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--font-ui); font-size: 14px; line-height: 1.45; }
+  button { font: inherit; color: inherit; }
+  :focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+  svg.i { width: 16px; height: 16px; flex: none; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+  .shell { display: grid; grid-template-columns: 236px minmax(0, 1fr); min-height: 100vh; }
+  .sidebar { background: var(--bg-sidebar); border-right: 1px solid var(--line); padding: 16px 10px; display: flex; flex-direction: column; gap: 2px; }
+  .brand { font-weight: 600; padding: 4px 10px 16px; }
+  .nav { display: flex; align-items: center; gap: 10px; padding: 0 10px; min-height: 32px; border-radius: var(--radius); color: var(--text-2); border: 0; background: none; text-align: left; cursor: pointer; }
+  .nav:hover { background: var(--surface-hover); color: var(--text); }
+  .nav[aria-current="page"] { background: var(--surface-3); color: var(--text); }
+  .main { min-width: 0; display: flex; flex-direction: column; }
+  .topbar { height: 48px; display: flex; align-items: center; gap: 8px; padding: 0 20px; border-bottom: 1px solid var(--line); color: var(--text-2); min-width: 0; }
+  .crumb { color: var(--text-2); background: none; border: 0; padding: 4px 6px; border-radius: 6px; cursor: pointer; white-space: nowrap; }
+  .crumb:hover { color: var(--text); background: var(--surface-hover); }
+  .crumb-now { color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .content { padding: 24px; min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 16px; }
+
+  h1 { font-size: 28px; line-height: 1.2; margin: 0; font-weight: 600; letter-spacing: -0.01em; }
+  h2 { font-size: 16px; margin: 0; font-weight: 600; }
+  .muted { color: var(--text-2); }
+  .small { font-size: 12px; }
+  .head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+
+  .btn { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 0 12px; border-radius: var(--radius); border: 1px solid var(--control-border); background: var(--surface); cursor: pointer; white-space: nowrap; }
+  .btn:hover { background: var(--surface-hover); }
+  .btn:active { background: var(--surface-3); }
+  .btn:disabled { opacity: 0.55; cursor: not-allowed; }
+  .btn-primary { background: var(--brand); color: var(--brand-ink); border-color: var(--brand); }
+  .btn-primary:hover { background: var(--brand-strong); border-color: var(--brand-strong); }
+  .btn-ghost { border-color: transparent; background: none; }
+  .btn-danger { color: var(--bad); }
+
+  .table { width: 100%; border-collapse: collapse; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+  .table-wrap { overflow-x: auto; border-radius: var(--radius); }
+  .table th { text-align: left; font-weight: 500; font-size: 12px; color: var(--text-2); padding: 8px 12px; border-bottom: 1px solid var(--line); background: var(--surface-2); white-space: nowrap; }
+  .table td { padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  .table tr:last-child td { border-bottom: 0; }
+  .table tbody tr.open-row { cursor: pointer; }
+  .table tbody tr.open-row:hover { background: var(--surface-hover); }
+  .name-cell a { color: var(--text); font-weight: 500; text-decoration: none; }
+  .name-cell a:hover { text-decoration: underline; }
+
+  .status { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 500; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
+  .s-ok { color: var(--ok); background: var(--ok-soft); }
+  .s-warn { color: var(--warn); background: var(--warn-soft); }
+  .s-bad { color: var(--bad); background: var(--bad-soft); }
+  .s-info { color: var(--info); background: var(--info-soft); }
+  .s-plain { color: var(--text-2); background: var(--surface-3); }
+  .status svg.i { width: 14px; height: 14px; }
+
+  .banner { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: var(--radius); border: 1px solid var(--line); background: var(--surface); flex-wrap: wrap; }
+  .banner .msg { flex: 1 1 320px; min-width: 0; }
+  .banner-warn svg.i:first-child { color: var(--warn); }
+  .banner-bad svg.i:first-child { color: var(--bad); }
+  .banner-info svg.i:first-child { color: var(--info); }
+
+  .empty { margin: 48px auto; max-width: 440px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+  .empty svg.i { width: 28px; height: 28px; color: var(--text-3); }
+  .empty h2 { font-size: 20px; }
+
+  /* Create flow */
+  .steps { display: flex; gap: 8px; list-style: none; margin: 0; padding: 0; flex-wrap: wrap; }
+  .step { display: flex; align-items: center; gap: 8px; color: var(--text-2); padding-right: 12px; }
+  .step b { display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 999px; border: 1px solid var(--control-border); font-weight: 500; font-size: 12px; }
+  .step[aria-current="step"] { color: var(--text); }
+  .step[aria-current="step"] b { background: var(--brand); color: var(--brand-ink); border-color: var(--brand); }
+  .step.done b { color: var(--ok); border-color: var(--ok); }
+  .panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; display: flex; flex-direction: column; gap: 16px; max-width: 880px; }
+  .footer-actions { display: flex; justify-content: space-between; gap: 8px; max-width: 880px; }
+  .src-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; gap: 12px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--line); }
+  .src-row:last-child { border-bottom: 0; }
+  .src-path { font-family: var(--font-code); font-size: 12px; color: var(--text-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .menu { position: relative; display: inline-block; }
+  .menu-list { position: absolute; z-index: 5; top: calc(100% + 4px); left: 0; min-width: 220px; background: var(--surface-2); border: 1px solid var(--line-strong); border-radius: var(--radius); box-shadow: var(--shadow-md); padding: 4px; }
+  .menu-item { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 32px; padding: 0 10px; background: none; border: 0; border-radius: 6px; text-align: left; cursor: pointer; }
+  .menu-item:hover { background: var(--surface-hover); }
+  .menu-sep { height: 1px; background: var(--line); margin: 4px 0; }
+  fieldset { border: 0; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+  legend { font-weight: 600; margin-bottom: 8px; }
+  .radio { display: grid; grid-template-columns: 20px minmax(0, 1fr); gap: 8px; padding: 8px 10px; border-radius: var(--radius); }
+  .radio:hover { background: var(--surface-hover); }
+  .radio input { margin: 3px 0 0; accent-color: var(--brand); width: 16px; height: 16px; }
+  .radio.disabled { color: var(--text-3); }
+  .radio .why { grid-column: 2; font-size: 12px; color: var(--text-2); display: flex; gap: 6px; align-items: center; }
+  .field { display: flex; flex-direction: column; gap: 6px; max-width: 420px; }
+  .field input { min-height: 32px; padding: 0 10px; border-radius: var(--radius); border: 1px solid var(--control-border); background: var(--surface); color: var(--text); font: inherit; }
+  .progress { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px; }
+  .progress li { display: flex; gap: 8px; align-items: center; }
+  .ok-c { color: var(--ok); } .bad-c { color: var(--bad); } .warn-c { color: var(--warn); } .run-c { color: var(--info); }
+
+  /* Work area */
+  .work-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+  .work-title { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+  .target-line { display: flex; gap: 12px; flex-wrap: wrap; color: var(--text-2); font-size: 13px; }
+  .target-line span { display: inline-flex; gap: 6px; align-items: center; }
+  .head-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .plan-link { border: 0; cursor: pointer; min-height: 28px; font-size: 13px; }
+  .plan-link:hover { text-decoration: underline; }
+  .tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--line); overflow-x: auto; scrollbar-width: thin; }
+  .tab { min-height: 36px; padding: 0 12px; background: none; border: 0; border-bottom: 2px solid transparent; color: var(--text-2); cursor: pointer; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+  .tab:hover { color: var(--text); }
+  .tab[aria-selected="true"] { color: var(--text); border-bottom-color: var(--brand); }
+  .count { font-size: 11px; padding: 0 6px; border-radius: 999px; background: var(--surface-3); color: var(--text-2); }
+  .count.bad { background: var(--bad-soft); color: var(--bad); }
+  .body { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; min-height: 0; flex: 1; }
+  .region { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); min-width: 0; min-height: 360px; display: flex; flex-direction: column; }
+  .region-bar { display: flex; gap: 8px; align-items: center; padding: 8px 12px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+  .seg { display: inline-flex; border: 1px solid var(--control-border); border-radius: var(--radius); overflow: hidden; }
+  .seg button { border: 0; background: none; min-height: 28px; padding: 0 10px; cursor: pointer; color: var(--text-2); }
+  .seg button[aria-pressed="true"] { background: var(--surface-3); color: var(--text); }
+  .grid-scroll { overflow: auto; flex: 1; }
+  .fake-grid { border-collapse: collapse; min-width: 880px; width: 100%; font-size: 13px; }
+  .fake-grid th, .fake-grid td { padding: 7px 12px; border-bottom: 1px solid var(--line); text-align: left; white-space: nowrap; }
+  .fake-grid th { color: var(--text-2); font-weight: 500; font-size: 12px; background: var(--surface-2); position: sticky; top: 0; }
+  .fake-grid tr.sel td { background: var(--brand-soft); }
+  .placeholder-note { padding: 10px 12px; color: var(--text-2); font-size: 12px; border-top: 1px solid var(--line); }
+  .pane { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+  .pane-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .sheet-scrim { display: none; }
+  @media (min-width: 1280px) {
+    .body.has-pane { grid-template-columns: minmax(0, 1fr) 360px; }
+    .only-narrow { display: none !important; }
+  }
+  @media (max-width: 1279.98px) {
+    .only-wide { display: none !important; }
+    .body.has-pane .pane { position: fixed; top: 0; right: 0; bottom: 0; width: min(400px, 92vw); border-radius: 0; box-shadow: var(--shadow-lg); z-index: 20; overflow-y: auto; }
+  }
+  .list-sources .src-row { grid-template-columns: auto minmax(0, 1fr) auto auto auto; }
+  .kv { display: grid; grid-template-columns: 140px minmax(0, 1fr); gap: 6px 12px; font-size: 13px; }
+  .kv dt { color: var(--text-2); } .kv dd { margin: 0; }
+  section.block { display: flex; flex-direction: column; gap: 8px; padding: 16px; }
+  section.block + section.block { border-top: 1px solid var(--line); }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+const P = {
+  alert: '<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
+  check: '<circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>',
+  x: '<circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/>',
+  lock: '<rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
+  folder: '<path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/>',
+  plus: '<path d="M5 12h14"/><path d="M12 5v14"/>',
+  refresh: '<path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/>',
+  chev: '<path d="m9 18 6-6-6-6"/>',
+  more: '<circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/>',
+  merge: '<circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M6 21V9a9 9 0 0 0 9 9"/>',
+  db: '<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5V19A9 3 0 0 0 21 19V5"/><path d="M3 12A9 3 0 0 0 21 12"/>',
+  file: '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/>',
+  info: '<circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>',
+  loader: '<path d="M21 12a9 9 0 1 1-6.22-8.56"/>',
+  close: '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
+};
+const I = (n, label) => `<svg class="i" viewBox="0 0 24 24" ${label ? `role="img" aria-label="${label}"` : 'aria-hidden="true"'}>${P[n]}</svg>`;
+const q = new URLSearchParams(location.search);
+const screen = q.get('screen') || 'list';
+document.documentElement.dataset.theme = q.get('theme') || 'dark';
+
+const navItems = ['Overview', 'Search', 'Graph', 'Inspector', 'Review queue', 'Development Center', 'Settings'];
+const sidebar = `<aside class="sidebar"><div class="brand">PBIBrain</div><nav aria-label="Main navigation">${navItems.map(n => `<button class="nav" ${n === 'Development Center' ? 'aria-current="page"' : ''}>${n === 'Development Center' ? I('merge') : ''}<span>${n}</span></button>`).join('')}</nav></aside>`;
+const crumbs = (parts) => `<header class="topbar"><nav aria-label="Breadcrumb" style="display:flex;align-items:center;gap:2px;min-width:0">${parts.map((p, i) => i < parts.length - 1 ? `<button class="crumb">${p}</button>${I('chev')}` : `<span class="crumb-now" aria-current="page">${p}</span>`).join('')}</nav></header>`;
+const st = (cls, icon, text) => `<span class="status ${cls}">${I(icon)}${text}</span>`;
+
+const sessions = [
+  { name: 'Sales master merge', target: 'Sales Master (copy of Sales A)', src: 4, plan: st('s-warn', 'alert', 'Valid with 5 warnings'), when: 'Today 10:42', status: st('s-ok', 'check', 'Ready'), open: true },
+  { name: 'Finance consolidation', target: 'Finance Core', src: 3, plan: st('s-bad', 'x', 'Not valid: 3 blocking'), when: 'Yesterday 16:05', status: st('s-info', 'lock', 'Open in another window'), open: true, note: 'Opens read-only.' },
+  { name: 'HR headcount', target: 'HR Model', src: 2, plan: st('s-ok', 'check', 'Valid'), when: '28 Oct 2026', status: st('s-ok', 'check', 'Ready'), open: true },
+  { name: 'Ops pilot', target: 'Ops Model', src: 2, plan: '<span class="muted">Not known</span>', when: '20 Oct 2026', status: st('s-bad', 'x', 'Needs a newer PBIBrain'), open: false, note: 'This session was saved by a newer PBIBrain version. Update PBIBrain to open it.' },
+  { name: 'Marketing test', target: 'Not known', src: 0, plan: '<span class="muted">Not known</span>', when: '12 Oct 2026', status: st('s-bad', 'x', 'Cannot read'), open: false, note: 'The session file is not valid JSON or has merge conflict marks. Fix the file, then try again.' },
+];
+
+function listScreen() {
+  return crumbs(['Development Center']) + `<main class="content" id="main">
+  <div class="head"><div><h1>Merge sessions</h1><p class="muted" style="margin:6px 0 0">Combine many models and reports into one target. Each session keeps its sources, choices and plan.</p></div>
+  <button class="btn btn-primary">${I('plus')}New merge session</button></div>
+  <div class="table-wrap"><table class="table"><thead><tr><th scope="col">Name</th><th scope="col">Target</th><th scope="col">Sources</th><th scope="col">Plan</th><th scope="col">Last change</th><th scope="col">Status</th></tr></thead><tbody>
+  ${sessions.map(s => `<tr class="${s.open ? 'open-row' : ''}"><td class="name-cell">${s.open ? `<a href="#">${s.name}</a>` : `<span>${s.name}</span>`}${s.note ? `<div class="small muted">${s.note}</div>` : ''}</td><td>${s.target}</td><td>${s.src}</td><td>${s.plan}</td><td class="muted">${s.when}</td><td>${s.status}</td></tr>`).join('')}
+  </tbody></table></div></main>`;
+}
+function emptyScreen(kind) {
+  const c = kind === 'noproject'
+    ? { i: 'folder', t: 'Open a project to start a merge session', d: 'Merge sessions are saved in the project folder. Open a PBIP project first.', b: `<button class="btn btn-primary">${I('folder')}Open project</button>` }
+    : { i: 'merge', t: 'No merge sessions yet', d: 'A merge session loads many models and reports, compares them, and builds one target. Nothing changes until you apply a plan.', b: `<button class="btn btn-primary">${I('plus')}New merge session</button>` };
+  return crumbs(['Development Center']) + `<main class="content" id="main"><h1 class="${kind === 'noproject' ? '' : ''}">Merge sessions</h1><div class="empty">${I(c.i)}<h2>${c.t}</h2><p class="muted" style="margin:0">${c.d}</p>${c.b}</div></main>`;
+}
+const steps = (n) => `<ol class="steps" aria-label="Steps">${['Sources', 'Target', 'Name and create'].map((s, i) => `<li class="step ${i + 1 < n ? 'done' : ''}" ${i + 1 === n ? 'aria-current="step"' : ''}><b>${i + 1 < n ? I('check').replace('class="i"', 'class="i" style="width:14px;height:14px"') : i + 1}</b>${s}</li>`).join('')}</ol>`;
+const srcs = [
+  { k: 'PBIP project, TMDL', n: 'Sales A', p: 'models/SalesA/SalesA.pbip', s: st('s-ok', 'check', 'Read') },
+  { k: 'PBIP project, TMSL', n: 'Sales B', p: 'models/SalesB/SalesB.pbip', s: st('s-ok', 'check', 'Read') },
+  { k: 'PBIR report', n: 'Sales Overview', p: 'reports/SalesOverview.Report', s: st('s-ok', 'check', 'Read') },
+  { k: 'PBIR-Legacy report', n: 'Old KPIs', p: 'reports/OldKPIs.Report', s: st('s-ok', 'check', 'Read') },
+];
+function create1() {
+  const menuOpen = q.get('menu') === '1';
+  return crumbs(['Development Center', 'New merge session']) + `<main class="content" id="main"><h1>New merge session</h1>${steps(1)}
+  <div class="panel"><div class="head" style="align-items:center"><div><h2>Sources</h2><p class="muted small" style="margin:4px 0 0">Add each model and report to compare. Sources stay read-only.</p></div>
+  <div class="menu"><button class="btn" aria-haspopup="menu" aria-expanded="${menuOpen}">${I('plus')}Add source</button>${menuOpen ? `<div class="menu-list" role="menu" style="left:auto;right:0">${['PBIP project', 'Model folder (TMDL)', 'model.bim file', 'PBIR report'].map(m => `<button class="menu-item" role="menuitem">${I('file')}${m}</button>`).join('')}<div class="menu-sep" role="separator"></div>${['Cloud model', 'Cloud report'].map(m => `<button class="menu-item" role="menuitem">${I('db')}${m}</button>`).join('')}</div>` : ''}</div></div>
+  <div>${srcs.map(s => `<div class="src-row">${I('file')}<div style="min-width:0"><div>${s.n} <span class="muted small">${s.k}</span></div><div class="src-path">${s.p}</div></div>${s.s}<button class="btn btn-ghost btn-danger">Remove</button></div>`).join('')}</div>
+  <div class="banner banner-bad" role="alert">${I('alert')}<span class="msg">Cannot add "Budget.pbix". Save as PBIP in Power BI Desktop.</span></div>
+  </div><div class="footer-actions"><button class="btn">Cancel</button><button class="btn btn-primary">Next</button></div></main>`;
+}
+function create2() {
+  return crumbs(['Development Center', 'New merge session']) + `<main class="content" id="main"><h1>New merge session</h1>${steps(2)}
+  <div class="panel"><fieldset><legend>Target model</legend>
+  <label class="radio"><input type="radio" name="tm"><span>Sales A <span class="muted small">PBIP project, TMDL</span></span></label>
+  <label class="radio disabled"><input type="radio" name="tm" disabled><span>Sales B <span class="small">PBIP project, TMSL</span></span><span class="why">${I('info')}Save as TMDL in Power BI Desktop first.</span></label>
+  <label class="radio"><input type="radio" name="tm"><span>Empty <span class="muted small">A new model with no objects</span></span></label>
+  <label class="radio"><input type="radio" name="tm" checked><span>Copy of Sales A <span class="muted small">Copies the folder. Sales A stays the same.</span></span><span class="why">New folder: <span class="src-path">models/SalesMaster</span> <button class="btn btn-ghost" style="min-height:24px">Change</button></span></label>
+  </fieldset><fieldset><legend>Target report</legend>
+  <label class="radio"><input type="radio" name="tr" checked><span>New empty report <span class="muted small">Bound to the target model</span></span></label>
+  <label class="radio"><input type="radio" name="tr"><span>Sales Overview <span class="muted small">PBIR report</span></span><span class="why">${I('alert')}Rebind needed. Bound to Sales B. 12 fields are not in the target model.</span></label>
+  <label class="radio disabled"><input type="radio" name="tr" disabled><span>Old KPIs <span class="small">PBIR-Legacy report</span></span><span class="why">${I('info')}Convert to PBIR in Power BI Desktop first.</span></label>
+  </fieldset></div><div class="footer-actions"><button class="btn">Back</button><button class="btn btn-primary">Next</button></div></main>`;
+}
+function create3() {
+  const run = q.get('run');
+  return crumbs(['Development Center', 'New merge session']) + `<main class="content" id="main"><h1>New merge session</h1>${steps(3)}
+  <div class="panel"><div class="field"><label for="sn">Session name</label><input id="sn" value="Sales Master merge"></div>
+  <dl class="kv"><dt>Sources</dt><dd>4 (2 models, 2 reports)</dd><dt>Target model</dt><dd>Copy of Sales A in models/SalesMaster</dd><dt>Target report</dt><dd>New empty report</dd></dl>
+  ${run ? `<ul class="progress" aria-live="polite"><li>${I('check')}<span class="ok-c">Session created</span></li><li>${I('check')}<span class="ok-c">Sales A added</span></li><li>${run === 'fail' ? `${I('x')}<span class="bad-c">Sales B not added: the folder was not found.</span>` : `${I('loader')}<span class="run-c">Adding Sales B</span>`}</li><li class="muted">${I('chev')}Sales Overview</li><li class="muted">${I('chev')}Old KPIs</li><li class="muted">${I('chev')}Set target</li></ul>
+  ${run === 'fail' ? `<div class="banner banner-bad" role="alert">${I('alert')}<span class="msg">The session exists, but 1 source was not added. Open the session to add it again.</span><button class="btn">Open session</button></div>` : ''}` : ''}
+  </div><div class="footer-actions"><button class="btn" ${run ? 'disabled' : ''}>Back</button><button class="btn btn-primary" ${run ? 'disabled' : ''}>${run && run !== 'fail' ? 'Creating' : 'Create session'}</button></div></main>`;
+}
+const tabsDef = [['Compare'], ['Impact'], ['Plan', '3', true], ['Agent', '4'], ['Sources'], ['Log']];
+function work() {
+  const tab = q.get('tab') || 'Compare';
+  const locked = q.get('state') === 'locked';
+  const changed = q.get('state') === 'changed';
+  const missing = q.get('state') === 'missing';
+  const pane = q.get('pane') === '1';
+  const plan = q.get('plan') || 'bad';
+  const planEl = { bad: st('s-bad', 'x', 'Plan not valid: 3 blocking'), warn: st('s-warn', 'alert', 'Valid with 5 warnings'), ok: st('s-ok', 'check', 'Valid') }[plan];
+  const dis = locked ? 'disabled' : '';
+  let banners = '';
+  if (locked) banners += `<div class="banner banner-info" role="status">${I('lock')}<span class="msg">Another PBIBrain window has this session open. You can read it, but you cannot change it.</span><button class="btn">Try again</button></div>`;
+  if (changed) banners += `<div class="banner banner-warn" role="status">${I('alert')}<span class="msg">2 sources changed since the last check. 14 rows need your confirm.</span><button class="btn">Show these rows</button></div>`;
+  if (missing) banners += `<div class="banner banner-bad" role="alert">${I('alert')}<span class="msg">1 source was not found: Sales B. Find it again or remove it.</span><button class="btn">Open Sources</button></div>`;
+  const header = `<div class="work-head"><div class="work-title"><h1>Sales master merge</h1><div class="target-line"><span>${I('db')}Target model: Sales Master</span><span>${I('file')}Target report: new empty report</span></div></div>
+  <div class="head-actions"><button class="status plan-link ${plan === 'bad' ? 's-bad' : plan === 'warn' ? 's-warn' : 's-ok'}" title="Open Plan">${planEl.replace(/^<span class="status [^"]+">/, '').replace(/<\/span>$/, '')}</button>
+  <button class="btn only-wide" ${dis}>${I('refresh')}Check sources</button>
+  <div class="menu"><button class="btn" aria-haspopup="menu" aria-expanded="${q.get('more') === '1'}" aria-label="More actions">${I('more')}</button>${q.get('more') === '1' ? `<div class="menu-list" role="menu" style="left:auto;right:0"><button class="menu-item only-narrow" role="menuitem" ${dis}>${I('refresh')}Check sources</button><button class="menu-item" role="menuitem">${I('close')}Close session</button></div>` : ''}</div></div></div>`;
+  const tabs = `<div class="tabs" role="tablist" aria-label="Session views">${tabsDef.map(([t, c, bad]) => `<button class="tab" role="tab" aria-selected="${t === tab}" ${t === tab ? 'aria-controls="tp"' : 'tabindex="-1"'}>${t}${c ? `<span class="count ${bad ? 'bad' : ''}">${c}<span style="position:absolute;left:-9999px"> ${bad ? 'blocking' : 'open'}</span></span>` : ''}</button>`).join('')}</div>`;
+  let region;
+  if (tab === 'Sources') {
+    const rows = [
+      ['Sales Master', 'PBIP project, TMDL', 'Target', 'Local', missing ? st('s-ok', 'check', 'No change') : st('s-ok', 'check', 'No change')],
+      ['Sales A', 'PBIP project, TMDL', 'Donor', 'Local', changed ? st('s-warn', 'alert', 'Changed') : st('s-ok', 'check', 'No change')],
+      ['Sales B', 'PBIP project, TMSL', 'Donor', 'Local', missing ? st('s-bad', 'x', 'Not found') : st('s-ok', 'check', 'No change')],
+      ['Finance (cloud)', 'Cloud model', 'Donor', 'Read', st('s-ok', 'check', 'No change')],
+    ];
+    region = `<div class="region" id="tp" role="tabpanel"><section class="block"><div class="head" style="align-items:center"><h2>Sources</h2><button class="btn" ${dis}>${I('plus')}Add source</button></div>
+    <div class="list-sources">${rows.map(r => `<div class="src-row">${I(r[1].startsWith('Cloud') ? 'db' : 'file')}<div style="min-width:0"><div>${r[0]} <span class="muted small">${r[1]}</span></div><div class="small muted">${r[2]}. Access: ${r[3]}</div></div>${r[4]}${r[0] === 'Sales B' && missing ? `<button class="btn" ${dis}>Find source</button>` : '<span></span>'}${r[2] === 'Target' ? '<span></span>' : `<button class="btn btn-ghost btn-danger" ${dis}>Remove</button>`}</div>`).join('')}</div></section>
+    <section class="block"><h2>Target</h2><dl class="kv"><dt>Model</dt><dd>Sales Master (copy of Sales A)</dd><dt>Report</dt><dd>New empty report</dd></dl><div><button class="btn" ${dis}>Change target</button></div></section>
+    <section class="block"><h2>Naming rules</h2><p class="muted small" style="margin:0">Ticket 07 designs this section.</p></section></div>`;
+  } else {
+    const rowsG = ['[Total Sales]', '[Net Margin]', 'Sales[Amount]', 'Customer', '[YoY %]', 'Date[Year]', 'Product[Category]', '[Units]'];
+    region = `<div class="region" id="tp" role="tabpanel"><div class="region-bar"><span class="muted small">Compare mode</span><div class="seg" role="group" aria-label="Compare mode"><button aria-pressed="true" ${dis}>Default</button><button aria-pressed="false" ${dis}>Strict</button></div><span class="muted small">Ticket 03 designs this grid. Placeholder only.</span></div>
+    <div class="grid-scroll" tabindex="0" aria-label="Compare rows, scroll area"><table class="fake-grid"><thead><tr><th>Object</th><th>Type</th><th>Sales Master</th><th>Sales A</th><th>Sales B</th><th>Finance (cloud)</th><th>Merge Choice</th></tr></thead><tbody>
+    ${rowsG.map((r, i) => `<tr class="${pane && i === 1 ? 'sel' : ''}"><td>${r}</td><td class="muted">${r.startsWith('[') ? 'Measure' : r.includes('[') ? 'Column' : 'Table'}</td><td>Same</td><td>${i % 3 ? 'Same' : 'Different'}</td><td>${i % 4 ? 'Same' : 'Only here'}</td><td>Missing</td><td class="muted">Not set</td></tr>`).join('')}
+    </tbody></table></div></div>`;
+  }
+  const paneEl = pane ? `<aside class="pane" aria-label="Row detail"><div class="pane-head"><h2>[Net Margin]</h2><button class="btn btn-ghost" aria-label="Close row detail">${I('close')}</button></div><p class="muted small" style="margin:0">Row detail pane. Ticket 04 designs the content. At 1280 px and wider it is a column. Below 1280 px it is a sheet.</p></aside>` : '';
+  return crumbs(['Development Center', 'Sales master merge', tab]) + `<main class="content" id="main">${header}${banners}${tabs}<div class="body ${pane ? 'has-pane' : ''}">${region}${paneEl}</div></main>`;
+}
+const screens = { list: listScreen, empty: () => emptyScreen('none'), noproject: () => emptyScreen('noproject'), create1, create2, create3, work };
+document.getElementById('app').innerHTML = `<div class="shell">${sidebar}<div class="main">${(screens[screen] || listScreen)()}</div></div>`;
+</script>
+</body>
+</html>
