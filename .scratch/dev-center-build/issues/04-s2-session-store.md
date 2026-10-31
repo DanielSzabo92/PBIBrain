@@ -56,3 +56,9 @@ Tests:
 - `python -m unittest tests.test_devcenter_http_routes`: 5 tests, OK (the route list test reads the method names from section 14.2 and 14.4 of the design and sends POST, PUT, PATCH, DELETE to the real app).
 - `python -m unittest discover -s tests`: 359 tests, OK (319 before this step).
 - Frontend: no change in this step.
+
+### Rework 1
+
+- Finding 1: the generic long-run token rule does not apply to object names (dict keys, row-key strings, and the fields `row_key`, `path`, `display_name` of a source, and similar). The run class has no `/`. The explicit token formats (JWT, bearer, prefixed keys, secret pairs) still apply to names. New tests: a PBIR page `ReportSection<hex>` with a hex visual name, and a TMDL column name of 48 mixed-case characters with digits, both save; explicit token formats in row keys are still refused.
+- Small finding: `SessionLock.acquire` takes a lock only with an exclusive create. A stale lock is renamed away and compared with the stale bytes that the call read; a lock that is not readable and is younger than 10 s is not stale. New test: only one owner takes the lock.
+- Tests: S2 modules 43 tests OK. Full suite 362 tests, 0 failures.

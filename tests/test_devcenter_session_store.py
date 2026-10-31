@@ -203,6 +203,40 @@ class SecretCheckTests(SessionTestCase):
         check_secrets({"session_id": "0" * 32, "hash": "sha256:" + "a" * 64, "path": "../Sales/Sales.pbip",
                        "row": "measure:Sales/Total Sales", "name": "Sales merge 2026"})
 
+    def test_long_generated_object_names_are_not_tokens(self):
+        self.create()
+        pages = self.root / "SalesA/SalesA.Report/definition/pages"
+        page = "ReportSection0a1b2c3d4e5f6a7b8c9d"
+        visual = "0a1b2c3d4e5f6a7b8c9d"
+        (pages / "overview").rename(pages / page)
+        (pages / page / "visuals" / "totalsales").rename(pages / page / "visuals" / visual)
+        long_name = "FactInternetSales2024SalesOrderLineNumberDetail9"
+        self.assertGreaterEqual(len(long_name), 40)
+        table = self.root / "SalesA/SalesA.SemanticModel/definition/tables/Sales.tmdl"
+        table.write_bytes(table.read_bytes() + f"\tcolumn {long_name}\r\n\t\tdataType: int64\r\n\t\tlineageTag: c-long\r\n"
+                                                f"\t\tsourceColumn: {long_name}\r\n\r\n".encode("utf-8"))
+        source = self.add("SalesA/SalesA.pbip")
+        keys = self.devcenter._open.document["row_hashes"][source["source_id"]]
+        self.assertIn(f"visual:{page}/{visual}", keys)
+        self.assertIn(f"column:Sales/{long_name}", keys)
+        self.change_long_rows(table, long_name)
+        self.ok("sources_check", {"base_revision": self.devcenter.revision})
+        marked = [mark["row_key"] for mark in self.devcenter.marks()]
+        self.assertEqual([f"column:Sales/{long_name}"], marked)
+        self.ok("row_confirm", {"base_revision": self.devcenter.revision, "row_keys": marked})
+        self.devcenter._open.document["merge_choices"] = {f"visual:{page}/{visual}": {"choice": "keep"}}
+        check_secrets(self.devcenter._open.document)
+
+    def change_long_rows(self, table: Path, long_name: str) -> None:
+        data = table.read_bytes()
+        table.write_bytes(data.replace(b"lineageTag: c-long", b"lineageTag: c-long-2"))
+
+    def test_explicit_token_formats_in_object_names_are_still_refused(self):
+        for value in ("measure:Sales/ghp_0123456789abcdefABCDEF0123456789abcd", "page:Bearer abcdef1234567890"):
+            with self.subTest(value=value[:12]):
+                self.assertEqual("token", find_secrets({"row_hashes": {"src-1": {value: "sha256:" + "a" * 64}}})[0]["kind"])
+                self.assertEqual("token", find_secrets({"source_marks": [{"row_key": value}]})[0]["kind"])
+
     def test_create_with_a_secret_name_writes_nothing(self):
         error = self.failed("session_create", {"display_name": "merge for owner@example.com"}, code="invalid_payload")
         self.assertEqual("secret_found", error["details"]["reason"])
@@ -231,6 +265,20 @@ class LockTests(SessionTestCase):
             self.assertFalse(again["read_only"])
         finally:
             second.close()
+
+    def test_only_one_owner_takes_the_lock(self):
+        folder = Path(self.temporary.name) / "lockcheck"
+        folder.mkdir()
+        first, second = store.SessionLock(folder, "first"), store.SessionLock(folder, "second")
+        self.assertTrue(first.acquire())
+        self.assertFalse(second.acquire())
+        self.assertTrue(first.acquire())
+        first.release()
+        self.assertTrue(second.acquire())
+        self.assertEqual("second", second.holder()["owner"])
+        (folder / "session.lock").write_bytes(b'{"pid": ')
+        self.assertFalse(first.acquire(), "A lock that is being written is not stale")
+        self.assertEqual([], [path.name for path in folder.iterdir() if path.name.endswith(".stale")])
 
     def test_lock_of_a_dead_process_is_free(self):
         created = self.create()

@@ -10,7 +10,9 @@ from pathlib import Path
 import re
 import sys
 import tempfile
+import time
 from typing import Any, Callable, Mapping
+import uuid
 
 from backend.devcenter.errors import DevCenterError, not_allowed
 from backend.devcenter.session.secrets import check_secrets
@@ -21,6 +23,7 @@ LOG_FILE = "log.jsonl"
 LOCK_FILE = "session.lock"
 SESSIONS_FOLDER = "sessions"
 _SESSION_ID = re.compile(r"^[0-9a-f]{32}$")
+_UNREADABLE_LOCK_SECONDS = 10
 _CONFLICT_MARKER = re.compile(r"^(?:<{7}|={7}|>{7}|\|{7})(?:\s|$)", re.MULTILINE)
 
 # Runtime files in ".pbibrain" that must not go into git (technical design section 11).
@@ -183,17 +186,62 @@ class SessionLock:
     def acquire(self) -> bool:
         """Take the lock. Give False when another live process or app instance has it."""
 
-        if self.state() == LOCK_LOCKED:
-            return False
         payload = canonical_bytes({"pid": os.getpid(), "owner": self.owner})
-        try:
-            descriptor = os.open(self.path, os.O_WRONLY | os.O_CREAT | os.O_EXCL)
-        except FileExistsError:
-            # The old lock is stale or is ours: replace it.
-            write_atomic(self.path, payload)
+        for _ in range(3):
+            try:
+                descriptor = os.open(self.path, os.O_WRONLY | os.O_CREAT | os.O_EXCL)
+            except FileExistsError:
+                if not self._remove_stale():
+                    holder = self.holder()
+                    if holder is not None and holder.get("owner") == self.owner:
+                        return True
+                    return False
+                continue
+            with os.fdopen(descriptor, "wb") as handle:
+                handle.write(payload)
+                handle.flush()
+                os.fsync(handle.fileno())
             return True
-        with os.fdopen(descriptor, "wb") as handle:
-            handle.write(payload)
+        return False
+
+    def _remove_stale(self) -> bool:
+        """Move a stale lock away. Give False when the lock is live or is ours.
+
+        Only the exclusive create in ``acquire`` takes a lock, so two app
+        instances cannot both own it. The moved file is compared with the stale
+        lock that this call read; a lock that another instance wrote in the
+        meantime goes back.
+        """
+
+        try:
+            raw = self.path.read_bytes()
+            age = time.time() - self.path.stat().st_mtime
+        except FileNotFoundError:
+            return True
+        try:
+            holder = json.loads(raw)
+        except ValueError:
+            holder = None
+        if not isinstance(holder, dict):
+            # A lock that another instance is writing now is not readable for a short time.
+            if age < _UNREADABLE_LOCK_SECONDS:
+                return False
+        elif holder.get("owner") == self.owner:
+            return False
+        elif isinstance(holder.get("pid"), int) and _process_alive(holder["pid"]):
+            return False
+        moved = self.path.with_name(f".{self.path.name}.{uuid.uuid4().hex}.stale")
+        try:
+            os.rename(self.path, moved)
+        except FileNotFoundError:
+            return True
+        if moved.read_bytes() != raw:
+            try:
+                os.rename(moved, self.path)
+            except OSError:
+                pass
+            return False
+        moved.unlink(missing_ok=True)
         return True
 
     def release(self) -> None:
