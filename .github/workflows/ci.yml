@@ -79,6 +79,7 @@ jobs:
         working-directory: frontend
         run: |
           npm run build
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           if (Select-String -Path dist/index.html -Pattern "pywebview-shim" -SimpleMatch -Quiet) {
             throw "The production build must not load the test shim."
           }
@@ -87,11 +88,15 @@ jobs:
         working-directory: frontend
         run: npx playwright install chromium
 
+      # One native command in each step: pwsh does not stop at a failed native command,
+      # so a second command in the same step can hide the failure of the first one.
       - name: "Gate 4: Playwright e2e"
         working-directory: frontend
-        run: |
-          npx playwright test
-          npx playwright test -c playwright.guard.config.js
+        run: npx playwright test
+
+      - name: "Gate 4: Playwright e2e, guarded development spec"
+        working-directory: frontend
+        run: npx playwright test -c playwright.guard.config.js
         env:
           GUARD_PYTHON: python
 

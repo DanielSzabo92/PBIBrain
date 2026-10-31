@@ -35,8 +35,26 @@ class CiWorkflowTest(unittest.TestCase):
         self.assertEqual(positions, sorted(positions))
 
     def test_the_e2e_gate_also_runs_the_guarded_development_spec(self) -> None:
-        self.assertIn("npx playwright test -c playwright.guard.config.js", self.text)
+        self.assertRegex(self.text, r"(?m)^        run: npx playwright test -c playwright\.guard\.config\.js$")
         self.assertIn("GUARD_PYTHON: python", self.text)
+
+    def test_a_failed_native_command_always_fails_its_step(self) -> None:
+        # pwsh does not stop at a failed native command. In a multi-line run block, each native
+        # command that is not the last line must have a $LASTEXITCODE check on the next line.
+        native = re.compile(r"^(?:npm|npx|node|python|dotnet)\b")
+        blocks = re.findall(r"(?m)^        run: \|\n((?:          .*\n)+)", self.text)
+        self.assertTrue(blocks)
+        for block in blocks:
+            lines = [line.strip() for line in block.splitlines()]
+            for index, line in enumerate(lines[:-1]):
+                if native.match(line):
+                    with self.subTest(command=line):
+                        self.assertIn("$LASTEXITCODE", lines[index + 1], f"{line} must be the last line or have an exit code check")
+        for name, _ in GATES:
+            step = re.search(rf'- name: "{re.escape(name)}"\n((?:        .*\n)+)', self.text).group(1)
+            commands = [line for line in step.splitlines() if native.match(line.strip().removeprefix("run: "))]
+            with self.subTest(gate=name):
+                self.assertLessEqual(len(commands), 1, "put each gate command in its own step")
 
     def test_the_production_build_gate_refuses_the_shim_tag(self) -> None:
         self.assertIn('Select-String -Path dist/index.html -Pattern "pywebview-shim"', self.text)

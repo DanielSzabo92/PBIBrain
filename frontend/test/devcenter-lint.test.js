@@ -34,7 +34,7 @@ const RULES = [
   {
     id: "dash",
     text: "Do not use an em dash or an en dash (A20).",
-    find: (source) => [...source.matchAll(/[–—]/g)],
+    find: (source) => [...source.matchAll(/[\u2013\u2014]/g)],
   },
   {
     id: "one-sided-border",
@@ -97,9 +97,9 @@ const BAD_INPUTS = [
   ["hex-color", "tone.css", `.badge { color: #f07f7f; }`],
   ["hex-color", "Badge.jsx", `export const Badge = () => <span style={{ color: "#fff" }}>New</span>;`],
   ["emoji", "copy.js", `export const done = "Plan applied \u{1F680}";`],
-  ["emoji", "Status.jsx", `export const Ok = () => <span>✅ Valid</span>;`],
-  ["dash", "copy.js", `export const text = "Sources — 2 changed";`],
-  ["dash", "range.js", `export const pages = "1–5";`],
+  ["emoji", "Status.jsx", `export const Ok = () => <span>\u2705 Valid</span>;`],
+  ["dash", "copy.js", `export const text = "Sources \u2014 2 changed";`],
+  ["dash", "range.js", `export const pages = "1\u20135";`],
   ["one-sided-border", "row.css", `.row { border-left: 3px solid var(--bad); }`],
   ["one-sided-border", "row.css", `.row { border-inline-start-color: var(--warn); }`],
   ["one-sided-border", "Row.jsx", `export const Row = () => <div style={{ borderLeft: "2px solid var(--ok)" }} />;`],

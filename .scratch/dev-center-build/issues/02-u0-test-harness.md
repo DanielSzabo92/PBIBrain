@@ -30,17 +30,19 @@ Built on base `bd04f6d`.
 - Shim `frontend/src/devcenter/mock/pywebviewShim.js`: sets `window.pywebview.api`, `__PBIBRAIN_DESKTOP__`, and dispatches `pywebviewready`. The fake server puts the method lists in front of the shim.
 - Vite plugin `frontend/vite-plugins/devcenterFake.js`: with `DEVCENTER_FAKE=1`, the shim tag goes into `index.html`, and the dev proxy sends `/api` and `/__test__` to `DEVCENTER_FAKE_URL` (default `http://127.0.0.1:8766`).
 - Playwright: second `webServer` (8766, URL `/__test__/health`). The main config now ignores `guardedDevelopment.spec.js`: that spec failed 7 of 7 in the main config at the base too, because it needs its own server (`playwright.guard.config.js`, port 8773). The guard config reads `GUARD_PYTHON` (default `.venv\Scripts\python.exe`). The derived configs ignore the Development Center specs.
-- CI `.github/workflows/ci.yml` (windows-latest, each push and pull request): native runtime script, `pip install -e .[mcp]`, TOM bridge, `npm ci`, then gate 1 Python unittest, gate 2 `npm test`, gate 3 `npm run build` with a check for no shim tag, gate 4 Playwright (main config and guard config), gate 5 the lint test. Not run on GitHub (no push in this build).
+- CI `.github/workflows/ci.yml` (windows-latest, each push and pull request): native runtime script, `pip install -e .[mcp]`, TOM bridge, `npm ci`, then gate 1 Python unittest, gate 2 `npm test`, gate 3 `npm run build` with a check for no shim tag, gate 4 Playwright (main config and guard config, one step each, so that each failure fails its step), gate 5 the lint test. Not run on GitHub (no push in this build).
 - Lint `frontend/test/devcenter-lint.test.js` for `frontend/src/devcenter/**`: native select, hex color, emoji, em or en dash, one-sided colored border (CSS, inline style, Tailwind side color classes).
 - Contrast `tests/test_theme_contrast.py`: computes each ticket 01 pair again from `theme.css` (pure Python WCAG formula) and compares with the ticket 01 values, 2 decimals. `line`, `line-strong`, `line-focus` are in `DECORATIVE_ONLY`, and the test asserts that each is below 3:1.
 - Route list `tests/test_devcenter_route_list.py`: probes the real `BrainApp` with each section 14.2 method name (POST, PUT, PATCH, DELETE under `/api/devcenter/`, `/api/`, `/api/devcenter/session/`) and each `/__test__` route; each must give 404 or 405. A self-check makes sure that the probe sees a real route. No `backend/**/*.py` file names the fake server or the shim. S2 can add its route table checks to this file.
-- Other tests: `tests/test_devcenter_ui_server.py` (24), `tests/test_ci_workflow.py` (5), `frontend/test/devcenter-shim-build.test.js` (4, runs two real Vite builds, about 12 s), `frontend/e2e/devcenterHarness.spec.js` (3).
+- Other tests: `tests/test_devcenter_ui_server.py` (24), `tests/test_ci_workflow.py` (6, with a check that each native command is the last line of its step or has an exit code check), `frontend/test/devcenter-shim-build.test.js` (4, runs two real Vite builds, about 12 s), `frontend/e2e/devcenterHarness.spec.js` (3).
 
 Test commands and results:
 
-- `python -m unittest discover -s tests`: 343 tests, 1 failure (the known `test_mcp_adapter` baseline failure, ticket 01).
+- `python -m unittest discover -s tests`: 344 tests, 1 failure (the known `test_mcp_adapter` baseline failure, ticket 01).
 - `npm test` in `frontend/`: 38 tests, 38 pass.
 - `npm run build` in `frontend/`: pass; `dist/index.html` has no shim tag.
 - `npx playwright test` in `frontend/`: 50 passed (47 old, 3 new).
 - `npx playwright test -c playwright.guard.config.js` with `GUARD_PYTHON=python`: 7 passed.
 - Kit gates: not applicable, because U0 adds no screen.
+
+Rework 1: Gate 4 is 2 steps; Gate 3 checks the exit code of the build; the lint test inputs use escapes only.
