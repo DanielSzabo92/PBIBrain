@@ -59,3 +59,7 @@ backend/adapters/tabular_metadata/dotnet/obj/
 change_guard/regression/dotnet/bin/
 change_guard/regression/dotnet/obj/
 frontend/.guard-test-results/
+
+# The merge lab fixtures are test data, not private artifacts.
+!tests/fixtures/merge_lab/**/*.pbip
+!tests/fixtures/merge_lab/**/*.pbir
