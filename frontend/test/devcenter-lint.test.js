@@ -19,7 +19,8 @@ const RULES = [
   {
     id: "native-select",
     text: "Use the Select part, not a native <select> (A20).",
-    find: (source) => [...source.matchAll(/<select[\s>/]|createElement\(\s*["'`]select["'`]/gi)],
+    // Case-sensitive for lowercase "select": a JSX part <Select> (components/ui/select.jsx) is not a native select.
+    find: (source) => [...source.matchAll(/<(?:select|SELECT)[\s>/]|createElement\(\s*["'`]select["'`]/gi)].filter((match) => !match[0].startsWith("<S") || match[0].startsWith("<SELECT")),
   },
   {
     id: "hex-color",
@@ -111,6 +112,7 @@ const CLEAN_INPUT = `
   .row:focus-visible { outline: 2px solid var(--brand); }
   export const Row = () => <div className="border border-l-2 rounded-md" style={{ borderTopColor: "transparent" }}>Sources: 2 changed, pages 1 to 5</div>;
   const anchor = "#root"; const id = "#add-source";
+  export const Pick = () => <Select label="Merge Choice" options={[]} />;
 `;
 
 test("the lint fails on each kind of bad input", () => {

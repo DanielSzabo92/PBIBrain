@@ -79,6 +79,35 @@ TICKET_01_NON_TEXT = {
 }
 
 
+# UI design 7.4 (ticket 09 section 2.4). Rows: foreground, background, minimum, dark value, light value.
+# The tokens can be aliases (var(--x)); the test follows each alias to its color.
+SECTION_7_4_PAIRS = (
+    ("ok", "ok-tint", TEXT_MIN, 7.61, 5.25),
+    ("warn", "warn-tint", TEXT_MIN, 8.03, 5.58),
+    ("bad", "bad-tint", TEXT_MIN, 5.87, 5.15),
+    ("info", "info-tint", TEXT_MIN, 6.83, 5.12),
+    ("brand", "brand-tint", TEXT_MIN, 5.80, 4.87),
+    ("proposal", "proposal-tint", TEXT_MIN, 7.47, 6.41),
+    ("text-2", "row-active", TEXT_MIN, 6.30, 5.63),
+    ("text-3", "row-active", TEXT_MIN, 5.24, 4.79),
+    ("text-2", "row-selected", TEXT_MIN, 6.68, 5.59),
+    # U-fix-1: the destructive Button fill and its hover.
+    ("bad-ink", "bad", TEXT_MIN, 7.49, 5.79),
+    ("bad-ink", "bad-strong", TEXT_MIN, 9.25, 7.56),
+    ("bad", "surface", TEXT_MIN, 7.00, 5.79),
+    ("ring", "row-active", NON_TEXT_MIN, 5.80, 4.87),
+    ("ring", "row-selected", NON_TEXT_MIN, 6.15, 4.84),
+    ("control-border", "row-active", NON_TEXT_MIN, 3.11, 3.11),
+    ("control-border", "row-selected", NON_TEXT_MIN, 3.30, 3.08),
+)
+TINT_TOKENS = ("ok", "warn", "bad", "info", "brand")
+# Lowest value of "text" on each -tint token.
+TEXT_ON_TINT_LOWEST = {"dark": 12.39, "light": 15.81}
+# Wireframe status borders on "surface" (UI design 7.3). Lowest value.
+WIREFRAME_BORDERS = ("impact-removed", "impact-breaks", "impact-changes", "impact-new", "impact-unchecked", "impact-unchanged")
+WIREFRAME_BORDER_LOWEST = {"dark": 3.74, "light": 3.52}
+
+
 def _block(css: str, selector: str) -> dict[str, str]:
     start = css.index(selector)
     opening = css.index("{", start)
@@ -204,6 +233,71 @@ class ThemeContrastTest(unittest.TestCase):
         self.assertAlmostEqual(contrast((0, 0, 0), (255, 255, 255)), 21.0, places=6)
         self.assertAlmostEqual(contrast((255, 255, 255), (255, 255, 255)), 1.0, places=6)
         self.assertEqual(round(contrast((255, 255, 255), (118, 118, 118)), 2), 4.54)
+
+
+class NewTokenContrastTest(unittest.TestCase):
+    """UI design 7.1 to 7.4: the new tint, destructive, and alias tokens of step U1."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.themes = load_themes()
+
+    def color(self, theme: str, token: str) -> tuple[int, int, int]:
+        value = self.themes[theme][token]
+        seen = {token}
+        while value.startswith("var("):
+            alias = re.fullmatch(r"var\(--([\w-]+)\)", value.strip())
+            self.assertIsNotNone(alias, f"{theme} --{token}: unsupported alias {value}")
+            name = alias.group(1)
+            self.assertNotIn(name, seen, f"{theme} --{token}: alias loop")
+            seen.add(name)
+            value = self.themes[theme][name]
+        rgb, alpha = parse_color(value)
+        self.assertEqual(alpha, 1.0, f"{theme} --{token} must be opaque")
+        return rgb
+
+    def ratio(self, theme: str, foreground: str, background: str) -> float:
+        return contrast(self.color(theme, foreground), self.color(theme, background))
+
+    def test_each_tint_is_its_soft_token_over_surface(self) -> None:
+        for theme in self.themes:
+            surface = self.color(theme, "surface")
+            for status in TINT_TOKENS:
+                with self.subTest(theme=theme, status=status):
+                    tint, alpha = parse_color(self.themes[theme][f"{status}-soft"])
+                    self.assertEqual(self.color(theme, f"{status}-tint"), compose(tint, alpha, surface))
+
+    def test_section_7_4_pairs_match_the_measurement_and_pass(self) -> None:
+        for foreground, background, minimum, dark, light in SECTION_7_4_PAIRS:
+            for theme, expected in (("dark", dark), ("light", light)):
+                with self.subTest(theme=theme, foreground=foreground, background=background):
+                    measured = self.ratio(theme, foreground, background)
+                    self.assertEqual(round(measured, 2), expected, f"{theme} {foreground} on {background}: {measured:.2f}")
+                    self.assertGreaterEqual(measured, minimum)
+
+    def test_text_on_each_tint_passes(self) -> None:
+        for theme, expected in TEXT_ON_TINT_LOWEST.items():
+            lowest = min(self.ratio(theme, "text", f"{status}-tint") for status in TINT_TOKENS)
+            self.assertEqual(round(lowest, 2), expected, theme)
+            self.assertGreaterEqual(lowest, TEXT_MIN)
+
+    def test_wireframe_borders_on_surface_pass_3_to_1(self) -> None:
+        for theme, expected in WIREFRAME_BORDER_LOWEST.items():
+            lowest = min(self.ratio(theme, token, "surface") for token in WIREFRAME_BORDERS)
+            self.assertEqual(round(lowest, 2), expected, theme)
+            self.assertGreaterEqual(lowest, NON_TEXT_MIN)
+
+    def test_destructive_fill_no_longer_uses_white_on_bad_in_dark(self) -> None:
+        # U-fix-1: white text on --bad is 2.61:1 in the dark theme. The Button uses --bad-ink.
+        self.assertEqual(round(contrast((255, 255, 255), self.color("dark", "bad")), 2), 2.61)
+        app_css = (THEME_CSS.parent / "app.css").read_text(encoding="utf-8")
+        rule = re.search(r"\.ui-button-destructive\s*\{([^}]*)\}", app_css)
+        self.assertIsNotNone(rule)
+        self.assertIn("color: var(--bad-ink)", rule.group(1))
+        self.assertIn("background: var(--bad)", rule.group(1))
+        hover = re.search(r"\.ui-button-destructive:hover[^{]*\{([^}]*)\}", app_css)
+        self.assertIsNotNone(hover)
+        self.assertIn("var(--bad-strong)", hover.group(1))
 
 
 if __name__ == "__main__":
