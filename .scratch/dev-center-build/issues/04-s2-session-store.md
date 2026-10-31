@@ -62,3 +62,10 @@ Tests:
 - Finding 1: the generic long-run token rule does not apply to object names (dict keys, row-key strings, and the fields `row_key`, `path`, `display_name` of a source, and similar). The run class has no `/`. The explicit token formats (JWT, bearer, prefixed keys, secret pairs) still apply to names. New tests: a PBIR page `ReportSection<hex>` with a hex visual name, and a TMDL column name of 48 mixed-case characters with digits, both save; explicit token formats in row keys are still refused.
 - Small finding: `SessionLock.acquire` takes a lock only with an exclusive create. A stale lock is renamed away and compared with the stale bytes that the call read; a lock that is not readable and is younger than 10 s is not stale. New test: only one owner takes the lock.
 - Tests: S2 modules 43 tests OK. Full suite 362 tests, 0 failures.
+
+### Rework 2
+
+- Finding 1: a string is an object name only by its position: a path field of a source (`path`, `model_path`, `report_path`), a value in `row_key`, `row_keys`, or a log `target` that has the form of a row key, or a dict key that is a row key or a source ID. Row keys match only the kinds that `sources/objects.py` makes. Free text (each `display_name`) always gets the full check. New test: `token: <t>`, `key:<t>`, a URL with a token query parameter, and `measure:<t>` in a display name each give `token`.
+- Small finding: a pointer holds the text of a dict key only when the key is a plain short identifier or a source ID with no token form; else the pointer has `~key<n>`. New test: a token in a dict key is not in the error.
+- Small finding: an `OSError` (for example `PermissionError` on Windows) from the rename of a stale lock opens the session read-only. New test.
+- Tests: S2 modules 46 tests OK. Full suite 365 tests, 0 failures.

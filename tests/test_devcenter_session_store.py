@@ -231,6 +231,24 @@ class SecretCheckTests(SessionTestCase):
         data = table.read_bytes()
         table.write_bytes(data.replace(b"lineageTag: c-long", b"lineageTag: c-long-2"))
 
+    def test_token_text_in_free_text_fields_is_refused(self):
+        token = "QmFzZTY0VG9rZW5WYWx1ZTEyMzQ1Njc4OTBBQkNERUZHSElKSw"
+        for value in (f"token: {token}", f"key:{token}", f"https://example.test/report?token={token}", f"measure:{token}"):
+            for document in ({"display_name": value}, {"after": {"display_name": value}}, {"sources": [{"display_name": value}]}):
+                with self.subTest(value=value[:10], document=sorted(document)):
+                    findings = find_secrets(document)
+                    self.assertEqual("token", findings[0]["kind"])
+        error = self.failed("session_create", {"display_name": f"key:{token}"}, code="invalid_payload")
+        self.assertEqual("token", error["details"]["findings"][0]["kind"])
+
+    def test_a_token_in_a_dict_key_is_not_in_the_error(self):
+        for key in ("ghp_0123456789abcdefABCDEF0123456789abcd", "AKIA0123456789ABCDEF"):
+            with self.subTest(key=key[:6]):
+                with self.assertRaises(DevCenterError) as raised:
+                    check_secrets({"merge_choices": {key: {"choice": "keep"}}})
+                self.assertEqual("token", raised.exception.details["findings"][0]["kind"])
+                self.assertNotIn(key, json.dumps(raised.exception.details))
+
     def test_explicit_token_formats_in_object_names_are_still_refused(self):
         for value in ("measure:Sales/ghp_0123456789abcdefABCDEF0123456789abcd", "page:Bearer abcdef1234567890"):
             with self.subTest(value=value[:12]):
@@ -279,6 +297,18 @@ class LockTests(SessionTestCase):
         (folder / "session.lock").write_bytes(b'{"pid": ')
         self.assertFalse(first.acquire(), "A lock that is being written is not stale")
         self.assertEqual([], [path.name for path in folder.iterdir() if path.name.endswith(".stale")])
+
+    def test_a_lock_file_that_cannot_move_opens_read_only(self):
+        folder = Path(self.temporary.name) / "heldlock"
+        folder.mkdir()
+        (folder / "session.lock").write_bytes(store.canonical_bytes({"pid": 2 ** 31 - 2, "owner": "other"}))
+
+        def held(source, destination):
+            raise PermissionError(32, "The file is in use")
+
+        with patch.object(store.os, "rename", held):
+            self.assertFalse(store.SessionLock(folder, "mine").acquire())
+        self.assertEqual("other", store.SessionLock(folder, "mine").holder()["owner"])
 
     def test_lock_of_a_dead_process_is_free(self):
         created = self.create()

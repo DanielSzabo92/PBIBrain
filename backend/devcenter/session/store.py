@@ -235,6 +235,9 @@ class SessionLock:
             os.rename(self.path, moved)
         except FileNotFoundError:
             return True
+        except OSError:
+            # On Windows another process can hold the lock file open. Open read-only.
+            return False
         if moved.read_bytes() != raw:
             try:
                 os.rename(moved, self.path)
