@@ -1,0 +1,37 @@
+table Date
+	lineageTag: t-date
+
+	column Date
+		dataType: dateTime
+		lineageTag: c-date-date
+		sourceColumn: Date
+
+	column Year
+		dataType: int64
+		lineageTag: c-date-year
+		summarizeBy: none
+		sourceColumn: Year
+
+	column Month
+		dataType: string
+		lineageTag: c-date-month
+		sourceColumn: Month
+		sortByColumn: 'Month Number'
+
+	column 'Month Number'
+		dataType: int64
+		isHidden
+		lineageTag: c-date-month-number
+		summarizeBy: none
+		sourceColumn: Month Number
+
+	partition Date = m
+		mode: import
+		source =
+				let
+				    Source = #table({"Date", "Year", "Month", "Month Number"}, {})
+				in
+				    Source
+
+		annotation Columns = Date, Year, Month, Month Number
+

@@ -1,0 +1,48 @@
+table Sales
+	lineageTag: t-sales
+
+	measure 'Total Sales' = SUM(Sales[Amount])
+		formatString: #,0
+		lineageTag: m-total-sales
+
+	measure 'Total Cost' = SUM(Sales[Cost])
+		formatString: #,0
+		lineageTag: m-total-cost
+
+	measure Margin = [Total Sales] - [Total Cost]
+		lineageTag: m-margin-a
+
+	measure 'Sales With Tax' = AddTax([Total Sales])
+		lineageTag: m-sales-with-tax
+
+	column 'Order Date'
+		dataType: dateTime
+		lineageTag: c-sales-order-date
+		sourceColumn: OrderDate
+
+	column 'Store Key'
+		dataType: int64
+		lineageTag: c-sales-store-key
+		summarizeBy: none
+		sourceColumn: StoreKey
+
+	column Amount
+		dataType: decimal
+		lineageTag: c-sales-amount
+		sourceColumn: Amount
+
+	column Cost
+		dataType: decimal
+		lineageTag: c-sales-cost
+		sourceColumn: Cost
+
+	partition Sales = m
+		mode: import
+		source =
+				let
+				    Source = #table({"OrderDate", "StoreKey", "Amount", "Cost"}, {})
+				in
+				    Source
+
+		annotation Columns = OrderDate, StoreKey, Amount, Cost
+

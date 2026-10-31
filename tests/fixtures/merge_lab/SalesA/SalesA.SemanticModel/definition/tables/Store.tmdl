@@ -1,0 +1,34 @@
+table Store
+	lineageTag: t-store
+
+	column 'Store Key'
+		dataType: int64
+		lineageTag: c-store-key
+		summarizeBy: none
+		sourceColumn: StoreKey
+
+	column 'Store Name'
+		dataType: string
+		lineageTag: c-store-name
+		sourceColumn: StoreName
+
+	column Region
+		dataType: string
+		lineageTag: c-store-region
+		sourceColumn: Region
+
+	column 'Manager Email'
+		dataType: string
+		lineageTag: c-store-manager-email
+		sourceColumn: ManagerEmail
+
+	partition Store = m
+		mode: import
+		source =
+				let
+				    Source = #table({"StoreKey", "StoreName", "Region", "ManagerEmail"}, {})
+				in
+				    Source
+
+		annotation Columns = StoreKey, StoreName, Region, ManagerEmail
+

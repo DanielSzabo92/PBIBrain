@@ -4,5 +4,5 @@
     <ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable>
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
   </PropertyGroup>
-  <ItemGroup><PackageReference Include="Microsoft.AnalysisServices" Version="19.114.12" /></ItemGroup>
+  <ItemGroup><PackageReference Include="Microsoft.AnalysisServices" Version="19.118.3" /></ItemGroup>
 </Project>

@@ -9,6 +9,7 @@ from pathlib import Path
 from urllib.parse import quote
 
 from backend.cli.main import _parser, _write_stdout_utf8
+from backend.connection_marker import marker_connection_id
 from backend.mcp_server import BrainClient
 
 
@@ -45,11 +46,14 @@ def live_client(config_path: Path) -> BrainClient | None:
         # project. A generation check prevents silently reading the wrong graph.
         with client.opener.open(client.url + "/desktop/session", timeout=3) as response:
             session = json.load(response)
-        if (session.get("session_id") != connection["session_id"]
-                or not connection["session_id"]
+        # An old marker has the key "session_id". The app reads it and writes
+        # "connection_id" at the next save.
+        connection_id = marker_connection_id(connection)
+        if (not connection_id
+                or marker_connection_id(session) != connection_id
                 or Path(session["project"]["config_path"]).resolve() != config_path.resolve()):
             raise ValueError("Project connection is stale")
-        client.session_id = connection["session_id"]
+        client.session_id = connection_id
         return client
     except (OSError, ValueError, KeyError, TypeError) as exc:
         raise RuntimeError("The saved app connection is unavailable. Reopen this project in PBIBrain, then retry.") from exc

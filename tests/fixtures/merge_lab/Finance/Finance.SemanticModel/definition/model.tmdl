@@ -1,0 +1,7 @@
+model Model
+	culture: en-US
+
+ref table Date
+ref table Sales
+ref table Budget
+

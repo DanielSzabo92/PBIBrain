@@ -1,0 +1,29 @@
+table Sales
+	lineageTag: t-sales
+
+	measure Revenue = SUM(Sales[Amount])
+		formatString: #,0
+		lineageTag: m-revenue-finance
+
+	measure Margin = [Revenue] - [Budget]
+
+	column 'Order Date'
+		dataType: dateTime
+		lineageTag: c-sales-order-date
+		sourceColumn: OrderDate
+
+	column Amount
+		dataType: decimal
+		lineageTag: c-sales-amount
+		sourceColumn: Amount
+
+	partition Sales = m
+		mode: import
+		source =
+				let
+				    Source = #table({"OrderDate", "Amount"}, {})
+				in
+				    Source
+
+		annotation Columns = OrderDate, Amount
+

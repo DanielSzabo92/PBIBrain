@@ -1,0 +1,28 @@
+table 'Budget'
+
+	lineageTag: t-budget
+
+	measure Budget = SUM(Budget[Budget Amount])
+		formatString: #,0
+		lineageTag: m-budget
+
+	column Month
+		dataType: string
+		lineageTag: c-budget-month
+		sourceColumn: Month
+
+	column 'Budget Amount'
+		dataType: decimal
+		lineageTag: c-budget-amount
+		sourceColumn: BudgetAmount
+
+	partition Budget = m
+		mode: import
+		source =
+				let
+				    Source = #table({"Month", "BudgetAmount"}, {})
+				in
+				    Source
+
+		annotation Columns = Month, BudgetAmount
+

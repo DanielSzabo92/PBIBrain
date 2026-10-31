@@ -15,7 +15,7 @@ class MCPAdapterTests(unittest.TestCase):
         tools = server._tool_manager.list_tools()
         self.assertEqual(
             {tool.name for tool in tools},
-            {"brain_overview", "brain_search", "brain_object", "brain_context", "brain_graph"},
+            {"brain_overview", "brain_search", "brain_object", "brain_context", "brain_graph", "brain_impact", "brain_compare"},
         )
 
 

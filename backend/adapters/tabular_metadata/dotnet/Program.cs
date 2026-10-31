@@ -46,7 +46,7 @@ try
     }
     finally { if (Directory.Exists(temporary)) Directory.Delete(temporary, true); }
     Console.WriteLine(Json.Serialize(new { adapter_version = 1, status = "PASSED", roundtrip_verified = true,
-        provenance = "Microsoft.AnalysisServices/19.114.12/TOM+TMDL", database = parsed, tmdl_documents = documents }));
+        provenance = "Microsoft.AnalysisServices/19.118.3/TOM+TMDL", database = parsed, tmdl_documents = documents }));
 }
 catch (Exception error)
 {

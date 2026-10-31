@@ -1,0 +1,47 @@
+table Sales
+	lineageTag: t-sales
+
+	measure 'Sales Amount' = SUM(Sales[Amount])
+		formatString: #,0
+		lineageTag: m-total-sales
+
+	measure Margin = DIVIDE([Sales Amount] - [Total Cost], [Sales Amount])
+		formatString: 0.0%
+		lineageTag: m-margin-b
+
+	measure 'Orders Count' = COUNTROWS(Sales)
+
+	measure 'Average Sale' = AVERAGE(Sales[Amount])
+		lineageTag: m-duplicate-tag
+
+	column 'Order Date'
+		dataType: dateTime
+		lineageTag: c-sales-order-date
+		sourceColumn: OrderDate
+
+	column 'Store Key'
+		dataType: int64
+		lineageTag: c-sales-store-key
+		summarizeBy: none
+		sourceColumn: StoreKey
+
+	column Amount
+		dataType: decimal
+		lineageTag: c-sales-amount
+		sourceColumn: Amount
+
+	column Cost
+		dataType: decimal
+		lineageTag: c-sales-cost
+		sourceColumn: Cost
+
+	partition Sales = m
+		mode: import
+		source =
+				let
+				    Source = #table({"OrderDate", "StoreKey", "Amount", "Cost"}, {})
+				in
+				    Source
+
+		annotation Columns = OrderDate, StoreKey, Amount, Cost
+

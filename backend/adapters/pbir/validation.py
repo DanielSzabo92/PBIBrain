@@ -3,6 +3,7 @@ from functools import lru_cache
 import hashlib
 import json
 from pathlib import Path
+import re
 from typing import Any
 from jsonschema import Draft7Validator
 from referencing import Registry, Resource
@@ -10,6 +11,7 @@ from referencing.jsonschema import DRAFT7
 
 SCHEMA_ROOT = Path(__file__).parent / "schemas"
 PREFIX = "https://developer.microsoft.com/json-schemas/fabric/item/report/"
+UNCERTIFIED_USAGE = {"bookmark", "bookmarksMetadata", "reportExtension"}
 
 
 @lru_cache(maxsize=1)
@@ -34,7 +36,8 @@ def _catalog():
 def validate_report_documents(documents: dict[str, Any]) -> dict[str, Any]:
     schemas, registry, revision = _catalog()
     issues, coverage = [], []
-    names = {"report.json": "report", "page.json": "page", "visual.json": "visualContainer", "pages.json": "pagesMetadata", "definition.pbir": "definitionProperties"}
+    names = {"report.json": "report", "page.json": "page", "visual.json": "visualContainer", "pages.json": "pagesMetadata", "definition.pbir": "definitionProperties",
+             "version.json": "versionMetadata", "bookmarks.json": "bookmarksMetadata", "reportExtensions.json": "reportExtension"}
     report_roots = sorted({Path(path).parts[0] for path in documents if Path(path).parts[0].casefold().endswith(".report")})
     for root in report_roots:
         for required in ("definition.pbir", "definition/report.json", "definition/pages/pages.json"):
@@ -55,15 +58,22 @@ def validate_report_documents(documents: dict[str, Any]) -> dict[str, Any]:
     for relative, document in sorted(documents.items()):
         path = Path(relative)
         if path.parts[0] not in report_roots or path.name == ".platform": continue
-        expected = names.get(path.name)
+        expected = names.get(path.name) or ("bookmark" if path.name.endswith(".bookmark.json") else None)
         if expected is None:
-            # Bookmarks, report extensions and custom semantic resources require
-            # their own usage/schema rules; opaque JSON cannot be certified.
+            # Custom semantic resources require their own usage and schema
+            # rules. Opaque JSON cannot be certified.
             if "StaticResources" not in path.parts:
                 issues.append({"code": "PBIR_UNSUPPORTED_ARTIFACT", "source_file": relative})
             continue
+        if expected in UNCERTIFIED_USAGE:
+            # The schema check runs, but the usage extraction does not cover
+            # bookmarks and report extensions yet. Thus coverage stays blocked.
+            issues.append({"code": "PBIR_UNSUPPORTED_ARTIFACT", "source_file": relative})
         uri = document.get("$schema") if isinstance(document, dict) else None
-        if not isinstance(uri, str) or uri not in schemas or ("/" + expected + "/") not in uri:
+        # Compare the exact family part of the URI. A substring test accepted
+        # a page schema on report.json, because each URI has "/report/".
+        family = re.fullmatch(re.escape(PREFIX) + r"(?:definition/)?([A-Za-z]+)/\d+\.\d+\.\d+/schema(?:-embedded)?\.json", uri) if isinstance(uri, str) else None
+        if not isinstance(uri, str) or uri not in schemas or family is None or family.group(1) != expected:
             issues.append({"code": "PBIR_SCHEMA_UNSUPPORTED", "source_file": relative, "schema": uri})
             continue
         errors = sorted(Draft7Validator(schemas[uri], registry=registry).iter_errors(document), key=lambda error: str(list(error.absolute_path)))

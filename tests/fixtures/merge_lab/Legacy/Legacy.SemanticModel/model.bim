@@ -1,0 +1,100 @@
+{
+  "name": "Legacy",
+  "id": "Legacy",
+  "compatibilityLevel": 1550,
+  "model": {
+    "culture": "en-US",
+    "tables": [
+      {
+        "name": "Date",
+        "lineageTag": "t-date",
+        "columns": [
+          {
+            "name": "Date",
+            "dataType": "dateTime",
+            "sourceColumn": "Date",
+            "lineageTag": "c-date-date"
+          },
+          {
+            "name": "Year",
+            "dataType": "int64",
+            "sourceColumn": "Year",
+            "summarizeBy": "none",
+            "lineageTag": "c-date-year"
+          },
+          {
+            "name": "Month",
+            "dataType": "string",
+            "sourceColumn": "Month",
+            "sortByColumn": "Month Number",
+            "lineageTag": "c-date-month"
+          },
+          {
+            "name": "Month Number",
+            "dataType": "int64",
+            "sourceColumn": "Month Number",
+            "summarizeBy": "none",
+            "isHidden": true,
+            "lineageTag": "c-date-month-number"
+          }
+        ],
+        "partitions": [
+          {
+            "name": "Date",
+            "mode": "import",
+            "source": {
+              "type": "m",
+              "expression": "let\n    Source = #table({\"Date\", \"Year\", \"Month\", \"Month Number\"}, {})\nin\n    Source"
+            },
+            "annotations": [
+              {
+                "name": "Columns",
+                "value": "Date, Year, Month, Month Number"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "Sales",
+        "lineageTag": "t-sales",
+        "columns": [
+          {
+            "name": "Order Date",
+            "dataType": "dateTime",
+            "sourceColumn": "OrderDate",
+            "lineageTag": "c-sales-order-date"
+          },
+          {
+            "name": "Amount",
+            "dataType": "decimal",
+            "sourceColumn": "Amount",
+            "lineageTag": "c-sales-amount"
+          }
+        ],
+        "measures": [
+          {
+            "name": "Total Sales",
+            "expression": "SUM(Sales[Amount])",
+            "formatString": "#,0",
+            "lineageTag": "m-total-sales"
+          },
+          {
+            "name": "Legacy KPI",
+            "expression": "[Total Sales] * 2",
+            "lineageTag": "m-legacy-kpi"
+          }
+        ]
+      }
+    ],
+    "relationships": [
+      {
+        "name": "r-sales-date",
+        "fromTable": "Sales",
+        "fromColumn": "Order Date",
+        "toTable": "Date",
+        "toColumn": "Date"
+      }
+    ]
+  }
+}
