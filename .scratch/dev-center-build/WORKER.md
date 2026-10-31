@@ -8,7 +8,7 @@ Read this file, then your ticket in `issues/`. The ticket wins where it is more 
 2. Run `npm ci --no-audit --no-fund` in `frontend/` if `frontend/node_modules` does not exist. A new worktree has no `node_modules`, and the Python suite then fails on `vite`.
 3. Build the TOM bridge: `dotnet build -c Release backend/adapters/tabular_metadata/dotnet/TabularMetadata.csproj`. Without the build, many tests fail with "Build the trusted TOM bridge before model verification".
 4. Set `LBUG_C_API_LIB_PATH=C:/Users/Daniel/Desktop/PBIBrain/runtime/native/lbug_shared.dll` in each shell that runs Python tests. The DLL is not in git, so a new worktree does not have it.
-5. Baseline at the start of the build: 302 tests, 1 failure (`test_mcp_adapter` expects 5 tools; ticket 01 fixes it). Any other failure is yours.
+5. Any failure of the full suite is yours. The board has the current test totals.
 6. Read the design text that your ticket names. Read `CONTEXT.md` for the words. Read `.trail/learnings/` that touch your code areas.
 7. Use `graft ask "<question>" --source`, `graft grep`, `graft callers`, and `graft skeleton` before you open whole source files.
 
@@ -45,10 +45,11 @@ Gates: `verify_states.mjs` (light, and dark with `--dark`), `verify_target_size.
 ## Finish
 
 1. Add a "Build record" section at the end of your ticket file: what you built, the test commands, and the pass counts.
-2. Commit on your worktree branch. Do not push. Do not open a pull request. End the commit message with:
+2. Run `git status --porcelain --ignored`. The repo `.gitignore` drops `*.pbip`, `*.pbir`, `*.png`, `*.dll`, and more. Add a negation for each test file that you need in git.
+3. Commit on your worktree branch. Do not push. Do not open a pull request. End the commit message with:
    `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`
-3. If you find a non-obvious cause or a setup trap, write it in your report under "Learning". The lead saves it.
-4. Report in 10 lines or less: branch name, commit SHA, test totals, open items. No status talk.
+4. If you find a non-obvious cause or a setup trap, write it in your report under "Learning". The lead saves it.
+5. Report in 10 lines or less: branch name, commit SHA, test totals, open items. No status talk.
 
 ## Rework
 

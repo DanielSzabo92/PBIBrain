@@ -18,10 +18,10 @@ UI lane (UI design section 13): U0, then U1 and U2 in parallel, then U3 (needs S
 
 | # | Step | Ticket | Depends on | State | Worker branch | Merge commit |
 |---|---|---|---|---|---|---|
-| 01 | S0 | [Foundations](issues/01-s0-foundations.md) | none | running | | |
-| 02 | U0 | [Test harness and CI](issues/02-u0-test-harness.md) | none | running | | |
-| 03 | S1 | [Scanner coverage](issues/03-s1-scanner-coverage.md) | 01 | open | | |
-| 04 | S2 | [Session store and local sources](issues/04-s2-session-store.md) | 01 | open | | |
+| 01 | S0 | [Foundations](issues/01-s0-foundations.md) | none | done | worktree-agent-a2f5d1541558f2a6d | 30df5e7, 3199fea |
+| 02 | U0 | [Test harness and CI](issues/02-u0-test-harness.md) | none | review | | |
+| 03 | S1 | [Scanner coverage](issues/03-s1-scanner-coverage.md) | 01 | running | | |
+| 04 | S2 | [Session store and local sources](issues/04-s2-session-store.md) | 01 | running | | |
 | 05 | U1 | [Shared fixes, tokens, parts](issues/05-u1-shared-parts.md) | 02 | open | | |
 | 06 | U2 | [Data layer and copy](issues/06-u2-data-layer.md) | 02 | open | | |
 | 07 | S3 | [Alignment and compare](issues/07-s3-alignment-compare.md) | 03, 04 | open | | |
@@ -63,3 +63,4 @@ States: open, running, review, rework, done.
 | After | Python tests | Failures | Frontend unit | e2e |
 |---|---|---|---|---|
 | Baseline (build start) | 302 | 1 (stale `test_mcp_adapter`) | not run | not run |
+| 01 (S0) | 319 | 0 | not run | not run |
