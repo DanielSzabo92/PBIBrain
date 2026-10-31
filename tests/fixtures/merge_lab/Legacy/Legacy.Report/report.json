@@ -1,0 +1,28 @@
+{
+  "config": "{\"version\": \"5.59\", \"themeCollection\": {\"baseTheme\": {\"name\": \"CY24SU10\"}}}",
+  "layoutOptimization": 0,
+  "resourcePackages": [],
+  "sections": [
+    {
+      "name": "legacypage",
+      "displayName": "Legacy page",
+      "displayOption": 1,
+      "ordinal": 0,
+      "height": 720,
+      "width": 1280,
+      "config": "{}",
+      "filters": "[]",
+      "visualContainers": [
+        {
+          "x": 0,
+          "y": 0,
+          "z": 0,
+          "width": 400,
+          "height": 240,
+          "config": "{\"name\": \"legacycard\", \"singleVisual\": {\"visualType\": \"card\", \"projections\": {\"Values\": [{\"queryRef\": \"Sales.Total Sales\"}]}, \"prototypeQuery\": {\"Version\": 2, \"From\": [{\"Name\": \"s\", \"Entity\": \"Sales\", \"Type\": 0}], \"Select\": [{\"Measure\": {\"Expression\": {\"SourceRef\": {\"Source\": \"s\"}}, \"Property\": \"Total Sales\"}, \"Name\": \"Sales.Total Sales\"}]}}}",
+          "filters": "[]"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,7 @@
+role 'West Region'
+	modelPermission: read
+
+	tablePermission Store = [Region] = "West"
+
+		columnPermission 'Manager Email' = none
+

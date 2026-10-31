@@ -1,0 +1,27 @@
+table Measures
+	lineageTag: t-measures-b
+
+	measure 'Total Cost' = SUM(Sales[Cost])
+		formatString: #,0
+		lineageTag: m-total-cost
+
+	measure 'Discount Rate' = 0.1
+		formatString: 0%
+		lineageTag: m-duplicate-tag
+
+	column Placeholder
+		dataType: string
+		isHidden
+		lineageTag: c-measures-placeholder
+		sourceColumn: Placeholder
+
+	partition Measures = m
+		mode: import
+		source =
+				let
+				    Source = #table({"Placeholder"}, {})
+				in
+				    Source
+
+		annotation Columns = Placeholder
+

@@ -1,0 +1,27 @@
+table 'Time Intelligence'
+	lineageTag: t-time-intelligence
+
+	calculationGroup
+		precedence: 1
+
+		calculationItem Current = SELECTEDMEASURE()
+
+		calculationItem YTD = CALCULATE(SELECTEDMEASURE(), DATESYTD('Date'[Date]))
+
+		calculationItem 'Prior Year' = CALCULATE(SELECTEDMEASURE(), SAMEPERIODLASTYEAR('Date'[Date]))
+
+	column 'Time Calculation'
+		dataType: string
+		lineageTag: c-time-calculation
+		sourceColumn: Name
+
+	column Ordinal
+		dataType: int64
+		isHidden
+		lineageTag: c-time-ordinal
+		summarizeBy: none
+		sourceColumn: Ordinal
+
+	partition 'Time Intelligence' = calculationGroup
+		mode: import
+

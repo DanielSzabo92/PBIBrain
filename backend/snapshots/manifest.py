@@ -11,7 +11,8 @@ from typing import Any, Mapping
 
 SCHEMA_VERSION = 1
 SCANNER_VERSION = "guarded-2"
-SOURCE_SUFFIXES = {".pbip", ".tmdl", ".pbir", ".json", ".bim"}
+# Each PBIP semantic model folder has a "definition.pbism" settings file (JSON).
+SOURCE_SUFFIXES = {".pbip", ".tmdl", ".pbir", ".pbism", ".json", ".bim"}
 OPAQUE_RESOURCE_SUFFIXES = {".png", ".jpg", ".jpeg", ".gif", ".svg", ".ico", ".woff", ".woff2"}
 EXCLUDED_DIRECTORIES = {".git", ".pbi", ".pbibrain", ".pbi-guard"}
 

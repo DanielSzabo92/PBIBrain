@@ -1,0 +1,313 @@
+{
+  "schema_version": 1,
+  "description": "Known merge cases in the merge lab. Model and table names are the names in each source.",
+  "projects": {
+    "SalesA": {
+      "pbip": "SalesA/SalesA.pbip",
+      "models": {
+        "SalesA": {
+          "path": "SalesA/SalesA.SemanticModel",
+          "format": "TMDL"
+        }
+      },
+      "reports": {
+        "SalesA": {
+          "path": "SalesA/SalesA.Report",
+          "format": "PBIR",
+          "schema_versions": "current"
+        }
+      }
+    },
+    "SalesB": {
+      "pbip": "SalesB/SalesB.pbip",
+      "models": {
+        "SalesB": {
+          "path": "SalesB/SalesB.SemanticModel",
+          "format": "TMDL"
+        }
+      },
+      "reports": {
+        "SalesB": {
+          "path": "SalesB/SalesB.Report",
+          "format": "PBIR",
+          "schema_versions": "older"
+        }
+      }
+    },
+    "Finance": {
+      "pbip": "Finance/Finance.pbip",
+      "models": {
+        "Finance": {
+          "path": "Finance/Finance.SemanticModel",
+          "format": "TMDL"
+        }
+      },
+      "reports": {}
+    },
+    "Legacy": {
+      "pbip": "Legacy/Legacy.pbip",
+      "models": {
+        "Legacy": {
+          "path": "Legacy/Legacy.SemanticModel",
+          "format": "TMSL"
+        }
+      },
+      "reports": {
+        "Legacy": {
+          "path": "Legacy/Legacy.Report",
+          "format": "PBIR-Legacy"
+        }
+      }
+    }
+  },
+  "known_renames": [
+    {
+      "object_type": "MEASURE",
+      "lineage_tag": "m-total-sales",
+      "from": {
+        "model": "SalesA",
+        "table": "Sales",
+        "name": "Total Sales"
+      },
+      "to": {
+        "model": "SalesB",
+        "table": "Sales",
+        "name": "Sales Amount"
+      }
+    }
+  ],
+  "name_clashes": [
+    {
+      "object_type": "MEASURE",
+      "table": "Sales",
+      "name": "Margin",
+      "lineage_tags": {
+        "SalesA": "m-margin-a",
+        "SalesB": "m-margin-b",
+        "Finance": null
+      }
+    }
+  ],
+  "moved_measures": [
+    {
+      "lineage_tag": "m-total-cost",
+      "name": "Total Cost",
+      "from": {
+        "model": "SalesA",
+        "table": "Sales"
+      },
+      "to": {
+        "model": "SalesB",
+        "table": "Measures"
+      }
+    }
+  ],
+  "possible_renames": [
+    {
+      "object_type": "COLUMN",
+      "from": {
+        "model": "SalesA",
+        "table": "Store",
+        "name": "Store Name",
+        "lineage_tag": "c-store-name"
+      },
+      "to": {
+        "model": "SalesB",
+        "table": "Store",
+        "name": "Store Label",
+        "lineage_tag": null
+      },
+      "evidence": "same sourceColumn and dataType, no lineageTag on one side"
+    },
+    {
+      "object_type": "MEASURE",
+      "from": {
+        "model": "SalesA",
+        "table": "Sales",
+        "name": "Total Sales",
+        "lineage_tag": "m-total-sales"
+      },
+      "to": {
+        "model": "Finance",
+        "table": "Sales",
+        "name": "Revenue",
+        "lineage_tag": "m-revenue-finance"
+      },
+      "evidence": "same expression, different lineageTag"
+    }
+  ],
+  "duplicate_lineage_tags": [
+    {
+      "model": "SalesB",
+      "lineage_tag": "m-duplicate-tag",
+      "objects": [
+        {
+          "table": "Sales",
+          "name": "Average Sale"
+        },
+        {
+          "table": "Measures",
+          "name": "Discount Rate"
+        }
+      ]
+    }
+  ],
+  "no_lineage_tag": [
+    {
+      "model": "SalesB",
+      "object_type": "MEASURE",
+      "table": "Sales",
+      "name": "Orders Count"
+    },
+    {
+      "model": "SalesB",
+      "object_type": "COLUMN",
+      "table": "Store",
+      "name": "Store Label"
+    },
+    {
+      "model": "Finance",
+      "object_type": "MEASURE",
+      "table": "Sales",
+      "name": "Margin"
+    },
+    {
+      "model": "SalesA",
+      "object_type": "CALCULATION_ITEM",
+      "table": "Time Intelligence",
+      "name": "YTD"
+    },
+    {
+      "model": "SalesA",
+      "object_type": "ROLE",
+      "name": "West Region"
+    }
+  ],
+  "field_parameters": [
+    {
+      "model": "SalesA",
+      "table": "Metric Selector",
+      "fields": [
+        "'Sales'[Total Sales]",
+        "'Sales'[Margin]"
+      ]
+    }
+  ],
+  "calculation_groups": [
+    {
+      "model": "SalesA",
+      "table": "Time Intelligence",
+      "items": [
+        "Current",
+        "YTD",
+        "Prior Year"
+      ]
+    }
+  ],
+  "functions": [
+    {
+      "model": "SalesA",
+      "name": "AddTax",
+      "lineage_tag": "f-add-tax",
+      "used_by": [
+        {
+          "table": "Sales",
+          "name": "Sales With Tax"
+        }
+      ]
+    }
+  ],
+  "roles": [
+    {
+      "model": "SalesA",
+      "name": "West Region",
+      "rls": [
+        {
+          "table": "Store",
+          "filter": "[Region] = \"West\""
+        }
+      ],
+      "ols": [
+        {
+          "table": "Store",
+          "column": "Manager Email",
+          "permission": "none"
+        }
+      ]
+    }
+  ],
+  "hierarchies": [
+    {
+      "model": "SalesA",
+      "table": "Date",
+      "name": "Calendar",
+      "levels": [
+        "Year",
+        "Month"
+      ]
+    },
+    {
+      "model": "Finance",
+      "table": "Date",
+      "name": "Fiscal",
+      "levels": [
+        "Year",
+        "Month"
+      ]
+    }
+  ],
+  "bookmarks": [
+    {
+      "report": "SalesA",
+      "name": "ytdview",
+      "display_name": "YTD view"
+    }
+  ],
+  "report_measures": [
+    {
+      "report": "SalesA",
+      "entity": "Sales",
+      "name": "Sales Target"
+    }
+  ],
+  "non_canonical_tmdl": [
+    {
+      "path": "Finance/Finance.SemanticModel/definition/tables/Budget.tmdl",
+      "differences": [
+        "LF line ends",
+        "quoted table name",
+        "blank line before lineageTag"
+      ]
+    }
+  ],
+  "guarded_scan_gaps": {
+    "SalesA": [
+      "CALCULATED_TABLE_DEPENDENCIES:Metric Selector",
+      "CALCULATION_GROUP_EXTRACTION:Time Intelligence",
+      "DIAGNOSTIC:parse_error",
+      "IMPACT_METADATA_COVERAGE_INCOMPLETE",
+      "PBIR_UNSUPPORTED_ARTIFACT:SalesA.Report/definition/bookmarks/bookmarks.json",
+      "PBIR_UNSUPPORTED_ARTIFACT:SalesA.Report/definition/bookmarks/ytdview.bookmark.json",
+      "PBIR_UNSUPPORTED_ARTIFACT:SalesA.Report/definition/reportExtensions.json",
+      "RLS_OLS_RUNTIME_VERIFICATION_REQUIRED",
+      "VALIDATION:dax_parse_failure",
+      "VALIDATION:missing_object_reference"
+    ],
+    "SalesB": [],
+    "Finance": [],
+    "Legacy": [
+      "PBIR_ACTIVE_PAGE_UNRESOLVED:Legacy.Report/definition/pages/pages.json",
+      "PBIR_REQUIRED_ARTIFACT_MISSING:Legacy.Report/definition/pages/pages.json",
+      "PBIR_REQUIRED_ARTIFACT_MISSING:Legacy.Report/definition/report.json",
+      "PBIR_SCHEMA_UNSUPPORTED:Legacy.Report/definition.pbir",
+      "PBIR_SCHEMA_UNSUPPORTED:Legacy.Report/report.json"
+    ]
+  },
+  "guarded_scan_gap_reasons": {
+    "DIAGNOSTIC:parse_error": "The DAX parser does not read the UDF syntax (parameters and =>).",
+    "VALIDATION:dax_parse_failure": "The same UDF parse gap.",
+    "VALIDATION:missing_object_reference": "The scanner does not read report measures (reportExtensions.json) yet.",
+    "PBIR_UNSUPPORTED_ARTIFACT": "The usage extraction does not cover bookmarks and report extensions yet. The schema check passes.",
+    "Legacy": "The guarded scan certifies PBIR only. A PBIR-Legacy report fails closed."
+  }
+}

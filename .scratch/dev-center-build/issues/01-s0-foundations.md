@@ -21,3 +21,24 @@ Also fix the stale old test `tests/test_mcp_adapter.py`: it expects 5 tools, but
   - An old `connection.json` with `session_id` loads; the next save writes `connection_id` only.
   - The existing native bridge tests pass with the new TOM version. TMDL serialization of the same model twice gives equal bytes.
   - The merge lab fixtures scan without errors.
+
+## Build record
+
+Built (worker, branch `worktree-agent-a2f5d1541558f2a6d`, base `bd04f6d`):
+
+- PBIR schemas: `tools/vendor_pbir_schemas.py` pins each published version of report (1.0.0 to 3.3.0), page (to 2.1.0), visualContainer (to 2.13.0), pagesMetadata (to 1.1.0), bookmark (to 2.1.0), bookmarksMetadata 1.0.0, reportExtension 1.0.0, versionMetadata 1.0.0, and definitionProperties 1.0.0 and 2.0.0. Upstream revision `d07416c7cf0df4640af94900914dc575979f80ce`, 81 schema files.
+- Validator (`backend/adapters/pbir/validation.py`): it now checks `version.json`, `bookmarks.json`, `*.bookmark.json`, and `reportExtensions.json` against their schemas. Bookmarks and report extensions still give `PBIR_UNSUPPORTED_ARTIFACT`, because the usage extraction does not cover them yet (S1). The family check is now exact. The old substring check accepted a page schema on `report.json`, because each URI contains "/report/".
+- Connection marker: `connection.json` now has `connection_id`. The agent and the desktop host also read the old key `session_id` (`backend/connection_marker.py`). The `/desktop/session` reply has `connection_id`. The `X-PBIBrain-Session` header did not change.
+- TOM: `Microsoft.AnalysisServices` 19.114.12 to 19.118.3 (csproj, lock file, provenance text).
+- Merge lab: `tests/fixtures/merge_lab/` (63 files), written by `tools/build_merge_lab.py`. Projects: SalesA (TMDL, PBIR current versions), SalesB (TMDL, PBIR older versions), Finance (TMDL, no report), Legacy (TMSL `model.bim`, PBIR-Legacy `report.json`). `EXPECTED.json` lists each known case and the known coverage gaps of the guarded scan. `.gitattributes` keeps the fixture bytes (`-text`).
+- Guard manifest: `.pbism` is now a source suffix. Before, the guarded scan refused each real PBIP model folder, because each one has `definition.pbism`.
+- Old tests changed: `tests/test_mcp_adapter.py` (7 tools), `tests/test_desktop.py` (marker key `connection_id`).
+
+Tests:
+
+- `python -m unittest tests.test_s0_foundations`: 17 tests, OK.
+- `python -m unittest discover -s tests`: 319 tests, OK (baseline 302 with 1 failure).
+- The native bridge tests (`tests/test_native_cli_contract.py`) pass with TOM 19.118.3.
+- No frontend change. No kit gates (no screen in this step).
+
+Known coverage gaps (in `EXPECTED.json`, for S1): the DAX parser does not read the UDF syntax (`(amount : NUMERIC) => ...`); report measures are not read (a visual that uses one gives `missing_object_reference`); calculation group and field parameter extraction; RLS and OLS; bookmarks and report extensions; the guarded scan certifies PBIR only (PBIR-Legacy fails closed).

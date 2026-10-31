@@ -15,6 +15,7 @@ from urllib.parse import unquote, urlsplit
 from wsgiref.simple_server import WSGIRequestHandler, WSGIServer, make_server
 
 from backend.api.app import BrainAPI, BrainApp
+from backend.connection_marker import marker_connection_id
 from backend.graph.repository import GraphRepository
 from backend.native_runtime import configure_native_runtime
 from backend.projects import PROJECT_VERSION, ProjectService
@@ -117,7 +118,7 @@ class DesktopController:
         self._project_service: ProjectService | None = None
         self._marker_path: Path | None = None
         self._server_url: str | None = None
-        self._session_id = uuid.uuid4().hex
+        self._connection_id = uuid.uuid4().hex
 
     def attach_server(self, url: str) -> None:
         parsed = urlsplit(str(url))
@@ -139,7 +140,7 @@ class DesktopController:
             return {
                 "ok": True,
                 "project": dict(self._project) if self._project is not None else None,
-                "session_id": self._session_id,
+                "connection_id": self._connection_id,
             }
 
     def choose_folder(self) -> dict[str, Any]:
@@ -276,7 +277,7 @@ class DesktopController:
         new_repository = self._repository_factory(paths["database"])
         new_application: BrainApp | None = None
         new_marker = config_path.parent / "connection.json"
-        new_session_id = uuid.uuid4().hex
+        new_connection_id = uuid.uuid4().hex
         project = {
             "name": str(config["name"]),
             "folder": str(root),
@@ -295,7 +296,7 @@ class DesktopController:
                 {
                     "url": self._server_url,
                     "config_path": project["config_path"],
-                    "session_id": new_session_id,
+                    "connection_id": new_connection_id,
                 },
             )
         except BaseException:
@@ -307,15 +308,15 @@ class DesktopController:
         old_application = self._application
         old_repository = self._repository
         old_marker = self._marker_path
-        old_session_id = self._session_id
+        old_connection_id = self._connection_id
         self._application = new_application
         self._repository = new_repository
         self._project = project
         self._project_service = service
         self._marker_path = new_marker
         if old_marker is not None and old_marker != new_marker:
-            self._remove_owned_marker(old_marker, session_id=old_session_id)
-        self._session_id = new_session_id
+            self._remove_owned_marker(old_marker, connection_id=old_connection_id)
+        self._connection_id = new_connection_id
         if old_application is not None:
             old_application.close()
         if old_repository is not None:
@@ -349,10 +350,10 @@ class DesktopController:
         if repository is not None:
             repository.close()
 
-    def _remove_owned_marker(self, marker: Path, *, session_id: str | None = None) -> None:
+    def _remove_owned_marker(self, marker: Path, *, connection_id: str | None = None) -> None:
         try:
             payload = json.loads(marker.read_text(encoding="utf-8"))
-            if isinstance(payload, Mapping) and payload.get("session_id") == (session_id or self._session_id):
+            if marker_connection_id(payload) == (connection_id or self._connection_id):
                 marker.unlink(missing_ok=True)
         except FileNotFoundError:
             pass
@@ -395,7 +396,7 @@ class DesktopApplication:
                     if application is None:
                         return self._json(start_response, 503, {"error": "Open a project first"})
                     requested_session = str(environ.get("HTTP_X_PBIBRAIN_SESSION") or "")
-                    if requested_session and requested_session != self.controller._session_id:
+                    if requested_session and requested_session != self.controller._connection_id:
                         return self._json(start_response, 409, {"error": "Desktop session changed; reopen the project connection"})
                     return application(environ, start_response)
             if method != "GET":

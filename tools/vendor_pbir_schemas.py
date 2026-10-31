@@ -9,9 +9,22 @@ from urllib.request import urlopen, Request
 
 PREFIX = "https://developer.microsoft.com/json-schemas/"
 ROOT = Path(__file__).resolve().parents[1] / "backend/adapters/pbir/schemas"
-ROOTS = ["fabric/item/report/definition/" + part + "/schema.json" for part in
-         ("report/2.0.0", "page/2.0.0", "visualContainer/2.0.0", "pagesMetadata/1.0.0")]
-ROOTS.append("fabric/item/report/definitionProperties/2.0.0/schema.json")
+# The app reads all versions and writes a changed file in its own version
+# (design section 9.2). Thus pin each published version of each root family.
+# The last version in each list is the current version.
+VERSIONS = {
+    "report": ("1.0.0", "1.1.0", "1.2.0", "1.3.0", "2.0.0", "2.1.0", "3.0.0", "3.1.0", "3.2.0", "3.3.0"),
+    "page": ("1.0.0", "1.1.0", "1.2.0", "1.3.0", "1.4.0", "2.0.0", "2.1.0"),
+    "visualContainer": ("1.0.0", "1.1.0", "1.2.0", "1.3.0", "1.4.0", "1.5.0", "1.6.0", "1.7.0", "1.8.0", "2.0.0", "2.1.0", "2.2.0",
+                        "2.3.0", "2.4.0", "2.5.0", "2.6.0", "2.7.0", "2.8.0", "2.9.0", "2.10.0", "2.11.0", "2.12.0", "2.13.0"),
+    "pagesMetadata": ("1.0.0", "1.1.0"),
+    "bookmark": ("1.0.0", "1.1.0", "1.2.0", "1.3.0", "1.4.0", "2.0.0", "2.1.0"),
+    "bookmarksMetadata": ("1.0.0",),
+    "reportExtension": ("1.0.0",),
+    "versionMetadata": ("1.0.0",),
+}
+ROOTS = ["fabric/item/report/definition/" + family + "/" + version + "/schema.json" for family, versions in VERSIONS.items() for version in versions]
+ROOTS += ["fabric/item/report/definitionProperties/" + version + "/schema.json" for version in ("1.0.0", "2.0.0")]
 
 def read(url):
     with urlopen(Request(url, headers={"User-Agent": "PBIBrain-schema-vendor"}), timeout=30) as response:

@@ -97,7 +97,7 @@ class DesktopTests(unittest.TestCase):
         self.assertFalse(Path(config["sources"][0]).is_absolute())
         marker_path = self.root / ".pbibrain" / "connection.json"
         marker = json.loads(marker_path.read_text(encoding="utf-8"))
-        self.assertEqual(set(marker), {"url", "config_path", "session_id"})
+        self.assertEqual(set(marker), {"url", "config_path", "connection_id"})
         self.assertEqual(marker["url"], "http://127.0.0.1:8123")
 
         self.controller.close_project()
@@ -126,10 +126,10 @@ class DesktopTests(unittest.TestCase):
         try:
             first = self.controller.open_project("Project", str(self.root))
             marker_path = self.root / ".pbibrain" / "connection.json"
-            first_session = json.loads(marker_path.read_text(encoding="utf-8"))["session_id"]
+            first_session = json.loads(marker_path.read_text(encoding="utf-8"))["connection_id"]
             self.assertTrue(self.controller.close_project()["ok"])
             reopened = self.controller.open_project("Ignored rename", str(self.root))
-            second_session = json.loads(marker_path.read_text(encoding="utf-8"))["session_id"]
+            second_session = json.loads(marker_path.read_text(encoding="utf-8"))["connection_id"]
 
             self.assertTrue(reopened["ok"])
             self.assertNotEqual(first_session, second_session)
