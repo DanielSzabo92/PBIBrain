@@ -40,10 +40,14 @@ A UI design document (`docs/DEV_CENTER_UI_DESIGN.md`) for version 1 of the Devel
 - 03 (2026-10-31): The compare grid is an ARIA grid with 36 px virtual rows and pages of 200. Sticky parts are the header, Object and Target columns. Each state shows icon plus word. Default filter is "not same". A bulk bar sets Merge Choices with explicit row keys. The code diff opens in a modal. Measured: 0 overflow, 0 axe violations, states pass. Jump scroll fails the 50 ms budget in the prototype; build rule: light rows during a fast scroll. Full answer: [03-compare-grid](issues/03-compare-grid.md).
 - 05 (2026-10-31): The Impact tab has a scope (whole plan or row), Breaks, Needs and Offers groups, and Table, Graph and Wireframe views. Items use two-line rows with one primary action. The graph reuses the dagre layout with a new impact node. The wireframe shows status as pattern, icon and text. A completeness strip shows in all views. Measured: 0 overflow, 0 axe, states pass. Full answer: [05-impact-views](issues/05-impact-views.md).
 - 09 (2026-10-31): One unified token set: opaque hex tints (`--ok-tint` to `--brand-tint`), `--bad-ink`, `--bad-strong`, and aliases `--cmp-*`, `--impact-*`, `--proposal` (= `brand-strong`). 31 new parts with 8 states, a keyed copy catalog, and a 21-rule a11y contract with one test each. Found: the current destructive Button is 2.61:1 in dark (UI build item U-fix-1); the Tabs fix is U-fix-2. "Match" words become "Split row" and "Join with a row". Specimen: 177 element-states pass in both themes, 0 axe. Full answer: [09-components-tokens-copy-a11y](issues/09-components-tokens-copy-a11y.md).
+- 11 (2026-10-31): `docs/DEV_CENTER_UI_DESIGN.md` is the UI baseline. 13 UI build steps (U0 to U12), each waits for the S-step of its schemas. 34 change requests are in technical design 14.4 (UC1 to UC34) with S-step tests. Budgets P1 to P7, shortcut map with an off switch for "/". Design review: 7.8 of 10, no open Critical or Major finding. Full answer: [11-ui-design-doc-and-build-steps](issues/11-ui-design-doc-and-build-steps.md).
 
 ## Backend change requests
 
 <!-- one line each: endpoint, fields, reason, ticket. Ticket 11 carries this list into the design. -->
+
+All 34 items were accepted on 2026-10-31. They are in the technical design section 14.4 as UC1 to UC34 (in this order), each with an owner S-step and an acceptance test.
+
 - `GET /api/devcenter/sessions`. Fields for each session: ID, display name, updated time, target model and report names, source count, plan status (null permitted), lock state, schema state (ok, newer, damaged). Reason: `GET session` returns only the open session, so the session list has no data. Ticket 02.
 - All `/api/devcenter/*` reads: add a `revision` field. Reason: the UI drops replies that are older than its last state change. Ticket 10.
 - `GET /api/devcenter/session`: keep it cheap. Return the cached plan status, or null with `plan_state: "computing"`, and never run a plan compute. Reason: the UI polls it every 5 s. Ticket 10.
@@ -81,9 +85,11 @@ A UI design document (`docs/DEV_CENTER_UI_DESIGN.md`) for version 1 of the Devel
 
 ## Not yet specified
 
-- Keyboard shortcut map for the full work area (global keys versus grid keys). Probably settles in tickets 03 and 09.
-- Performance budgets for the UI (first render of 5,000 compare rows, filter response time). Probably settles in tickets 03 and 10.
-- The order of the UI build steps against the backend lanes (S2 to S11). Settles in ticket 11.
+Empty. Ticket 11 settled the three items on 2026-10-31:
+
+- Keyboard shortcut map: settled in `docs/DEV_CENTER_UI_DESIGN.md` section 9.3 (ticket 03 grid keys, ticket 09 global rule, "/" with an off switch in Settings, `aria-keyshortcuts`).
+- UI performance budgets: settled in section 11 (P1 to P7; CI fails at 2 times the budget, U12 checks 1 times).
+- UI build step order: settled in section 13 (U0 to U12, each with its U and S dependencies).
 
 ## Out of scope
 

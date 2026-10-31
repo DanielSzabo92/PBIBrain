@@ -441,6 +441,47 @@ Each call takes the `base_revision` and returns the new `revision`, or the error
 
 `POST /api/devcenter/proposals` and `POST /api/devcenter/questions`. They write only proposals and questions.
 
+### 14.4 UI change requests (accepted 2026-10-31)
+
+The UI design ([DEV_CENTER_UI_DESIGN.md](DEV_CENTER_UI_DESIGN.md)) needs these additions to sections 12 to 14. The orchestrator accepted all of them on 2026-10-31. Each entry has one owner build step (section 16), and that step has an acceptance test for it. Home: the UI map `.scratch/dev-center-ui/map.md` (list "Backend change requests") and the UI ticket named in each entry.
+
+| ID | Owner | Contract | Change | Reason | UI ticket |
+|---|---|---|---|---|---|
+| UC1 | S2 | `GET sessions` (new) | For each session in `<project root>/.pbibrain/sessions/` and `%APPDATA%/PBIBrain/sessions/`: ID, display name, updated time (UTC), target model name, target report name, source count, plan status (null permitted), lock state (`free`, `locked`), schema state (`ok`, `newer`, `damaged`). | `GET session` returns only the open session, so the session list has no data. | 02 |
+| UC2 | S2 | All `/api/devcenter/*` reads | Add `revision` (the session revision that the reply comes from). | The UI drops replies that are older than its last state change. | 10 |
+| UC3 | S5 | `GET session` | Keep it cheap: return the cached plan status, or null with `plan_state: "computing"`. Never run a plan compute. | The UI polls it every 5 s. | 10 |
+| UC4 | S2 | `backend/devcenter/contracts/` | One JSON Schema for each section 14.2 JS API call (request and reply), plus the error shape `{error: {code, message, details}}`. | The UI contract test validates each mock reply. | 10 |
+| UC5 | S9 | `GET apply/progress` (new) | Fields `apply_id`, `step` (section 13 step ID), `step_index`, `step_count`, `state` (`running`, `done`, `failed`), for `apply`, `format_only_apply`, and `undo_apply`. | The Apply dialog shows the current step, with a poll every 500 ms. | 08, 10 |
+| UC6 | S9 | `GET apply/preview` | Add the blocks: unconfirmed mark count and row keys, Desktop state (`not_open`, `open_saved`, `open_unsaved`, `not_reachable`), list of non-canonical files (relative to the target root), full validation result (status, failed checks with object and message), plan hash. | The UI shows the blocks of apply steps 1 to 5 before the dialog opens. | 08 |
+| UC7 | S9 | `GET apply/last` (new) | `apply_id`, kind (`apply`, `format_only`), finished time (UTC), file count, backup present, target changed since apply and the list of changed files, rescan differences (object, expected, found). | Undo availability and refusal, and the result panel after the session opens again. | 08 |
+| UC8 | S10 | `GET log` | Add the filters `author` (user, agent), `action`, `target`, `proposal_id`. | A filter on loaded pages gives wrong results, and the Proposal link needs all entries of one proposal. | 06 |
+| UC9 | S10 | `GET session` | For each open proposal and question: ID, kind, target ID, target display name, payload summary text, confidence, reason, MCP client name, created time, blocked state (`source_changed`, `user_choice_conflict`). For answered questions: the selected option and the time. | The Agent tab and the row card need these fields without one read for each item. | 06 |
+| UC10 | S10 | JS API `proposal_accept_all` | Accept all open proposals that are not blocked. Skip proposals on unconfirmed marked rows and proposals in conflict with a user choice; do not fail the full call. Return the accepted IDs, the skipped IDs with a reason code, and one revision. Write one log entry for each proposal. | Sections 12 and 14 do not state this behavior. | 06 |
+| UC11 | S10 | `GET plan`, `GET impact` | Add `include_proposals=ready` (only the proposals that `proposal_accept_all` would accept). | The Accept all summary must show the real effect. | 06 |
+| UC12 | S10 | JS API `proposal_accept` | A user accept replaces the earlier user choice on that target; the log records before and after. Refuse a proposal on an unconfirmed marked row with `source_changed`. | Section 12 gives `user_choice_exists` only for agent submits. | 06 |
+| UC13 | S11 | JS API `cloud_items_list` (new, read, JS API only) | Input: `kind` (`workspaces`, `models`, `reports`), `workspace_id`. Output: workspaces (ID, name, capacity type, XMLA available); models (ID, name, updated time, model type, XMLA readable with a reason code); reports (ID, name, PBIR or PBIR-Legacy, dataset ID). | No call lists cloud items. HTTP has no authentication, so this must not be an HTTP call. | 07 |
+| UC14 | S11 | JS API `cloud_sign_in` | Add input `prompt` (`none`, `select_account`). Return the account display name. No file stores the name. | "Use a different account" and the "Signed in as" line. | 07 |
+| UC15 | S11 | JS API `cloud_connect` reply | Test lines: check ID, result (`ok`, `failed`, `not_checked`), reason code, values (capacity type, role, table and measure counts, report counts, names of unreadable reports). | The Test step of the cloud dialog. | 07 |
+| UC16 | S4 | JS API `naming_rule_reject`, `naming_rule_edit` | Reject of a user rule removes the rule; reject of a detected rule keeps it as rejected. Edit with no rule ID creates a user rule (origin `user`, status `confirmed`). An edit of a proposed rule sets it to `confirmed`. | The naming rules screen. | 07 |
+| UC17 | S11 | JS API `pull_to_local` | Store the new source path relative to the project root. A failed pull removes the partial folder. | A session always has a project root; no partial folders stay. | 07 |
+| UC18 | S4 | `GET naming-rules` | Add the rule count for each session source model. | The "Copy rules from" dialog. | 07 |
+| UC19 | S4 | `POST name-propose` | Optional input `candidate`. The reply adds `breaks` (rule ID, rule text) and `clash` (the object with the same name, case-insensitive, or null). | No contract checks a name that the user types. | 04 |
+| UC20 | S3 | `GET display-folders?source=<id>` (new, optional object type filter) | Display folder paths of one source. | The folder Combobox needs the folders of the target and the selected source (functional spec 7.2). | 04 |
+| UC21 | S3 | JS API `alignment_override` (break) | Remove the Merge Choice of the row and return the new row keys. | The UI moves the selection and tells the user. | 04 |
+| UC22 | S5 | JS API `merge_choice_set` | Accept the values `promote` and `copy_to_report` (with new name and display folder) for report measure rows. | Functional spec 7.4 makes them plan steps, but section 14.2 has no call for them. | 04 |
+| UC23 | S3 | `GET compare-rows` | Add `q` (name contains, case-insensitive). | Name search in the filter bar. | 03 |
+| UC24 | S3 | `GET compare-rows` | Add `total` and `state_counts` for the current filter. | `aria-rowcount`, scroll height, "Select all N rows", footer counts. | 03 |
+| UC25 | S3 | `GET compare-rows` | Add `sort` (`state`, `name`, `type`, `table`; asc or desc). | Sortable columns in place of grouping by table. | 03 |
+| UC26 | S3 | `GET compare-rows` | Add `row_state` for each row (highest precedence over all cells), and use it for the `state` filter. | The Row state column and the filter must agree. | 03 |
+| UC27 | S2 | JS API `row_confirm` | Accept a list of row keys. | "Confirm N rows" in the bulk bar. | 03 |
+| UC28 | S6 | JS API `impact_action_apply` | For many items: `item_ids` (array), `action`, `base_revision`. One revision step, all or nothing. The reply lists the items that it could not change. | Bulk "Include in rewrite" and "Add from donor". | 05 |
+| UC29 | S6 | `GET impact` | Filters `direction`, `blocking`, `severity`, `certainty`, `source`, `object_type`, `q`, with `limit` and `offset`. The reply adds `total` and facet counts for the full result before paging. | Filters and counts on large lists without a download of all pages. | 05 |
+| UC30 | S6 | `GET impact/{item}/paths` (new) | All paths of one Impact item, paged. Each step has object ID, name, type, and edge phrase. | "Show other paths" in the item pane. | 05 |
+| UC31 | S3 | `backend/devcenter/contracts/phrases.json` (new) | Each phrase ID (compare properties, compare notes, impact reasons, edge phrases) with its STE text. A contract test checks: no em or en dash, no emoji, max 60 characters, each engine ID is in the file. S6 adds the impact reason and edge phrase IDs. | One owner of phrase text; the UI shows `text` only. | 09 |
+| UC32 | S9 | `apply`, `format_only_apply`, `undo_apply` errors | Add `details.step` (section 13 step ID) and `details.check` for the guard (`scope`, `canonical`, `tree_compare`, `pbir`, `policy`, `approval`, `write`, `rescan`). | One plain sentence for each failure; section 12 has no guard codes. | 09 |
+| UC33 | S5 | JS API `source_remove` | Keep the Merge Choices that take from the removed source. Add one blocking plan item for each (kind `choice_source_removed`). Return the count. | The remove confirm text and the block list. | 09 |
+| UC34 | S4 | JS API `naming_rule_edit` | Refuse a rule with the same object type, scope, and check kind with `action_not_allowed` and `details.existing_rule_id`. | The "Same rule exists" error. | 09 |
+
 ## 15. First-version scope
 
 ### 15.1 Version 1
@@ -478,6 +519,8 @@ Each call takes the `base_revision` and returns the new `revision`, or the error
 Each build step ends with green automated tests in CI. All acceptance tests run offline, with no Power BI Desktop and no cloud. Bridge tests need the .NET 8 SDK (as the existing native tests). Cloud tests use recorded fake HTTP responses and a fake TOM server interface.
 
 Parallel lanes: S3 and S4 after S2. S5 and S6 after S3 (S6 needs S5 only for plan-seeded Breaks; S6 starts with row-seeded impact). S10 after S6, in parallel with S7 to S9. S11 after S2, in parallel with all others. S12 and S13 after S9 and S11.
+
+UI change requests (section 14.4) add acceptance tests to S2, S3, S4, S5, S6, S9, S10, and S11. Each step after S2 also gives `revision` on its new reads (UC2) and a request and reply JSON Schema for each new JS API call (UC4).
 
 ### S0. Foundations
 
@@ -519,6 +562,10 @@ Parallel lanes: S3 and S4 after S2. S5 and S6 after S3 (S6 needs S5 only for pla
   - A TMSL or PBIR-Legacy target is refused with the fixed message.
   - `.pbibrain/.gitignore` has the runtime entries.
   - No HTTP route changes session state (route list test).
+  - UC1: `GET sessions` lists each session with its fields (section 14.4); a locked session gives `locked`, a newer `schema_version` gives `newer`, and invalid JSON gives `damaged`.
+  - UC2: each read reply of this step carries `revision`, equal to the session revision.
+  - UC4: each JS API call of this step has a request and reply JSON Schema, and each error reply validates against the error shape.
+  - UC27: `row_confirm` with a list of row keys confirms each row in one revision step.
 
 ### S3. Alignment and compare
 
@@ -535,6 +582,13 @@ Parallel lanes: S3 and S4 after S2. S5 and S6 after S3 (S6 needs S5 only for pla
   - "Same after rename" in default mode; "Different" in strict mode.
   - Alignment overrides from the session change the rows.
   - Same input twice gives the same row order and IDs.
+  - UC20: `GET display-folders?source=<id>` returns the display folder paths of a merge lab source; the object type filter limits them.
+  - UC21: `alignment_override` break removes the Merge Choice of the row and returns the new row keys.
+  - UC23: `q` filters compare rows by name, case-insensitive.
+  - UC24: `total` and `state_counts` equal the counts of the full filtered row set.
+  - UC25: `sort` by state, name, type, and table, asc and desc, gives a stable order.
+  - UC26: `row_state` is the highest-precedence cell state, and the `state` filter uses it.
+  - UC31: `phrases.json` holds each compare phrase ID that the engine uses; the contract test refuses an em or en dash, an emoji, and text over 60 characters.
 
 ### S4. Naming rules
 
@@ -549,6 +603,10 @@ Parallel lanes: S3 and S4 after S2. S5 and S6 after S3 (S6 needs S5 only for pla
   - A user regular-expression rule checks a name.
   - The rule file is in `.pbibrain/naming-rules/` and outside `definition/`; a bridge TMDL write leaves it.
   - Copy of a rule set gives "proposed" rules.
+  - UC16: reject of a user rule removes it; reject of a detected rule keeps it as rejected; edit with no rule ID creates a confirmed user rule; edit of a proposed rule confirms it.
+  - UC18: `GET naming-rules` gives the rule count for each session source model.
+  - UC19: `name-propose` with `candidate` returns `breaks` for a name that breaks a confirmed rule, and `clash` for a name that exists (case-insensitive).
+  - UC34: `naming_rule_edit` of a duplicate rule returns `action_not_allowed` with `details.existing_rule_id`.
 
 ### S5. Change Plan engine
 
@@ -566,6 +624,9 @@ Parallel lanes: S3 and S4 after S2. S5 and S6 after S3 (S6 needs S5 only for pla
   - A UDF below compatibility level 1702 is blocking.
   - "Promote report measure" gives create, rebind, delete.
   - A name clash row and an unselected rename dependent are blocking.
+  - UC3: `GET session` returns the cached plan status, or null with `plan_state: "computing"`, and never starts a plan compute (spy test).
+  - UC22: `merge_choice_set` accepts `promote` and `copy_to_report` on a report measure row, and the plan compiles them.
+  - UC33: `source_remove` keeps the Merge Choices of that source, adds one `choice_source_removed` blocking item for each, and returns the count.
 
 ### S6. Impact data
 
@@ -583,6 +644,10 @@ Parallel lanes: S3 and S4 after S2. S5 and S6 after S3 (S6 needs S5 only for pla
   - Offers list donor pages, visuals, and filters; a bookmark shows as information only.
   - The completeness block lists not-checked types, unresolved bindings, and bookmarks.
   - Budget test (section 17, risk R6): plan and impact under 5 s on the generated large set.
+  - UC28: bulk `impact_action_apply` with `item_ids` changes all items in one revision step, or none, and lists the items that it could not change.
+  - UC29: each `GET impact` filter gives the expected items; `total` and the facet counts equal the full result before paging.
+  - UC30: `GET impact/{item}/paths` pages all paths of a fixture item; each step has object ID, name, type, and edge phrase.
+  - UC31: each impact reason ID and edge phrase ID that the engine uses is in `phrases.json`.
 
 ### S7. Writers
 
@@ -626,6 +691,10 @@ Parallel lanes: S3 and S4 after S2. S5 and S6 after S3 (S6 needs S5 only for pla
   - After apply, no row shows "source changed".
   - The change report has the plan summary.
   - End-to-end budget: the full apply of the merge lab in a fixed time (record the value in S9 and keep it as a regression limit).
+  - UC5: `GET apply/progress` during `apply`, `format_only_apply`, and `undo_apply` gives `apply_id`, `step`, `step_index`, `step_count`, and `state` in step order, and `done` or `failed` at the end.
+  - UC6: `GET apply/preview` returns the mark count and row keys, each Desktop state of the fake bridge, the non-canonical file list, the full validation result, and the plan hash.
+  - UC7: `GET apply/last` gives the last apply with the backup state; after a target file change it gives `target changed` and the file list; after a rescan difference it lists object, expected, and found.
+  - UC32: a guard rejection of each kind gives `details.step` and the matching `details.check`.
 
 ### S10. Agent MCP tools
 
@@ -640,6 +709,11 @@ Parallel lanes: S3 and S4 after S2. S5 and S6 after S3 (S6 needs S5 only for pla
   - `include_proposals` true and false give different plans; Apply ignores proposals.
   - Each proposal and question writes a log entry with the MCP client name.
   - Paging with `has_more`.
+  - UC8: `GET log` filters by `author`, `action`, `target`, and `proposal_id` over all pages.
+  - UC9: `GET session` gives each field of each open proposal and question, the blocked state, and the selected option and time of answered questions.
+  - UC10: `proposal_accept_all` accepts the ready proposals, skips a proposal on an unconfirmed marked row and one in conflict with a user choice (with reason codes), returns one revision, and writes one log entry for each proposal.
+  - UC11: `include_proposals=ready` on `GET plan` and `GET impact` includes only the proposals that `proposal_accept_all` would accept.
+  - UC12: `proposal_accept` replaces a user choice and logs before and after; on an unconfirmed marked row it returns `source_changed`.
 
 ### S11. Cloud read
 
@@ -654,6 +728,10 @@ Parallel lanes: S3 and S4 after S2. S5 and S6 after S3 (S6 needs S5 only for pla
   - `getDefinition` 202 polling with recorded responses; a 403 gives "not checked: report not readable".
   - "Reports In Group" filters by dataset ID; other workspaces show as "not checked".
   - Fingerprints: `LastSchemaUpdate` change marks the source.
+  - UC13: `cloud_items_list` returns workspaces, models, and reports with their fields from the fake server; no HTTP route gives these data.
+  - UC14: `cloud_sign_in` with `prompt: select_account` asks for an account and returns the display name; no session file or `connection.json` holds the name (scan test).
+  - UC15: the `cloud_connect` reply lists test lines with check ID, result, reason code, and values for the recorded cases.
+  - UC17: `pull_to_local` stores a path relative to the project root; a failed pull leaves no partial folder.
 - Manual: the real-tenant checklist (T1) before release.
 
 ### S12. Cloud model write (version 1.1)
