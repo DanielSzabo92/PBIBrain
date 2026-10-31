@@ -36,17 +36,16 @@ A technical design document (`docs/DEV_CENTER_TECHNICAL_DESIGN.md`) plus short d
 - [How does the app find and store naming rules?](issues/11-naming-rules.md): one "Naming Rule" shape (scope, fixed check kind, origin, status); detect from the target only, offer at 5+ objects and 80%+ support; only confirmed rules mark; JSON file in `.pbibrain/naming-rules/` of the project (app data for cloud-only); only new or changed names checked, rule break is a warning, clash is blocking; deterministic name proposer returns the rule IDs, agent cannot override a confirmed rule.
 - [What are the exact agent tools?](issues/12-agent-tools.md): eight tools in the existing PBIBrain MCP server; one `proposal_submit` with kinds; the server rejects confidence below 0.9 and empty reasons; accept and apply exist only in the in-process pywebview API, never over HTTP; an endpoint allowlist test; agent shell access is a stated limit.
 - [How does the app store a merge session?](issues/13-session-storage.md): folder `.pbibrain/sessions/<ID>/` with canonical `session.json` and append-only `log.jsonl`; stores only user state, never plan, impact, or alignment; Source Fingerprints and row hashes mark changed rows, checked on open and before Apply (blocking); runtime files git-ignored, secret check before save; `connection.json` `session_id` becomes `connection_id`.
+- [What is in the first version, and what is the build order?](issues/14-first-version.md): version 1 = local merge + cloud read, 1.1 = cloud write; build steps S0 to S13 with acceptance tests; all accepted-state writes only in the JS API; result in `docs/DEV_CENTER_TECHNICAL_DESIGN.md` and ADRs 0001 to 0003.
 
 ## Not yet specified
 
-- Optional value check: run the same measure in a donor and in the target through a live connection, and compare a sample of results. Depends on the XMLA research and the first-version scope.
-- Service principal sign-in (a later step after the first version).
-- How the app finds the cloud reports that use a cloud target model (workspace scan, permissions, cost).
-- Limits for very large models and reports (time, memory), and what the app does above them.
-- What the app does when a source changes on disk during an open merge session, beyond "mark the affected rows".
+Nothing. The destination is reached. Ticket 14 decided or ruled out each fog item.
 
 ## Out of scope
 
 - The later features in section 13 of the spec: merge templates, golden measure library, duplicate finder, unused object finder, three-way Git merge. Ruled out at charting: the user excluded them from this destination.
 - UI look and layout. Ruled out at charting: a separate round. This map defines only the data that the backend gives to the UI.
 - Writing PBIX or PBIR-Legacy files, data refresh, and Power Query logic edits. Ruled out by the spec.
+- Later than version 1, ruled out by [What is in the first version, and what is the build order?](issues/14-first-version.md): the optional value check, service principal sign-in, a file watcher for source changes, perspectives, translations, themes, KPIs, detail rows, bookmark copy, sync slicer groups, custom visuals, static resources, mobile layout, approximate visual alignment, model measure to report measure, reports in other workspaces. The technical design keeps them in its "Later" list.
+- Cloud write (XMLA deploy, Fabric `updateDefinition`) is version 1.1. It is designed in the technical design (section 10.4, build steps S12 and S13), so it needs no new map.
