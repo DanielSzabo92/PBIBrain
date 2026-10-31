@@ -7,3 +7,7 @@ Blocked by:
 ## Question
 
 Which patterns does the app detect (prefix, suffix, letter case, separators, unit words, folder by type)? How sure must a pattern be before the app offers it? Where are the rules stored for each target model? How does a rule check a new name, and how does the agent use the rules to propose a name?
+
+## Context
+
+- From "How does the Change Plan engine work?": a name clash row is a blocking item. The app proposes a new name from the naming rules.

@@ -79,3 +79,15 @@ _Avoid_: Match key, ID
 **Strict Compare**:
 The compare mode that compares the exact text and the annotations. The default compare ignores formatting differences that do not change the model.
 _Avoid_: Exact mode, raw diff
+
+**Plan Step**:
+One item of the Change Plan that comes from one Merge Choice or one prerequisite. The app counts plan steps in the plan summary.
+_Avoid_: Operation, task
+
+**Operation**:
+One atomic change to the target that a plan step compiles to, for example one expression rewrite or one field rebind.
+_Avoid_: Step, action
+
+**Removal Policy**:
+The rule that tells what happens to the dependents of a removed object: Block, Cascade, or Repoint. The user sets it for each removed object.
+_Avoid_: Delete mode
