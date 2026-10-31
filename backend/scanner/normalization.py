@@ -524,12 +524,15 @@ class Normalizer:
             found = self._lookup.get((scope, object_type, _norm(text)))
             if found:
                 return found
+            if object_type == "MEASURE" and self._current_report:
+                # A report measure (reportExtensions.json) is visible only in its own report.
+                # Look it up before the global fallback, which can find a measure of another model.
+                found = self._lookup.get(("report:" + self._current_report, "REPORT_MEASURE", _norm(text)))
+                if found:
+                    return found
             found = self._lookup.get(("global", object_type, _norm(text)))
             if found:
                 return found
-        if "MEASURE" in expected_types and self._current_report:
-            # A report measure (reportExtensions.json) is visible only in its own report.
-            return self._lookup.get(("report:" + self._current_report, "REPORT_MEASURE", _norm(text)))
         return None
 
     def normalize_model(self, source: Any, *, source_key: Any = 0) -> NormalizationResult:

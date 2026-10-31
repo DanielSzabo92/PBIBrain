@@ -51,3 +51,12 @@ Open items:
 
 - The lightweight TMDL text reader (non-guarded project scan) does not read roles, partitions, calculation groups, or functions. The guarded scan reads them through TOM.
 - `frontend/src/graphPresentation.js` does not list the new types in its type list. The graph view puts them in the correct group (model or report), because the backend sends `artifact_group`. A UI ticket can add them to the type list.
+
+### Rework 1 (review FAIL)
+
+1. `SCANNER_VERSION` is now `guarded-3`. The snapshot ID includes the scanner version. Thus the baseline and candidate IDs in `tests/fixtures/change_guard/reference_expected.json` changed. I wrote the two new IDs into the file. No other value of the reference record changed.
+2. `_resolve_ref` looks up a report measure of the current report after the model scope and before the global fallback. Before, a visual in a graph with two models could bind to a same-name measure of the other model. New test: `test_report_measure_wins_over_a_measure_of_another_model` (`build_fact_graph([m1, m2], [r1])`).
+3. Small: a `bookmarks.json` that is not a JSON object no longer stops the report read. The bookmarks then use file order. The PBIR validation still reports the file. New test for this, and a new test for a role filter that links to a measure and a column.
+4. Lead decision: the gap in the text-only TMDL reader stays an open item (see "Open items").
+
+Tests: `python -m unittest tests.test_s1_scanner_coverage` 18 OK. `python -m unittest discover -s tests` 337 OK.

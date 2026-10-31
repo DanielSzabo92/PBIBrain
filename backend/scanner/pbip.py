@@ -493,7 +493,13 @@ def _read_bookmarks(folder: Path) -> list[dict[str, Any]]:
                     visit(item["children"], str(item["name"]))
                 else:
                     ordered.append((str(item["name"]), group))
-        visit(_read_json(metadata).get("items"), None)
+        try:
+            items = _read_json(metadata).get("items")
+        except (OSError, ValueError):
+            # A bookmarks.json that is not a JSON object gives no order. The PBIR
+            # validation still reports the file, thus the guarded scan stays blocked.
+            items = None
+        visit(items, None)
     listed = {name for name, _ in ordered}
     ordered.extend((name, None) for name in sorted(files, key=str.casefold) if name not in listed)
     bookmarks: list[dict[str, Any]] = []

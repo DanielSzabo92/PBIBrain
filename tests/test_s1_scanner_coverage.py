@@ -239,6 +239,35 @@ class NormalizerCoverageTests(unittest.TestCase):
         self.assertEqual([], graph.diagnostics)
         self.assertEqual({"x": 1, "y": 2, "z": 3, "width": 4, "height": 5}, {key: nodes[by_name[("VISUAL", "v1")]].properties[key] for key in ("x", "y", "z", "width", "height")})
 
+    def test_report_measure_wins_over_a_measure_of_another_model(self):
+        other = {"id": "m2", "name": "Other", "tables": [{"name": "Sales", "lineageTag": "t-other", "measures": [{"name": "Target", "expression": "1", "lineageTag": "m-other-target"}]}]}
+        graph = build_fact_graph([self.MODEL, other], [self.REPORT])
+        by_name = {(node.type, node.name, node.model_id): node.id for node in graph.nodes}
+        visual = next(node for node in graph.nodes if node.type == "VISUAL")
+        target = by_name[("REPORT_MEASURE", "Target", "model:m1")]
+        self.assertIn(target, visual.properties["field_ids"])
+        self.assertNotIn(by_name[("MEASURE", "Target", "model:m2")], visual.properties["field_ids"])
+
+    def test_role_filter_links_to_a_measure(self):
+        model = json.loads(json.dumps(self.MODEL))
+        model["roles"] = [{"name": "R", "tablePermissions": [{"name": "Sales", "filterExpression": "[Total] > 0 && [Amount] > 0"}]}]
+        graph = build_fact_graph([model], [], analyze_dax=True)
+        ids = {(node.type, node.name): node.id for node in graph.nodes}
+        edges = {(edge.type, edge.from_id, edge.to_id) for edge in graph.edges}
+        role_filter = ids[("ROLE_FILTER", "Sales")]
+        self.assertIn(("DEPENDS_ON", role_filter, ids[("MEASURE", "Total")]), edges)
+        self.assertIn(("REFERENCES", role_filter, ids[("COLUMN", "Amount")]), edges)
+        self.assertEqual([], graph.diagnostics)
+
+    def test_bookmarks_file_that_is_not_an_object_does_not_stop_the_read(self):
+        from backend.scanner.pbip import _read_bookmarks
+        with tempfile.TemporaryDirectory() as temporary:
+            folder = Path(temporary) / "definition" / "bookmarks"
+            folder.mkdir(parents=True)
+            (folder / "bookmarks.json").write_text("[]", encoding="utf-8")
+            (folder / "b1.bookmark.json").write_text(json.dumps({"name": "b1"}), encoding="utf-8")
+            self.assertEqual(["b1"], [item["id"] for item in _read_bookmarks(folder)])
+
     def test_m_reference_ignores_string_literals_and_unused_expressions(self):
         graph, _ = self.build()
         by_name = {(node.type, node.name): node.id for node in graph.nodes}
