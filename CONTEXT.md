@@ -71,3 +71,11 @@ _Avoid_: Upstream impact, dependencies
 **Merge Choice**:
 The choice for one aligned row in a merge session: keep the target, take from a donor, take some parts, add with a new name, remove, or skip.
 _Avoid_: Decision (that word means review decisions)
+
+**Alignment Key**:
+The value that tells that two objects in different sources are the same object. The lineageTag is the first alignment key. Objects with no lineageTag use other keys, for example the two columns of a relationship.
+_Avoid_: Match key, ID
+
+**Strict Compare**:
+The compare mode that compares the exact text and the annotations. The default compare ignores formatting differences that do not change the model.
+_Avoid_: Exact mode, raw diff

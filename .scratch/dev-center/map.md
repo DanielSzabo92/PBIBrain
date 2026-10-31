@@ -29,6 +29,7 @@ A technical design document (`docs/DEV_CENTER_TECHNICAL_DESIGN.md`) plus short d
 - [How does the app read and write cloud models through XMLA?](issues/02-xmla-access.md): TOM + MSAL (WAM) in the .NET bridge; `SaveChanges()` sends only changes, but the app must apply the plan to TOM itself; write conditions are found only from the write error.
 - [Which PBIR versions must the app support, and how does it copy report objects safely?](issues/04-pbir-copy.md): read all versions, write each file in its own version; vendored schemas are outdated and must be updated first; copy needs an old-to-new name map and a fixed list of reference rewrites.
 - [Which new object types must the graph learn first?](issues/06-object-coverage.md): add hierarchies, RLS roles with OLS, report measures, partitions; bookmarks read only; perspectives, translations, themes later; unknown objects stay unchanged and show as "not checked".
+- [What are the match and compare rules?](issues/07-compare-rules.md): lineageTag wins, then the spec steps, one to one; keys for objects with no lineageTag; fixed property list for each type; default compare ignores tags, annotations, DAX format and reads through renames; "Moved" is a table change only.
 
 ## Not yet specified
 

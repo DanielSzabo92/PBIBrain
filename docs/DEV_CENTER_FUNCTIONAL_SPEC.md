@@ -100,7 +100,7 @@ For each aligned row and each source, the app shows one state:
 | Different | The object exists, and one or more properties are not equal. |
 | Missing | The object does not exist in this source. |
 | Renamed | The object aligns by `lineageTag` or confirmation, but the name is not equal. |
-| Moved | The object is in a different table or display folder. |
+| Moved | The object is in a different home table (measures and report measures). A different display folder is a property difference ("Different"). Changed 2026-10-31 by the ticket "What are the match and compare rules?". |
 | Type conflict | The same name has a different object type (for example, a column and a measure). |
 
 Example row: `[Total Sales]`: Model A = target, Model B = Missing, Model C = Different, Report A = Same (report measure), Report B = Missing.
