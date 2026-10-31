@@ -7,3 +7,7 @@ Blocked by: 01, 02, 03, 04, 05, 06, 07, 08, 09, 10, 11, 12, 13
 ## Question
 
 Which functions, object types, and source kinds are in the first version? In which order do the parts get built? Which acceptance tests prove each part? Write the result into the technical design document.
+
+## Context
+
+- From "What must change so that the change guard accepts create, delete, and rename?": the guard work is in its gates, not in the contract schema. Build items: canonical TMDL proof and full TOM tree compare, PBIR create and delete coverage, app write record in place of the sandbox receipt, identity-map rules for create and delete, linked rename pair, "merge" policy profile, one Apply dialog with all approvals, and a "format only" apply. Cloud deploys run only after the guard accepts a local copy.

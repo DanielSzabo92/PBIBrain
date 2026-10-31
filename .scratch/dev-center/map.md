@@ -30,6 +30,7 @@ A technical design document (`docs/DEV_CENTER_TECHNICAL_DESIGN.md`) plus short d
 - [Which PBIR versions must the app support, and how does it copy report objects safely?](issues/04-pbir-copy.md): read all versions, write each file in its own version; vendored schemas are outdated and must be updated first; copy needs an old-to-new name map and a fixed list of reference rewrites.
 - [Which new object types must the graph learn first?](issues/06-object-coverage.md): add hierarchies, RLS roles with OLS, report measures, partitions; bookmarks read only; perspectives, translations, themes later; unknown objects stay unchanged and show as "not checked".
 - [What are the match and compare rules?](issues/07-compare-rules.md): lineageTag wins, then the spec steps, one to one; keys for objects with no lineageTag; fixed property list for each type; default compare ignores tags, annotations, DAX format and reads through renames; "Moved" is a table change only.
+- [What must change so that the change guard accepts create, delete, and rename?](issues/08-guard-reuse.md): canonical TMDL proof plus a full TOM tree compare against the plan; an app write record replaces the sandbox receipt; "merge" policy profile with no value test and one explicit Apply approval; the plan sets new lineageTags; a no-tag rename is a linked pair; each reference rewrite is its own exact operation.
 
 ## Not yet specified
 
