@@ -68,6 +68,14 @@ _Avoid_: Downstream impact
 The objects that the target must have before an added object can work.
 _Avoid_: Upstream impact, dependencies
 
+**Impact item**:
+One Breaks record or one Needs record: the impacted object, its severity, certain or possible, the reason, and the path from the change.
+_Avoid_: Impact record, finding
+
+**Not checked**:
+An area that the app could not examine, for example an unknown object type, an unresolved binding, or a report that the app could not read.
+_Avoid_: Unknown, unsupported
+
 **Merge Choice**:
 The choice for one aligned row in a merge session: keep the target, take from a donor, take some parts, add with a new name, remove, or skip.
 _Avoid_: Decision (that word means review decisions)
