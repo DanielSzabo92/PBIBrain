@@ -6,6 +6,12 @@ Depends on (tickets): [10](10-u3-shell-session-list.md), [09](09-s11-cloud-read.
 
 The goal, the code areas, and the acceptance tests are the design text below. Each acceptance test must be an automated test, except the items that the design marks as manual.
 
+## Lead notes
+
+- `cloud_connect` adds the cloud source itself; `add: false` only runs the test. Do not call `source_add` after it.
+- `pull_to_local` takes `as_target: true` for the flow from the Target step.
+- The check IDs of the test lines are in the build record of ticket 09.
+
 ### Design text: U11. Cloud sources and Pull to local
 
 - Goal: the cloud connect dialog and the pull flow.

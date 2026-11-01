@@ -6,6 +6,12 @@ Depends on (tickets): [05](05-u1-shared-parts.md), [06](06-u2-data-layer.md), [0
 
 The goal, the code areas, and the acceptance tests are the design text below. Each acceptance test must be an automated test, except the items that the design marks as manual.
 
+## Lead notes
+
+- `GET session` shows the workspace name and IDs of a connected cloud source (S11).
+- The fake server replies of `session_open` and `session_create` must follow the S2 reply schemas (no `session` field). Align all U3 fixtures to the schemas in `backend/devcenter/contracts/` and add them to the contract test.
+- In e2e, run axe inside an open Radix overlay, and pause the fake clock (`pauseAt`) in timed specs (see the U1 learning).
+
 ### Design text: U3. Shell, session list, create flow, work area frame, Sources and Target
 
 - Goal: the user can open, create, and close a session and see the work area frame.
