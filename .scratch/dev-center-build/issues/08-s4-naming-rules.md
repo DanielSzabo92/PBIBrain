@@ -6,6 +6,10 @@ Depends on (tickets): [04](04-s2-session-store.md).
 
 The goal, the code areas, and the acceptance tests are the design text below. Each acceptance test must be an automated test, except the items that the design marks as manual.
 
+## Lead notes
+
+- Register new JS API methods in `backend/devcenter/jsapi.py` (`AREA_MODULES`) and new reads in `backend/devcenter/http_routes.py`. Put schemas in `backend/devcenter/contracts/` (validator by `$id`).
+
 ### Design text: S4. Naming rules
 
 - Goal: detect, store, check, and propose names.
