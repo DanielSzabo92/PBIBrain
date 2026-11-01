@@ -24,11 +24,11 @@ UI lane (UI design section 13): U0, then U1 and U2 in parallel, then U3 (needs S
 | 04 | S2 | [Session store and local sources](issues/04-s2-session-store.md) | 01 | done | worktree-agent-afc0c9fc1fd29d4b7 | a7d7a33 |
 | 05 | U1 | [Shared fixes, tokens, parts](issues/05-u1-shared-parts.md) | 02 | rework | | |
 | 06 | U2 | [Data layer and copy](issues/06-u2-data-layer.md) | 02 | done | worktree-agent-a9a7d27a6597f0b68 | f3d4d53 |
-| 07 | S3 | [Alignment and compare](issues/07-s3-alignment-compare.md) | 03, 04 | running | | |
-| 08 | S4 | [Naming rules](issues/08-s4-naming-rules.md) | 04 | running | | |
-| 09 | S11 | [Cloud read (fakes)](issues/09-s11-cloud-read.md) | 04 | running | | |
+| 07 | S3 | [Alignment and compare](issues/07-s3-alignment-compare.md) | 03, 04 | done | worktree-agent-a101747015ba6165e | 3e19201 |
+| 08 | S4 | [Naming rules](issues/08-s4-naming-rules.md) | 04 | done | worktree-agent-a8b5b04ed9fccfcec | 9356869 |
+| 09 | S11 | [Cloud read (fakes)](issues/09-s11-cloud-read.md) | 04 | rework | | |
 | 10 | U3 | [Shell, session list, create flow](issues/10-u3-shell-session-list.md) | 05, 06, 04 | open | | |
-| 11 | S5 | [Change Plan engine](issues/11-s5-change-plan.md) | 07, 08 | open | | |
+| 11 | S5 | [Change Plan engine](issues/11-s5-change-plan.md) | 07, 08 | running | | |
 | 12 | U4 | [Compare grid](issues/12-u4-compare-grid.md) | 10, 07 | open | | |
 | 13 | U5 | [Naming rules UI](issues/13-u5-naming-rules-ui.md) | 10, 08 | open | | |
 | 14 | U11 | [Cloud sources UI](issues/14-u11-cloud-ui.md) | 10, 09 | open | | |
@@ -51,6 +51,11 @@ States: open, running, review, rework, done.
 
 - S12 Cloud model write and S13 Cloud report write: version 1.1 (technical design section 15.2).
 
+## Later (after version 1)
+
+- A donor visual shows "Fields changed" after a donor model rename, because visual query fields do not read through the alignment (ticket 07 review). Version 1.1 follow-up.
+- `_valid_rule` does not check the rule scope and check values (ticket 08 review).
+
 ## HITL items (need the user)
 
 | ID | Item | Blocks |
@@ -68,3 +73,5 @@ States: open, running, review, rework, done.
 | 03 (S1) | 379 | 0 | 38 | not run |
 | 04 (S2) | 425 | 0 | 38 | not run |
 | 06 (U2) | 436 | 0 | 99 | not run |
+| 07 (S3) | 470 | 0 | 99 | not run |
+| 08 (S4) | 496 | 0 | 99 | not run |

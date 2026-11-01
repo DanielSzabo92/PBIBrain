@@ -6,6 +6,10 @@ Depends on (tickets): [12](12-u4-compare-grid.md), [07](07-s3-alignment-compare.
 
 The goal, the code areas, and the acceptance tests are the design text below. Each acceptance test must be an automated test, except the items that the design marks as manual.
 
+## Lead notes
+
+- `copy.js` has the log labels `alignment_override.split`, `join`, and `reject`, but the S3 backend actions are `confirm`, `break`, `reject_rename`, and `clear`, and the log action is `alignment_override`. Align the copy keys to the backend values, and test it.
+
 ### Design text: U6. Row detail and Merge Choice
 
 - Goal: the row detail pane with all Merge Choices, names, folders, and alignment actions.
