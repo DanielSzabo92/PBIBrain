@@ -72,9 +72,18 @@ class _Target:
 
 
 def offered_rules(stored: list[Mapping[str, Any]], detected: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """The detected rules that the stored rules do not have.
+
+    A stored rule hides a detected rule with the same rule ID (an edited
+    detected rule keeps its ID but gets a new signature), the same signature
+    (a rejected rule is not offered again), or the same identity key.
+    """
+
+    rule_ids = {rule["rule_id"] for rule in stored}
     signatures = {signature(rule) for rule in stored}
     keys = {identity_key(rule) for rule in stored if rule["status"] != REJECTED}
-    return [rule for rule in detected if signature(rule) not in signatures and identity_key(rule) not in keys]
+    return [rule for rule in detected
+            if rule["rule_id"] not in rule_ids and signature(rule) not in signatures and identity_key(rule) not in keys]
 
 
 def _sort_key(rule: Mapping[str, Any]) -> tuple[int, int, str]:

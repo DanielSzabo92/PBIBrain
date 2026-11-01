@@ -270,6 +270,46 @@ class NamingSessionTests(unittest.TestCase):
         self.assertEqual(".pbibrain/naming-rules/Target.SemanticModel.json", session["path"])
         self.assertTrue(session["hash"].startswith("sha256:"))
 
+    def assert_unique_ids(self) -> list[dict]:
+        rules = self.rules()["rules"]
+        ids = [rule["rule_id"] for rule in rules]
+        self.assertEqual(len(ids), len(set(ids)), ids)
+        return rules
+
+    def test_an_edited_detected_rule_is_not_offered_again(self):
+        letter_case = self.rule("letter_case")
+        self.change("naming_rule_edit", rule_id=letter_case["rule_id"], object_type="measure", check={"kind": "suffix", "value": " X"})
+        rules = self.assert_unique_ids()
+        self.assertEqual([], [rule for rule in rules if rule["object_type"] == "measure" and rule["check"]["kind"] == "letter_case"])
+        edited = next(rule for rule in rules if rule["rule_id"] == letter_case["rule_id"])
+        self.assertEqual(("suffix", "confirmed"), (edited["check"]["kind"], edited["status"]))
+
+    def test_an_edited_then_rejected_rule_is_not_offered_again(self):
+        separator = self.rule("separator")
+        self.change("naming_rule_edit", rule_id=separator["rule_id"], object_type="measure",
+                    check={"kind": "separator", "value": "underscore"})
+        self.change("naming_rule_reject", rule_id=separator["rule_id"])
+        rules = self.assert_unique_ids()
+        found = [(rule["status"], rule["check"]["value"]) for rule in rules
+                 if rule["object_type"] == "measure" and rule["check"]["kind"] == "separator"]
+        self.assertEqual([("rejected", "underscore")], found)
+
+    def test_a_damaged_rule_in_the_file_gives_rules_file_damaged(self):
+        self.change("naming_rule_confirm", rule_id=self.rule("letter_case")["rule_id"])
+        for damage in ({"check": None}, {"status": "unknown"}, {"scope": {"other": 1}}):
+            with self.subTest(damage=damage):
+                document = json.loads(self.rule_file().read_text(encoding="utf-8"))
+                rule = {key: value for key, value in document["rules"][0].items() if key not in damage}
+                rule.update({key: value for key, value in damage.items() if value is not None})
+                self.rule_file().write_text(json.dumps({**document, "rules": [rule]}), encoding="utf-8")
+                status, payload = self.app.handle("GET", "/api/devcenter/naming-rules")
+                self.assertEqual((400, "rules_file_damaged"), (status, payload["error"]["details"]["reason"]))
+                error = self.failed("naming_rule_edit", {"base_revision": self.devcenter.revision, "object_type": "table",
+                                                         "check": {"kind": "prefix", "value": "d"}}, "action_not_allowed")
+                self.assertEqual("rules_file_damaged", error["details"]["reason"])
+                document["rules"][0].pop("text", None)
+                self.rule_file().write_text(json.dumps(document), encoding="utf-8")
+
     def test_uc34_a_duplicate_rule_gives_action_not_allowed(self):
         existing = self.rule("letter_case")
         error = self.failed("naming_rule_edit", {"base_revision": self.devcenter.revision, "object_type": "measure",
@@ -312,10 +352,16 @@ class NamingSessionTests(unittest.TestCase):
 
     def test_uc18_naming_rules_gives_the_rule_count_of_each_source_model(self):
         self.add("SalesA/SalesA.pbip")
-        counts = self.rules()["source_rule_counts"]
-        self.assertNotIn(self.target, counts)
-        self.assertEqual({"src-2", "src-3"}, set(counts))
-        self.assertTrue(all(isinstance(value, int) for value in counts.values()))
+        # SalesB gives 4 detected rules, SalesA gives 2 (data column letter case and separator).
+        self.assertEqual({"src-2": 4, "src-3": 2}, self.rules()["source_rule_counts"])
+        user = make_rule("nr-00000000000a", "table", None, {"kind": "prefix", "value": "d"}, "user", "confirmed")
+        path = self.root / ".pbibrain" / "naming-rules" / "SalesA.SemanticModel.json"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps({"schema_version": 1, "rules": [user]}), encoding="utf-8")
+        self.assertEqual({"src-2": 4, "src-3": 3}, self.rules()["source_rule_counts"])
+        rejected = make_rule("nr-00000000000b", "data_column", None, {"kind": "letter_case", "value": "title"}, "detected", "rejected")
+        path.write_text(json.dumps({"schema_version": 1, "rules": [user, rejected]}), encoding="utf-8")
+        self.assertEqual({"src-2": 4, "src-3": 2}, self.rules()["source_rule_counts"])
 
     def test_copy_of_a_rule_set_gives_proposed_rules(self):
         donor = write_model(self.root / "Donor.SemanticModel", measures=[(f"M_{index}", "#,0", None) for index in range(6)])

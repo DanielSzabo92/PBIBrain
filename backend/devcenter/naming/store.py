@@ -18,6 +18,16 @@ from pathlib import Path
 from typing import Any, Mapping
 
 from backend.devcenter.errors import DevCenterError
+from backend.devcenter.naming.objects import RULE_OBJECT_TYPES
+from backend.devcenter.naming.rules import (
+    CHECK_KINDS,
+    CONFIRMED,
+    ORIGIN_DETECTED,
+    ORIGIN_USER,
+    PROPOSED,
+    REJECTED,
+    SCOPE_KEYS,
+)
 from backend.devcenter.session.secrets import check_secrets
 from backend.devcenter.session.store import canonical_bytes, write_atomic
 from backend.snapshots.manifest import content_hash
@@ -56,9 +66,25 @@ def read_rule_set(path: Path, model: str) -> dict[str, Any]:
         raise DevCenterError("action_not_allowed", "The naming rule file is not valid.", {"reason": "rules_file_damaged"})
     if not isinstance(document.get("schema_version"), int) or document["schema_version"] > RULES_SCHEMA_VERSION:
         raise DevCenterError("action_not_allowed", "The naming rule file is from a newer app version.", {"reason": "rules_file_newer"})
+    if not all(_valid_rule(rule) for rule in document["rules"]) or not isinstance(document.get("settings", {}), dict):
+        raise DevCenterError("action_not_allowed", "The naming rule file is not valid.", {"reason": "rules_file_damaged"})
     document.setdefault("settings", {})
     document.setdefault("model", model)
     return document
+
+
+def _valid_rule(rule: Any) -> bool:
+    """Check the shape of one stored rule. A hand edit can break it."""
+
+    if not isinstance(rule, dict) or not isinstance(rule.get("rule_id"), str):
+        return False
+    check, scope = rule.get("check"), rule.get("scope", {})
+    if not isinstance(check, dict) or check.get("kind") not in CHECK_KINDS or not isinstance(check.get("value"), str):
+        return False
+    if scope is not None and (not isinstance(scope, dict) or any(key not in SCOPE_KEYS for key in scope)):
+        return False
+    return (rule.get("object_type") in RULE_OBJECT_TYPES and rule.get("origin") in (ORIGIN_DETECTED, ORIGIN_USER)
+            and rule.get("status") in (PROPOSED, CONFIRMED, REJECTED))
 
 
 def _ordered(document: Mapping[str, Any]) -> dict[str, Any]:

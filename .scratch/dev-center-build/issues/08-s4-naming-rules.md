@@ -51,3 +51,12 @@ Tests:
 - `python -m unittest tests.test_devcenter_naming`: 23 tests, OK.
 - `python -m unittest discover -s tests`: 459 tests, OK (after the merge of 354f742).
 - `npm test` in `frontend/`: 99 pass, 0 fail.
+
+Rework 1 (review FAIL):
+
+1. A stored rule now also hides a detected rule with the same rule ID. An edited detected rule keeps its ID, so the detector does not offer the original rule again after an edit, or after an edit and a reject. New tests check that the read has no duplicate rule IDs.
+2. A stored rule with a bad shape (no `check`, an unknown `status`, an unknown scope key) gives `action_not_allowed` with reason `rules_file_damaged`, not a KeyError.
+3. The UC18 test checks the count values: 4 and 2 from detection, 3 with a user rule in the file, and 2 again with a rejected rule.
+
+Tests after rework: `tests.test_devcenter_naming` 26 OK; full Python suite 462 OK.
+
