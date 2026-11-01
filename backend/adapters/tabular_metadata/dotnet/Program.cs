@@ -6,8 +6,10 @@ using TomJson = Microsoft.AnalysisServices.Tabular.JsonSerializer;
 Console.OutputEncoding = System.Text.Encoding.UTF8;
 System.Globalization.CultureInfo.CurrentUICulture = System.Globalization.CultureInfo.InvariantCulture;
 
-// This executable accepts source metadata only. It has no server connections,
-// mutation commands, generated-script execution, or deployment credentials.
+// This executable accepts source metadata only. It has no mutation commands,
+// generated-script execution, or deployment credentials. Its one server
+// connection is the read-only command "cloud-read" (CloudRead.cs).
+if (args.Length == 1 && args[0] == "cloud-read") { Environment.ExitCode = CloudRead.Run(Console.In, Console.Out); return; }
 try
 {
     if (args.Length < 1 || args.Length > 2 || (args.Length == 2 && args[1] != "--documents")) throw new ArgumentException("One model path required");

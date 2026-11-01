@@ -1,0 +1,54 @@
+{
+  "description": "Fabric getDefinition with a long running operation. The shape follows the Fabric REST documentation. Parts '@report' are the parts of the fake report.",
+  "replies": [
+    {
+      "method": "POST",
+      "status": 202,
+      "headers": {
+        "location": "https://api.fabric.microsoft.com/v1/operations/op-0001",
+        "x-ms-operation-id": "op-0001",
+        "retry-after": "2"
+      },
+      "body": null
+    },
+    {
+      "method": "GET",
+      "url": "https://api.fabric.microsoft.com/v1/operations/op-0001",
+      "status": 200,
+      "headers": {
+        "retry-after": "1"
+      },
+      "body": {
+        "status": "Running",
+        "createdTimeUtc": "2026-10-28T09:12:33.0000000",
+        "lastUpdatedTimeUtc": "2026-10-28T09:12:34.0000000",
+        "percentComplete": 40
+      }
+    },
+    {
+      "method": "GET",
+      "url": "https://api.fabric.microsoft.com/v1/operations/op-0001",
+      "status": 200,
+      "headers": {
+        "location": "https://api.fabric.microsoft.com/v1/operations/op-0001/result"
+      },
+      "body": {
+        "status": "Succeeded",
+        "createdTimeUtc": "2026-10-28T09:12:33.0000000",
+        "lastUpdatedTimeUtc": "2026-10-28T09:12:36.0000000",
+        "percentComplete": 100
+      }
+    },
+    {
+      "method": "GET",
+      "url": "https://api.fabric.microsoft.com/v1/operations/op-0001/result",
+      "status": 200,
+      "headers": {},
+      "body": {
+        "definition": {
+          "parts": "@report"
+        }
+      }
+    }
+  ]
+}

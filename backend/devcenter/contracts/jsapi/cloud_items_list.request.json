@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pbibrain.local/devcenter/contracts/jsapi/cloud_items_list.request.json",
+  "title": "JS API cloud_items_list: request (UC13, a read of the JS API only)",
+  "type": "object",
+  "properties": {
+    "kind": {
+      "enum": [
+        "workspaces",
+        "models",
+        "reports"
+      ]
+    },
+    "workspace_id": {
+      "type": "string",
+      "minLength": 1
+    }
+  },
+  "required": [
+    "kind"
+  ],
+  "additionalProperties": false
+}

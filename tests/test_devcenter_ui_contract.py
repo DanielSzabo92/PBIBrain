@@ -85,7 +85,6 @@ HOST_PENDING = {
     "removal_policy_set": "S6", "need_mapping_set": "S6", "impact_action_apply": "S6", "offer_select": "S6",
     "format_only_apply": "S9", "apply": "S9", "undo_apply": "S9", "change_report_write": "S9",
     "proposal_accept": "S10", "proposal_reject": "S10", "proposal_accept_all": "S10", "question_answer": "S10",
-    "cloud_sign_in": "S11", "cloud_connect": "S11", "pull_to_local": "S11", "cloud_items_list": "S11",
 }
 
 

@@ -33,7 +33,7 @@ from backend.devcenter.session.store import (
     valid_session_id,
 )
 from backend.devcenter.sources.fingerprint import source_fingerprint
-from backend.devcenter.sources.kinds import LocalSource, detect_local_source, require_model_target, require_report_target
+from backend.devcenter.sources.kinds import CLOUD_MODEL, CLOUD_REPORT, LocalSource, detect_local_source, require_model_target, require_report_target
 from backend.devcenter.sources.objects import object_index
 from backend.devcenter.sources.targets import copy_source, prepare_empty_folder, remove_children, write_empty_target
 
@@ -55,6 +55,7 @@ FINGERPRINT_CHANGED = "changed"
 FINGERPRINT_NOT_CHECKED = "not_checked"
 
 REPORT_NEW_EMPTY = {"mode": "new_empty"}
+CLOUD_KINDS = (CLOUD_MODEL, CLOUD_REPORT)
 
 
 def default_app_data_dir() -> Path | None:
@@ -106,8 +107,11 @@ class _OpenSession:
 class DevCenterSessions:
     """Owner of the open merge session. Thread safe."""
 
-    def __init__(self, *, app_data_dir: Path | None | Callable[[], Path | None] = default_app_data_dir, owner: str | None = None) -> None:
+    def __init__(self, *, app_data_dir: Path | None | Callable[[], Path | None] = default_app_data_dir, owner: str | None = None,
+                 cloud: Any = None) -> None:
         self._app_data = app_data_dir
+        # The cloud service (build step S11, ``backend.devcenter.sources.cloud``). It starts at the first cloud call.
+        self.cloud = cloud
         self.owner = owner or uuid.uuid4().hex
         self._lock = threading.RLock()
         self._project_root: Path | None = None
@@ -149,6 +153,45 @@ class DevCenterSessions:
 
     def _absolute(self, relative: str) -> Path:
         return (self.project_root / relative).resolve()
+
+    def relative_path(self, path: Path) -> str:
+        return self._relative(path)
+
+    # Cloud sources (build step S11) ------------------------------------------
+
+    def cloud_service(self) -> Any:
+        if self.cloud is None:
+            from backend.devcenter.sources.cloud import CloudService
+
+            self.cloud = CloudService()
+        return self.cloud
+
+    def session_folder(self) -> Path:
+        return self._require_open().files.folder
+
+    def source_record(self, source_id: Any) -> dict[str, Any]:
+        with self._lock:
+            return copy.deepcopy(self._source(self._require_open().document, source_id))
+
+    def add_prepared_source(self, request: Mapping[str, Any], action: str, record: Mapping[str, Any], source: LocalSource) -> dict[str, Any]:
+        """Add a source record that a different module made (a cloud source), with ``source`` as its baseline."""
+
+        with self._lock:
+            added: dict[str, Any] = {}
+
+            def mutate(document: dict[str, Any]) -> tuple[Any, Any]:
+                item_id = (record.get("cloud") or {}).get("item_id")
+                if item_id and any((item.get("cloud") or {}).get("item_id") == item_id for item in document["sources"]):
+                    raise not_allowed("This source is already in the session.", "duplicate_source")
+                source_id = f"src-{document['next_source_number']}"
+                document["next_source_number"] += 1
+                added.update({"source_id": source_id, **copy.deepcopy(dict(record))})
+                self._record_baseline(document, source_id, source)
+                document["sources"].append(added)
+                return None, copy.deepcopy(added)
+
+            document = self._change(request, action, None, mutate)
+            return {"revision": document["revision"], "source": self._source_view(document, added)}
 
     # Reads -----------------------------------------------------------------
 
@@ -417,7 +460,7 @@ class DevCenterSessions:
 
     def _add(self, document: dict[str, Any], source: LocalSource, role: str) -> dict[str, Any]:
         path = self._relative(source.root)
-        if any(item["path"].casefold() == path.casefold() for item in document["sources"]):
+        if any((item["path"] or "").casefold() == path.casefold() for item in document["sources"]):
             raise not_allowed("This source is already in the session.", "duplicate_source", path=path)
         record = self._source_record(document, source, role)
         self._record_baseline(document, record["source_id"], source)
@@ -432,7 +475,14 @@ class DevCenterSessions:
         raise DevCenterError("not_found", "The source is not in the session.", {"source_id": source_id})
 
     def _load(self, record: Mapping[str, Any]) -> LocalSource:
+        if record["kind"] in CLOUD_KINDS:
+            return self.cloud_service().load(self, record)
         return detect_local_source(self._absolute(record["path"]))
+
+    def _load_target(self, record: Mapping[str, Any]) -> LocalSource:
+        if record["kind"] in CLOUD_KINDS:
+            raise not_allowed("Pull to local PBIP first.", "cloud_target")
+        return self._load(record)
 
     def source_add(self, request: Mapping[str, Any]) -> dict[str, Any]:
         with self._lock:
@@ -481,7 +531,7 @@ class DevCenterSessions:
                 if source.kind != record["kind"]:
                     raise not_allowed("The new place has a different source kind.", "kind_changed", kind=source.kind)
                 path = self._relative(source.root)
-                if any(item["path"].casefold() == path.casefold() and item["source_id"] != source_id for item in document["sources"]):
+                if any((item["path"] or "").casefold() == path.casefold() and item["source_id"] != source_id for item in document["sources"]):
                     raise not_allowed("This source is already in the session.", "duplicate_source", path=path)
                 before = copy.deepcopy(record)
                 record.update({
@@ -517,9 +567,9 @@ class DevCenterSessions:
             folder: Path | None = None
             original: LocalSource | None = None
             if mode == "existing":
-                require_model_target(self._load(self._source(document, model.get("source_id"))))
+                require_model_target(self._load_target(self._source(document, model.get("source_id"))))
             elif mode == "copy_of":
-                original = self._load(self._source(document, model.get("source_id")))
+                original = self._load_target(self._source(document, model.get("source_id")))
                 require_model_target(original)
                 folder = prepare_empty_folder(str(model.get("path") or ""))
             elif mode == "empty":
@@ -528,7 +578,7 @@ class DevCenterSessions:
             else:
                 raise DevCenterError("invalid_payload", "The target model mode is not valid.", {"reason": "invalid_mode"})
             if report.get("mode") == "existing":
-                require_report_target(self._load(self._source(document, report.get("source_id"))))
+                require_report_target(self._load_target(self._source(document, report.get("source_id"))))
             elif report.get("mode") != "new_empty":
                 raise DevCenterError("invalid_payload", "The target report mode is not valid.", {"reason": "invalid_mode"})
 
@@ -580,21 +630,34 @@ class DevCenterSessions:
     def _marks_summary(document: Mapping[str, Any]) -> dict[str, Any]:
         return {"mark_count": len(document["source_marks"]), "status": dict(document["source_status"])}
 
-    def _check_one(self, document: dict[str, Any], record: Mapping[str, Any]) -> None:
+    def _check_one(self, document: dict[str, Any], record: dict[str, Any]) -> None:
         source_id = record["source_id"]
-        path = self._absolute(record["path"])
-        if not path.exists():
-            document["source_status"][source_id] = STATUS_MISSING
-            return
-        try:
-            source = detect_local_source(path)
-            fingerprint = source_fingerprint(source)
-        except DevCenterError:
-            document["source_status"][source_id] = STATUS_UNREADABLE
-            return
-        document["source_status"][source_id] = STATUS_OK
         others = [mark for mark in document["source_marks"] if mark["source_id"] != source_id]
         has_marks = len(others) != len(document["source_marks"])
+        if record["kind"] in CLOUD_KINDS:
+            # A cloud check is silent: no sign-in window. No token gives "unreadable".
+            try:
+                cloud_source = self.cloud_service().check_source(self, record, has_marks)
+                fingerprint = source_fingerprint(cloud_source) if cloud_source is not None else None
+            except DevCenterError:
+                document["source_status"][source_id] = STATUS_UNREADABLE
+                return
+            document["source_status"][source_id] = STATUS_OK
+            if cloud_source is None:
+                return
+            source = cloud_source
+        else:
+            path = self._absolute(record["path"])
+            if not path.exists():
+                document["source_status"][source_id] = STATUS_MISSING
+                return
+            try:
+                source = detect_local_source(path)
+                fingerprint = source_fingerprint(source)
+            except DevCenterError:
+                document["source_status"][source_id] = STATUS_UNREADABLE
+                return
+            document["source_status"][source_id] = STATUS_OK
         if fingerprint == document["source_fingerprints"].get(source_id) and not has_marks:
             return
         marks = self._diff(source_id, document["row_hashes"].get(source_id, {}), object_index(source))

@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pbibrain.local/devcenter/contracts/jsapi/pull_to_local.reply.json",
+  "title": "JS API pull_to_local: reply (an error reply uses error.json). The source path is relative to the project root.",
+  "type": "object",
+  "properties": {
+    "revision": {
+      "$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/revision"
+    },
+    "source": {
+      "$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/source"
+    },
+    "target": {
+      "anyOf": [
+        {
+          "$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/target"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "required": [
+    "revision",
+    "source",
+    "target"
+  ],
+  "additionalProperties": false
+}

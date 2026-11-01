@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pbibrain.local/devcenter/contracts/jsapi/cloud_sign_in.request.json",
+  "title": "JS API cloud_sign_in: request (UC14)",
+  "type": "object",
+  "properties": {
+    "base_revision": {
+      "$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/base_revision"
+    },
+    "prompt": {
+      "enum": [
+        "none",
+        "select_account"
+      ],
+      "description": "Not given: silent, then interactive. none: silent only. select_account: the account picker."
+    }
+  },
+  "required": [],
+  "additionalProperties": false
+}

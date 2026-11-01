@@ -1,0 +1,189 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pbibrain.local/devcenter/contracts/jsapi/cloud_items_list.reply.json",
+  "title": "JS API cloud_items_list: reply (an error reply uses error.json)",
+  "type": "object",
+  "properties": {
+    "revision": {
+      "anyOf": [
+        {
+          "$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/revision"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "kind": {
+      "enum": [
+        "workspaces",
+        "models",
+        "reports"
+      ]
+    },
+    "items": {
+      "type": "array"
+    }
+  },
+  "required": [
+    "items",
+    "kind",
+    "revision"
+  ],
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "workspaces"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "items": {
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "capacity_type": {
+                  "enum": [
+                    "shared",
+                    "premium",
+                    "premium_per_user",
+                    "fabric",
+                    "embedded",
+                    "unknown"
+                  ]
+                },
+                "xmla_available": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "capacity_type",
+                "id",
+                "name",
+                "xmla_available"
+              ],
+              "additionalProperties": false
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "models"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "items": {
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "updated_at": {
+                  "anyOf": [
+                    {
+                      "$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/utc_time"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "model_type": {
+                  "enum": [
+                    "semantic_model",
+                    "push"
+                  ]
+                },
+                "xmla_readable": {
+                  "type": "boolean"
+                },
+                "reason": {
+                  "enum": [
+                    null,
+                    "workspace_not_on_capacity",
+                    "push_model"
+                  ]
+                }
+              },
+              "required": [
+                "id",
+                "model_type",
+                "name",
+                "reason",
+                "updated_at",
+                "xmla_readable"
+              ],
+              "additionalProperties": false
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "reports"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "items": {
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "format": {
+                  "enum": [
+                    "pbir",
+                    "pbir_legacy",
+                    null
+                  ]
+                },
+                "dataset_id": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "dataset_id",
+                "format",
+                "id",
+                "name"
+              ],
+              "additionalProperties": false
+            }
+          }
+        }
+      }
+    }
+  ]
+}
