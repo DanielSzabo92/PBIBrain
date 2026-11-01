@@ -81,7 +81,10 @@ class RouteListTests(unittest.TestCase):
         self.assertTrue(http_routes.ROUTES)
         for route in http_routes.ROUTES:
             with self.subTest(route="/".join(route.path)):
-                self.assertIn((route.kind, route.method), {("read", "GET"), ("proposal", "POST")})
+                self.assertIn((route.kind, route.method), {("read", "GET"), ("read", "POST"), ("proposal", "POST")})
+                if (route.kind, route.method) == ("read", "POST"):
+                    # Section 14.1: name-propose and plan-validate are read-only calculations with a body.
+                    self.assertIn("/".join(route.path), http_routes.READ_POSTS)
                 if route.kind == "proposal":
                     self.assertIn(route.path, {("proposals",), ("questions",)})
                 self.assertFalse(names & set(route.path), "A route path must not name a state change")
@@ -100,7 +103,7 @@ class RouteListTests(unittest.TestCase):
                         status, _ = wsgi(self.app, method, path, body)
                         self.assertIn(status, {404, 405})
         for route in http_routes.ROUTES:
-            if route.kind == "read" and not any(part.startswith("{") for part in route.path):
+            if route.kind == "read" and route.method == "GET" and not any(part.startswith("{") for part in route.path):
                 for method in WRITE_METHODS:
                     with self.subTest(method=method, route=route.path):
                         status, _ = wsgi(self.app, method, "/api/devcenter/" + "/".join(route.path), b"{}")

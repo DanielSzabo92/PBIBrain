@@ -80,7 +80,6 @@ HOST_OTHER_METHODS = frozenset({
 # (technical design section 16). Remove a method from this list when its step adds it to the host.
 HOST_PENDING = {
     "compare_mode_set": "S3", "alignment_override": "S3",
-    "naming_rule_confirm": "S4", "naming_rule_reject": "S4", "naming_rule_edit": "S4", "naming_rules_copy": "S4",
     "merge_choice_set": "S5", "merge_choice_bulk_set": "S5",
     "removal_policy_set": "S6", "need_mapping_set": "S6", "impact_action_apply": "S6", "offer_select": "S6",
     "format_only_apply": "S9", "apply": "S9", "undo_apply": "S9", "change_report_write": "S9",
