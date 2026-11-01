@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pbibrain.local/devcenter/contracts/jsapi/alignment_override.request.json",
+  "title": "JS API alignment_override: request. break and clear use row_key; confirm and reject_rename also use other_row_key (the donor-only row).",
+  "type": "object",
+  "properties": {
+    "base_revision": {"$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/base_revision"},
+    "action": {"enum": ["confirm", "break", "reject_rename", "clear"]},
+    "source_id": {"$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/source_id"},
+    "row_key": {"$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/row_key"},
+    "other_row_key": {"$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/row_key"}
+  },
+  "required": ["base_revision", "action", "source_id", "row_key"],
+  "if": {"properties": {"action": {"enum": ["confirm", "reject_rename"]}}},
+  "then": {"required": ["other_row_key"]},
+  "additionalProperties": false
+}

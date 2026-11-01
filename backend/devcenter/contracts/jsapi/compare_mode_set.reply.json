@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pbibrain.local/devcenter/contracts/jsapi/compare_mode_set.reply.json",
+  "title": "JS API compare_mode_set: reply (an error reply uses error.json)",
+  "type": "object",
+  "properties": {
+    "revision": {"$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/revision"},
+    "compare_mode": {"enum": ["default", "strict"]}
+  },
+  "required": ["revision", "compare_mode"],
+  "additionalProperties": false
+}
