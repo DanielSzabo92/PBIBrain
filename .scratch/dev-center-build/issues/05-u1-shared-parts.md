@@ -80,6 +80,11 @@ AlertDialog: the gate accepts only `role="dialog"`, and AlertDialog has `role="a
 - Small finding: `SECTION_7_4_PAIRS` has the pair `bad-strong` on `surface` (fill edge, 3:1): 8.65 dark, 7.56 light.
 - Merged `354f742` (S1, S2, U2, and notes). Tests after the merge: Python 441 OK; `npm test` 102 pass; `devcenterParts.spec.js --repeat-each=5` 85 passed; full e2e 71 passed.
 
+### Rework 2
+
+- Finding 1: the Toast spec was flaky, because `page.clock.install()` does not pause the clock, so real time moved on after `runFor`. The spec now installs the clock at a fixed time and pauses it with `pauseAt` after the page loads. Only `runFor` moves time. The checks are the same. No other spec of this ticket uses the fake clock.
+- Tests: Toast spec `--repeat-each=20` 20 passed; `devcenterParts.spec.js --repeat-each=10` 170 passed; full e2e 71 passed.
+
 ### Open items
 
 - A modal Radix overlay (Select listbox, Dialog, sheet) puts `aria-hidden` on the page behind it (`hideOthers`). axe then reports `aria-hidden-focus` on the full page. The focus trap keeps focus out of that page. The spec checks the open overlay itself. Later U-steps that run A1 on an open dialog must do the same, or the lead must decide to set `inert` on the background.

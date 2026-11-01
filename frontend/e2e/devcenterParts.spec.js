@@ -334,8 +334,10 @@ test("Dialog in progress mode: no close button, and Escape does nothing", async 
 });
 
 test("Toast: one polite region, a close button, and it stays at least 8 s", async ({ page }) => {
-  await page.clock.install();
+  // Install the fake clock, then pause it after the page loads, so that only runFor moves time.
+  await page.clock.install({ time: new Date("2026-01-01T00:00:00Z") });
   await openSpecimen(page);
+  await page.clock.pauseAt(new Date("2026-01-01T00:10:00Z"));
   const region = page.getByRole("status", { name: "Notifications" });
   await expect(region).toHaveAttribute("aria-live", "polite");
   const trigger = page.getByRole("button", { name: "Show toast" });
