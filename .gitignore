@@ -63,3 +63,6 @@ frontend/.guard-test-results/
 # The merge lab fixtures are test data, not private artifacts.
 !tests/fixtures/merge_lab/**/*.pbip
 !tests/fixtures/merge_lab/**/*.pbir
+
+# Orchestrator run state of the Development Center build.
+.scratch/dev-center-build/orchestrator-state.json

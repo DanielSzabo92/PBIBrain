@@ -4,6 +4,8 @@ Build branch: `claude/dev-center-build-6abbf2` (the `dev-center-build` branch of
 
 Process for each ticket: one worker (Opus 5.5, medium, own worktree) writes the code and the tests. One new independent reviewer (Opus 5.5, medium) returns PASS or FAIL. On FAIL, the same worker fixes the findings and a new reviewer checks again. On PASS, the lead merges into the build branch, runs the full suite, and commits. No push. No pull request. Maximum 4 workers at a time.
 
+From ticket 10 on, the script [orchestrate.py](orchestrate.py) runs the process with no lead session: it does the setup, the gates, the merges, and the board, and it calls `claude -p` for the developer (Opus, medium), the reviewer (Sonnet, medium; Opus for a third review), and a hard merge conflict (Sonnet, low). Cost log: `orchestrator-cost.jsonl`. Learnings go to `learnings-inbox.md`.
+
 Worker rules: [WORKER.md](WORKER.md). Reviewer rules: [REVIEWER.md](REVIEWER.md).
 
 ## Lanes and order
@@ -27,7 +29,7 @@ UI lane (UI design section 13): U0, then U1 and U2 in parallel, then U3 (needs S
 | 07 | S3 | [Alignment and compare](issues/07-s3-alignment-compare.md) | 03, 04 | done | worktree-agent-a101747015ba6165e | 3e19201 |
 | 08 | S4 | [Naming rules](issues/08-s4-naming-rules.md) | 04 | done | worktree-agent-a8b5b04ed9fccfcec | 9356869 |
 | 09 | S11 | [Cloud read (fakes)](issues/09-s11-cloud-read.md) | 04 | done | worktree-agent-aa1a79d4dc99d0d19 | 17114f1 |
-| 10 | U3 | [Shell, session list, create flow](issues/10-u3-shell-session-list.md) | 05, 06, 04 | running | | |
+| 10 | U3 | [Shell, session list, create flow](issues/10-u3-shell-session-list.md) | 05, 06, 04 | open | | |
 | 11 | S5 | [Change Plan engine](issues/11-s5-change-plan.md) | 07, 08 | running | | |
 | 12 | U4 | [Compare grid](issues/12-u4-compare-grid.md) | 10, 07 | open | | |
 | 13 | U5 | [Naming rules UI](issues/13-u5-naming-rules-ui.md) | 10, 08 | open | | |
@@ -61,6 +63,7 @@ States: open, running, review, rework, done.
 | ID | Item | Blocks |
 |---|---|---|
 | H1 | Task T1: register the Entra app (public client, WAM redirect, Power BI and Fabric scopes). Put the client ID in `PBIBRAIN_CLOUD_CLIENT_ID` or `%APPDATA%/PBIBrain/settings.json` (`cloud.client_id`), never in the repo. Then run the real-tenant checklist. Until then, cloud read uses fakes only. Items to confirm (ticket 09): the model `updated_at` comes from the dataset `createdDate`; only push models are found as unsupported (not Excel or live-connected); the report `format` field and the role read for a Viewer; the XMLA connect and the export; the cost of a full export on each source check. | Release of cloud read against a real tenant (risk R1, R2). Not the build. |
+| H3 | Sign in the `claude` CLI on this PC (run `claude` once in a terminal), then run `python .scratch/dev-center-build/orchestrate.py` in the build worktree. The headless CLI reported "OAuth session expired". | All remaining tickets. |
 | H2 | Screen reader pass with NVDA and Narrator (U12). | Release sign-off of accessibility. Not the build. |
 
 ## Test totals
