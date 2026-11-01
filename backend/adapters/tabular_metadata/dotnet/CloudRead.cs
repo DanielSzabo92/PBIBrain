@@ -19,7 +19,7 @@ static class CloudRead
     {
         try
         {
-            var request = JsonNode.Parse(input.ReadToEnd().TrimStart('﻿', 'ï', '»', '¿')) as JsonObject
+            var request = JsonNode.Parse(input.ReadToEnd().TrimStart('﻿')) as JsonObject
                 ?? throw new CloudReadError("invalid_request", "The request must be one JSON object");
             var server = Text(request, "server");
             var database = Text(request, "database");

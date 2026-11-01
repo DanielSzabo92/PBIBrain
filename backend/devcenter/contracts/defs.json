@@ -174,7 +174,66 @@
         "source_id",
         "status"
       ],
-      "additionalProperties": false
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "description": "A local source has a relative path and no cloud block.",
+          "if": {
+            "properties": {
+              "kind": {
+                "enum": [
+                  "pbip",
+                  "tmdl_folder",
+                  "model_bim",
+                  "pbir_report",
+                  "pbir_legacy_report"
+                ]
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "path": {
+                "$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/relative_path"
+              }
+            },
+            "not": {
+              "required": [
+                "cloud"
+              ]
+            }
+          }
+        },
+        {
+          "description": "A cloud source has a null path and a cloud block.",
+          "if": {
+            "properties": {
+              "kind": {
+                "enum": [
+                  "cloud_model",
+                  "cloud_report"
+                ]
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "path": {
+                "type": "null"
+              }
+            },
+            "required": [
+              "cloud"
+            ]
+          }
+        }
+      ]
     },
     "cloud_reference": {
       "description": "The cloud part of a cloud source record (technical design section 11). No token and no account name.",

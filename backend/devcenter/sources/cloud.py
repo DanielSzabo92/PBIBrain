@@ -488,8 +488,10 @@ class CloudService:
             try:
                 parts = self.definition(workspace_id, item["id"])
                 if cache is not None:
+                    # A folder of its own: a cloud report source of the session keeps its cache.
                     folder = cache / item["id"]
                     _remove(folder)
+                    cache.mkdir(parents=True, exist_ok=True)
                     write_definition(parts, folder)
             except ReportNotReadable:
                 readable = False
@@ -593,15 +595,26 @@ class CloudService:
         else:
             record, source, more = self._connect_report(devcenter if add else None, request)
         checks.extend(more)
+        staging = source
         blocked = record is None or any(item["result"] == RESULT_FAILED for item in checks if item["check_id"] in _BLOCKING)
         if not add or blocked:
-            if source is not None and add:
-                _remove(source.root)
+            if staging is not None:
+                _remove(staging)
             return {"revision": revision, "added": False, "source": None, "checks": checks}
+        final = self.cache_dir(devcenter) / record["cloud"]["item_id"]
+        prepared: list[bool] = []
+
+        def prepare() -> LocalSource:
+            # The manager calls this only after its duplicate check, so no source of the session uses ``final``.
+            prepared.append(True)
+            return detect_local_source(self._swap(staging, final))
+
         try:
-            reply = devcenter.add_prepared_source(request, "cloud_connect", record, source)
+            reply = devcenter.add_prepared_source(request, "cloud_connect", record, prepare)
         except BaseException:
-            _remove(source.root)
+            _remove(staging)
+            if prepared:
+                _remove(final)
             raise
         return {"revision": reply["revision"], "added": True, "source": reply["source"], "checks": checks}
 
@@ -621,8 +634,19 @@ class CloudService:
             raise DevCenterError("not_found", "No model with this name in the workspace.", {"reason": REASON_MODEL_NOT_FOUND})
         return workspace, model
 
+    @staticmethod
+    def _refuse_duplicate(devcenter: Any, item_id: str) -> None:
+        if devcenter is None:
+            return
+        for item in devcenter.session_summary()["sources"]:
+            if str((item.get("cloud") or {}).get("item_id") or "").casefold() == item_id.casefold():
+                raise not_allowed("This source is already in the session.", "duplicate_source")
+
     def _connect_model(self, devcenter: Any, request: Mapping[str, Any]) -> tuple[Any, Any, list[dict[str, Any]]]:
+        """Run the model checks. With a session, give the record and the staging folder of the export."""
+
         workspace, model = self._resolve_model(request)
+        self._refuse_duplicate(devcenter, model["id"])
         checks = []
         if not workspace["xmla_available"]:
             checks.append(_check("capacity", RESULT_FAILED, REASON_NOT_ON_CAPACITY, capacity_type=workspace["capacity_type"]))
@@ -641,6 +665,7 @@ class CloudService:
         else:
             cache.mkdir(parents=True, exist_ok=True)
             folder = cache / f".{model['id']}.{uuid.uuid4().hex}.tmp"
+        keep = False
         try:
             try:
                 export = self.read_model(workspace["name"], model["id"], folder / "definition")
@@ -655,7 +680,7 @@ class CloudService:
             checks.append(_check("xmla_connect", RESULT_OK))
             checks.append(_check("model_read", RESULT_OK, None, table_count=export.table_count, measure_count=export.measure_count))
             checks.append(self._role(workspace["id"]))
-            coverage = self.report_coverage(workspace["id"], model["id"], cache)
+            coverage = self.report_coverage(workspace["id"], model["id"], cache / "coverage" / model["id"] if cache else None)
             names = [item["name"] for item in coverage["reports"] if not item["readable"]]
             checks.append(_check("reports_in_workspace", RESULT_OK, REASON_REPORT_NOT_READABLE if names else None,
                                  report_count=len(coverage["reports"]),
@@ -665,14 +690,15 @@ class CloudService:
             checks.append(_check("write_conditions", RESULT_NOT_CHECKED, REASON_WRITE_LATER))
             if devcenter is None:
                 return {}, None, checks  # A test only: no record.
-            source = detect_local_source(self._swap(folder, cache / model["id"]))
+            keep = True
         finally:
-            _remove(folder)
+            if not keep:
+                _remove(folder)
             if temporary is not None:
                 shutil.rmtree(temporary, ignore_errors=True)
         record = self._record(CLOUD_MODEL, model["name"], workspace, model["id"], request, model_format=MODEL_TMDL,
                               last_schema_update=export.last_schema_update)
-        return record, source, checks
+        return record, folder, checks
 
     def _connect_report(self, devcenter: Any, request: Mapping[str, Any]) -> tuple[Any, Any, list[dict[str, Any]]]:
         if not request.get("workspace_id") or not request.get("item_id"):
@@ -682,12 +708,14 @@ class CloudService:
         report = next((row for row in self.reports(workspace["id"]) if row["id"].casefold() == wanted), None)
         if report is None:
             raise DevCenterError("not_found", "The report is not in the workspace.", {"reason": "report_not_found"})
+        self._refuse_duplicate(devcenter, report["id"])
         cache = self.cache_dir(devcenter) if devcenter is not None else None
         import tempfile
 
         base = cache if cache is not None else Path(tempfile.mkdtemp(prefix="pbibrain-cloud-"))
         base.mkdir(parents=True, exist_ok=True)
         folder = base / f".{report['id']}.{uuid.uuid4().hex}.tmp"
+        keep = False
         try:
             try:
                 local = self.report_to_folder(workspace["id"], report["id"], folder)
@@ -701,14 +729,15 @@ class CloudService:
                       _check("write_conditions", RESULT_NOT_CHECKED, REASON_WRITE_LATER)]
             if cache is None:
                 return {}, None, checks
-            source = detect_local_source(self._swap(folder, cache / report["id"]))
+            keep = True
         finally:
-            _remove(folder)
+            if not keep:
+                _remove(folder)
             if cache is None:
                 shutil.rmtree(base, ignore_errors=True)
         record = self._record(CLOUD_REPORT, report["name"], workspace, report["id"], request,
                               report_format=report_format, dataset_id=report["dataset_id"])
-        return record, source, checks
+        return record, folder, checks
 
     def _record(self, kind: str, name: str, workspace: Mapping[str, Any], item_id: str, request: Mapping[str, Any], *,
                 model_format: str | None = None, report_format: str | None = None, last_schema_update: str | None = None,
@@ -750,6 +779,7 @@ class CloudService:
         name = _file_name(record["display_name"])
         model_folder = f"{name}.SemanticModel"
         existed = folder.exists()
+        new_parent = next((parent for parent in reversed(folder.parents) if not parent.exists()), None)
         staging = folder.parent / f".{folder.name}.pull-{uuid.uuid4().hex}.tmp"
         moved = False
         try:
@@ -775,6 +805,8 @@ class CloudService:
                 _remove(folder)
             if existed and not folder.exists():
                 folder.mkdir(parents=True)
+            if new_parent is not None:
+                _remove(new_parent)  # The pull made this folder; nothing else is in it.
             raise
         target = None
         if request.get("as_target"):

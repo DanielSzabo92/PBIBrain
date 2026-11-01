@@ -173,8 +173,12 @@ class DevCenterSessions:
         with self._lock:
             return copy.deepcopy(self._source(self._require_open().document, source_id))
 
-    def add_prepared_source(self, request: Mapping[str, Any], action: str, record: Mapping[str, Any], source: LocalSource) -> dict[str, Any]:
-        """Add a source record that a different module made (a cloud source), with ``source`` as its baseline."""
+    def add_prepared_source(self, request: Mapping[str, Any], action: str, record: Mapping[str, Any],
+                            prepare: Callable[[], LocalSource]) -> dict[str, Any]:
+        """Add a source record that a different module made (a cloud source).
+
+        ``prepare`` gives the baseline source. It runs only after the duplicate check.
+        """
 
         with self._lock:
             added: dict[str, Any] = {}
@@ -186,7 +190,7 @@ class DevCenterSessions:
                 source_id = f"src-{document['next_source_number']}"
                 document["next_source_number"] += 1
                 added.update({"source_id": source_id, **copy.deepcopy(dict(record))})
-                self._record_baseline(document, source_id, source)
+                self._record_baseline(document, source_id, prepare())
                 document["sources"].append(added)
                 return None, copy.deepcopy(added)
 

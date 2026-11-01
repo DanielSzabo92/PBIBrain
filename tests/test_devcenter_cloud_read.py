@@ -408,12 +408,44 @@ class CloudModelDonorTests(CloudTestCase):
                                            "model": {"mode": "existing", "source_id": source["source_id"]}}, code="action_not_allowed")
         self.assertEqual(("Pull to local PBIP first.", "cloud_target"), (error["message"], error["details"]["reason"]))
 
-    def test_the_same_cloud_item_two_times_is_refused(self):
+    def cache_files(self, item_id: str) -> dict[str, bytes]:
+        folder = self.devcenter.session_folder() / "tmp" / "cloud" / item_id
+        return {path.relative_to(folder).as_posix(): path.read_bytes() for path in sorted(folder.rglob("*")) if path.is_file()}
+
+    def test_the_same_cloud_item_two_times_is_refused_and_keeps_the_cache(self):
         self.create()
         self.connect_model()
-        error = self.failed("cloud_connect", {"base_revision": self.devcenter.revision, "kind": "model", "workspace_id": WS_SALES,
-                                              "item_id": MODEL}, code="action_not_allowed")
+        self.ok("cloud_connect", {"base_revision": self.devcenter.revision, "kind": "report", "workspace_id": WS_SALES,
+                                  "item_id": REPORT_OK})
+        model_before, report_before = self.cache_files(MODEL), self.cache_files(REPORT_OK)
+        self.assertTrue(model_before and report_before)
+        revision = self.devcenter.revision
+        reads = len(self.reader.calls)
+        for kind, item in (("model", MODEL), ("report", REPORT_OK)):
+            with self.subTest(kind=kind):
+                error = self.failed("cloud_connect", {"base_revision": revision, "kind": kind, "workspace_id": WS_SALES,
+                                                      "item_id": item}, code="action_not_allowed")
+                self.assertEqual("duplicate_source", error["details"]["reason"])
+        self.assertEqual(reads, len(self.reader.calls), "The duplicate check runs before the read")
+        self.assertEqual(model_before, self.cache_files(MODEL))
+        self.assertEqual(report_before, self.cache_files(REPORT_OK))
+        self.assertEqual(revision, self.devcenter.revision)
+
+    def test_a_refused_add_keeps_the_cache_of_the_existing_source(self):
+        """The duplicate check of the manager also runs before the swap into the shared cache folder."""
+
+        self.create()
+        self.connect_model()
+        before = self.cache_files(MODEL)
+        with patch.object(CloudService, "_refuse_duplicate", staticmethod(lambda devcenter, item_id: None)):
+            self.change = (self.server_model / "definition" / "tables" / "Sales.tmdl")
+            self.change.write_text(self.change.read_text(encoding="utf-8") + "\n", encoding="utf-8")
+            error = self.failed("cloud_connect", {"base_revision": self.devcenter.revision, "kind": "model", "workspace_id": WS_SALES,
+                                                  "item_id": MODEL}, code="action_not_allowed")
         self.assertEqual("duplicate_source", error["details"]["reason"])
+        self.assertEqual(before, self.cache_files(MODEL))
+        names = [path.name for path in (self.devcenter.session_folder() / "tmp" / "cloud").iterdir()]
+        self.assertEqual([], [name for name in names if name.endswith(".tmp")])
 
     def test_paste_a_workspace_connection(self):
         self.create()
@@ -465,9 +497,9 @@ class PullToLocalTests(CloudTestCase):
         revision = self.devcenter.revision
         self.assertEqual("model_not_readable", self.pull(new_folder)["error"]["details"]["reason"])
         self.assertFalse(new_folder.exists())
-        self.assertEqual([], [path.name for path in (self.root / "models").iterdir()])
+        self.assertFalse((self.root / "models").exists(), "A parent folder that the pull made goes too")
         empty = self.root / "models" / "Empty"
-        empty.mkdir()
+        empty.mkdir(parents=True)
         self.assertIn("error", self.pull(empty))
         self.assertTrue(empty.is_dir())
         self.assertEqual([], list(empty.iterdir()))
@@ -664,6 +696,39 @@ class ItemsAndConnectTests(CloudTestCase):
 
 
 class ContractTests(CloudTestCase):
+    def test_the_source_shape_depends_on_the_kind(self):
+        self.create()
+        cloud = self.connect_model()["source"]
+        local = self.ok("source_add", {"base_revision": self.devcenter.revision, "path": str(self.root / "SalesA/SalesA.pbip")})["source"]
+        name = "defs.json#/$defs/source"
+        validator = contracts.validator("defs.json")
+        source_schema = {"$ref": validator.schema["$id"] + "#/$defs/source"}
+        check = lambda value: list(validator.evolve(schema=source_schema).iter_errors(value))  # noqa: E731
+        self.assertEqual([], check(cloud), name)
+        self.assertEqual([], check(local), name)
+        self.assertTrue(check({**local, "path": None}), "A local source needs a relative path")
+        self.assertTrue(check({**local, "cloud": cloud["cloud"]}), "A local source has no cloud block")
+        self.assertTrue(check({**cloud, "path": "models/x"}), "A cloud source has a null path")
+        without = dict(cloud)
+        without.pop("cloud")
+        self.assertTrue(check(without), "A cloud source needs the cloud block")
+
+    def test_no_log_line_holds_the_account_name_or_a_token(self):
+        bad_reply = {"revision": None, "signed_in": True, "account_name": ACCOUNT_NAME, "reason": None, "token": fake_token(5)}
+        with patch.object(self.service, "sign_in", return_value=bad_reply), self.assertLogs("backend.devcenter.jsapi") as logs:
+            reply = jsapi.call(self.devcenter, "cloud_sign_in", {})
+        self.assertEqual("internal_error", reply["error"]["details"]["reason"])
+
+        def boom(*_args, **_kwargs):
+            raise RuntimeError(f"failed for {ACCOUNT_NAME} with {fake_token(6)}")
+
+        with patch.object(self.service, "sign_in", side_effect=boom), self.assertLogs("backend.devcenter.jsapi") as more:
+            jsapi.call(self.devcenter, "cloud_sign_in", {})
+        text = "\n".join(logs.output + more.output)
+        self.assertIn("cloud_sign_in", text)
+        for secret in (ACCOUNT_NAME, fake_token(5), fake_token(6)):
+            self.assertNotIn(secret, text)
+
     def test_each_s11_method_has_a_request_and_a_reply_schema(self):
         names = set(contracts.names())
         for method in S11_METHODS:
