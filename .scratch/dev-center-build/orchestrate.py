@@ -36,7 +36,7 @@ BOARD = HERE / "board.md"
 STATE = HERE / "orchestrator-state.json"
 COSTLOG = HERE / "orchestrator-cost.jsonl"
 INBOX = HERE / "learnings-inbox.md"
-WORKTREES = ROOT.parent                     # .claude/worktrees
+WORKTREES = Path("C:/Users/Daniel/Desktop/PBIBrain-wt")   # outside .claude: headless sessions cannot write there
 BUILD_BRANCH = "claude/dev-center-build-6abbf2"
 LBUG = "C:/Users/Daniel/Desktop/PBIBrain/runtime/native/lbug_shared.dll"
 
@@ -111,10 +111,15 @@ def claude(role: str, prompt: str, cwd: Path, *, ticket: str, resume: str | None
     proc = subprocess.run(cmd, cwd=cwd, env=ENV, capture_output=True, text=True, encoding="utf-8",
                           errors="replace", timeout=3 * 3600)
     out = proc.stdout.strip()
-    try:
-        data = json.loads(out.splitlines()[-1]) if out else {}
-    except ValueError:
-        data = {"result": out}
+    data: dict = {"result": out}
+    for candidate in (out, out[out.find("{"):] if "{" in out else "", out.splitlines()[-1] if out else ""):
+        try:
+            parsed = json.loads(candidate)
+        except ValueError:
+            continue
+        if isinstance(parsed, dict):
+            data = parsed
+            break
     text = str(data.get("result", "")) + proc.stderr
     with LOCK, COSTLOG.open("a", encoding="utf-8", newline="\n") as fh:
         fh.write(json.dumps({"time": time.strftime("%Y-%m-%dT%H:%M:%S"), "ticket": ticket, "role": role,
@@ -177,18 +182,31 @@ SCAN = [
     (re.compile(r"[\w.+-]+@[\w-]+\.[\w.]+"), "e-mail address"),
     (re.compile(r"eyJ[\w-]{10,}\.[\w-]{10,}\.|ghp_\w{20,}|AKIA[0-9A-Z]{16}"), "token"),
 ]
+# The session hooks of trail and graft rewrite these files in each new worktree. They are not ticket work.
+WIRING = re.compile(r"^(\.claude/|\.cursor/|\.gemini/|\.mcp\.json$|AGENTS\.md$|GEMINI\.md$|\.trail/(?!learnings/))")
 SCAN_SKIP = re.compile(r"(^|/)(tests?|e2e|test)/|lint|\.md$|package-lock\.json$")
 
 
 def gates(wt: Path, base: str) -> list[str]:
     """Return the gate failures. An empty list is a pass."""
     fails = []
+    committed_wiring = [p for p in sh(["git", "diff", "--name-only", f"{base}...HEAD"], wt).stdout.split() if WIRING.search(p)]
+    if committed_wiring:                     # take hook changes out of the branch
+        at_base = [p for p in committed_wiring if sh(["git", "cat-file", "-e", f"{base}:{p}"], wt).returncode == 0]
+        new = [p for p in committed_wiring if p not in at_base]
+        if at_base:
+            sh(["git", "checkout", base, "--", *at_base], wt)
+        if new:
+            sh(["git", "rm", "-q", "--cached", "--ignore-unmatch", *new], wt)
+        sh(["git", "commit", "-q", "-m", "Remove agent wiring changes from the ticket branch\n\n"
+            "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"], wt)
     changed = sh(["git", "diff", "--name-only", f"{base}...HEAD"], wt).stdout.split()
     ignored = [l[3:] for l in sh(["git", "status", "--porcelain", "--ignored"], wt).stdout.splitlines()
                if l.startswith("!! ") and re.search(r"^(tests|frontend/(src|e2e|test))/", l[3:])]
     if ignored:
         fails.append("Ignored test or source files that git does not hold: " + ", ".join(ignored[:20]))
-    dirty = sh(["git", "status", "--porcelain"], wt).stdout.strip()
+    dirty = "\n".join(l for l in sh(["git", "status", "--porcelain"], wt).stdout.splitlines()
+                      if not WIRING.search(l[3:]) and not l[3:].startswith(".trail/learnings/"))
     if dirty:
         fails.append("Uncommitted changes:\n" + tail(dirty, 20))
     diff = sh(["git", "diff", f"{base}...HEAD", "--unified=0"], wt).stdout
@@ -237,6 +255,7 @@ Your worktree is ready: node_modules, the TOM bridge, and LBUG_C_API_LIB_PATH ar
 Read `.scratch/dev-center-build/WORKER.md` and `.scratch/dev-center-build/issues/{file}`. Read only the design sections that the ticket names, not the whole documents.
 {extra}
 Rules for cost: run only your own test modules while you work. Do not run the full Python suite or the full e2e suite; the orchestrator runs all gates after you finish and sends you any failure. Do not run kit gates more than once for each screen and theme.
+Do not commit changes to `.claude/`, `.cursor/`, `.gemini/`, `.mcp.json`, `AGENTS.md`, `GEMINI.md`, or `.trail/` (session hooks change them); stage your files by name, not with `git add -A`.
 When done: commit on this branch (no push), then reply in at most 8 lines: commit SHA, tests added, open items, and a line "Learning: <fact> because <reason>" for each non-obvious cause or trap."""
 
 FIX_PROMPT = """The orchestrator found these problems in ticket {num}. Fix each one, run the related tests, commit, and reply in at most 6 lines (one line for each item, then the new SHA).
@@ -388,6 +407,7 @@ def main() -> int:
     ap.add_argument("--only", action="append", default=[])
     ap.add_argument("--parallel", type=int, default=MAX_PARALLEL)
     args = ap.parse_args()
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     if sh(["git", "branch", "--show-current"]).stdout.strip() != BUILD_BRANCH:
         print("Run the script in the build worktree.", file=sys.stderr)
         return 2

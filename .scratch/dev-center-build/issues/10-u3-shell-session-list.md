@@ -8,6 +8,8 @@ The goal, the code areas, and the acceptance tests are the design text below. Ea
 
 ## Lead notes
 
+- Move the U3 fixtures to the S2 shape: `session_id` of 32 hex characters, source IDs `src-<n>`, `proposals.open`, `questions.open`, `counts.marks`. The old fixtures use `id`, `src-sales`, and `open_proposals`, and they fail the S2 schemas.
+- The Development Center "No project" screen cannot show while the host has no project, because the app shows its onboarding page first. The fake GET sessions returns `action_not_allowed` with the reason `no_project`, as the real backend does, and the e2e switches to that scenario after the app loads.
 - `GET session` shows the workspace name and IDs of a connected cloud source (S11).
 - The fake server replies of `session_open` and `session_create` must follow the S2 reply schemas (no `session` field). Align all U3 fixtures to the schemas in `backend/devcenter/contracts/` and add them to the contract test.
 - In e2e, run axe inside an open Radix overlay, and pause the fake clock (`pauseAt`) in timed specs (see the U1 learning).
