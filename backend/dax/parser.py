@@ -8,6 +8,7 @@ interpretation happens here.
 from __future__ import annotations
 
 from dataclasses import dataclass
+import re
 from typing import Any, Iterable
 
 from antlr4 import CommonTokenStream, InputStream
@@ -19,6 +20,8 @@ from .ast import (
     BinaryOpNode,
     ErrorNode,
     FunctionCallNode,
+    FunctionDefinitionNode,
+    FunctionParameterNode,
     IdentifierNode,
     LiteralNode,
     ParenthesizedNode,
@@ -545,6 +548,88 @@ def parse_dax(
 
 
 parse = parse_dax
+
+
+_PARAMETER_RE = re.compile(r"^\s*([A-Za-z_][A-Za-z0-9_]*)\s*(?::\s*([A-Za-z]+)(?:\s+([A-Za-z]+))?(?:\s+([A-Za-z]+))?)?\s*$")
+_PARAMETER_MODES = {"VAL", "EXPR"}
+
+
+def split_function_header(source: str) -> tuple[list[dict[str, Any]], int] | None:
+    """Find the ``(parameters) =>`` header of a user-defined function.
+
+    The return value is the parameter list and the offset of the body. The
+    return value is None when the text has no function header.
+    """
+
+    index = 0
+    while index < len(source) and source[index].isspace():
+        index += 1
+    if index >= len(source) or source[index] != "(":
+        return None
+    close = source.find(")", index)
+    if close < 0:
+        return None
+    arrow = close + 1
+    while arrow < len(source) and source[arrow].isspace():
+        arrow += 1
+    if source[arrow:arrow + 2] != "=>":
+        return None
+    parameters: list[dict[str, Any]] = []
+    inner = source[index + 1:close]
+    offset = index + 1
+    for part in inner.split(",") if inner.strip() else []:
+        match = _PARAMETER_RE.match(part)
+        if match is None:
+            return None
+        name, first, second, third = match.groups()
+        words = [item for item in (first, second, third) if item]
+        mode = words.pop().upper() if words and words[-1].upper() in _PARAMETER_MODES else None
+        parameters.append({"name": name, "parameter_type": words[0] if words else None, "subtype": words[1] if len(words) > 1 else None,
+                           "mode": mode, "start": offset + match.start(1), "end": offset + len(part.rstrip())})
+        offset += len(part) + 1
+    return parameters, arrow + 2
+
+
+def parse_dax_function(
+    source: str,
+    *,
+    raise_on_error: bool = True,
+    strict: bool | None = None,
+) -> DaxParseResult:
+    """Parse a user-defined function definition: ``(a : NUMERIC) => a * 2``.
+
+    The function replaces the header with spaces and parses the body as one
+    DAX expression. Thus each body offset, line, and column is the offset,
+    line, and column in the full definition text.
+    """
+
+    if isinstance(source, bytes):
+        source = source.decode("utf-8")
+    if not isinstance(source, str):
+        raise TypeError("DAX source must be text")
+    header = split_function_header(source)
+    if header is None:
+        return parse_dax(source, raise_on_error=raise_on_error, strict=strict)
+    parameters, body_offset = header
+    padded = "".join(char if char in "\r\n" else " " for char in source[:body_offset]) + source[body_offset:]
+    body = parse_dax(padded, raise_on_error=raise_on_error, strict=strict)
+    if body.errors:
+        return DaxParseResult(root=body.root, source=source, errors=body.errors, tree=body.tree)
+
+    def span(start: int, end: int) -> SourceSpan:
+        line = source.count("\n", 0, start) + 1
+        column = start - (source.rfind("\n", 0, start) + 1)
+        end_line = source.count("\n", 0, end) + 1
+        end_column = end - (source.rfind("\n", 0, end) + 1)
+        return SourceSpan(start, end, line, column, end_line, end_column)
+
+    nodes = tuple(
+        FunctionParameterNode(span=span(item["start"], item["end"]), text=source[item["start"]:item["end"]], name=item["name"],
+                              parameter_type=item["parameter_type"], subtype=item["subtype"], mode=item["mode"])
+        for item in parameters
+    )
+    root = FunctionDefinitionNode(span=span(0, len(source)), text=source, parameters=nodes, body=body.root)
+    return DaxParseResult(root=root, source=source, errors=(), tree=body.tree)
 
 
 class DaxParser:

@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pbibrain.local/devcenter/contracts/jsapi/session_open.request.json",
+  "title": "JS API session_open: request",
+  "type": "object",
+  "properties": {
+    "session_id": {
+      "$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/session_id"
+    },
+    "base_revision": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    }
+  },
+  "required": [
+    "session_id"
+  ],
+  "additionalProperties": false
+}

@@ -78,7 +78,12 @@ class PBIRCoverageTests(unittest.TestCase):
             changed = deepcopy(original)
             changed["Sales.Report/definition/pages/month/page.json"]["$schema"] = PREFIX + "definition/page/99.0.0/schema.json"
             self.assertIn("PBIR_SCHEMA_UNSUPPORTED", {item["code"] for item in validate_report_documents(changed)["issues"]})
+            # S1: the scanner reads bookmarks. A bookmarks file without a known schema still fails closed.
             changed["Sales.Report/definition/bookmarks/bookmarks.json"] = {}
+            issues = validate_report_documents(changed)["issues"]
+            self.assertIn({"code": "PBIR_SCHEMA_UNSUPPORTED", "source_file": "Sales.Report/definition/bookmarks/bookmarks.json", "schema": None}, issues)
+            # A JSON file of an unknown kind is still an unsupported artifact.
+            changed["Sales.Report/definition/custom.json"] = {}
             self.assertIn("PBIR_UNSUPPORTED_ARTIFACT", {item["code"] for item in validate_report_documents(changed)["issues"]})
 
 if __name__ == "__main__": unittest.main()

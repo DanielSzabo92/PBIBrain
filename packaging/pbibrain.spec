@@ -14,6 +14,7 @@ a = Analysis(
         (str(ROOT / "frontend" / "dist"), "frontend/dist"),
         (str(ROOT / "runtime" / "native"), "runtime/native"),
         (str(ROOT / "runtime" / "licenses"), "licenses"),
+        (str(ROOT / "backend" / "devcenter" / "contracts"), "backend/devcenter/contracts"),
     ],
     hiddenimports=[
         "webview.platforms.edgechromium",
@@ -21,6 +22,7 @@ a = Analysis(
         "pythonnet",
         "ladybug._lbug_capi",
         "backend.mcp_server",
+        "backend.devcenter.session.jsapi_methods",
     ],
     hookspath=[],
     hooksconfig={},

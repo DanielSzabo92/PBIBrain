@@ -14,7 +14,8 @@ from pathlib import Path
 from typing import Any, Iterable, Mapping
 
 
-_OBJECT_RE = re.compile(r"^(\s+)(column|measure)\s+(.+?)\s*$", re.IGNORECASE)
+_OBJECT_RE = re.compile(r"^(\s+)(column|measure|hierarchy|partition)\s+(.+?)\s*$", re.IGNORECASE)
+_LEVEL_RE = re.compile(r"^(\s+)level\s+(.+?)\s*$", re.IGNORECASE)
 _TABLE_RE = re.compile(r"^\s*table\s+(.+?)\s*$", re.IGNORECASE)
 _MODEL_RE = re.compile(r"^\s*model\s+(.+?)\s*$", re.IGNORECASE)
 _ATTRIBUTE_RE = re.compile(r"^\s*([A-Za-z][A-Za-z0-9_]*)\s*:\s*(.*?)\s*$")
@@ -202,6 +203,7 @@ def _parse_table(path: Path) -> dict[str, Any] | None:
         "hidden": _has_marker(table_lines, "isHidden"),
         "columns": [],
         "measures": [],
+        "hierarchies": [],
     }
     object_matches = [
         (index, match)
@@ -221,6 +223,12 @@ def _parse_table(path: Path) -> dict[str, Any] | None:
         end = object_indexes[position + 1][0] if position + 1 < len(object_indexes) else len(lines)
         kind = match.group(2).casefold()
         header = match.group(3)
+        if kind == "partition":
+            # The text reader does not read partitions. Only the TOM reader reads them.
+            continue
+        if kind == "hierarchy":
+            table["hierarchies"].append(_parse_hierarchy(_unquote(header.strip()), lines[index:end]))
+            continue
         name_part, separator, rhs = header.partition("=")
         object_name = _unquote(name_part.strip())
         block = lines[index:end]
@@ -243,7 +251,31 @@ def _parse_table(path: Path) -> dict[str, Any] | None:
             item["expression_language"] = "DAX"
         item = {key: value for key, value in item.items() if value is not None}
         table["measures" if kind == "measure" else "columns"].append(item)
+    if not table["hierarchies"]:
+        del table["hierarchies"]
     return table
+
+
+def _parse_hierarchy(name: str, block: list[str]) -> dict[str, Any]:
+    """Read one TMDL hierarchy block and its levels."""
+
+    starts = [index for index, line in enumerate(block) if _LEVEL_RE.match(line)]
+    header = block[: starts[0]] if starts else block
+    hierarchy: dict[str, Any] = {"name": name, "levels": []}
+    lineage = _attribute(header, "lineageTag")
+    if lineage:
+        hierarchy["lineageTag"] = lineage
+    for position, index in enumerate(starts):
+        end = starts[position + 1] if position + 1 < len(starts) else len(block)
+        level_block = block[index:end]
+        match = _LEVEL_RE.match(block[index])
+        assert match is not None
+        level = {"name": _unquote(match.group(2)), "ordinal": position, "column": _unquote(_attribute(level_block, "column") or "")}
+        lineage = _attribute(level_block, "lineageTag")
+        if lineage:
+            level["lineageTag"] = lineage
+        hierarchy["levels"].append(level)
+    return hierarchy
 
 
 def _parse_model_meta(path: Path) -> dict[str, Any]:
@@ -429,8 +461,12 @@ def _read_report(path: Path, models: Mapping[Path, Mapping[str, Any]], root: Pat
                 "visuals": visuals,
             }
         )
+    extensions_file = path / "definition" / "reportExtensions.json"
+    extensions = _read_json(extensions_file) if extensions_file.is_file() else {}
     report: dict[str, Any] = {
         **report_payload,
+        "report_extensions": extensions.get("entities", []) if isinstance(extensions, Mapping) else [],
+        "bookmarks": _read_bookmarks(path / "definition" / "bookmarks"),
         "id": report_id,
         "name": report_payload.get("name") or platform_name or path.stem,
         "model_id": model.get("id") if model else model_ref,
@@ -438,6 +474,42 @@ def _read_report(path: Path, models: Mapping[Path, Mapping[str, Any]], root: Pat
         "pages": pages,
     }
     return report
+
+
+def _read_bookmarks(folder: Path) -> list[dict[str, Any]]:
+    """Read the PBIR bookmarks in the order of bookmarks.json, with their group names."""
+
+    if not folder.is_dir():
+        return []
+    files = {item.name[: -len(".bookmark.json")]: item for item in folder.glob("*.bookmark.json")}
+    ordered: list[tuple[str, str | None]] = []
+    metadata = folder / "bookmarks.json"
+    if metadata.is_file():
+        def visit(items: Any, group: str | None) -> None:
+            for item in items if isinstance(items, list) else []:
+                if not isinstance(item, Mapping) or item.get("name") is None:
+                    continue
+                if isinstance(item.get("children"), list):
+                    visit(item["children"], str(item["name"]))
+                else:
+                    ordered.append((str(item["name"]), group))
+        try:
+            items = _read_json(metadata).get("items")
+        except (OSError, ValueError):
+            # A bookmarks.json that is not a JSON object gives no order. The PBIR
+            # validation still reports the file, thus the guarded scan stays blocked.
+            items = None
+        visit(items, None)
+    listed = {name for name, _ in ordered}
+    ordered.extend((name, None) for name in sorted(files, key=str.casefold) if name not in listed)
+    bookmarks: list[dict[str, Any]] = []
+    for ordinal, (name, group) in enumerate(ordered):
+        if name not in files:
+            continue
+        payload = _read_json(files[name])
+        bookmarks.append({**payload, "id": payload.get("name", name), "order": ordinal, "group_name": group,
+                          "source_file": files[name].relative_to(folder.parent.parent).as_posix()})
+    return bookmarks
 
 
 def _report_model_ref(path: Path) -> str | None:

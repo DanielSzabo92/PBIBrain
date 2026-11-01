@@ -21,9 +21,7 @@ table Sales
 		mode: import
 		source =
 				let
-				    Source = #table({"OrderDate", "Amount"}, {})
+				    Source = SalesRows
 				in
 				    Source
-
-		annotation Columns = OrderDate, Amount
 

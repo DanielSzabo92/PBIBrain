@@ -9,6 +9,11 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Iterable, Mapping
 
+# Version 2 (S1) adds the node types HIERARCHY, LEVEL, PARTITION, SECURITY_ROLE,
+# ROLE_FILTER, OLS_PERMISSION, REPORT_MEASURE, and BOOKMARK. The node and edge
+# tables do not change. See backend/graph/migrations.py.
+GRAPH_SCHEMA_VERSION = 2
+
 OBJECT_TYPES = frozenset(
     {
         "WORKSPACE",
@@ -22,6 +27,12 @@ OBJECT_TYPES = frozenset(
         "USER_DEFINED_FUNCTION",
         "CALCULATION_GROUP",
         "CALCULATION_ITEM",
+        "HIERARCHY",
+        "LEVEL",
+        "PARTITION",
+        "SECURITY_ROLE",
+        "ROLE_FILTER",
+        "OLS_PERMISSION",
         "REPORT",
         "PAGE",
         "VISUAL",
@@ -29,6 +40,8 @@ OBJECT_TYPES = frozenset(
         "VISUAL_FILTER",
         "PAGE_FILTER",
         "REPORT_FILTER",
+        "REPORT_MEASURE",
+        "BOOKMARK",
         "BUSINESS_CONCEPT",
         "SELECTOR",
         "SELECTOR_OPTION",

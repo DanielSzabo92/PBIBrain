@@ -7,6 +7,8 @@ from .ast import (
     DaxNode,
     ErrorNode,
     FunctionCallNode,
+    FunctionDefinitionNode,
+    FunctionParameterNode,
     IdentifierNode,
     LiteralNode,
     ParenthesizedNode,
@@ -18,7 +20,7 @@ from .ast import (
     VarBlockNode,
     VarDeclarationNode,
 )
-from .parser import DAXParser, DaxParseResult, DaxParser, DaxSyntaxError, Parser, parse, parse_dax
+from .parser import DAXParser, DaxParseResult, DaxParser, DaxSyntaxError, Parser, parse, parse_dax, parse_dax_function, split_function_header
 
 __all__ = [
     "AstNode",
@@ -31,6 +33,8 @@ __all__ = [
     "DaxSyntaxError",
     "DAXParser",
     "FunctionCallNode",
+    "FunctionDefinitionNode",
+    "FunctionParameterNode",
     "IdentifierNode",
     "LiteralNode",
     "ParenthesizedNode",
@@ -44,4 +48,6 @@ __all__ = [
     "VarDeclarationNode",
     "parse",
     "parse_dax",
+    "parse_dax_function",
+    "split_function_header",
 ]

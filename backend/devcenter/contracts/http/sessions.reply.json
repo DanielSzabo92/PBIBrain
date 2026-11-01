@@ -1,0 +1,107 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pbibrain.local/devcenter/contracts/http/sessions.reply.json",
+  "title": "GET /api/devcenter/sessions (UC1, UC2)",
+  "type": "object",
+  "properties": {
+    "revision": {
+      "anyOf": [
+        {
+          "$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/revision"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "sessions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/session_id"
+          },
+          "location": {
+            "$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/location"
+          },
+          "display_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/utc_time"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "target_model_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "target_report_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "source_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "plan_status": {
+            "enum": [
+              "valid",
+              "valid_with_warnings",
+              "invalid",
+              null
+            ]
+          },
+          "lock_state": {
+            "enum": [
+              "free",
+              "locked"
+            ]
+          },
+          "schema_state": {
+            "enum": [
+              "ok",
+              "newer",
+              "damaged"
+            ]
+          },
+          "is_open": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "display_name",
+          "is_open",
+          "location",
+          "lock_state",
+          "plan_status",
+          "schema_state",
+          "session_id",
+          "source_count",
+          "target_model_name",
+          "target_report_name",
+          "updated_at"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "revision",
+    "sessions"
+  ],
+  "additionalProperties": false
+}

@@ -1,0 +1,7 @@
+expression SalesRows =
+		let
+		    Source = #table({"OrderDate", "Amount"}, {})
+		in
+		    Source
+	lineageTag: e-sales-rows
+

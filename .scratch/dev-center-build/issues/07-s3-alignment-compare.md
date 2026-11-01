@@ -6,6 +6,12 @@ Depends on (tickets): [03](03-s1-scanner-coverage.md), [04](04-s2-session-store.
 
 The goal, the code areas, and the acceptance tests are the design text below. Each acceptance test must be an automated test, except the items that the design marks as manual.
 
+## Lead notes
+
+- S2 row keys for each source are `<type>:<qualified name>` (`backend/devcenter/sources/objects.py`), and `row_confirm`, the marks, and `merge_choices` use them. Define how an aligned compare row key maps to these source keys, and test it.
+- S2 follow-ups (small, in this ticket): add a test that `ROW_KEY_KINDS` in `backend/devcenter/session/secrets.py` equals the kinds of `sources/objects.py`; in `store.py` `_remove_stale`, a `PermissionError` on the read or stat of a lock must give a read-only open, not an error.
+- Register new JS API methods in `backend/devcenter/jsapi.py` (`AREA_MODULES`) and new reads in `backend/devcenter/http_routes.py`. Put schemas in `backend/devcenter/contracts/` (validator by `$id`).
+
 ### Design text: S3. Alignment and compare
 
 - Goal: N-way compare rows with states, marks, and plain-word phrases.

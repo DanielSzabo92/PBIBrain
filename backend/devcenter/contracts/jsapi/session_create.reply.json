@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pbibrain.local/devcenter/contracts/jsapi/session_create.reply.json",
+  "title": "JS API session_create: reply (an error reply uses error.json)",
+  "type": "object",
+  "properties": {
+    "revision": {
+      "$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/revision"
+    },
+    "session_id": {
+      "$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/session_id"
+    },
+    "read_only": {
+      "const": false
+    }
+  },
+  "required": [
+    "read_only",
+    "revision",
+    "session_id"
+  ],
+  "additionalProperties": false
+}

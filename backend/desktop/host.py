@@ -16,6 +16,9 @@ from wsgiref.simple_server import WSGIRequestHandler, WSGIServer, make_server
 
 from backend.api.app import BrainAPI, BrainApp
 from backend.connection_marker import marker_connection_id
+from backend.devcenter.http_routes import dispatch as devcenter_dispatch
+from backend.devcenter.jsapi import DevCenterJSAPI
+from backend.devcenter.session.manager import DevCenterSessions
 from backend.graph.repository import GraphRepository
 from backend.native_runtime import configure_native_runtime
 from backend.projects import PROJECT_VERSION, ProjectService
@@ -92,7 +95,7 @@ def _write_json_atomic(path: Path, payload: Mapping[str, Any]) -> None:
         raise
 
 
-class DesktopController:
+class DesktopController(DevCenterJSAPI):
     """pywebview JS API and owner of the active native project repository."""
 
     def __init__(
@@ -104,6 +107,7 @@ class DesktopController:
         runtime_configurer: Callable[[], Path | None] = configure_native_runtime,
         folder_picker: Callable[[], str | Path | None] | None = None,
         source_picker: Callable[[], list[str | Path] | tuple[str | Path, ...] | None] | None = None,
+        devcenter: DevCenterSessions | None = None,
     ) -> None:
         self.static_dir = Path(static_dir).resolve()
         self._repository_factory = repository_factory or (lambda path: GraphRepository(path))
@@ -119,6 +123,7 @@ class DesktopController:
         self._marker_path: Path | None = None
         self._server_url: str | None = None
         self._connection_id = uuid.uuid4().hex
+        self._devcenter = devcenter or DevCenterSessions()
 
     def attach_server(self, url: str) -> None:
         parsed = urlsplit(str(url))
@@ -317,6 +322,8 @@ class DesktopController:
         if old_marker is not None and old_marker != new_marker:
             self._remove_owned_marker(old_marker, connection_id=old_connection_id)
         self._connection_id = new_connection_id
+        self._devcenter.attach_project(root)
+        new_application.devcenter = self._devcenter
         if old_application is not None:
             old_application.close()
         if old_repository is not None:
@@ -343,6 +350,7 @@ class DesktopController:
         self._project = None
         self._project_service = None
         self._marker_path = None
+        self._devcenter.attach_project(None)
         if marker is not None:
             self._remove_owned_marker(marker)
         if application is not None:
@@ -394,6 +402,9 @@ class DesktopApplication:
                 with self.controller._lock:
                     application = self.controller.active_application()
                     if application is None:
+                        if path.startswith("/api/devcenter/"):
+                            # An unknown route answers 404 before the session check.
+                            return self._json(start_response, *devcenter_dispatch(None, method, path.strip("/").split("/")[2:], {}, b""))
                         return self._json(start_response, 503, {"error": "Open a project first"})
                     requested_session = str(environ.get("HTTP_X_PBIBRAIN_SESSION") or "")
                     if requested_session and requested_session != self.controller._connection_id:

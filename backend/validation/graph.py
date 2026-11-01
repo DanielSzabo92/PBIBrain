@@ -21,10 +21,22 @@ _MODEL_TYPES = frozenset(
         "USER_DEFINED_FUNCTION",
         "CALCULATION_GROUP",
         "CALCULATION_ITEM",
+        "HIERARCHY",
+        "LEVEL",
+        "PARTITION",
+        "SECURITY_ROLE",
+        "ROLE_FILTER",
+        "OLS_PERMISSION",
     }
 )
 _REPORT_TYPES = frozenset({"PAGE", "VISUAL", "VISUAL_FILTER", "PAGE_FILTER", "REPORT_FILTER"})
-_DAX_SOURCE_TYPES = frozenset({"MEASURE", "CALCULATION_ITEM", "SHARED_EXPRESSION", "USER_DEFINED_FUNCTION", "COLUMN"})
+# A visual can use a model object or a report measure of its own report.
+_VISUAL_FIELD_TYPES = _MODEL_TYPES | {"REPORT_MEASURE"}
+# The property that holds the resolved target, and the property that holds the source text.
+_TARGET_KEYS = {"LEVEL": ("column_id", "column_ref"), "ROLE_FILTER": ("table_id", "table_ref"), "OLS_PERMISSION": ("target_id", "target_ref")}
+_FILTER_SOURCE_TYPES =frozenset({"VISUAL_FILTER", "PAGE_FILTER", "REPORT_FILTER", "ROLE_FILTER"})
+_DAX_SOURCE_TYPES = frozenset({"MEASURE", "CALCULATION_ITEM", "SHARED_EXPRESSION", "USER_DEFINED_FUNCTION", "COLUMN",
+                               "REPORT_MEASURE", "ROLE_FILTER", "PARTITION"})
 
 
 def _text(value: Any) -> str:
@@ -238,7 +250,7 @@ def _validate_relationships(
                 elif _node_type(by_id[endpoint]) != "COLUMN":
                     _add(result, "invalid_relationship_endpoint", "ERROR", f"Relationship endpoint is not a COLUMN: {endpoint}", object_id=node_id, endpoint=endpoint)
 
-        for key in ("referenced_object_ids", "referencedObjectIds", "field_ids", "fieldIds", "measure_ids", "measureIds", "column_ids", "columnIds"):
+        for key in ("referenced_object_ids", "referencedObjectIds", "field_ids", "fieldIds", "measure_ids", "measureIds", "column_ids", "columnIds", "hierarchy_ids", "visual_ids"):
             values = props.get(key)
             if values is None:
                 continue
@@ -249,7 +261,13 @@ def _validate_relationships(
                 if target_id and target_id not in by_id:
                     _add(result, "missing_object_reference", "ERROR", f"Object references missing object {target_id}", object_id=node_id, target_id=target_id, property=key)
 
-        if type_name == "VISUAL":
+        if type_name in _TARGET_KEYS:
+            target_key, ref_key = _TARGET_KEYS[type_name]
+            if _id(props.get(target_key)) is None:
+                _add(result, "missing_object_reference", "ERROR", f"{type_name} could not resolve object reference {props.get(ref_key)!r}",
+                     object_id=node_id, target_ref=props.get(ref_key))
+
+        if type_name in {"VISUAL", "BOOKMARK"}:
             unresolved = props.get("unresolved_field_refs", [])
             if not isinstance(unresolved, (list, tuple)):
                 unresolved = [unresolved]
@@ -295,9 +313,9 @@ def _validate_relationships(
             _validate_contains_pair(result, source_type, target_type, edge_id, from_id, to_id)
         elif edge_type == "USES_MODEL" and (source_type != "REPORT" or target_type != "MODEL"):
             _add(result, "invalid_model_binding", "ERROR", "USES_MODEL must connect REPORT to MODEL", edge_id=edge_id)
-        elif edge_type == "USES" and source_type == "VISUAL" and target_type not in _MODEL_TYPES:
+        elif edge_type == "USES" and source_type == "VISUAL" and target_type not in _VISUAL_FIELD_TYPES:
             _add(result, "invalid_visual_binding", "ERROR", "Visual USES edge must target a model object", edge_id=edge_id)
-        elif edge_type == "FILTERS" and source_type not in {"VISUAL_FILTER", "PAGE_FILTER", "REPORT_FILTER"}:
+        elif edge_type == "FILTERS" and source_type not in _FILTER_SOURCE_TYPES:
             _add(result, "invalid_filter_binding", "ERROR", "FILTERS edge must originate from a filter object", edge_id=edge_id)
         elif edge_type == "RELATES_TO" and source_type != "RELATIONSHIP" and target_type != "RELATIONSHIP":
             _add(result, "invalid_relationship_edge", "ERROR", "RELATES_TO edge must include a RELATIONSHIP node", edge_id=edge_id)
@@ -313,9 +331,11 @@ def _validate_contains_pair(
 ) -> None:
     allowed = {
         "MODEL": _MODEL_TYPES | {"TABLE"},
-        "TABLE": {"COLUMN", "MEASURE"},
+        "TABLE": {"COLUMN", "MEASURE", "HIERARCHY", "PARTITION", "CALCULATION_GROUP"},
         "CALCULATION_GROUP": {"CALCULATION_ITEM"},
-        "REPORT": {"PAGE"},
+        "HIERARCHY": {"LEVEL"},
+        "SECURITY_ROLE": {"ROLE_FILTER", "OLS_PERMISSION"},
+        "REPORT": {"PAGE", "REPORT_MEASURE", "BOOKMARK"},
         "PAGE": {"VISUAL", "PAGE_FILTER"},
         "VISUAL": {"VISUAL_FILTER"},
     }
@@ -354,7 +374,15 @@ def _validate_orphans(
         "FIELD_PARAMETER": {"MODEL"},
         "SHARED_EXPRESSION": {"MODEL"},
         "USER_DEFINED_FUNCTION": {"MODEL"},
-        "CALCULATION_GROUP": {"MODEL"},
+        "CALCULATION_GROUP": {"MODEL", "TABLE"},
+        "HIERARCHY": {"TABLE"},
+        "LEVEL": {"HIERARCHY"},
+        "PARTITION": {"TABLE"},
+        "SECURITY_ROLE": {"MODEL"},
+        "ROLE_FILTER": {"SECURITY_ROLE"},
+        "OLS_PERMISSION": {"SECURITY_ROLE"},
+        "REPORT_MEASURE": {"REPORT"},
+        "BOOKMARK": {"REPORT"},
         "COLUMN": {"TABLE"},
         "MEASURE": {"TABLE", "MODEL"},
         "CALCULATION_ITEM": {"CALCULATION_GROUP"},

@@ -1,0 +1,241 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pbibrain.local/devcenter/contracts/defs.json",
+  "title": "Shared parts of the Development Center contracts",
+  "$defs": {
+    "revision": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "base_revision": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "session_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{32}$"
+    },
+    "source_id": {
+      "type": "string",
+      "pattern": "^src-[1-9][0-9]*$"
+    },
+    "row_key": {
+      "type": "string",
+      "minLength": 3,
+      "pattern": "^[a-z_]+:"
+    },
+    "utc_time": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"
+    },
+    "full_path": {
+      "type": "string",
+      "minLength": 1,
+      "description": "A full path from the native picker. The session stores it relative to the project root."
+    },
+    "relative_path": {
+      "type": "string",
+      "minLength": 1,
+      "not": {
+        "pattern": "^(?:[A-Za-z]:|/|\\\\)"
+      }
+    },
+    "location": {
+      "enum": [
+        "project",
+        "app_data"
+      ]
+    },
+    "source_kind": {
+      "enum": [
+        "pbip",
+        "tmdl_folder",
+        "model_bim",
+        "pbir_report",
+        "pbir_legacy_report",
+        "cloud_model",
+        "cloud_report"
+      ]
+    },
+    "mark_kind": {
+      "enum": [
+        "source_changed",
+        "source_object_missing",
+        "new_since_start"
+      ]
+    },
+    "source_status": {
+      "enum": [
+        "ok",
+        "missing",
+        "unreadable"
+      ]
+    },
+    "source": {
+      "type": "object",
+      "properties": {
+        "source_id": {
+          "$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/source_id"
+        },
+        "kind": {
+          "$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/source_kind"
+        },
+        "role": {
+          "enum": [
+            "donor",
+            "target"
+          ]
+        },
+        "display_name": {
+          "type": "string"
+        },
+        "path": {
+          "$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/relative_path"
+        },
+        "model_path": {
+          "anyOf": [
+            {
+              "$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/relative_path"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "model_format": {
+          "enum": [
+            "tmdl",
+            "tmsl",
+            null
+          ]
+        },
+        "report_path": {
+          "anyOf": [
+            {
+              "$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/relative_path"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "report_format": {
+          "enum": [
+            "pbir",
+            "pbir_legacy",
+            null
+          ]
+        },
+        "access_type": {
+          "enum": [
+            "Read",
+            "Read/Write",
+            null
+          ]
+        },
+        "status": {
+          "$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/source_status"
+        },
+        "fingerprint_state": {
+          "enum": [
+            "same",
+            "changed",
+            "not_checked"
+          ]
+        },
+        "mark_count": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "access_type",
+        "display_name",
+        "fingerprint_state",
+        "kind",
+        "mark_count",
+        "model_format",
+        "model_path",
+        "path",
+        "report_format",
+        "report_path",
+        "role",
+        "source_id",
+        "status"
+      ],
+      "additionalProperties": false
+    },
+    "target": {
+      "type": "object",
+      "properties": {
+        "model": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "object",
+              "properties": {
+                "mode": {
+                  "enum": [
+                    "existing",
+                    "empty",
+                    "copy_of"
+                  ]
+                },
+                "source_id": {
+                  "$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/source_id"
+                },
+                "copy_of": {
+                  "$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/source_id"
+                }
+              },
+              "required": [
+                "mode",
+                "source_id"
+              ],
+              "additionalProperties": false
+            }
+          ]
+        },
+        "report": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "mode": {
+                  "const": "new_empty"
+                }
+              },
+              "required": [
+                "mode"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "mode": {
+                  "const": "existing"
+                },
+                "source_id": {
+                  "$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/source_id"
+                }
+              },
+              "required": [
+                "mode",
+                "source_id"
+              ],
+              "additionalProperties": false
+            }
+          ]
+        }
+      },
+      "required": [
+        "model",
+        "report"
+      ],
+      "additionalProperties": false
+    }
+  }
+}
