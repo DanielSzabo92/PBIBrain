@@ -1,0 +1,17 @@
+{
+  "description": "One error reply for each code of technical design section 12, plus the client codes network and unknown. The UI contract test validates each reply against the error shape.",
+  "replies": [
+    {"error": {"code": "not_found", "message": "The row measure/Net Margin does not exist.", "details": {"row_key": "measure/Net Margin", "kind": "row"}}},
+    {"error": {"code": "session_not_open", "message": "No session is open.", "details": {}}},
+    {"error": {"code": "stale_revision", "message": "The session changed after the base revision.", "details": {"base_revision": 4, "revision": 6}}},
+    {"error": {"code": "confidence_below_threshold", "message": "The confidence is below 0.9.", "details": {"minimum": 0.9}}},
+    {"error": {"code": "reason_required", "message": "A proposal needs a reason.", "details": {}}},
+    {"error": {"code": "user_choice_exists", "message": "The user set a Merge Choice on this row.", "details": {"row_key": "measure/Net Margin"}}},
+    {"error": {"code": "naming_rule_violation", "message": "The name breaks a confirmed naming rule.", "details": {"rule_ids": ["rule-1"]}}},
+    {"error": {"code": "invalid_payload", "message": "The session needs a display name.", "details": {"field": "display_name"}}},
+    {"error": {"code": "action_not_allowed", "message": "A rule with this scope and check kind exists.", "details": {"existing_rule_id": "rule-4"}}},
+    {"error": {"code": "source_changed", "message": "A source of this row changed.", "details": {"row_key": "measure/Net Margin"}}},
+    {"error": {"code": "network", "message": "Injected network fault.", "details": {}}},
+    {"error": {"code": "unknown", "message": "The bridge stopped.", "details": {"step": "guard", "check": "tree_compare"}}}
+  ]
+}
