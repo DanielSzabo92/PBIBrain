@@ -12,6 +12,14 @@ Read this file, then your ticket in `issues/`. The ticket wins where it is more 
 6. Read the design text that your ticket names. Read `CONTEXT.md` for the words. Read `.trail/learnings/` that touch your code areas.
 7. Use `graft ask "<question>" --source`, `graft grep`, `graft callers`, and `graft skeleton` before you open whole source files.
 
+## Scope cuts (user, 2026-11-01)
+
+These cuts win over the design text and the ticket:
+- No screen reader pass and no screen reader output checks.
+- No color-blind specific patterns or checks. Keep the visible status word.
+- One layout only: 1280 x 900. Skip the e2e and the kit checks at other sizes, the 1279 px breakpoint, and the 200% zoom check.
+- Cloud UI is out of scope (future feature).
+
 ## Rules
 
 - Write the code and the automated tests of your ticket. The tests must pass.

@@ -157,10 +157,10 @@ def set_board(num: str, state: str, branch: str = "", commit: str = "") -> None:
 
 
 def ready(rows: dict[str, dict], running: set[str]) -> list[str]:
-    done = {n for n, r in rows.items() if r["state"] == "done"}
+    done = {n for n, r in rows.items() if r["state"] in ("done", "deferred")}
     out = []
     for n, r in sorted(rows.items()):
-        if r["state"] == "done" or n in running:
+        if r["state"] in ("done", "deferred") or n in running:
             continue
         deps = [d for d in rows if d != n] if r["deps"] == ["*"] else r["deps"]
         if all(d in done for d in deps):

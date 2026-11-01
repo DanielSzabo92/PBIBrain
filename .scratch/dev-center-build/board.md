@@ -33,7 +33,7 @@ UI lane (UI design section 13): U0, then U1 and U2 in parallel, then U3 (needs S
 | 11 | S5 | [Change Plan engine](issues/11-s5-change-plan.md) | 07, 08 | running | | |
 | 12 | U4 | [Compare grid](issues/12-u4-compare-grid.md) | 10, 07 | open | | |
 | 13 | U5 | [Naming rules UI](issues/13-u5-naming-rules-ui.md) | 10, 08 | open | | |
-| 14 | U11 | [Cloud sources UI](issues/14-u11-cloud-ui.md) | 10, 09 | open | | |
+| 14 | U11 | [Cloud sources UI](issues/14-u11-cloud-ui.md) | 10, 09 | deferred | | |
 | 15 | S6 | [Impact data](issues/15-s6-impact-data.md) | 07, 11 | open | | |
 | 16 | S7a | [Model writer (bridge)](issues/16-s7a-model-writer.md) | 11 | open | | |
 | 17 | S7b | [PBIR writer](issues/17-s7b-pbir-writer.md) | 11 | open | | |
@@ -47,24 +47,29 @@ UI lane (UI design section 13): U0, then U1 and U2 in parallel, then U3 (needs S
 | 25 | U10 | [Apply, Undo, format only, change report](issues/25-u10-apply-ui.md) | 18, 23 | open | | |
 | 26 | U12 | [Release checks](issues/26-u12-release-checks.md) | all others | open | | |
 
-States: open, running, review, rework, done.
+States: open, running, review, rework, blocked, deferred, done.
 
 ## Not in version 1
 
 - S12 Cloud model write and S13 Cloud report write: version 1.1 (technical design section 15.2).
 
+## Scope cuts (user, 2026-11-01)
+
+- Cloud is a future feature. The user has no Entra app and no Azure subscription. S11 (cloud read with fakes) is merged and stays. U11 (ticket 14, cloud UI) is deferred. No real-tenant checklist now.
+- No screen reader pass (NVDA, Narrator) and no screen reader output checks.
+- No color-blind specific work: no extra patterns or icons only for color vision. A status still needs a visible word, as the copy gives it.
+- No other layouts: build and test one desktop layout at 1280 x 900 (and keep no horizontal overflow there). No checks at 1024 x 640 or 1440 x 900, no 1279 px breakpoint behavior, no 200% zoom check.
+
 ## Later (after version 1)
+
+- Cloud: Entra app registration (task T1), the real-tenant checklist, the cloud UI (U11), and cloud write (S12, S13).
 
 - A donor visual shows "Fields changed" after a donor model rename, because visual query fields do not read through the alignment (ticket 07 review). Version 1.1 follow-up.
 - `_valid_rule` does not check the rule scope and check values (ticket 08 review).
 
 ## HITL items (need the user)
 
-| ID | Item | Blocks |
-|---|---|---|
-| H1 | Task T1: register the Entra app (public client, WAM redirect, Power BI and Fabric scopes). Put the client ID in `PBIBRAIN_CLOUD_CLIENT_ID` or `%APPDATA%/PBIBrain/settings.json` (`cloud.client_id`), never in the repo. Then run the real-tenant checklist. Until then, cloud read uses fakes only. Items to confirm (ticket 09): the model `updated_at` comes from the dataset `createdDate`; only push models are found as unsupported (not Excel or live-connected); the report `format` field and the role read for a Viewer; the XMLA connect and the export; the cost of a full export on each source check. | Release of cloud read against a real tenant (risk R1, R2). Not the build. |
-| H3 | Sign in the `claude` CLI on this PC (run `claude` once in a terminal), then run `python .scratch/dev-center-build/orchestrate.py` in the build worktree. The headless CLI reported "OAuth session expired". | All remaining tickets. |
-| H2 | Screen reader pass with NVDA and Narrator (U12). | Release sign-off of accessibility. Not the build. |
+None now.
 
 ## Test totals
 
