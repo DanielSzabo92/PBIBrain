@@ -82,6 +82,16 @@
   --info: #6fb6ee;
   --info-soft: rgb(111 182 238 / 0.12);
 
+  /* Opaque tints (UI design 7.1): each -soft token over --surface. New screens use -tint under text. */
+  --ok-tint: #1c2b28;
+  --warn-tint: #2d2921;
+  --bad-tint: #2e2225;
+  --info-tint: #1e2833;
+  --brand-tint: #222535;
+  /* Destructive fill: text and icon on --bad, and the hover fill. */
+  --bad-ink: #0b0c0f;
+  --bad-strong: #f49a9a;
+
   /* Elevation */
   --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.35);
   --shadow-md: 0 1px 2px rgb(0 0 0 / 0.3), 0 8px 24px -6px rgb(0 0 0 / 0.45);
@@ -113,6 +123,35 @@
   --input: var(--line-strong);
   --ring: var(--brand);
   --red: var(--bad);
+
+  /* Semantic aliases (UI design 7.2). They alias the tokens above, so each theme follows. */
+  --cmp-conflict: var(--bad);
+  --cmp-conflict-tint: var(--bad-tint);
+  --cmp-missing: var(--text-2);
+  --cmp-renamed: var(--info);
+  --cmp-renamed-tint: var(--info-tint);
+  --cmp-moved: var(--info);
+  --cmp-moved-tint: var(--info-tint);
+  --cmp-different: var(--warn);
+  --cmp-different-tint: var(--warn-tint);
+  --cmp-same: var(--text-3);
+  --cmp-changed: var(--brand);
+  --proposal: var(--brand-strong);
+  --proposal-tint: var(--brand-tint);
+  --impact-removed: var(--bad);
+  --impact-removed-tint: var(--bad-tint);
+  --impact-breaks: var(--bad);
+  --impact-breaks-tint: var(--bad-tint);
+  --impact-changes: var(--warn);
+  --impact-changes-tint: var(--warn-tint);
+  --impact-new: var(--ok);
+  --impact-new-tint: var(--ok-tint);
+  --impact-unchecked: var(--info);
+  --impact-unchecked-tint: var(--info-tint);
+  --impact-unchanged: var(--control-border);
+  --row-hover: var(--surface-hover);
+  --row-selected: var(--surface-3);
+  --row-active: var(--brand-tint);
 
   color-scheme: dark;
 }
@@ -149,6 +188,14 @@
   --bad-soft: rgb(207 60 60 / 0.08);
   --info: #216a9f;
   --info-soft: rgb(42 127 192 / 0.1);
+
+  --ok-tint: #e9f5f0;
+  --warn-tint: #f8f1e7;
+  --bad-tint: #fbefef;
+  --info-tint: #eaf2f9;
+  --brand-tint: #eff0fc;
+  --bad-ink: #ffffff;
+  --bad-strong: #9f2626;
 
   --shadow-sm: 0 1px 2px rgb(20 20 30 / 0.06);
   --shadow-md: 0 1px 2px rgb(20 20 30 / 0.05), 0 8px 24px -8px rgb(20 20 30 / 0.12);

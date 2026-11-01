@@ -209,7 +209,7 @@ export default function GraphView({ transport, overview, snapshot, selectedId, c
     <Card className="graph-filter-card">
       <div className="graph-filter-top">
         <div className="graph-search"><Search aria-hidden="true" /><Input type="search" aria-label="Filter graph objects" value={query} onChange={(event) => { updateSession({ query: event.target.value }); setFocusedNode(null); }} placeholder="Find an object…" /></div>
-        <Tabs value={filters.artifact || "all"} onValueChange={(value) => updateFilters({ artifact: value === "all" ? "" : value })}>
+        <Tabs controls="graph-canvas" value={filters.artifact || "all"} onValueChange={(value) => updateFilters({ artifact: value === "all" ? "" : value })}>
           <TabsList aria-label="Artifact groups"><TabsTrigger value="all">All objects</TabsTrigger>{Object.entries(ARTIFACT_GROUPS).map(([key, group]) => <TabsTrigger value={key} key={key}><span className="artifact-dot" style={{ backgroundColor: colors.groups[key] }} />{group.label.replace(" artifacts", "")}</TabsTrigger>)}</TabsList>
         </Tabs>
         <div className="graph-filter-actions">
@@ -232,9 +232,9 @@ export default function GraphView({ transport, overview, snapshot, selectedId, c
       {centerId ? <div className="graph-center"><Badge variant="default"><Crosshair />Focused view</Badge><span>{objectName(nodes.find((node) => node.id === centerId))}</span><Button variant="ghost" size="xs" onClick={() => { updateSession({ centerId: "" }); setFocusedNode(null); }}>Back to project</Button>{filters.objectType ? <small>The center stays visible for context.</small> : null}</div> : null}
       {graph?.truncated ? <div className="scope-notice">Showing {nodes.length} of {graph.total_nodes} objects. Filter by name or double-click an object to explore its connections{limit < 1000 ? <> or <Button variant="link" size="xs" onClick={() => updateSession({ limit: Math.min(limit * 2, 1000) })}>Show more</Button></> : "."}</div> : null}
     </div>
-    <Card className="graph-canvas-card" aria-busy={loading}>
+    <Card id="graph-canvas" className="graph-canvas-card" aria-busy={loading}>
       <div className="graph-view-toolbar">
-        <Tabs value={viewMode} onValueChange={changeView}><TabsList aria-label="Graph view"><TabsTrigger value="overview">Overview</TabsTrigger><TabsTrigger value="connections" disabled={!centerId && !focusedNode}>Connections</TabsTrigger><TabsTrigger value="full">Full graph</TabsTrigger></TabsList></Tabs>
+        <Tabs controls="graph-canvas" value={viewMode} onValueChange={changeView}><TabsList aria-label="Graph view"><TabsTrigger value="overview">Overview</TabsTrigger><TabsTrigger value="connections" disabled={!centerId && !focusedNode}>Connections</TabsTrigger><TabsTrigger value="full">Full graph</TabsTrigger></TabsList></Tabs>
         <p>{viewMode === "overview" ? "Expand a group. Select an object to see its connections." : viewMode === "connections" ? "Follow an object’s connections, one step at a time." : "All loaded objects and relationships."}</p>
         {viewMode === "overview" ? <Button variant="ghost" size="sm" disabled={graphSession.expandedIds == null} onClick={() => updateSession({ expandedIds: null })}>Collapse groups</Button> : centerId ? <Button variant="outline" size="sm" disabled={loading || depth >= 4} onClick={() => updateSession({ depth: Math.min(depth + 1, 4) })}><Plus />Expand connections</Button> : null}
       </div>
