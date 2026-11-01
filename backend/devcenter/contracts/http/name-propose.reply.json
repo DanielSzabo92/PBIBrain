@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pbibrain.local/devcenter/contracts/http/name-propose.reply.json",
+  "title": "POST /api/devcenter/name-propose: reply (section 14.1, UC2, UC19). breaks and clash are for checked_name: the candidate, or the proposed name.",
+  "type": "object",
+  "properties": {
+    "revision": {
+      "$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/revision"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "rule_ids": {
+      "type": "array",
+      "items": {
+        "$ref": "https://pbibrain.local/devcenter/contracts/naming.json#/$defs/rule_id"
+      }
+    },
+    "table": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "display_folder": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "resolved_clash": {
+      "anyOf": [
+        {
+          "$ref": "https://pbibrain.local/devcenter/contracts/naming.json#/$defs/named_object"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "checked_name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "breaks": {
+      "type": "array",
+      "items": {
+        "$ref": "https://pbibrain.local/devcenter/contracts/naming.json#/$defs/rule_break"
+      }
+    },
+    "clash": {
+      "anyOf": [
+        {
+          "$ref": "https://pbibrain.local/devcenter/contracts/naming.json#/$defs/named_object"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "required": [
+    "breaks",
+    "checked_name",
+    "clash",
+    "display_folder",
+    "name",
+    "resolved_clash",
+    "revision",
+    "rule_ids",
+    "table"
+  ],
+  "additionalProperties": false
+}

@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pbibrain.local/devcenter/contracts/jsapi/naming_rule_confirm.request.json",
+  "title": "JS API naming_rule_confirm: request",
+  "type": "object",
+  "properties": {
+    "base_revision": {
+      "$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/base_revision"
+    },
+    "rule_id": {
+      "$ref": "https://pbibrain.local/devcenter/contracts/naming.json#/$defs/rule_id"
+    }
+  },
+  "required": [
+    "base_revision",
+    "rule_id"
+  ],
+  "additionalProperties": false
+}

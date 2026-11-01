@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pbibrain.local/devcenter/contracts/jsapi/naming_rule_edit.reply.json",
+  "title": "JS API naming_rule_edit: reply (an error reply uses error.json)",
+  "type": "object",
+  "properties": {
+    "revision": {
+      "$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/revision"
+    },
+    "rule": {
+      "$ref": "https://pbibrain.local/devcenter/contracts/naming.json#/$defs/rule"
+    }
+  },
+  "required": [
+    "revision",
+    "rule"
+  ],
+  "additionalProperties": false
+}

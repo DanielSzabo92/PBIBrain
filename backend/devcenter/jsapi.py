@@ -26,6 +26,7 @@ LOGGER = logging.getLogger(__name__)
 # One line for each area. Later build steps add their modules here.
 AREA_MODULES = (
     "backend.devcenter.session.jsapi_methods",
+    "backend.devcenter.naming.jsapi_methods",
 )
 
 Handler = Callable[[Any, Mapping[str, Any]], Mapping[str, Any]]
