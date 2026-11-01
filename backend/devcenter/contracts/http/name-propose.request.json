@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pbibrain.local/devcenter/contracts/http/name-propose.request.json",
+  "title": "POST /api/devcenter/name-propose: request (section 14.1, UC19). A read-only calculation.",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 500,
+      "description": "The candidate name for the proposer, normally the donor name."
+    },
+    "object_type": {
+      "$ref": "https://pbibrain.local/devcenter/contracts/naming.json#/$defs/object_type"
+    },
+    "table": {
+      "anyOf": [
+        {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "display_folder": {
+      "anyOf": [
+        {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "format_string": {
+      "anyOf": [
+        {
+          "type": "string",
+          "maxLength": 500
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "source_id": {
+      "anyOf": [
+        {
+          "$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/source_id"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "candidate": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 500,
+      "description": "UC19: a name that the user typed. The reply checks it."
+    }
+  },
+  "required": [
+    "name",
+    "object_type"
+  ],
+  "additionalProperties": false
+}

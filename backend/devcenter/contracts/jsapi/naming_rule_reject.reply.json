@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pbibrain.local/devcenter/contracts/jsapi/naming_rule_reject.reply.json",
+  "title": "JS API naming_rule_reject: reply (UC16). A user rule is removed; a detected rule stays as rejected.",
+  "type": "object",
+  "properties": {
+    "revision": {
+      "$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/revision"
+    },
+    "rule_id": {
+      "$ref": "https://pbibrain.local/devcenter/contracts/naming.json#/$defs/rule_id"
+    },
+    "removed": {
+      "type": "boolean"
+    },
+    "rule": {
+      "anyOf": [
+        {
+          "$ref": "https://pbibrain.local/devcenter/contracts/naming.json#/$defs/rule"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "required": [
+    "removed",
+    "revision",
+    "rule",
+    "rule_id"
+  ],
+  "additionalProperties": false
+}

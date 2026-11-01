@@ -18,6 +18,8 @@ from backend.devcenter.errors import DevCenterError, error_reply
 
 READ = "read"
 PROPOSAL = "proposal"
+# Section 14.1: the read-only calculations with a request body. They are POST reads.
+READ_POSTS = ("name-propose", "plan-validate")
 
 Handler = Callable[[Any, Mapping[str, Sequence[str]], Any], Mapping[str, Any]]
 
@@ -37,8 +39,8 @@ ROUTES: list[Route] = []
 def route(method: str, path: str, *, kind: str = READ, contract: str | None = None) -> Callable[[Handler], Handler]:
     """Add one route. ``path`` is relative to ``/api/devcenter/``; ``{name}`` is one path part."""
 
-    if (kind, method) not in {(READ, "GET"), (PROPOSAL, "POST")}:
-        raise ValueError("A Development Center route is a GET read or a POST proposal only")
+    if (kind, method) not in {(READ, "GET"), (PROPOSAL, "POST")} and not (kind == READ and method == "POST" and path in READ_POSTS):
+        raise ValueError("A Development Center route is a GET read, a POST read calculation, or a POST proposal only")
 
     def decorator(handler: Handler) -> Handler:
         ROUTES.append(Route(method, tuple(part for part in path.split("/") if part), kind, handler, contract))
@@ -87,3 +89,4 @@ def get_session(devcenter: Any, query: Mapping[str, Sequence[str]], body: Any) -
 
 
 from backend.devcenter.compare import http_routes as _compare_routes  # noqa: E402,F401  (build step S3)
+from backend.devcenter.naming import http_routes as _naming_routes  # noqa: E402,F401  (S4 read routes)

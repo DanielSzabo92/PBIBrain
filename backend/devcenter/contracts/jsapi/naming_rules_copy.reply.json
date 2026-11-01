@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pbibrain.local/devcenter/contracts/jsapi/naming_rules_copy.reply.json",
+  "title": "JS API naming_rules_copy: reply. The copied rules arrive as proposed.",
+  "type": "object",
+  "properties": {
+    "revision": {
+      "$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/revision"
+    },
+    "copied": {
+      "type": "array",
+      "items": {
+        "$ref": "https://pbibrain.local/devcenter/contracts/naming.json#/$defs/rule"
+      }
+    },
+    "skipped": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "rule_id": {
+            "$ref": "https://pbibrain.local/devcenter/contracts/naming.json#/$defs/rule_id"
+          },
+          "reason": {
+            "enum": [
+              "duplicate_rule",
+              "rejected_rule"
+            ]
+          },
+          "existing_rule_id": {
+            "anyOf": [
+              {
+                "$ref": "https://pbibrain.local/devcenter/contracts/naming.json#/$defs/rule_id"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "rule_id",
+          "reason",
+          "existing_rule_id"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "copied",
+    "revision",
+    "skipped"
+  ],
+  "additionalProperties": false
+}

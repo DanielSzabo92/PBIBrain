@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pbibrain.local/devcenter/contracts/http/naming-rules.reply.json",
+  "title": "GET /api/devcenter/naming-rules (section 14.1, UC2, UC18)",
+  "type": "object",
+  "properties": {
+    "revision": {
+      "$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/revision"
+    },
+    "target": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "source_id": {
+              "$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/source_id"
+            },
+            "model_name": {
+              "type": "string"
+            },
+            "rule_file": {
+              "$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/relative_path"
+            }
+          },
+          "required": [
+            "source_id",
+            "model_name",
+            "rule_file"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "settings": {
+      "type": "object",
+      "properties": {
+        "min_objects": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "min_support": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 1
+        }
+      },
+      "required": [
+        "min_objects",
+        "min_support"
+      ],
+      "additionalProperties": false
+    },
+    "rules": {
+      "type": "array",
+      "items": {
+        "$ref": "https://pbibrain.local/devcenter/contracts/naming.json#/$defs/rule"
+      }
+    },
+    "source_rule_counts": {
+      "type": "object",
+      "description": "UC18: the rule count of each session source model (not the target).",
+      "propertyNames": {
+        "$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/source_id"
+      },
+      "additionalProperties": {
+        "type": "integer",
+        "minimum": 0
+      }
+    }
+  },
+  "required": [
+    "revision",
+    "rules",
+    "settings",
+    "source_rule_counts",
+    "target"
+  ],
+  "additionalProperties": false
+}

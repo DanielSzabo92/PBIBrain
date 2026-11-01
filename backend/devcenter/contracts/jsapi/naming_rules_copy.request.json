@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pbibrain.local/devcenter/contracts/jsapi/naming_rules_copy.request.json",
+  "title": "JS API naming_rules_copy: request",
+  "type": "object",
+  "properties": {
+    "base_revision": {
+      "$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/base_revision"
+    },
+    "source_id": {
+      "$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/source_id"
+    }
+  },
+  "required": [
+    "base_revision",
+    "source_id"
+  ],
+  "additionalProperties": false
+}

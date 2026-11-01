@@ -1,0 +1,330 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pbibrain.local/devcenter/contracts/naming.json",
+  "title": "Shared parts of the naming rule contracts (technical design section 5)",
+  "$defs": {
+    "rule_id": {
+      "type": "string",
+      "pattern": "^nr-[0-9a-f]{12}$"
+    },
+    "rule_object_type": {
+      "enum": [
+        "table",
+        "data_column",
+        "calculated_column",
+        "calculated_table",
+        "measure",
+        "hierarchy",
+        "calculation_group"
+      ]
+    },
+    "object_type": {
+      "enum": [
+        "table",
+        "data_column",
+        "calculated_column",
+        "calculated_table",
+        "measure",
+        "hierarchy",
+        "calculation_group",
+        "report_measure"
+      ],
+      "description": "A report measure uses the measure rules."
+    },
+    "format_kind": {
+      "enum": [
+        "percent",
+        "currency"
+      ]
+    },
+    "scope": {
+      "type": "object",
+      "description": "Optional filters. A missing or null filter applies to all objects of the type.",
+      "properties": {
+        "table": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "display_folder": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "format_kind": {
+          "anyOf": [
+            {
+              "$ref": "https://pbibrain.local/devcenter/contracts/naming.json#/$defs/format_kind"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "name_prefix": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "check": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "enum": [
+            "prefix",
+            "suffix",
+            "letter_case",
+            "separator",
+            "unit_word",
+            "folder_by_type",
+            "regex"
+          ]
+        },
+        "value": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "folder": {
+          "enum": [
+            "table",
+            "display_folder"
+          ]
+        }
+      },
+      "required": [
+        "kind",
+        "value"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "letter_case"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "value": {
+                "enum": [
+                  "title",
+                  "pascal",
+                  "camel",
+                  "snake",
+                  "upper",
+                  "lower"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "separator"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "value": {
+                "enum": [
+                  "space",
+                  "underscore",
+                  "none"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "folder_by_type"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "folder"
+            ]
+          },
+          "else": {
+            "not": {
+              "required": [
+                "folder"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "rule": {
+      "type": "object",
+      "description": "One Naming Rule with its support and break count in the target model.",
+      "properties": {
+        "rule_id": {
+          "$ref": "https://pbibrain.local/devcenter/contracts/naming.json#/$defs/rule_id"
+        },
+        "object_type": {
+          "$ref": "https://pbibrain.local/devcenter/contracts/naming.json#/$defs/rule_object_type"
+        },
+        "scope": {
+          "allOf": [
+            {
+              "$ref": "https://pbibrain.local/devcenter/contracts/naming.json#/$defs/scope"
+            }
+          ],
+          "required": [
+            "table",
+            "display_folder",
+            "format_kind",
+            "name_prefix"
+          ]
+        },
+        "check": {
+          "$ref": "https://pbibrain.local/devcenter/contracts/naming.json#/$defs/check"
+        },
+        "origin": {
+          "enum": [
+            "detected",
+            "user"
+          ]
+        },
+        "status": {
+          "enum": [
+            "proposed",
+            "confirmed",
+            "rejected"
+          ]
+        },
+        "copied_from": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1
+        },
+        "support": {
+          "type": "object",
+          "properties": {
+            "count": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "total": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "required": [
+            "count",
+            "total"
+          ],
+          "additionalProperties": false
+        },
+        "breaks": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "rule_id",
+        "object_type",
+        "scope",
+        "check",
+        "origin",
+        "status",
+        "copied_from",
+        "text",
+        "support",
+        "breaks"
+      ],
+      "additionalProperties": false
+    },
+    "named_object": {
+      "type": "object",
+      "properties": {
+        "object_type": {
+          "$ref": "https://pbibrain.local/devcenter/contracts/naming.json#/$defs/object_type"
+        },
+        "name": {
+          "type": "string"
+        },
+        "table": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "row_key": {
+          "$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/row_key"
+        }
+      },
+      "required": [
+        "object_type",
+        "name",
+        "table",
+        "row_key"
+      ],
+      "additionalProperties": false
+    },
+    "rule_break": {
+      "type": "object",
+      "properties": {
+        "rule_id": {
+          "$ref": "https://pbibrain.local/devcenter/contracts/naming.json#/$defs/rule_id"
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "rule_id",
+        "text"
+      ],
+      "additionalProperties": false
+    }
+  }
+}
