@@ -61,3 +61,13 @@ Tests:
 - `python -m unittest discover -s tests`: see the commit message.
 - `npm test` in `frontend/`: 99 pass, 0 fail.
 - `dotnet build -c Release backend/adapters/tabular_metadata/dotnet/TabularMetadata.csproj`: 0 warnings, 0 errors.
+
+### Rework 1 (review FAIL)
+
+1. Duplicate connect: the connect refuses a duplicate item before the read. The manager swaps the staging export into `tmp/cloud/<item ID>` only after its own duplicate check. The report coverage writes to `tmp/cloud/coverage/<model ID>/`. Tests: the first cache stays unchanged for a model and a report.
+2. Source contract: `allOf` with `if`/`then` on `kind`. Tests for both refusals.
+3. Log privacy: `jsapi.call` logs only the exception type, the code lines, and the JSON pointers. Test: no log line holds the account name or a token.
+- A failed pull removes the parent folders that it made. The bridge reads stdin with BOM detection and trims only the BOM.
+- Merged `claude/dev-center-build-6abbf2` (S3). `HOST_PENDING` has no S11 method.
+
+Tests after the rework: `tests.test_devcenter_cloud_read` 35 OK; full Python suite 505 OK; frontend `npm test` 99 pass; `dotnet build` 0 errors.
