@@ -6,6 +6,10 @@ Depends on (tickets): [10](10-u3-shell-session-list.md), [07](07-s3-alignment-co
 
 The goal, the code areas, and the acceptance tests are the design text below. Each acceptance test must be an automated test, except the items that the design marks as manual.
 
+## Lead notes
+
+- Some count texts in `frontend/src/devcenter/copy.js` have one form only (`compare.bulk.dialog.set.*`, `compare.bulk.toast`, `compare.no_match.body`) and can give "1 rows". Split them into `.one` and `.other` keys, as `work.banner.changed.*` does, and add a unit test.
+
 ### Design text: U4. Compare grid
 
 - Goal: the N-way compare grid with filters, bulk actions, and code diff.

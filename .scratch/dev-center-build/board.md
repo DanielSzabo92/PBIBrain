@@ -22,8 +22,8 @@ UI lane (UI design section 13): U0, then U1 and U2 in parallel, then U3 (needs S
 | 02 | U0 | [Test harness and CI](issues/02-u0-test-harness.md) | none | done | worktree-agent-a4f92e8221c3c04c5 | 2522d6d |
 | 03 | S1 | [Scanner coverage](issues/03-s1-scanner-coverage.md) | 01 | done | worktree-agent-afad72bef50254132 | 8d696fa |
 | 04 | S2 | [Session store and local sources](issues/04-s2-session-store.md) | 01 | done | worktree-agent-afc0c9fc1fd29d4b7 | a7d7a33 |
-| 05 | U1 | [Shared fixes, tokens, parts](issues/05-u1-shared-parts.md) | 02 | review | | |
-| 06 | U2 | [Data layer and copy](issues/06-u2-data-layer.md) | 02 | review | | |
+| 05 | U1 | [Shared fixes, tokens, parts](issues/05-u1-shared-parts.md) | 02 | rework | | |
+| 06 | U2 | [Data layer and copy](issues/06-u2-data-layer.md) | 02 | done | worktree-agent-a9a7d27a6597f0b68 | f3d4d53 |
 | 07 | S3 | [Alignment and compare](issues/07-s3-alignment-compare.md) | 03, 04 | running | | |
 | 08 | S4 | [Naming rules](issues/08-s4-naming-rules.md) | 04 | running | | |
 | 09 | S11 | [Cloud read (fakes)](issues/09-s11-cloud-read.md) | 04 | running | | |
@@ -67,3 +67,4 @@ States: open, running, review, rework, done.
 | 02 (U0) | 361 | 0 | 38 | 50 main, 7 guard (worker run) |
 | 03 (S1) | 379 | 0 | 38 | not run |
 | 04 (S2) | 425 | 0 | 38 | not run |
+| 06 (U2) | 436 | 0 | 99 | not run |

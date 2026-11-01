@@ -20,6 +20,7 @@ Read this file, then your ticket in `issues/`. The ticket wins where it is more 
 - Put no tokens, secrets, absolute user paths, or e-mail addresses in files.
 - Match the style of the code near your change. The repo uses `unittest` and `jsonschema` (no pytest, no pydantic).
 - Shared files (`backend/api/app.py`, `backend/desktop/host.py`, `backend/mcp_server.py`, `frontend/src/devcenter/jsapi-methods.json`, `frontend/src/devcenter/invalidation.js`, `tests/devcenter_ui_server.py`): other workers change them at the same time. Keep your edits to these files small. Put your logic in your own module and register it with one line where the extension point exists.
+- When you add a JS API method to the host, remove it from `HOST_PENDING` in `tests/test_devcenter_ui_contract.py` (after ticket 06 is merged). The test fails on purpose if you forget.
 - Each new JS API call gets a request and a reply JSON Schema in `backend/devcenter/contracts/` (UC4). Each new read reply carries `revision` (UC2).
 - Do not change tests of other areas to make them pass. If an old test fails because of a correct change, say so in your report.
 
