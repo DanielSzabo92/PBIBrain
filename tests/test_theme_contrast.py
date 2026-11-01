@@ -95,6 +95,8 @@ SECTION_7_4_PAIRS = (
     ("bad-ink", "bad", TEXT_MIN, 7.49, 5.79),
     ("bad-ink", "bad-strong", TEXT_MIN, 9.25, 7.56),
     ("bad", "surface", TEXT_MIN, 7.00, 5.79),
+    # Edge of the destructive hover fill against the page.
+    ("bad-strong", "surface", NON_TEXT_MIN, 8.65, 7.56),
     ("ring", "row-active", NON_TEXT_MIN, 5.80, 4.87),
     ("ring", "row-selected", NON_TEXT_MIN, 6.15, 4.84),
     ("control-border", "row-active", NON_TEXT_MIN, 3.11, 3.11),

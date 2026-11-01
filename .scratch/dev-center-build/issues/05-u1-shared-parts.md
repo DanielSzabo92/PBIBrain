@@ -74,6 +74,12 @@ Acceptance tests and where they are:
 
 AlertDialog: the gate accepts only `role="dialog"`, and AlertDialog has `role="alertdialog"`. The e2e spec covers its initial focus, trap, Escape, and focus return.
 
+### Rework 1
+
+- Finding 1: the SidePane sheet spec read `boundingBox()` during the `sheet-in` animation (400.00006 px). The spec now waits for each animation of the sheet to finish and compares the computed width. The 400 px limit stays.
+- Small finding: `SECTION_7_4_PAIRS` has the pair `bad-strong` on `surface` (fill edge, 3:1): 8.65 dark, 7.56 light.
+- Merged `354f742` (S1, S2, U2, and notes). Tests after the merge: Python 441 OK; `npm test` 102 pass; `devcenterParts.spec.js --repeat-each=5` 85 passed; full e2e 71 passed.
+
 ### Open items
 
 - A modal Radix overlay (Select listbox, Dialog, sheet) puts `aria-hidden` on the page behind it (`hideOthers`). axe then reports `aria-hidden-focus` on the full page. The focus trap keeps focus out of that page. The spec checks the open overlay itself. Later U-steps that run A1 on an open dialog must do the same, or the lead must decide to set `inert` on the background.

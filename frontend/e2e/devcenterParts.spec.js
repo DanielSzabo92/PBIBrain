@@ -371,8 +371,10 @@ for (const size of [{ width: 1440, height: 900, mode: "aside" }, { width: 1024, 
     } else {
       const sheet = page.getByRole("dialog", { name: "Margin" });
       await expect(sheet).toHaveAttribute("aria-modal", "true");
-      const box = await sheet.boundingBox();
-      expect(box.width).toBeLessThanOrEqual(400);
+      // Measure after the sheet-in animation ends, because the slide changes the box.
+      await sheet.evaluate((node) => Promise.all(node.getAnimations({ subtree: true }).map((animation) => animation.finished)));
+      const width = await sheet.evaluate((node) => parseFloat(getComputedStyle(node).width));
+      expect(width).toBeLessThanOrEqual(400);
       for (let index = 0; index < 8; index += 1) {
         await page.keyboard.press("Tab");
         expect(await sheet.evaluate((node) => node.contains(document.activeElement))).toBe(true);
