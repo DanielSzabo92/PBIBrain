@@ -12,7 +12,7 @@ import re
 from pathlib import Path
 from typing import Any, Iterable, Mapping, Sequence
 
-from .schema import Edge, Node, edge_from_dict, node_from_dict, serialize_edges, serialize_nodes, ladybug_schema
+from .schema import Edge, Node, edge_from_dict, node_from_dict, serialize_edges, serialize_nodes, ladybug_schema, GRAPH_SCHEMA_VERSION
 
 LOGGER = logging.getLogger(__name__)
 
@@ -150,6 +150,9 @@ class GraphRepository:
             self.edges[edge.id] = edge
 
     def _load_payload(self, payload: Mapping[str, Any]) -> None:
+        from .migrations import migrate_payload
+
+        payload = migrate_payload(payload)
         for value in payload.get("nodes", []):
             node = node_from_dict(value)
             self.nodes[node.id] = node
@@ -158,7 +161,7 @@ class GraphRepository:
             self.edges[edge.id] = edge
 
     def _payload(self) -> dict[str, Any]:
-        return {"nodes": serialize_nodes(self.nodes.values()), "edges": serialize_edges(self.edges.values())}
+        return {"schema_version": GRAPH_SCHEMA_VERSION, "nodes": serialize_nodes(self.nodes.values()), "edges": serialize_edges(self.edges.values())}
 
     def _persist(self) -> None:
         if self._native is not None:

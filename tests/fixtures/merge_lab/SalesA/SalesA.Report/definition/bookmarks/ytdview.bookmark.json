@@ -5,9 +5,29 @@
   "explorationState": {
     "version": "1.3",
     "activeSection": "overview",
+    "filters": {
+      "byExpr": [
+        {
+          "name": "regionfilter",
+          "type": "Categorical",
+          "expression": {
+            "Column": {
+              "Expression": {
+                "SourceRef": {
+                  "Entity": "Store"
+                }
+              },
+              "Property": "Region"
+            }
+          }
+        }
+      ]
+    },
     "sections": {
       "overview": {
-        "visualContainers": {}
+        "visualContainers": {
+          "timeslicer": {}
+        }
       }
     }
   },

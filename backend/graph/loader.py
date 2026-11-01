@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Iterable, Mapping, Sequence
@@ -170,6 +171,10 @@ class FactGraphBuilder:
         nodes = list(self.normalizer.nodes.values())
         node_ids = {node.id for node in nodes}
         models = [node for node in nodes if node.type == "MODEL"]
+        shared_expressions: dict[tuple[str | None, str], str] = {}
+        for node in nodes:
+            if node.type == "SHARED_EXPRESSION":
+                shared_expressions[(node.model_id, node.name)] = node.id
         model_child_types = {
             "TABLE",
             "RELATIONSHIP",
@@ -177,11 +182,12 @@ class FactGraphBuilder:
             "SHARED_EXPRESSION",
             "USER_DEFINED_FUNCTION",
             "CALCULATION_GROUP",
+            "SECURITY_ROLE",
         }
         for model in models:
             for node in nodes:
                 if node.model_id == model.id and (
-                    node.type in model_child_types
+                    (node.type in model_child_types and not (node.type == "CALCULATION_GROUP" and node.properties.get("table_id")))
                     or (node.type == "MEASURE" and not node.properties.get("table_id"))
                 ):
                     self._add_edge("CONTAINS", model.id, node.id, source="model_metadata", evidence=["model membership"])
@@ -189,13 +195,25 @@ class FactGraphBuilder:
         for node in nodes:
             properties = node.properties
             table_id = properties.get("table_id")
-            if table_id in node_ids and node.type in {"COLUMN", "MEASURE"}:
+            if table_id in node_ids and node.type in {"COLUMN", "MEASURE", "HIERARCHY", "PARTITION", "CALCULATION_GROUP"}:
                 self._add_edge("CONTAINS", str(table_id), node.id, source="model_metadata", evidence=["table membership"])
+            if node.type == "LEVEL":
+                self._add_edge("CONTAINS", properties.get("hierarchy_id"), node.id, source="model_metadata", evidence=["hierarchy membership"])
+                self._add_edge("REFERENCES", node.id, properties.get("column_id"), source="model_metadata", evidence=["hierarchy level column"])
+            if node.type in {"ROLE_FILTER", "OLS_PERMISSION"}:
+                self._add_edge("CONTAINS", properties.get("role_id"), node.id, source="model_metadata", evidence=["role membership"])
+            if node.type == "ROLE_FILTER":
+                self._add_edge("FILTERS", node.id, properties.get("table_id"), source="model_metadata", evidence=["row-level security filter table"])
+            if node.type == "OLS_PERMISSION":
+                self._add_edge("REFERENCES", node.id, properties.get("target_id"), source="model_metadata", evidence=["object-level security permission"])
+            if node.type in {"PARTITION", "SHARED_EXPRESSION"} and properties.get("expression") and not _is_dax(node):
+                for expression_id in shared_expression_refs(node, shared_expressions):
+                    self._add_edge("REFERENCES", node.id, expression_id, source="model_metadata", evidence=["M reference to shared expression"])
             group_id = properties.get("calculation_group_id")
             if group_id in node_ids and node.type == "CALCULATION_ITEM":
                 self._add_edge("CONTAINS", str(group_id), node.id, source="model_metadata", evidence=["calculation group membership"])
             parent_id = properties.get("parent_id")
-            if parent_id in node_ids and node.type in {"PAGE", "VISUAL", "VISUAL_CALCULATION", "VISUAL_FILTER", "PAGE_FILTER", "REPORT_FILTER"}:
+            if parent_id in node_ids and node.type in {"PAGE", "VISUAL", "VISUAL_CALCULATION", "VISUAL_FILTER", "PAGE_FILTER", "REPORT_FILTER", "REPORT_MEASURE", "BOOKMARK"}:
                 self._add_edge("CONTAINS", str(parent_id), node.id, source="report_metadata", evidence=["report containment"])
 
             if node.type == "REPORT" and node.model_id in node_ids:
@@ -203,6 +221,9 @@ class FactGraphBuilder:
             if node.type == "VISUAL":
                 for object_id in properties.get("field_ids", []):
                     self._add_edge("USES", node.id, str(object_id), source="report_metadata", evidence=["visual field binding"])
+            if node.type == "BOOKMARK":
+                for object_id in [properties.get("page_id"), *properties.get("visual_ids", []), *properties.get("field_ids", [])]:
+                    self._add_edge("REFERENCES", node.id, str(object_id) if object_id else None, source="report_metadata", evidence=["bookmark state"])
             if node.type == "FIELD_PARAMETER":
                 for object_id in properties.get("referenced_object_ids", []):
                     self._add_edge("REFERENCES", node.id, str(object_id), source="model_metadata", evidence=["field parameter entry"])
@@ -212,6 +233,36 @@ class FactGraphBuilder:
             if node.type in {"VISUAL_FILTER", "PAGE_FILTER", "REPORT_FILTER"}:
                 target_id = properties.get("target_id")
                 self._add_edge("FILTERS", node.id, str(target_id) if target_id else None, source="report_metadata", evidence=["filter target"])
+
+
+_M_STRING = re.compile(r'(?<!#)"(?:[^"]|"")*"')
+_M_COMMENT = re.compile(r"//[^\n]*|/\*.*?\*/", re.DOTALL)
+
+
+def _is_dax(node: Node) -> bool:
+    if node.type == "SHARED_EXPRESSION":
+        kind = node.properties.get("raw_source", {}).get("kind") if isinstance(node.properties.get("raw_source"), Mapping) else None
+        return str(kind or "m").casefold() != "m"
+    return str(node.properties.get("expression_language") or "").upper() == "DAX"
+
+
+def shared_expression_refs(node: Node, shared_expressions: Mapping[tuple[str | None, str], str]) -> list[str]:
+    """Find the shared expressions that an M text names. The M text is not parsed.
+
+    The check removes comments and string literals, then looks for each shared
+    expression name as an identifier or as a quoted identifier (#"Name").
+    """
+
+    text = _M_COMMENT.sub(" ", str(node.properties.get("expression") or ""))
+    quoted = set(re.findall(r'#"((?:[^"]|"")*)"', text))
+    bare = _M_STRING.sub(" ", re.sub(r'#"(?:[^"]|"")*"', " ", text))
+    found: list[str] = []
+    for (model_id, name), expression_id in sorted(shared_expressions.items(), key=lambda item: item[1]):
+        if model_id != node.model_id or expression_id == node.id:
+            continue
+        if name.replace('"', '""') in quoted or re.search(r"(?<![\w.#])" + re.escape(name) + r"(?![\w.])", bare):
+            found.append(expression_id)
+    return found
 
 
 def build_fact_graph(

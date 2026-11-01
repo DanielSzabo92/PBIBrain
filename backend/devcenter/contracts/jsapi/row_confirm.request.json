@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pbibrain.local/devcenter/contracts/jsapi/row_confirm.request.json",
+  "title": "JS API row_confirm: request",
+  "type": "object",
+  "properties": {
+    "base_revision": {
+      "$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/base_revision"
+    },
+    "row_keys": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 5000,
+      "items": {
+        "$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/row_key"
+      }
+    }
+  },
+  "required": [
+    "base_revision",
+    "row_keys"
+  ],
+  "additionalProperties": false
+}

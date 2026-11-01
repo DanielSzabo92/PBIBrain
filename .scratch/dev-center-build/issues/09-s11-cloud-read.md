@@ -8,6 +8,8 @@ The goal, the code areas, and the acceptance tests are the design text below. Ea
 
 ## Lead notes
 
+- Register new JS API methods in `backend/devcenter/jsapi.py` (`AREA_MODULES`) and new reads in `backend/devcenter/http_routes.py`. Put schemas in `backend/devcenter/contracts/` (validator by `$id`).
+
 Fakes only. HITL item T1: the user must register the Entra app (public client, WAM redirect, Power BI and Fabric scopes) before a real-tenant run. Do not add a real client ID; read it from settings, with no default value in the repo. `msal` is an optional dependency: import it lazily, and the tests use a fake token provider.
 
 ### Design text: S11. Cloud read

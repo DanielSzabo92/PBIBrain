@@ -306,6 +306,42 @@ class TableConstructorNode(AstNode):
 
 
 @dataclass(frozen=True, slots=True)
+class FunctionParameterNode(AstNode):
+    """One parameter of a user-defined function header."""
+
+    name: str = ""
+    parameter_type: str | None = None
+    subtype: str | None = None
+    mode: str | None = None
+
+    kind: str = "function_parameter"
+
+    def to_dict(self) -> dict[str, Any]:
+        result = AstNode.to_dict(self)
+        result.update({"name": self.name, "parameter_type": self.parameter_type, "subtype": self.subtype, "mode": self.mode})
+        return result
+
+
+@dataclass(frozen=True, slots=True)
+class FunctionDefinitionNode(AstNode):
+    """A user-defined function: ``(parameters) => body``."""
+
+    parameters: tuple[FunctionParameterNode, ...] = ()
+    body: AstNode | None = None
+
+    kind: str = "function_definition"
+
+    @property
+    def children(self) -> tuple[AstNode, ...]:
+        return (*self.parameters, *((self.body,) if self.body is not None else ()))
+
+    def to_dict(self) -> dict[str, Any]:
+        result = AstNode.to_dict(self)
+        result.update({"parameters": [item.to_dict() for item in self.parameters], "body": self.body.to_dict() if self.body else None})
+        return result
+
+
+@dataclass(frozen=True, slots=True)
 class ErrorNode(AstNode):
     """Explicit placeholder returned only by non-raising recovery mode."""
 

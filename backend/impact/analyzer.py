@@ -13,10 +13,14 @@ from typing import Any, Mapping
 from backend.snapshots.manifest import content_hash
 from backend.validation import graph_values, item_dict
 
-CALCULATIONS = {"MEASURE", "CALCULATION_ITEM", "COLUMN", "TABLE", "SHARED_EXPRESSION", "USER_DEFINED_FUNCTION", "VISUAL_CALCULATION"}
+CALCULATIONS = {"MEASURE", "CALCULATION_ITEM", "COLUMN", "TABLE", "SHARED_EXPRESSION", "USER_DEFINED_FUNCTION", "VISUAL_CALCULATION",
+                "REPORT_MEASURE", "ROLE_FILTER"}
 CONSUMER_EDGES = {"DEPENDS_ON", "REFERENCES", "USES", "USES_MODEL", "FILTERS", "MODIFIES_FILTER", "ACTIVATES_RELATIONSHIP", "MODIFIES_RELATIONSHIP"}
 RELATIONSHIP_PROPERTIES = {"from_column_id", "to_column_id", "active", "cross_filter_direction", "cardinality", "from_cardinality", "to_cardinality", "security_filter_behavior"}
-REPORT_TYPES = {"VISUAL", "PAGE", "REPORT", "VISUAL_FILTER", "PAGE_FILTER", "REPORT_FILTER", "VISUAL_CALCULATION"}
+REPORT_TYPES = {"VISUAL", "PAGE", "REPORT", "VISUAL_FILTER", "PAGE_FILTER", "REPORT_FILTER", "VISUAL_CALCULATION", "REPORT_MEASURE", "BOOKMARK"}
+SECURITY_TYPES = {"ROLE", "SECURITY_ROLE", "ROLE_FILTER", "OLS_PERMISSION", "TABLE_PERMISSION", "ROW_LEVEL_SECURITY", "OBJECT_LEVEL_SECURITY"}
+# A change to one of these parts changes the object that contains it.
+DEFINITION_PARTS = {"LEVEL": "HIERARCHY", "PARTITION": "TABLE", "ROLE_FILTER": "SECURITY_ROLE", "OLS_PERMISSION": "SECURITY_ROLE"}
 
 
 def properties(node: Mapping[str, Any]) -> dict[str, Any]:
@@ -158,15 +162,15 @@ def analyze_impact(graph: Any, target_ids: list[str], proposed_changes: list[dic
                             add(expression["id"], target, trigger, "CONDITIONAL", implicit_path,
                                 "Explicit DAX relationship/filter override requires a specialized test", rule="dax_override:" + function,
                                 conditions=[function, "Override endpoint validity and selected context must be evaluated"])
-                if any(item["type"] in {"ROLE", "TABLE_PERMISSION", "ROW_LEVEL_SECURITY", "OBJECT_LEVEL_SECURITY"} or properties(item).get("roles") or properties(item).get("raw_source", {}).get("roles") for item in nodes.values()):
+                if any(item["type"] in SECURITY_TYPES or properties(item).get("roles") or properties(item).get("raw_source", {}).get("roles") for item in nodes.values()):
                     warnings.append("RLS_REQUIRES_EXTENDED_VERIFICATION")
-            elif node["type"] in {"MODEL", "TABLE", "COLUMN", "USER_DEFINED_FUNCTION", "FIELD_PARAMETER", "CALCULATION_GROUP", "CALCULATION_ITEM", "ROLE", "TABLE_PERMISSION", "ROW_LEVEL_SECURITY", "OBJECT_LEVEL_SECURITY", "SHARED_EXPRESSION"}:
+            elif node["type"] in {"MODEL", "TABLE", "COLUMN", "USER_DEFINED_FUNCTION", "FIELD_PARAMETER", "CALCULATION_GROUP", "CALCULATION_ITEM", "SHARED_EXPRESSION", "PARTITION"} | SECURITY_TYPES:
                 for calculation in sorted(nodes.values(), key=lambda item: item["id"]):
                     if calculation.get("model_id") == node.get("model_id") and calculation["type"] in CALCULATIONS:
                         path = [{"from_id": target, "to_id": calculation["id"], "edge_type": "MODEL_CONTEXT_INFLUENCE", "direction": "analytical", "evidence": ["Calculation/security/source context may affect evaluation"]}]
                         add(calculation["id"], target, trigger, "POTENTIAL_BEHAVIORAL", path, "Model-wide evaluation context may change", rule="model_context")
                         seeds.append((calculation["id"], path))
-                if "SECURITY" in node["type"] or node["type"] in {"ROLE", "TABLE_PERMISSION"}:
+                if node["type"] in SECURITY_TYPES:
                     warnings.append("RLS_REQUIRES_EXTENDED_VERIFICATION")
             queue, seen = deque(seeds), set()
             while queue:
@@ -190,6 +194,11 @@ def analyze_impact(graph: Any, target_ids: list[str], proposed_changes: list[dic
                     queue.append((consumer, next_path))
                 for edge in parents.get(current, []):
                     parent = edge["from_id"]
+                    if DEFINITION_PARTS.get(nodes.get(current, {}).get("type")) == nodes.get(parent, {}).get("type"):
+                        next_path = path + [{"from_id": current, "to_id": parent, "edge_type": "CONTAINS", "direction": "in", "evidence": edge.get("evidence", [])}]
+                        add(parent, target, trigger, "STRUCTURAL", next_path, "Contains affected definition part", rule="definition_ancestry")
+                        queue.append((parent, next_path))
+                        continue
                     if include_report_usage and nodes.get(current, {}).get("type") in REPORT_TYPES:
                         next_path = path + [{"from_id": current, "to_id": parent, "edge_type": "CONTAINS", "direction": "in", "evidence": edge.get("evidence", [])}]
                         add(parent, target, trigger, "STRUCTURAL", next_path, "Contains affected report object", rule="report_ancestry")
@@ -208,6 +217,8 @@ def analyze_impact(graph: Any, target_ids: list[str], proposed_changes: list[dic
         if node["type"] == "VISUAL" and prop.get("fields") and not prop.get("field_ids"):
             unknowns.append("UNRESOLVED_VISUAL_BINDING:" + node["id"])
     unknowns.extend(str(item) for item in initial_complete.get("blocking", []))
+    # Each area that the scan could not examine stays visible as "not checked".
+    not_checked = [dict(item) for item in initial_complete.get("not_checked", []) if isinstance(item, Mapping)]
     complete = initial_complete.get("status") == "COMPLETE" and not unknowns
     ordered = sorted(records.values(), key=lambda item: (item["object_id"], item["root_modified_object"], item["triggering_property"], item["analyzer_rule_id"]))
     impacted = sorted({item["object_id"] for item in ordered})
@@ -234,7 +245,7 @@ def analyze_impact(graph: Any, target_ids: list[str], proposed_changes: list[dic
               "required_tests": required_tests, "warnings": sorted(set(warnings)), "evidence": [item["path"] for item in shown],
               "completeness": {**initial_complete, "status": "COMPLETE" if complete else "INCOMPLETE", "analysis_truncated": False,
                                "output_truncated": truncated, "total_impact_records": len(ordered), "nodes_analyzed": len(nodes), "edges_analyzed": len(edges),
-                               "missing_execution_evidence": True, "filter_analysis": "CONSERVATIVE_SUPERSET"}}
+                               "missing_execution_evidence": True, "filter_analysis": "CONSERVATIVE_SUPERSET", "not_checked": not_checked}}
     report["impact_report_id"] = content_hash(report)
     report["metrics"] = {"traversal_seconds": perf_counter() - started, "nodes_examined": len(nodes), "edges_examined": len(edges), "impacted_objects": len(impacted), "selected_tests": len(required_tests), "llm_calls": 0}
     return report
