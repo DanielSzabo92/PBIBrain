@@ -24,6 +24,8 @@ Read this file, then your ticket in `issues/`. The ticket wins where it is more 
 - Each new JS API call gets a request and a reply JSON Schema in `backend/devcenter/contracts/` (UC4). Each new read reply carries `revision` (UC2).
 - Do not change tests of other areas to make them pass. If an old test fails because of a correct change, say so in your report.
 
+Scratch scripts: give them a name with your ticket number (for example `t08_gen_contracts.py`), because workers share the scratchpad folder.
+
 ## Tests
 
 - Python: `python -m unittest discover -s tests` (full suite, about 30 s). Run your own test module first.

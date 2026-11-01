@@ -6,6 +6,10 @@ Depends on (tickets): [10](10-u3-shell-session-list.md), [08](08-s4-naming-rules
 
 The goal, the code areas, and the acceptance tests are the design text below. Each acceptance test must be an automated test, except the items that the design marks as manual.
 
+## Lead notes
+
+- The fake server fixture for naming rules (`tests/fixtures/devcenter_ui/default`) differs from the S4 contract (for example `rule_id`, and support as `{count, total}`). Align the fixtures to the S4 schemas in `backend/devcenter/contracts/` and add them to the contract test.
+
 ### Design text: U5. Naming rules
 
 - Goal: the naming rules section and the rule editor.
