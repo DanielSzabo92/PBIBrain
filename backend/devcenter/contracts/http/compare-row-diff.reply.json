@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pbibrain.local/devcenter/contracts/http/compare-row-diff.reply.json",
+  "title": "GET /api/devcenter/compare-rows/{row}/diff?source=<id> (section 14.1, UC2). {row} is the row ID or the URL-encoded row key.",
+  "type": "object",
+  "properties": {
+    "revision": {"$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/revision"},
+    "row_key": {"$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/row_key"},
+    "row_id": {"type": "string", "pattern": "^r-[0-9a-f]{16}$"},
+    "source_id": {"$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/source_id"},
+    "reference_source_id": {"anyOf": [{"$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/source_id"}, {"type": "null"}]},
+    "language": {"enum": ["dax", "m", "json"]},
+    "reference_text": {"type": "string"},
+    "source_text": {"type": "string"},
+    "unified": {"type": "string"}
+  },
+  "required": ["revision", "row_key", "row_id", "source_id", "reference_source_id", "language", "reference_text", "source_text", "unified"],
+  "additionalProperties": false
+}

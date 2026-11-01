@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pbibrain.local/devcenter/contracts/http/display-folders.reply.json",
+  "title": "GET /api/devcenter/display-folders?source=<id>&object_type=<object type> (UC20, UC2). The default source is the target model.",
+  "type": "object",
+  "properties": {
+    "revision": {"$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/revision"},
+    "source_id": {"anyOf": [{"$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/source_id"}, {"type": "null"}]},
+    "types": {"type": "array", "items": {"type": "string"}},
+    "folders": {"type": "array", "items": {"type": "string", "minLength": 1}}
+  },
+  "required": ["revision", "source_id", "types", "folders"],
+  "additionalProperties": false
+}

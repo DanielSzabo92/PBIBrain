@@ -28,7 +28,7 @@ _SOURCE_ID = re.compile(r"^src-[1-9][0-9]*$")
 # Fields that hold file paths of a source. Only the explicit token formats apply to them.
 _PATH_FIELDS = frozenset({"path", "model_path", "report_path"})
 # Fields that hold row keys. A value there is a name only when it has the form of a row key.
-_ROW_KEY_FIELDS = frozenset({"row_key", "row_keys", "target"})
+_ROW_KEY_FIELDS = frozenset({"row_key", "row_keys", "target", "target_key", "donor_key", "other_row_key"})
 _SAFE_KEY = re.compile(r"^[A-Za-z_][A-Za-z0-9_]{0,31}$")
 _EMAIL = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}")
 _WINDOWS_ABSOLUTE = re.compile(r"(?:^|[\s\"'=(])[A-Za-z]:[\\/]")

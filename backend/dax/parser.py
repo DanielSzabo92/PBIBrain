@@ -653,3 +653,46 @@ DAXParserFacade = DaxParser
 DAXParser = DaxParser
 Parser = DaxParser
 DAXSyntaxError = DaxSyntaxError
+
+
+@dataclass(frozen=True, slots=True)
+class DaxToken:
+    """One lexer token of a DAX text: the symbolic token type and the exact text."""
+
+    kind: str
+    text: str
+
+
+def dax_tokens(source: str) -> tuple[tuple[DaxToken, ...], bool]:
+    """Give the tokens of a DAX text with no whitespace and no comments, and True when the lexer found an error.
+
+    The lexer grammar knows ``//`` and ``/* */`` comments. DAX also has ``--``
+    line comments, so this function removes two adjacent minus signs and the
+    rest of their line. The normalization of the merge compare uses these tokens.
+    """
+
+    issues: list[DaxSyntaxIssue] = []
+    lexer = _AntlrLexer(InputStream(source))
+    lexer.removeErrorListeners()
+    lexer.addErrorListener(_IssueListener(issues))
+    names = lexer.symbolicNames
+    found: list[DaxToken] = []
+    skip_line: int | None = None
+    previous = None
+    for token in lexer.getAllTokens():
+        if skip_line is not None:
+            if token.line == skip_line:
+                continue
+            skip_line = None
+        if token.channel != 0:
+            previous = None
+            continue
+        kind = names[token.type] if 0 <= token.type < len(names) else str(token.type)
+        if kind == "MINUS" and previous is not None and previous.type == token.type and previous.stop + 1 == token.start:
+            found.pop()
+            skip_line = token.line
+            previous = None
+            continue
+        found.append(DaxToken(kind, token.text))
+        previous = token
+    return tuple(found), bool(issues)

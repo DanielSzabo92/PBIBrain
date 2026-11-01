@@ -1,0 +1,138 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pbibrain.local/devcenter/contracts/http/compare-rows.reply.json",
+  "title": "GET /api/devcenter/compare-rows (section 14.1, UC2, UC23 to UC26)",
+  "type": "object",
+  "$defs": {
+    "state": {
+      "enum": ["type_conflict", "missing", "renamed", "moved", "different", "same"]
+    },
+    "phrase_id": {
+      "type": "string",
+      "pattern": "^[a-z_]+$"
+    },
+    "note": {
+      "type": "object",
+      "properties": {
+        "note_id": {"$ref": "#/$defs/phrase_id"},
+        "other_row_key": {"$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/row_key"}
+      },
+      "required": ["note_id"],
+      "additionalProperties": false
+    },
+    "phrase": {
+      "type": "object",
+      "properties": {
+        "phrase_id": {"$ref": "#/$defs/phrase_id"},
+        "property": {"type": "string"},
+        "old": true,
+        "new": true,
+        "short": {"type": "boolean"}
+      },
+      "required": ["phrase_id", "property", "old", "new", "short"],
+      "additionalProperties": false
+    },
+    "cell": {
+      "type": "object",
+      "properties": {
+        "source_id": {"$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/source_id"},
+        "role": {"enum": ["target", "donor"]},
+        "present": {"type": "boolean"},
+        "source_key": {"anyOf": [{"$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/row_key"}, {"type": "null"}]},
+        "name": {"type": ["string", "null"]},
+        "table": {"type": ["string", "null"]},
+        "subtype": {"type": ["string", "null"]},
+        "step": {"enum": ["manual", "lineage_tag", "key", "type_conflict", "moved", null]},
+        "state": {"$ref": "#/$defs/state"},
+        "changed": {"type": "boolean"},
+        "phrases": {"type": "array", "items": {"$ref": "#/$defs/phrase"}},
+        "notes": {"type": "array", "items": {"$ref": "#/$defs/note"}}
+      },
+      "required": ["source_id", "role", "present", "source_key", "name", "table", "subtype", "step", "state", "changed", "phrases", "notes"],
+      "additionalProperties": false
+    },
+    "mark": {
+      "type": "object",
+      "properties": {
+        "source_id": {"$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/source_id"},
+        "row_key": {"$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/row_key"},
+        "mark": {"$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/mark_kind"}
+      },
+      "required": ["source_id", "row_key", "mark"],
+      "additionalProperties": false
+    },
+    "row": {
+      "type": "object",
+      "properties": {
+        "row_key": {"$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/row_key"},
+        "row_id": {"type": "string", "pattern": "^r-[0-9a-f]{16}$"},
+        "domain": {"enum": ["model", "report"]},
+        "object_type": {"enum": ["table", "column", "measure", "hierarchy", "partition", "calculation_item", "relationship", "role",
+                                 "expression", "function", "page", "visual", "report_measure"]},
+        "subtype": {"type": "string"},
+        "name": {"type": "string"},
+        "table": {"type": ["string", "null"]},
+        "page": {"type": ["string", "null"]},
+        "display_folder": {"type": ["string", "null"]},
+        "row_state": {"$ref": "#/$defs/state"},
+        "changed": {"type": "boolean"},
+        "cells": {"type": "array", "items": {"$ref": "#/$defs/cell"}},
+        "merge_choice": {"type": ["object", "null"]},
+        "proposal_status": {"type": ["string", "null"]},
+        "marks": {"type": "array", "items": {"$ref": "#/$defs/mark"}}
+      },
+      "required": ["row_key", "row_id", "domain", "object_type", "subtype", "name", "table", "page", "display_folder", "row_state",
+                   "changed", "cells", "merge_choice", "proposal_status", "marks"],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "revision": {"$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/revision"},
+    "compare_mode": {"enum": ["default", "strict"]},
+    "target": {
+      "type": "object",
+      "properties": {
+        "model": {"anyOf": [{"$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/source_id"}, {"type": "null"}]},
+        "report": {"anyOf": [{"$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/source_id"}, {"type": "null"}]}
+      },
+      "required": ["model", "report"],
+      "additionalProperties": false
+    },
+    "total": {"type": "integer", "minimum": 0},
+    "state_counts": {
+      "type": "object",
+      "properties": {
+        "type_conflict": {"type": "integer", "minimum": 0},
+        "missing": {"type": "integer", "minimum": 0},
+        "renamed": {"type": "integer", "minimum": 0},
+        "moved": {"type": "integer", "minimum": 0},
+        "different": {"type": "integer", "minimum": 0},
+        "same": {"type": "integer", "minimum": 0}
+      },
+      "required": ["type_conflict", "missing", "renamed", "moved", "different", "same"],
+      "additionalProperties": false
+    },
+    "limit": {"type": "integer", "minimum": 0},
+    "offset": {"type": "integer", "minimum": 0},
+    "has_more": {"type": "boolean"},
+    "rows": {"type": "array", "items": {"$ref": "#/$defs/row"}},
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "warning_id": {"$ref": "#/$defs/phrase_id"},
+          "source_id": {"$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/source_id"},
+          "lineage_tag": {"type": "string"},
+          "source_keys": {"type": "array", "items": {"$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/row_key"}}
+        },
+        "required": ["warning_id", "source_id", "lineage_tag", "source_keys"],
+        "additionalProperties": false
+      }
+    },
+    "orphan_marks": {"type": "array", "items": {"$ref": "#/$defs/mark"}}
+  },
+  "required": ["revision", "compare_mode", "target", "total", "state_counts", "limit", "offset", "has_more", "rows", "warnings",
+               "orphan_marks"],
+  "additionalProperties": false
+}

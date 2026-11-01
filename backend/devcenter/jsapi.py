@@ -27,6 +27,7 @@ LOGGER = logging.getLogger(__name__)
 # One line for each area. Later build steps add their modules here.
 AREA_MODULES = (
     "backend.devcenter.session.jsapi_methods",
+    "backend.devcenter.compare.jsapi_methods",
     "backend.devcenter.sources.cloud_jsapi_methods",
 )
 

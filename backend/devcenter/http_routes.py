@@ -66,6 +66,7 @@ def dispatch(app: Any, method: str, parts: Sequence[str], query: Mapping[str, Se
     devcenter = getattr(app, "devcenter", None)
     if devcenter is None:
         return 409, error_reply("session_not_open", "No merge session is open.")
+    query = {**query, **{p[1:-1]: [part] for p, part in zip(selected.path, parts) if p.startswith("{")}}
     try:
         return 200, dict(selected.handler(devcenter, query, body))
     except DevCenterError as exc:
@@ -83,3 +84,6 @@ def get_sessions(devcenter: Any, query: Mapping[str, Sequence[str]], body: Any) 
 @route("GET", "session", contract="http/session.reply.json")
 def get_session(devcenter: Any, query: Mapping[str, Sequence[str]], body: Any) -> Mapping[str, Any]:
     return devcenter.session_summary()
+
+
+from backend.devcenter.compare import http_routes as _compare_routes  # noqa: E402,F401  (build step S3)
