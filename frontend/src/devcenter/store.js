@@ -260,7 +260,12 @@ export function createDevCenterStore({
       closeSession({ banner: false });
       return markStale(["sessions"]);
     }
-    if (SESSION_METHODS.has(method) && reply.session) acceptSession(reply.session);
+    if (SESSION_METHODS.has(method)) {
+      // The S2 reply has revision, session_id, read_only, migrated, and mark_count, but no session.
+      // Always load GET session. A reply.session (the fake server sends one) only shows the session sooner.
+      if (reply.session) acceptSession(reply.session);
+      return Promise.all([load("session"), markStale(OTHER_KEYS)]);
+    }
     return markStale(invalidatedBy(method));
   }
 

@@ -168,8 +168,12 @@ test("normalizeError reads the new shape, the old shape, and a thrown error", ()
   const old = normalizeError({ ok: false, error: "The folder does not exist." });
   assert.deepEqual([old.code, old.message, old.details.shape], ["unknown", "The folder does not exist.", "old"]);
 
-  const thrown = normalizeError(new Error("socket closed"));
+  const thrown = normalizeError(new Error("socket closed"), { source: "http" });
   assert.deepEqual([thrown.code, thrown.message, thrown.source], ["network", "socket closed", "network"]);
+
+  const host = normalizeError(new TypeError("bridge stopped"), { source: "jsapi" });
+  assert.deepEqual([host.code, host.message, host.source, host.details.thrown], ["unknown", "bridge stopped", "jsapi", "TypeError"]);
+  assert.equal(normalizeError(new Error("bridge stopped")).code, "unknown", "the default source is the JS API");
 
   const shim = new Error("The fake server replied with HTTP 409.");
   shim.reply = { error: { code: "source_changed", message: "A source changed.", details: {} } };

@@ -86,7 +86,8 @@ function fromShape(shape, source, status) {
 // - a DevCenterError (returned as it is),
 // - the new shape {error: {code, message, details}},
 // - the old shape {ok: false, error: "<text>"} (code "unknown"),
-// - a thrown Error (code "network"), or an Error from the test shim that carries the reply,
+// - a thrown Error: "network" for an HTTP read (fetch failed), "unknown" for a JS API call,
+// - an Error from the test shim that carries the reply (the code of the reply),
 // - an AbortError (code "aborted").
 // An HTTP status of 500 or more with no error shape gives "unknown".
 export function normalizeError(value, { source = "jsapi", status = null } = {}) {
@@ -103,7 +104,10 @@ export function normalizeError(value, { source = "jsapi", status = null } = {}) 
     // The test shim throws an Error for a non-2xx reply and puts the body in error.reply.
     if (isErrorShape(value.reply)) return fromShape(value.reply.error, source, status);
     if (isOldErrorShape(value.reply)) return normalizeError(value.reply, { source, status });
-    return new DevCenterError({ code: "network", message: value.message, source: "network", status });
+    // A failed fetch means that the local API did not answer. A JS API call has no network: a thrown
+    // error there is a fault in the host or the bridge, so it is unknown.
+    if (source === "http") return new DevCenterError({ code: "network", message: value.message, source: "network", status });
+    return new DevCenterError({ code: "unknown", message: value.message, details: { thrown: value.name || "Error" }, source, status });
   }
   if (typeof value === "string") return new DevCenterError({ code: "unknown", message: value, source, status });
   return new DevCenterError({ code: "unknown", message: "", details: {}, source, status });

@@ -81,6 +81,8 @@ test("t replaces placeholders and tn picks the count form", () => {
   assert.equal(tn("row.blocking", 1), "1 blocking item for this row.");
   assert.equal(tn("row.blocking", 3), "3 blocking items for this row.");
   assert.equal(tn("sources.remove.body", 0, { source: "Sales A" }), "No Merge Choice takes from Sales A.");
+  assert.equal(`${tn("work.banner.changed", 1)} ${tn("work.banner.changed.rows", 1)}`, "1 source changed since the last check. You must confirm 1 row.");
+  assert.equal(`${tn("work.banner.changed", 2)} ${tn("work.banner.changed.rows", 14)}`, "2 sources changed since the last check. You must confirm 14 rows.");
   assert.equal(tn("sources.remove.body", 2, { source: "Sales A" }), "2 Merge Choices take from Sales A. They stay, but the plan is not valid until you change them.");
 });
 

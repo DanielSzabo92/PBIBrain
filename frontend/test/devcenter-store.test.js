@@ -449,6 +449,40 @@ test("session_open sets the session, and session_close keeps only the session li
   assert.deepEqual(Object.values(state.resources).map((resource) => resource.key), ["sessions"]);
 });
 
+test("session_create and session_open with the S2 reply (no session field) load GET session", async () => {
+  for (const method of ["session_create", "session_open"]) {
+    const http = fakeHttp({ session: new DevCenterError({ code: "session_not_open", source: "http", status: 409 }) });
+    const api = fakeApi(() => ({ revision: 3, session_id: "a".repeat(32), read_only: false, migrated: false, mark_count: 0 }));
+    const store = createDevCenterStore({ http: http.http, api: api.api, clock: fakeClock(), isVisible: () => true });
+    await store.load("session");
+    assert.equal(store.getState().session, null);
+    store.watch("compareRows", {});
+    await flush();
+    http.data.session = { id: "a".repeat(32), revision: 3, open_proposals: [] };
+    http.data.compareRows = { rows: [{ row_key: "r1" }], revision: 3 };
+    const reply = await store.run(method, { session_id: "a".repeat(32), display_name: "Sales merge" });
+    assert.equal(reply.session, undefined);
+    await flush();
+    const state = store.getState();
+    assert.equal(state.session?.id, "a".repeat(32), method);
+    assert.equal(state.revision, 3);
+    assert.equal(api.calls[0].payload.base_revision, null, "no session was open, so no revision is known");
+    assert.deepEqual(state.resources[resourceId("compareRows", {})].data.rows, [{ row_key: "r1" }], "the visible reads fetch again");
+  }
+});
+
+test("session_open from an open session loads the new session and makes the old reads stale", async () => {
+  const http = fakeHttp();
+  const { store } = await openStore({ http, handler: () => ({ revision: 2, session_id: "b".repeat(32), read_only: true, migrated: false, mark_count: 0 }) });
+  await store.load("plan");
+  http.data.session = { id: "b".repeat(32), revision: 2, open_proposals: [] };
+  await store.run("session_open", { session_id: "b".repeat(32) });
+  await flush();
+  assert.equal(store.getState().session.id, "b".repeat(32));
+  assert.equal(store.getState().revision, 2);
+  assert.equal(store.getState().resources[resourceId("plan", {})].stale, true);
+});
+
 test("the Apply progress poll runs every 500 ms only while apply runs", async () => {
   const http = fakeHttp({ applyProgress: { apply_id: "a1", step: "guard", step_index: 8, step_count: 11, state: "running", revision: 5 } });
   let release;

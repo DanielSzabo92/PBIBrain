@@ -36,3 +36,14 @@ Tests:
 - `python -m unittest discover -s tests`: 372 tests, OK, 1 skipped (after rework 1).
 - `npm test` in `frontend/`: 97 tests, 97 pass.
 - `npm run build` in `frontend/`: pass. A separate Vite lib build of `useDevCenter.js` proved that Vite 5 accepts the JSON import attribute.
+
+Rework 2 (review FAIL, then S2 merged at 257d3f4 into this branch):
+
+1. The S2 schema check validates only the 10 section 12 codes of the fixture against `backend/devcenter/contracts/error.json`. `network` and `unknown` stay for the local shape and the fake server check. With S2 merged, the check runs (no skip).
+2. `_contract_validator` uses `backend.devcenter.contracts.validator(...)`. A fallback builds the registry from the absolute `$id` of each file. The temp-folder test now uses absolute `$id` values and a `../error.json` reference.
+3. `store.js`: after `session_create` and `session_open`, the store always loads GET session, because the S2 reply has no `session` field. `reply.session` is only a fast path. Two new store tests use the S2 reply shape.
+4. `work.banner.changed.*`: no "confirm" as a noun, and the row count has its own `.one` and `.other` keys.
+5. `normalizeError`: a thrown error with no error shape from a JS API call gives `unknown`; from an HTTP read it gives `network`.
+6. `HOST_PENDING` has no S2 methods now.
+
+Tests after rework 2: `python -m unittest discover -s tests` 436 tests OK (no skip); `npm test` 99 pass; `npm run build` pass.

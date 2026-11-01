@@ -159,7 +159,7 @@ test("the old reply shape, a thrown error, and a shim error are normalized", asy
   const thrown = jsapi.call("session_close", {});
   await flush();
   fake.calls[1].reject(new Error("bridge closed"));
-  await assert.rejects(thrown, (error) => error.code === "network");
+  await assert.rejects(thrown, (error) => error.code === "unknown" && error.message === "bridge closed");
 
   const shim = jsapi.call("session_close", {});
   await flush();

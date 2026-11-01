@@ -158,8 +158,11 @@ export const COPY = Object.freeze({
   "work.check_sources.same": "All sources are the same as at the last check.",
   "work.more": "More actions",
   "work.more.close": "Close session",
-  "work.banner.changed.one": "1 source changed since the last check. {rows} rows need your confirm.",
-  "work.banner.changed.other": "{n} sources changed since the last check. {rows} rows need your confirm.",
+  // Show work.banner.changed (count of sources), then work.banner.changed.rows (count of rows).
+  "work.banner.changed.one": "1 source changed since the last check.",
+  "work.banner.changed.other": "{n} sources changed since the last check.",
+  "work.banner.changed.rows.one": "You must confirm 1 row.",
+  "work.banner.changed.rows.other": "You must confirm {n} rows.",
   "work.banner.changed.action": "Show these rows",
   "work.banner.missing.one": "1 source was not found: {name}. Find it again or remove it.",
   "work.banner.missing.other": "{n} sources were not found: {name}. Find them again or remove them.",

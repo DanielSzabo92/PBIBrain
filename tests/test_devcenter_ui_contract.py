@@ -79,8 +79,6 @@ HOST_OTHER_METHODS = frozenset({
 # The methods of jsapi-methods.json that the host does not have yet, with the build step that adds each one
 # (technical design section 16). Remove a method from this list when its step adds it to the host.
 HOST_PENDING = {
-    "session_create": "S2", "session_open": "S2", "session_close": "S2", "source_add": "S2", "source_remove": "S2",
-    "source_relink": "S2", "target_set": "S2", "row_confirm": "S2", "sources_check": "S2",
     "compare_mode_set": "S3", "alignment_override": "S3",
     "naming_rule_confirm": "S4", "naming_rule_reject": "S4", "naming_rule_edit": "S4", "naming_rules_copy": "S4",
     "merge_choice_set": "S5", "merge_choice_bulk_set": "S5",
@@ -95,26 +93,31 @@ def _load_methods() -> list[dict[str, str]]:
     return json.loads(METHODS_FILE.read_text(encoding="utf-8"))
 
 
-def _contract_validator(path: Path, root: Path = CONTRACTS) -> jsonschema.protocols.Validator:
-    """A validator for one contract file. A relative $ref (for example to defs.json) loads from the contracts folder."""
-    from urllib.parse import unquote, urlsplit
-    from urllib.request import url2pathname
+def _contract_validator(name: str = "error.json", root: Path = CONTRACTS) -> jsonschema.protocols.Validator:
+    """A validator for one contract file of the S2 folder (ticket 04).
+
+    Use backend.devcenter.contracts.validator when the module exists. Else build the registry from the
+    $id of each file in the folder: the S2 files have an absolute $id and refer to defs.json by that URL.
+    """
+    if root == CONTRACTS:
+        try:
+            from backend.devcenter import contracts
+        except ImportError:
+            contracts = None
+        if contracts is not None and hasattr(contracts, "validator"):
+            return contracts.validator(name)
 
     from referencing import Registry, Resource
-    from referencing.jsonschema import DRAFT202012
 
-    def retrieve(uri: str) -> Resource:
-        target = Path(url2pathname(unquote(urlsplit(uri).path)))
-        if root.resolve() not in target.resolve().parents:
-            raise ValueError(f"The $ref {uri} is outside backend/devcenter/contracts/.")
-        return Resource.from_contents(json.loads(target.read_text(encoding="utf-8")), default_specification=DRAFT202012)
-
-    schema = json.loads(path.read_text(encoding="utf-8"))
-    base = path.resolve().as_uri()
-    if "$id" not in schema:
-        schema = {**schema, "$id": base}
-    cls = jsonschema.validators.validator_for(schema, default=jsonschema.Draft202012Validator)
-    return cls(schema, registry=Registry(retrieve=retrieve))
+    resources = []
+    for file in sorted(root.rglob("*.json")):
+        schema = json.loads(file.read_text(encoding="utf-8"))
+        if "$id" not in schema:
+            raise ValueError(f"The contract {file.relative_to(root).as_posix()} has no $id.")
+        resources.append((schema["$id"], Resource.from_contents(schema)))
+    registry = Registry().with_resources(resources)
+    schema = json.loads((root / name).read_text(encoding="utf-8"))
+    return jsonschema.Draft202012Validator(schema, registry=registry)
 
 
 class JsApiMethodListTest(unittest.TestCase):
@@ -143,7 +146,7 @@ class JsApiMethodListTest(unittest.TestCase):
             names - devcenter, set(HOST_PENDING),
             "HOST_PENDING must list exactly the methods that the host does not have. Remove a method from it when its step adds it.",
         )
-        self.assertLessEqual(set(HOST_PENDING.values()), {"S2", "S3", "S4", "S5", "S6", "S9", "S10", "S11"})
+        self.assertLessEqual(set(HOST_PENDING.values()), {"S3", "S4", "S5", "S6", "S9", "S10", "S11"})
 
 
 class ErrorShapeTest(unittest.TestCase):
@@ -170,29 +173,46 @@ class ErrorShapeTest(unittest.TestCase):
             with self.subTest(bad=bad):
                 self.assertFalse(validator.is_valid(bad))
 
-    def test_the_fixture_validates_against_the_s2_schema(self) -> None:
+    def server_replies(self) -> list[dict]:
+        """The fixture replies with a section 12 code. network and unknown are client codes, not in the S2 schema."""
+        return [reply for reply in self.fixture_replies() if reply["error"]["code"] in SECTION_12_CODES]
+
+    def test_the_server_codes_of_the_fixture_validate_against_the_s2_schema(self) -> None:
         if not S2_ERROR_SCHEMA.is_file():
             self.skipTest("S2 (ticket 04) did not create backend/devcenter/contracts/error.json yet.")
-        validator = _contract_validator(S2_ERROR_SCHEMA)
-        for reply in self.fixture_replies():
+        validator = _contract_validator("error.json")
+        replies = self.server_replies()
+        self.assertEqual(len(replies), len(SECTION_12_CODES))
+        for reply in replies:
             validator.validate(reply)
+        self.assertFalse(validator.is_valid({"error": {"code": "disk_full", "message": "No space.", "details": {}}}))
 
-    def test_the_contract_validator_loads_a_relative_ref_to_defs_json(self) -> None:
+    def test_the_contract_validator_resolves_a_ref_to_defs_json_by_its_id(self) -> None:
         import tempfile
 
+        base = "https://pbibrain.local/devcenter/contracts/"
         with tempfile.TemporaryDirectory(prefix="pbibrain-contracts-") as folder:
             root = Path(folder)
-            (root / "defs.json").write_text(json.dumps({"$defs": {"code": {"type": "string", "enum": [*SECTION_12_CODES, *CLIENT_CODES]}}}), encoding="utf-8")
+            (root / "jsapi").mkdir()
+            (root / "defs.json").write_text(json.dumps({
+                "$schema": "https://json-schema.org/draft/2020-12/schema", "$id": base + "defs.json",
+                "$defs": {"code": {"enum": list(SECTION_12_CODES)}},
+            }), encoding="utf-8")
             (root / "error.json").write_text(json.dumps({
-                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "$schema": "https://json-schema.org/draft/2020-12/schema", "$id": base + "error.json",
                 "type": "object", "required": ["error"],
                 "properties": {"error": {"type": "object", "required": ["code", "message", "details"],
-                                         "properties": {"code": {"$ref": "defs.json#/$defs/code"}}}},
+                                         "properties": {"code": {"$ref": base + "defs.json#/$defs/code"}}}},
             }), encoding="utf-8")
-            validator = _contract_validator(root / "error.json", root)
-            for reply in self.fixture_replies():
-                validator.validate(reply)
-            self.assertFalse(validator.is_valid({"error": {"code": "disk_full", "message": "x", "details": {}}}))
+            (root / "jsapi" / "x.reply.json").write_text(json.dumps({
+                "$schema": "https://json-schema.org/draft/2020-12/schema", "$id": base + "jsapi/x.reply.json",
+                "$ref": "../error.json",
+            }), encoding="utf-8")
+            for name in ("error.json", "jsapi/x.reply.json"):
+                validator = _contract_validator(name, root)
+                for reply in self.server_replies():
+                    validator.validate(reply)
+                self.assertFalse(validator.is_valid({"error": {"code": "network", "message": "x", "details": {}}}), name)
 
     def test_the_fake_server_error_replies_have_the_shape(self) -> None:
         validator = jsonschema.Draft202012Validator(LOCAL_ERROR_SCHEMA)
