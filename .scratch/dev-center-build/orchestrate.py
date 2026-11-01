@@ -103,12 +103,14 @@ def claude(role: str, prompt: str, cwd: Path, *, ticket: str, resume: str | None
     mdl, effort = ROLES[role]
     mdl = model or mdl
     tools = REVIEW_TOOLS if role == "reviewer" else TOOLS
-    cmd = [exe, "-p", prompt, "--model", mdl, "--effort", effort, "--output-format", "json",
+    # The prompt goes through stdin: on Windows, cmd.exe runs claude.CMD and cuts the
+    # command line at the first newline, which drops the flags after the prompt.
+    cmd = [exe, "-p", "--model", mdl, "--effort", effort, "--output-format", "json",
            "--permission-mode", "acceptEdits", "--allowedTools", *tools]
     if resume:
         cmd += ["--resume", resume]
     started = time.time()
-    proc = subprocess.run(cmd, cwd=cwd, env=ENV, capture_output=True, text=True, encoding="utf-8",
+    proc = subprocess.run(cmd, cwd=cwd, env=ENV, input=prompt, capture_output=True, text=True, encoding="utf-8",
                           errors="replace", timeout=3 * 3600)
     out = proc.stdout.strip()
     data: dict = {"result": out}
@@ -132,6 +134,10 @@ def claude(role: str, prompt: str, cwd: Path, *, ticket: str, resume: str | None
         raise UsageLimit(tail(text, 3))
     if data.get("is_error") and re.search(r"limit", text, re.I):
         raise UsageLimit(tail(text, 3))
+    if not data.get("session_id") or data.get("permission_denials"):
+        # No JSON reply, or denied tools: the session did not get its flags or its rights.
+        raise RuntimeError(f"{ticket}: bad {role} session: {tail(text, 3)} "
+                           f"denials={len(data.get('permission_denials') or [])}")
     return {"text": str(data.get("result", out)), "session_id": data.get("session_id")}
 
 
