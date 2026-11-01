@@ -218,6 +218,9 @@ class SessionLock:
             age = time.time() - self.path.stat().st_mtime
         except FileNotFoundError:
             return True
+        except OSError:
+            # On Windows another process can hold the lock file with no read share. Open read-only.
+            return False
         try:
             holder = json.loads(raw)
         except ValueError:

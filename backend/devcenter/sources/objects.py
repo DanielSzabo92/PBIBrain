@@ -39,6 +39,9 @@ _TABLE_CHILDREN = {
     "partition": "partition",
 }
 _CALCULATION_ITEM = "calculationItem"
+# Each row key kind that ``object_index`` makes. ``session.secrets.ROW_KEY_KINDS`` must hold the same kinds.
+OBJECT_KINDS = tuple(dict.fromkeys([*_TOP_LEVEL.values(), *_TABLE_CHILDREN.values(), "calculation_item",
+                                    "report", "page", "visual", "bookmark", "report_measure"]))
 
 
 def _unquote(text: str) -> str:

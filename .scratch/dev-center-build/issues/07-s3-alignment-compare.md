@@ -34,3 +34,29 @@ The goal, the code areas, and the acceptance tests are the design text below. Ea
   - UC25: `sort` by state, name, type, and table, asc and desc, gives a stable order.
   - UC26: `row_state` is the highest-precedence cell state, and the `state` filter uses it.
   - UC31: `phrases.json` holds each compare phrase ID that the engine uses; the contract test refuses an em or en dash, an emoji, and text over 60 characters.
+
+## Build record
+
+What I built:
+
+- `backend/devcenter/compare/extract.py`: the compare objects of one source. The model part comes from the TOM bridge for TMDL and for TMSL, so both formats give the same values. The report part comes from the PBIR files or from the PBIR-Legacy `report.json`. A cache uses the path and the Source Fingerprint.
+- `backend/devcenter/alignment/keys.py` and `align.py`: the alignment keys of section 4.1 and the steps (manual, lineageTag, key, second key, type conflict, moved, possible rename). Tables align first, so the objects of a renamed table use the target table name. A duplicate lineageTag gives a warning and a cell note.
+- `backend/devcenter/compare/normalize.py`, `properties.py`, `rows.py`: DAX normalization on the lexer tokens (`dax_tokens` in `backend/dax/parser.py`, also removes `--` comments), the property lists and the phrase IDs, the cell states, `row_state`, filters (`q`, `folder` or `display_folder`, and the others), stable sort (`sort=<field>:<dir>` or `sort` with `order`), `total`, and `state_counts`.
+- `backend/devcenter/compare/service.py`, `http_routes.py`, `jsapi_methods.py`: `GET compare-rows`, `GET compare-rows/{row}/diff` (`{row}` is the row ID or the URL-encoded row key), `GET display-folders` (`object_type` or `type`), and the JS API methods `alignment_override` (confirm, break, reject_rename, clear) and `compare_mode_set`.
+- Contracts: `http/compare-rows.reply.json`, `http/compare-row-diff.reply.json`, `http/display-folders.reply.json`, the request and reply of the two JS API methods, and `phrases.json` (UC31).
+- Row key mapping: a compare row key is the source row key of the target object, else of the first donor object. A donor-only row whose key is in use gets `@<source ID>`. Each cell has `source_key`; a row shows each mark whose source ID and source key are those of one of its cells. `row_confirm` takes these source keys. A mark with no cell goes to `orphan_marks`.
+- S2 follow-ups: `OBJECT_KINDS` in `sources/objects.py` and a test that it equals `ROW_KEY_KINDS`; `_remove_stale` gives a read-only open on a `PermissionError` of the lock read or stat. The secret check also reads `target_key`, `donor_key`, and `other_row_key` as row key fields.
+- Shared files: `jsapi.py` one line (`AREA_MODULES`); `http_routes.py` one registration import line plus one line in `dispatch` that gives the `{name}` path parts to the handler in the query. `host.py` needed no change. The S3 methods are out of `HOST_PENDING`.
+- Golden file: `tests/fixtures/devcenter_compare/merge_lab_rows.json`. Set `PBIBRAIN_UPDATE_GOLDEN=1` to write it again.
+
+Tests:
+
+- `python -m unittest tests.test_devcenter_compare`: 34 tests, OK.
+- `python -m unittest discover -s tests`: 470 tests, OK (after the merge of 354f742).
+- `npm test` in `frontend/`: 99 pass. `npm run build`: OK.
+
+Open items:
+
+- The functional spec example shows a report measure cell on a model measure row. This build keeps report measures as separate `report_measure` rows (section 4.1 key: home table + name).
+- Visual fields do not read through the alignment (no "same after rename" for visual queries).
+- `proposal_status` is always null until S10.

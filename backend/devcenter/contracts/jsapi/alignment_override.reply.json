@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pbibrain.local/devcenter/contracts/jsapi/alignment_override.reply.json",
+  "title": "JS API alignment_override: reply (UC21). row_keys are the new keys of the rows that hold the two objects (an error reply uses error.json)",
+  "type": "object",
+  "properties": {
+    "revision": {"$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/revision"},
+    "action": {"enum": ["confirm", "break", "reject_rename", "clear"]},
+    "row_keys": {"type": "array", "items": {"$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/row_key"}},
+    "removed_choices": {"type": "array", "items": {"$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/row_key"}}
+  },
+  "required": ["revision", "action", "row_keys", "removed_choices"],
+  "additionalProperties": false
+}
