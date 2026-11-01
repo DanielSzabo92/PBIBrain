@@ -339,8 +339,13 @@ def run_ticket(num: str, state: dict) -> None:
 
     if not st.get("developer_session"):
         log(f"{num}: developer start")
-        res = claude("developer", DEV_PROMPT.format(num=num, step=row["step"], file=row["file"], extra=extra_notes(num, st)),
-                     wt, ticket=num)
+        try:
+            res = claude("developer", DEV_PROMPT.format(num=num, step=row["step"], file=row["file"], extra=extra_notes(num, st)),
+                         wt, ticket=num)
+        except UsageLimit:
+            st["continue_partial"] = True     # the next run continues the work in this worktree
+            save_state(state)
+            raise
         st["developer_session"] = res["session_id"]
         st["developer_report"] = res["text"][-3000:]
         save_state(state)
