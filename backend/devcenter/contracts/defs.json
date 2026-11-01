@@ -90,7 +90,18 @@
           "type": "string"
         },
         "path": {
-          "$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/relative_path"
+          "description": "Null for a cloud source.",
+          "anyOf": [
+            {
+              "$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/relative_path"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "cloud": {
+          "$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/cloud_reference"
         },
         "model_path": {
           "anyOf": [
@@ -162,6 +173,113 @@
         "role",
         "source_id",
         "status"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "description": "A local source has a relative path and no cloud block.",
+          "if": {
+            "properties": {
+              "kind": {
+                "enum": [
+                  "pbip",
+                  "tmdl_folder",
+                  "model_bim",
+                  "pbir_report",
+                  "pbir_legacy_report"
+                ]
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "path": {
+                "$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/relative_path"
+              }
+            },
+            "not": {
+              "required": [
+                "cloud"
+              ]
+            }
+          }
+        },
+        {
+          "description": "A cloud source has a null path and a cloud block.",
+          "if": {
+            "properties": {
+              "kind": {
+                "enum": [
+                  "cloud_model",
+                  "cloud_report"
+                ]
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "path": {
+                "type": "null"
+              }
+            },
+            "required": [
+              "cloud"
+            ]
+          }
+        }
+      ]
+    },
+    "cloud_reference": {
+      "description": "The cloud part of a cloud source record (technical design section 11). No token and no account name.",
+      "type": "object",
+      "properties": {
+        "tenant_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "workspace_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "workspace_name": {
+          "type": "string"
+        },
+        "item_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "dataset_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "last_schema_update": {
+          "anyOf": [
+            {
+              "$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/utc_time"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "dataset_id",
+        "item_id",
+        "last_schema_update",
+        "tenant_id",
+        "workspace_id",
+        "workspace_name"
       ],
       "additionalProperties": false
     },

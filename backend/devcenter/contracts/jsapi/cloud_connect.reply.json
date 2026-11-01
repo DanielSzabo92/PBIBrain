@@ -1,0 +1,129 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pbibrain.local/devcenter/contracts/jsapi/cloud_connect.reply.json",
+  "title": "JS API cloud_connect: reply (an error reply uses error.json)",
+  "type": "object",
+  "properties": {
+    "revision": {
+      "anyOf": [
+        {
+          "$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/revision"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "added": {
+      "type": "boolean"
+    },
+    "source": {
+      "anyOf": [
+        {
+          "$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/source"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "checks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "check_id": {
+            "enum": [
+              "sign_in",
+              "capacity",
+              "xmla_connect",
+              "model_read",
+              "role",
+              "reports_in_workspace",
+              "reports_other_workspaces",
+              "write_conditions",
+              "report_definition"
+            ]
+          },
+          "result": {
+            "enum": [
+              "ok",
+              "failed",
+              "not_checked"
+            ]
+          },
+          "reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "values": {
+            "type": "object",
+            "properties": {
+              "account_name": {
+                "type": "string"
+              },
+              "capacity_type": {
+                "type": "string"
+              },
+              "role": {
+                "type": "string"
+              },
+              "table_count": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "measure_count": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "report_count": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "readable_count": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "unreadable_names": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "name": {
+                "type": "string"
+              },
+              "format": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "fix": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "check_id",
+          "reason",
+          "result",
+          "values"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 1
+    }
+  },
+  "required": [
+    "added",
+    "checks",
+    "revision",
+    "source"
+  ],
+  "additionalProperties": false
+}

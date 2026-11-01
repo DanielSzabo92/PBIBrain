@@ -12,6 +12,7 @@ dependencies = ["ladybug>=0.20", "antlr4-python3-runtime==4.13.2", "jsonschema==
 [project.optional-dependencies]
 mcp = ["mcp>=1.9,<2"]
 desktop = ["pywebview==6.2.1"]
+cloud = ["msal[broker]>=1.31,<2", "msal-extensions>=1.2,<2"]
 
 [project.urls]
 Homepage = "https://github.com/DanielSzabo92/PBIBrain"

@@ -1,0 +1,14 @@
+{
+  "description": "Fabric getDefinition for a user with no write permission on the report.",
+  "replies": [
+    {
+      "method": "POST",
+      "status": 403,
+      "headers": {},
+      "body": {
+        "errorCode": "InsufficientPrivileges",
+        "message": "The caller does not have sufficient permissions."
+      }
+    }
+  ]
+}

@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pbibrain.local/devcenter/contracts/jsapi/cloud_connect.request.json",
+  "title": "JS API cloud_connect: request (UC15). add false runs the test only.",
+  "type": "object",
+  "properties": {
+    "base_revision": {
+      "$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/base_revision"
+    },
+    "kind": {
+      "enum": [
+        "model",
+        "report"
+      ]
+    },
+    "workspace_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "item_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "workspace_connection": {
+      "type": "string",
+      "minLength": 1
+    },
+    "item_name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "access_type": {
+      "enum": [
+        "Read",
+        "Read/Write"
+      ]
+    },
+    "add": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "kind"
+  ],
+  "additionalProperties": false
+}

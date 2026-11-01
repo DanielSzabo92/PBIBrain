@@ -16,6 +16,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 import importlib
 import logging
+import traceback
 from typing import Any, Callable, Mapping
 
 from backend.devcenter import contracts
@@ -28,6 +29,7 @@ AREA_MODULES = (
     "backend.devcenter.session.jsapi_methods",
     "backend.devcenter.compare.jsapi_methods",
     "backend.devcenter.naming.jsapi_methods",
+    "backend.devcenter.sources.cloud_jsapi_methods",
 )
 
 Handler = Callable[[Any, Mapping[str, Any]], Mapping[str, Any]]
@@ -69,12 +71,17 @@ def call(devcenter: Any, name: str, request: Any = None) -> dict[str, Any]:
         reply = dict(method.handler(devcenter, payload))
     except DevCenterError as exc:
         return exc.reply()
-    except Exception:  # The reply must keep the error shape; the log keeps the cause.
-        LOGGER.exception("Development Center method %s failed", name)
+    except Exception as exc:  # The reply must keep the error shape; the log keeps the cause.
+        # Only the type and the code lines: an exception text can hold an account name or a token.
+        LOGGER.error("Development Center method %s failed: %s\n%s", name, type(exc).__name__,
+                     "".join(traceback.format_tb(exc.__traceback__)))
         return error_reply("action_not_allowed", "The app could not do this action.", {"reason": "internal_error"})
     problems = contracts.errors(contracts.jsapi_reply(name), reply)
     if problems:
-        LOGGER.error("Development Center method %s gave a reply that is not valid: %s", name, problems)
+        # Only the JSON pointers: a schema message holds the value, for example an account name.
+        pointers = sorted({"/" + "/".join(str(part) for part in item.absolute_path)
+                           for item in contracts.validator(contracts.jsapi_reply(name)).iter_errors(reply)})
+        LOGGER.error("Development Center method %s gave a reply that is not valid at: %s", name, pointers)
         return error_reply("action_not_allowed", "The app could not do this action.", {"reason": "internal_error"})
     return reply
 
