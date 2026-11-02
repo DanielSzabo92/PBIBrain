@@ -566,6 +566,8 @@ p.object-review { padding: 0 4px; }
 /* ---------- Settings ---------------------------------------------------- */
 
 .settings-tabs { gap: 20px; }
+.settings-keyboard { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; padding: 14px 16px; }
+.settings-keyboard-title { margin: 0; font-size: 14px; font-weight: 600; }
 .settings-tabs > [data-slot="tabs-list"] { align-self: flex-start; }
 .graph-colors fieldset { min-width: 0; border: 0; }
 .palette-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }

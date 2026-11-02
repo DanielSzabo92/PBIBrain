@@ -1,73 +1,144 @@
 {
-  "answered_questions": [],
-  "compare_mode": "names",
+  "checked_at": "2026-10-31T09:30:00Z",
+  "compare_mode": "default",
   "counts": {
-    "conflict": 1,
-    "different": 1,
+    "donors": 3,
     "marks": 0,
-    "merge_choices_set": 2,
-    "missing": 1,
-    "open_proposals": 1,
-    "open_questions": 0,
-    "renamed": 1,
-    "rows": 6,
-    "same": 2
+    "marks_by_kind": {
+      "new_since_start": 0,
+      "source_changed": 0,
+      "source_object_missing": 0
+    },
+    "merge_choices": 2,
+    "sources": 5
   },
+  "created_at": "2026-10-30T08:00:00Z",
   "display_name": "Sales and finance merge",
-  "id": "s-merge-lab",
-  "lock": "free",
-  "open_proposals": [
-    {
-      "blocked": null,
-      "confidence": 0.94,
-      "created_utc": "2026-10-31T09:00:00Z",
-      "id": "p-1",
-      "kind": "merge_choice",
-      "mcp_client": "Test agent",
-      "payload": {
-        "choice": "take_from",
-        "source": "src-finance"
-      },
-      "reason": "Finance model has the newer expression.",
-      "status": "proposed",
-      "summary": "Take from Finance model",
-      "target_id": "row-net-sales",
-      "target_name": "Net Sales"
-    }
-  ],
-  "open_questions": [],
-  "plan_state": "ready",
+  "location": "project",
   "plan_status": "valid_with_warnings",
+  "proposals": {
+    "open": [
+      {
+        "blocked": null,
+        "confidence": 0.94,
+        "created_utc": "2026-10-31T09:00:00Z",
+        "id": "p-1",
+        "kind": "merge_choice",
+        "mcp_client": "Test agent",
+        "payload": {
+          "choice": "take_from",
+          "source": "src-2"
+        },
+        "reason": "Finance model has the newer expression.",
+        "status": "proposed",
+        "summary": "Take from Finance model",
+        "target_id": "row-net-sales",
+        "target_name": "Net Sales"
+      }
+    ]
+  },
+  "questions": {
+    "answered": [],
+    "open": []
+  },
   "read_only": false,
   "revision": 12,
-  "schema_version": 1,
+  "session_id": "5e55a1f0c0de4b6a9d2e7f3a1b8c4d90",
   "sources": [
     {
-      "access_type": "local",
+      "access_type": null,
       "display_name": "Sales model",
-      "fingerprint_state": "missing",
-      "id": "src-sales",
-      "kind": "pbip_folder",
-      "path": "sources/Sales.SemanticModel",
+      "fingerprint_state": "not_checked",
+      "kind": "pbip",
+      "mark_count": 0,
+      "model_format": "tmdl",
+      "model_path": "sources/Sales.SemanticModel",
+      "path": "sources/Sales",
+      "report_format": null,
+      "report_path": null,
       "role": "donor",
+      "source_id": "src-1",
       "status": "missing"
     },
     {
-      "access_type": "local",
+      "access_type": null,
       "display_name": "Finance model",
       "fingerprint_state": "same",
-      "id": "src-finance",
-      "kind": "pbip_folder",
-      "path": "sources/Finance.SemanticModel",
+      "kind": "pbip",
+      "mark_count": 0,
+      "model_format": "tmdl",
+      "model_path": "sources/Finance.SemanticModel",
+      "path": "sources/Finance",
+      "report_format": null,
+      "report_path": null,
       "role": "donor",
+      "source_id": "src-2",
+      "status": "ok"
+    },
+    {
+      "access_type": null,
+      "display_name": "Combined model",
+      "fingerprint_state": "same",
+      "kind": "tmdl_folder",
+      "mark_count": 0,
+      "model_format": "tmdl",
+      "model_path": "target/Combined.SemanticModel",
+      "path": "target/Combined.SemanticModel",
+      "report_format": null,
+      "report_path": null,
+      "role": "target",
+      "source_id": "src-3",
+      "status": "ok"
+    },
+    {
+      "access_type": null,
+      "display_name": "Combined report",
+      "fingerprint_state": "same",
+      "kind": "pbir_report",
+      "mark_count": 0,
+      "model_format": null,
+      "model_path": null,
+      "path": "target/Combined.Report",
+      "report_format": "pbir",
+      "report_path": "target/Combined.Report",
+      "role": "target",
+      "source_id": "src-4",
+      "status": "ok"
+    },
+    {
+      "access_type": "Read",
+      "cloud": {
+        "dataset_id": "7f1c2a9e-4b3d-4e8f-9a6b-2c1d0e9f8a7b",
+        "item_id": "7f1c2a9e-4b3d-4e8f-9a6b-2c1d0e9f8a7b",
+        "last_schema_update": "2026-10-30T07:45:00Z",
+        "tenant_id": null,
+        "workspace_id": "3c9d8e7f-6a5b-4c3d-2e1f-0a9b8c7d6e5f",
+        "workspace_name": "Marketing analytics"
+      },
+      "display_name": "Marketing model",
+      "fingerprint_state": "same",
+      "kind": "cloud_model",
+      "mark_count": 0,
+      "model_format": null,
+      "model_path": null,
+      "path": null,
+      "report_format": null,
+      "report_path": null,
+      "role": "donor",
+      "source_id": "src-5",
       "status": "ok"
     }
   ],
   "target": {
-    "kind": "copy_of",
-    "model_name": "Combined model",
-    "path": "target/Combined.SemanticModel",
-    "report_name": "Combined report",
-    "status": "ok"
-  }
+    "model": {
+      "copy_of": "src-1",
+      "mode": "copy_of",
+      "source_id": "src-3"
+    },
+    "report": {
+      "mode": "existing",
+      "source_id": "src-4"
+    }
+  },
+  "updated_at": "2026-10-31T09:30:00Z"
 }

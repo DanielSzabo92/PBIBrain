@@ -262,7 +262,7 @@ export function createDevCenterStore({
     }
     if (SESSION_METHODS.has(method)) {
       // The S2 reply has revision, session_id, read_only, migrated, and mark_count, but no session.
-      // Always load GET session. A reply.session (the fake server sends one) only shows the session sooner.
+      // Always load GET session. A reply.session (an old host reply) only shows the session sooner.
       if (reply.session) acceptSession(reply.session);
       return Promise.all([load("session"), markStale(OTHER_KEYS)]);
     }

@@ -2,11 +2,11 @@
   "rows": [
     {
       "cells": {
-        "src-finance": {
+        "src-1": {
           "changed": true,
           "state": "different"
         },
-        "src-sales": {
+        "src-2": {
           "changed": true,
           "state": "different"
         }
@@ -31,20 +31,20 @@
     },
     {
       "cells": {
-        "src-finance": {
-          "changed": true,
-          "state": "different"
-        },
-        "src-sales": {
+        "src-1": {
           "changed": false,
           "state": "same"
+        },
+        "src-2": {
+          "changed": true,
+          "state": "different"
         }
       },
       "display_folder": "Revenue",
       "marks": [],
       "merge_choice": {
         "choice": "take_from",
-        "source": "src-finance"
+        "source": "src-2"
       },
       "name": "Gross Margin",
       "notes": [],
@@ -63,13 +63,13 @@
     },
     {
       "cells": {
-        "src-finance": {
-          "changed": false,
-          "state": "same"
-        },
-        "src-sales": {
+        "src-1": {
           "changed": false,
           "state": "missing"
+        },
+        "src-2": {
+          "changed": false,
+          "state": "same"
         }
       },
       "display_folder": null,
@@ -88,13 +88,13 @@
     },
     {
       "cells": {
-        "src-finance": {
-          "changed": true,
-          "state": "renamed"
-        },
-        "src-sales": {
+        "src-1": {
           "changed": false,
           "state": "same"
+        },
+        "src-2": {
+          "changed": true,
+          "state": "renamed"
         }
       },
       "display_folder": null,
@@ -115,11 +115,11 @@
     },
     {
       "cells": {
-        "src-finance": {
+        "src-1": {
           "changed": false,
           "state": "same"
         },
-        "src-sales": {
+        "src-2": {
           "changed": false,
           "state": "same"
         }
@@ -138,11 +138,11 @@
     },
     {
       "cells": {
-        "src-finance": {
+        "src-1": {
           "changed": false,
           "state": "same"
         },
-        "src-sales": {
+        "src-2": {
           "changed": false,
           "state": "same"
         }

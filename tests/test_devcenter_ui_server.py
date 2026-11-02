@@ -12,6 +12,9 @@ from urllib.request import Request, urlopen
 from tests import devcenter_ui_server as fake
 
 ROOT = Path(__file__).resolve().parents[1]
+# The session IDs of the fixtures (S2: 32 hexadecimal characters).
+MAIN_SESSION = "5e55a1f0c0de4b6a9d2e7f3a1b8c4d90"
+BUDGET_SESSION = "b0d6e7a2c4f84e1d8a3b5c7d9e1f2a34"
 
 
 class FakeServerCase(unittest.TestCase):
@@ -94,9 +97,14 @@ class HealthAndScenarioTest(FakeServerCase):
                 first = loaded["revision"]
                 desktop = self.post("/__test__/desktop/get_session", {"args": []})
                 self.assertEqual(desktop["ok"], True)
-                sessions = self.get("/api/devcenter/sessions")
-                self.assertEqual(sessions["revision"], first)
-                status, session, _ = self.request("GET", "/api/devcenter/session")
+                status, sessions, _ = self.request("GET", "/api/devcenter/sessions")
+                status_session, session, _ = self.request("GET", "/api/devcenter/session")
+                if name == "no-project":
+                    self.assertEqual((status, sessions["error"]["details"]), (409, {"reason": "no_project"}))
+                else:
+                    # GET sessions has a null revision when no session is open (S2 schema).
+                    self.assertEqual(sessions["revision"], first if status_session == 200 else None)
+                status = status_session
                 if status == 200:
                     self.assertEqual(session["revision"], first)
                     self.post("/__test__/agent-proposal", {"target_id": "row-date", "target_name": "Date"})
@@ -117,12 +125,14 @@ class HealthAndScenarioTest(FakeServerCase):
     def test_the_scenario_states(self) -> None:
         self.post("/__test__/scenario", {"name": "no-project"})
         self.assertIsNone(self.post("/__test__/desktop/get_session", {"args": []})["project"])
+        status, refused, _ = self.request("GET", "/api/devcenter/sessions")
+        self.assertEqual((status, refused["error"]["code"]), (409, "action_not_allowed"))
         self.post("/__test__/scenario", {"name": "no-sessions"})
         self.assertEqual(self.get("/api/devcenter/sessions")["sessions"], [])
         for name, state in (("newer-schema", "newer"), ("damaged", "damaged")):
             self.post("/__test__/scenario", {"name": name})
             self.assertEqual(self.get("/api/devcenter/sessions")["sessions"][0]["schema_state"], state)
-            refused = self.call("session_open", {"session_id": "s-merge-lab"})
+            refused = self.call("session_open", {"session_id": MAIN_SESSION})
             self.assertEqual(refused["error"]["code"], "action_not_allowed")
         self.post("/__test__/scenario", {"name": "sources-changed"})
         marked = self.get("/api/devcenter/compare-rows?marks=true")
@@ -253,9 +263,9 @@ class TestControlTest(FakeServerCase):
         self.assertEqual(added["revision"], current + 1)
         session = self.get("/api/devcenter/session")
         self.assertEqual(session["revision"], current + 1)
-        self.assertEqual([item["target_id"] for item in session["open_proposals"]], ["row-net-sales", "row-customer"])
+        self.assertEqual([item["target_id"] for item in session["proposals"]["open"]], ["row-net-sales", "row-customer"])
         replaced = self.post("/__test__/agent-proposal", {"target_id": "row-customer", "summary": "Rename to Client"})
-        proposals = self.get("/api/devcenter/session")["open_proposals"]
+        proposals = self.get("/api/devcenter/session")["proposals"]["open"]
         self.assertEqual([item["id"] for item in proposals], ["p-1", replaced["proposal"]["id"]])
         self.assertEqual(proposals[1]["summary"], "Rename to Client")
         stale = self.call("proposal_accept", {"base_revision": current, "proposal_id": "p-1"})
@@ -270,7 +280,7 @@ class TestControlTest(FakeServerCase):
 class ReadAndShimTest(FakeServerCase):
     def test_each_read_carries_the_revision(self) -> None:
         current = self.revision()
-        for path in ("session", "sessions", "compare-rows", "compare-rows/row-net-sales/diff?source=src-finance", "plan",
+        for path in ("session", "sessions", "compare-rows", "compare-rows/row-net-sales/diff?source=src-2", "plan",
                      "impact", "impact/removal/row-budget", "wireframe/report-1", "naming-rules", "apply/preview",
                      "apply/progress", "apply/last", "log", "display-folders"):
             with self.subTest(path=path):

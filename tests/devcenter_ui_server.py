@@ -64,6 +64,8 @@ ERROR_STATUS = {
     "unknown": 500, "network": 503,
 }
 PROPOSAL_MIN_CONFIDENCE = 0.9
+# The paths that the fake native source picker gives, in turn.
+SOURCE_PICKS = ("sources/Sales.SemanticModel", "sources/Finance.SemanticModel", "sources/Budget.SemanticModel")
 
 
 class FakeError(Exception):
@@ -103,11 +105,8 @@ def _generate_large(files: dict[str, Any], plan: dict[str, int]) -> None:
     """Make the large-5000-rows data in memory, so that the repository has no large fixture file."""
     session = files["session"]
     source_ids = [f"src-{index + 1}" for index in range(plan["sources"])]
-    session["sources"] = [
-        {"id": source_id, "display_name": f"Model {index + 1}", "kind": "pbip_folder", "role": "donor", "access_type": "local",
-         "path": f"sources/Model{index + 1}.SemanticModel", "status": "ok", "fingerprint_state": "same"}
-        for index, source_id in enumerate(source_ids)
-    ]
+    session["sources"] = [_local_source(source_id, f"sources/Model{index + 1}.SemanticModel") for index, source_id in enumerate(source_ids)]
+    session["target"] = {"model": {"mode": "existing", "source_id": "src-1"}, "report": {"mode": "new_empty"}}
     states = ("same", "different", "missing", "renamed", "conflict")
     types = ("measure", "column", "table", "relationship")
     rows = []
@@ -131,7 +130,49 @@ def _generate_large(files: dict[str, Any], plan: dict[str, int]) -> None:
             for index in range(plan["impact_items"])
         ],
     }
-    session["counts"] = {**session["counts"], "rows": plan["compare_rows"]}
+    session["counts"] = {**session["counts"], "sources": len(source_ids), "donors": len(source_ids)}
+
+
+# Source kinds of the fake native picker paths (technical design section 11).
+_KIND_BY_SUFFIX = (
+    (".semanticmodel", "tmdl_folder"), (".bim", "model_bim"), (".report", "pbir_report"), (".pbip", "pbip"),
+)
+
+
+def _source_kind(path: str) -> str | None:
+    lowered = path.lower().rstrip("/")
+    for suffix, kind in _KIND_BY_SUFFIX:
+        if lowered.endswith(suffix):
+            return kind
+    return None
+
+
+def _local_source(source_id: str, path: str, role: str = "donor", kind: str | None = None) -> dict[str, Any]:
+    """A local source record in the S2 shape (defs.json#/$defs/source)."""
+    kind = kind or _source_kind(path) or "pbip"
+    name = path.replace("\\", "/").rstrip("/").split("/")[-1]
+    for suffix in (".SemanticModel", ".Report", ".pbip", ".bim"):
+        if name.endswith(suffix):
+            name = name[: -len(suffix)]
+    is_report = kind in {"pbir_report", "pbir_legacy_report"}
+    return {
+        "source_id": source_id, "kind": kind, "role": role, "display_name": f"{name} report" if is_report else f"{name} model",
+        "path": path, "model_path": None if is_report else path, "model_format": None if is_report else ("tmsl" if kind == "model_bim" else "tmdl"),
+        "report_path": path if is_report else None, "report_format": "pbir" if is_report else None,
+        "access_type": None, "status": "ok", "fingerprint_state": "same", "mark_count": 0,
+    }
+
+
+def _empty_session(session_id: str, name: str, revision: int) -> dict[str, Any]:
+    """A new session in the S2 GET session shape: no sources and no target model."""
+    return {
+        "session_id": session_id, "display_name": name, "location": "project", "read_only": False, "revision": revision,
+        "created_at": "2026-10-31T10:00:00Z", "updated_at": "2026-10-31T10:00:00Z", "checked_at": None, "sources": [],
+        "target": {"model": None, "report": {"mode": "new_empty"}}, "compare_mode": "default", "plan_status": None,
+        "counts": {"sources": 0, "donors": 0, "merge_choices": 0, "marks": 0,
+                   "marks_by_kind": {"source_changed": 0, "source_object_missing": 0, "new_since_start": 0}},
+        "questions": {"open": [], "answered": []}, "proposals": {"open": []},
+    }
 
 
 class FakeDevCenter:
@@ -159,6 +200,7 @@ class FakeDevCenter:
             self.faults: dict[str, list[dict[str, Any]]] = {}
             self.delays: dict[str, dict[str, Any]] = {}
             self.next_proposal = 1
+            self.picks = 0
             return self.health()
 
     def health(self) -> dict[str, Any]:
@@ -266,36 +308,118 @@ class FakeDevCenter:
                 return row
         raise FakeError("not_found", f"The row {row_key} does not exist.", {"row_key": row_key})
 
+    # The S2 session_open and session_create replies have no session field (jsapi/session_*.reply.json).
+
     def _call_session_open(self, payload: dict[str, Any]) -> dict[str, Any]:
         session_id = payload.get("session_id")
-        item = next((entry for entry in self.files["sessions"]["sessions"] if entry["id"] == session_id), None)
+        item = next((entry for entry in self.files["sessions"]["sessions"] if entry["session_id"] == session_id), None)
         if item is None:
             raise FakeError("not_found", f"The session {session_id} does not exist.")
         if item["schema_state"] != "ok":
             raise FakeError("action_not_allowed", "This session file cannot open.", {"reason": item["schema_state"]})
         _, default_files = load_scenario_files("default", self.fixtures)
         session = copy.deepcopy(default_files["session"])
-        session.update({"id": item["id"], "display_name": item["display_name"], "lock": item["lock_state"], "read_only": item["lock_state"] == "locked"})
+        session.update({"session_id": item["session_id"], "display_name": item["display_name"], "read_only": item["lock_state"] == "locked"})
         self.session = session
-        return {"session": session}
+        return {"session_id": session["session_id"], "read_only": session["read_only"], "migrated": False,
+                "mark_count": session["counts"]["marks"]}
 
     def _call_session_create(self, payload: dict[str, Any]) -> dict[str, Any]:
         name = payload.get("display_name")
         if not isinstance(name, str) or not name.strip():
             raise FakeError("invalid_payload", "The session needs a display name.", {"field": "display_name"})
-        _, default_files = load_scenario_files("default", self.fixtures)
-        session = copy.deepcopy(default_files["session"])
-        session.update({"id": f"s-{len(self.files['sessions']['sessions']) + 1}", "display_name": name.strip(), "open_proposals": []})
-        self.session = session
+        session_id = f"{len(self.files['sessions']['sessions']) + 1:032x}"
+        self.session = _empty_session(session_id, name.strip(), self.revision + 1)
         self.files["sessions"]["sessions"].insert(0, {
-            "id": session["id"], "display_name": session["display_name"], "updated_utc": "2026-10-31T10:00:00Z",
-            "target_model_name": session["target"]["model_name"], "target_report_name": session["target"]["report_name"],
-            "source_count": len(session["sources"]), "plan_status": None, "lock_state": "free", "schema_state": "ok",
+            "session_id": session_id, "location": "project", "display_name": name.strip(), "updated_at": "2026-10-31T10:00:00Z",
+            "target_model_name": None, "target_report_name": None, "source_count": 0, "plan_status": None,
+            "lock_state": "free", "schema_state": "ok", "is_open": False,
         })
-        return {"session": session}
+        return {"session_id": session_id, "read_only": False}
 
-    def _call_session_close(self, _payload: dict[str, Any]) -> None:
+    def _call_session_close(self, _payload: dict[str, Any]) -> dict[str, Any]:
+        session_id = self.session["session_id"] if self.session else None
         self.session = None
+        return {"session_id": session_id}
+
+    def _list_entry(self) -> dict[str, Any] | None:
+        session_id = (self.session or {}).get("session_id")
+        return next((entry for entry in self.files["sessions"]["sessions"] if entry["session_id"] == session_id), None)
+
+    def _source_changed(self) -> None:
+        """Keep the counts and the session list row the same as the source list (UC1)."""
+        session = self.session
+        sources = {item["source_id"]: item for item in session["sources"]}
+        session["counts"]["sources"] = len(sources)
+        session["counts"]["donors"] = sum(1 for item in sources.values() if item["role"] == "donor")
+        entry = self._list_entry()
+        if entry is not None:
+            target = session["target"]
+            entry["source_count"] = len(sources)
+            entry["target_model_name"] = sources.get((target.get("model") or {}).get("source_id"), {}).get("display_name")
+            entry["target_report_name"] = sources.get((target.get("report") or {}).get("source_id"), {}).get("display_name")
+
+    def _next_source_id(self) -> str:
+        numbers = [int(item["source_id"].split("-")[1]) for item in self.session["sources"]]
+        return f"src-{max(numbers, default=0) + 1}"
+
+    def _call_source_add(self, payload: dict[str, Any]) -> dict[str, Any]:
+        path = payload.get("path")
+        if not isinstance(path, str) or not path.strip():
+            raise FakeError("invalid_payload", "The source needs a path.", {"field": "path"})
+        if path.lower().endswith(".pbix"):
+            raise FakeError("action_not_allowed", "PBIBrain cannot read a PBIX file.", {"reason": "pbix"})
+        if any(item["path"] == path for item in self.session["sources"]):
+            raise FakeError("action_not_allowed", "This source is already in the session.", {"reason": "duplicate_source"})
+        source = _local_source(self._next_source_id(), path)
+        self.session["sources"].append(source)
+        self._source_changed()
+        return {"source": source}
+
+    def _call_source_remove(self, payload: dict[str, Any]) -> dict[str, Any]:
+        source_id = payload.get("source_id")
+        source = next((item for item in self.session["sources"] if item["source_id"] == source_id), None)
+        if source is None:
+            raise FakeError("not_found", f"The source {source_id} does not exist.", {"kind": "source", "source_id": source_id})
+        self.session["sources"].remove(source)
+        choices = [row for row in self.files.get("compare-rows", {}).get("rows", [])
+                   if (row.get("merge_choice") or {}).get("source") == source_id]
+        self._source_changed()
+        return {"source_id": source_id, "choice_count": len(choices)}
+
+    def _call_source_relink(self, payload: dict[str, Any]) -> dict[str, Any]:
+        source_id = payload.get("source_id")
+        source = next((item for item in self.session["sources"] if item["source_id"] == source_id), None)
+        if source is None or not isinstance(payload.get("path"), str):
+            raise FakeError("not_found", f"The source {source_id} does not exist.", {"kind": "source", "source_id": source_id})
+        source.update({"status": "ok", "fingerprint_state": "same"})
+        return {"source": source}
+
+    def _call_target_set(self, payload: dict[str, Any]) -> dict[str, Any]:
+        model = payload.get("model")
+        if not isinstance(model, dict) or model.get("mode") not in {"existing", "copy_of", "empty"}:
+            raise FakeError("invalid_payload", "The target needs a model mode.", {"field": "model"})
+        added = []
+        if model["mode"] == "existing":
+            target_model = {"mode": "existing", "source_id": model.get("source_id")}
+        else:
+            source = _local_source(self._next_source_id(), str(model.get("path") or "target"), role="target", kind="tmdl_folder")
+            if model["mode"] == "empty" and model.get("name"):
+                source["display_name"] = str(model["name"])
+            self.session["sources"].append(source)
+            added.append(source)
+            target_model = {"mode": model["mode"], "source_id": source["source_id"]}
+            if model["mode"] == "copy_of":
+                target_model["copy_of"] = model.get("source_id")
+        report = payload.get("report") or {"mode": "new_empty"}
+        self.session["target"] = {"model": target_model, "report": report}
+        self._source_changed()
+        return {"target": self.session["target"], "sources_added": added}
+
+    def _call_sources_check(self, _payload: dict[str, Any]) -> dict[str, Any]:
+        self.session["checked_at"] = "2026-10-31T10:00:00Z"
+        return {"sources": [{"source_id": item["source_id"], "status": item["status"]} for item in self.session["sources"]],
+                "mark_count": self.session["counts"]["marks"]}
 
     def _call_merge_choice_set(self, payload: dict[str, Any]) -> dict[str, Any]:
         row = self._row(payload.get("row_key"))
@@ -318,11 +442,13 @@ class FakeDevCenter:
         rows = [self._row(key) for key in keys]
         for row in rows:
             row["marks"] = []
-        self.session["counts"]["marks"] = sum(1 for row in self._rows() if row["marks"])
+        marks = sum(1 for row in self._rows() if row["marks"])
+        self.session["counts"]["marks"] = marks
+        self.session["counts"]["marks_by_kind"]["source_changed"] = marks
         return {"confirmed": len(rows)}
 
     def _take_proposal(self, proposal_id: Any) -> dict[str, Any]:
-        proposals = self.session["open_proposals"]
+        proposals = self.session["proposals"]["open"]
         for index, proposal in enumerate(proposals):
             if proposal["id"] == proposal_id:
                 if proposal.get("blocked") == "source_changed":
@@ -338,13 +464,13 @@ class FakeDevCenter:
 
     def _call_proposal_accept_all(self, _payload: dict[str, Any]) -> dict[str, Any]:
         accepted, skipped, kept = [], [], []
-        for proposal in self.session["open_proposals"]:
+        for proposal in self.session["proposals"]["open"]:
             if proposal.get("blocked"):
                 skipped.append({"id": proposal["id"], "reason": proposal["blocked"]})
                 kept.append(proposal)
             else:
                 accepted.append(proposal["id"])
-        self.session["open_proposals"] = kept
+        self.session["proposals"]["open"] = kept
         return {"accepted_ids": accepted, "skipped": skipped}
 
     def _call_cloud_items_list(self, payload: dict[str, Any]) -> dict[str, Any]:
@@ -364,10 +490,9 @@ class FakeDevCenter:
         }
         self.next_proposal += 1
         # A new agent proposal for the same target and kind replaces the older one.
-        session["open_proposals"] = [item for item in session["open_proposals"]
-                                     if (item["target_id"], item["kind"]) != (proposal["target_id"], proposal["kind"])]
-        session["open_proposals"].append(proposal)
-        session["counts"]["open_proposals"] = len(session["open_proposals"])
+        session["proposals"]["open"] = [item for item in session["proposals"]["open"]
+                                        if (item["target_id"], item["kind"]) != (proposal["target_id"], proposal["kind"])]
+        session["proposals"]["open"].append(proposal)
         self._step("proposal_submit", {"target_id": proposal["target_id"], "proposal_id": proposal["id"], "reason": proposal["reason"]}, author)
         return proposal
 
@@ -379,7 +504,7 @@ class FakeDevCenter:
         self.before_reply(f"{method} {path}")
         with self.lock:
             if method == "GET" and parts == ["sessions"]:
-                return self._reply(self.files["sessions"])
+                return self._sessions()
             if method == "POST" and parts in (["proposals"], ["questions"]):
                 return self._submit(parts[0], body)
             session = self._require_session()
@@ -431,7 +556,7 @@ class FakeDevCenter:
             question = {"id": f"q-test-{self.next_proposal}", "target_id": body.get("target_id"), "text": body.get("text"),
                         "options": body.get("options", []), "recommended": body.get("recommended"), "reason": body.get("reason")}
             self.next_proposal += 1
-            session["open_questions"].append(question)
+            session["questions"]["open"].append(question)
             self._step("question_ask", {"target_id": question["target_id"], "reason": question["reason"]}, "agent")
             return self._reply({"question": question})
         if float(body.get("confidence", 0)) < PROPOSAL_MIN_CONFIDENCE:
@@ -440,6 +565,18 @@ class FakeDevCenter:
 
     def _reply(self, value: dict[str, Any]) -> dict[str, Any]:
         return {**value, "revision": self.revision}
+
+    def _sessions(self) -> dict[str, Any]:
+        """GET sessions as the real backend gives it (UC1, UC2).
+
+        With no project, the real backend refuses with the reason no_project. With no open session,
+        the revision is null. The row of the open session has is_open true.
+        """
+        if self.meta.get("no_project"):
+            raise FakeError("action_not_allowed", "Open a project first.", {"reason": "no_project"})
+        open_id = (self.session or {}).get("session_id")
+        rows = [{**row, "is_open": row["session_id"] == open_id} for row in self.files["sessions"]["sessions"]]
+        return {"sessions": rows, "revision": self.revision if self.session is not None else None}
 
     def _page(self, value: dict[str, Any], key: str, query: dict[str, list[str]]) -> dict[str, Any]:
         items = value[key]
@@ -571,7 +708,11 @@ class FakeDevCenterHandler(BaseHTTPRequestHandler):
         if method == "choose_folder":
             return {"ok": True, "folder": "merge-lab"}
         if method == "choose_sources":
-            return {"ok": True, "sources": ["sources/Sales.SemanticModel"]}
+            # Each pick gives the next source, so that a create flow can add more than one source.
+            with self.state.lock:
+                index = self.state.picks
+                self.state.picks += 1
+            return {"ok": True, "sources": [SOURCE_PICKS[index % len(SOURCE_PICKS)]]}
         return session
 
     def _body(self) -> dict[str, Any]:

@@ -1,5 +1,6 @@
 {
   "base": "default",
-  "description": "The desktop host has no project open.",
+  "description": "The desktop host has no project open. GET sessions refuses with the reason no_project.",
+  "no_project": true,
   "revision": 0
 }
