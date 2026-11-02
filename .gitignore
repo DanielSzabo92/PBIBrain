@@ -66,3 +66,7 @@ frontend/.guard-test-results/
 
 # Orchestrator run state of the Development Center build.
 .scratch/dev-center-build/orchestrator-state.json
+
+# Design system gate receipts
+.ds-receipts/
+
