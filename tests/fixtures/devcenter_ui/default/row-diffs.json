@@ -1,13 +1,13 @@
 {
   "row-net-sales": {
-    "src-finance": {
-      "language": "dax",
-      "source": "SUM(Sales[Net])",
-      "target": "SUM(Sales[Amount])"
-    },
-    "src-sales": {
+    "src-1": {
       "language": "dax",
       "source": "SUM(Sales[Amount])",
+      "target": "SUM(Sales[Amount])"
+    },
+    "src-2": {
+      "language": "dax",
+      "source": "SUM(Sales[Net])",
       "target": "SUM(Sales[Amount])"
     }
   }

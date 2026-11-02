@@ -59,7 +59,7 @@ test("fault, delay, and agent-proposal change the next reply", async ({ page, re
   const added = await (await request.post("/__test__/agent-proposal", { data: { target_id: "row-date", target_name: "Date" } })).json();
   expect(added.revision).toBe(before.revision + 1);
   const after = await (await request.get("/api/devcenter/session")).json();
-  expect(after.open_proposals.map((item) => item.target_id)).toContain("row-date");
+  expect(after.proposals.open.map((item) => item.target_id)).toContain("row-date");
 
   const network = await request.post("/__test__/fault", { data: { method: "sources_check", code: "network" } });
   expect(network.ok()).toBe(true);

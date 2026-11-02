@@ -18,6 +18,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "./components/ui/tabs";
 const GraphView = lazy(() => import("./components/GraphView"));
 const GraphColors = lazy(() => import("./components/GraphColors"));
 const ModelSummary = lazy(() => import("./components/ModelSummary"));
+const DevCenter = lazy(() => import("./devcenter/screens/DevCenter.jsx"));
+import { Switch } from "./components/ui/switch";
+import { setSlashSearchEnabled, slashGoesToSearch, slashSearchEnabled } from "./devcenter/preferences.js";
+import { t as devCopy } from "./devcenter/copy.js";
 import { artifactColor, normalizeColors, typeLabel } from "./graphPresentation";
 
 const VIEWS = [
@@ -26,6 +30,7 @@ const VIEWS = [
   ["graph", "Graph"],
   ["inspector", "Inspector"],
   ["review", "Review queue"],
+  ["devcenter", "Development Center"],
   ["config", "Settings"],
 ];
 
@@ -35,6 +40,7 @@ const VIEW_HINTS = {
   graph: "How objects depend on each other",
   inspector: "One object, fully explained",
   review: "Confirm what PBIBrain inferred",
+  devcenter: "Merge many models into one target",
   config: "Appearance, sources and agent context",
 };
 
@@ -443,10 +449,10 @@ function App({ transport = brainTransport }) {
   }, [loadSnapshot]);
 
   // Ctrl/Cmd+K (or "/" outside a text field) jumps straight to search.
+  // The Settings switch "Use the / key to go to search" turns the "/" key off (UI design 9.3, A24).
   useEffect(() => {
     const onKey = (event) => {
-      const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(event.target?.tagName) || event.target?.isContentEditable;
-      if (((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") || (event.key === "/" && !typing && !event.ctrlKey && !event.metaKey)) {
+      if (((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") || slashGoesToSearch(event)) {
         event.preventDefault();
         setView("search");
         requestAnimationFrame(() => document.querySelector(".search-field input")?.focus());
@@ -519,7 +525,7 @@ function App({ transport = brainTransport }) {
 
         <main id="main-content" tabIndex={-1} className={`content content-${view}`}>
           {notice ? <div className={`toast ${failedNotice ? "toast-error" : ""}`} role="status">{failedNotice ? <TriangleAlert aria-hidden="true" /> : <CircleCheck aria-hidden="true" />}{notice}</div> : null}
-          {error || configError || operationError || desktopError ? (
+          {(view !== "devcenter" && (error || configError || operationError)) || desktopError ? (
             <div className="error-banner" role="alert">
               <TriangleAlert aria-hidden="true" />
               <span>{readableText(error || configError || operationError || desktopError)}</span>
@@ -533,7 +539,8 @@ function App({ transport = brainTransport }) {
             {view === "graph" ? <GraphView session={graphSession} onSession={setGraphSession} colors={graphColors} transport={transport} overview={overview} snapshot={snapshot} selectedId={selectedId} onSelect={selectNode} /> : null}
             {view === "inspector" ? <div className="page page-wide">{selectedId ? <><Button variant="ghost" size="sm" className="inspector-back" onClick={() => { if (inspectorOrigin === "inspector") { setSelectedId(null); setInspectedObject(null); } else setView(inspectorOrigin); }}><ArrowLeft aria-hidden="true" />{inspectorOrigin === "search" ? "Back to results" : inspectorOrigin === "inspector" ? "Browse objects" : `Back to ${VIEWS.find(([key]) => key === inspectorOrigin)?.[1]?.toLowerCase() || "overview"}`}</Button><Inspector key={selectedId} transport={transport} scanning={scanning} colors={graphColors} node={selected} details={inspectedDetails} loading={Boolean(selectedId && !inspectedDetails && !inspectorError)} error={inspectorError} snapshot={snapshot} snapshotLoaded={snapshotLoaded} snapshotError={snapshotError} onEvidenceRetry={() => loadSnapshot().catch(() => {})} overview={overview} onSelect={selectNode} onRetry={() => selectNode(selectedId)} onReview={review} onGraph={() => setView("graph")} /></> : <SearchView browse session={inspectorSession} onSession={setInspectorSession} colors={graphColors} transport={transport} overview={overview} onSelect={(id) => { setInspectorOrigin("inspector"); selectNode(id); }} />}</div> : null}
             {view === "review" ? <div className="page page-wide"><ReviewQueue scanning={scanning} session={reviewSession} onSession={setReviewSession} snapshot={snapshot} loaded={snapshotLoaded} loading={!snapshotLoaded && (snapshotLoading || !snapshotError)} error={snapshotError} onRetry={() => loadSnapshot().catch(() => {})} overview={overview} onSelect={selectNode} onReview={review} /></div> : null}
-            {view === "config" ? <div className="page page-narrow"><PageHeading title="Settings" description="Manage project sources, graph appearance, and model context." />{configError && !config ? <Card className="panel"><EmptyState icon={<TriangleAlert />} tone="bad" title="Project settings unavailable" detail="Retry to load your saved sources and appearance." action={<Button variant="outline" onClick={load}>Retry settings</Button>} /></Card> : <Tabs value={settingsTab} onValueChange={setSettingsTab} className="settings-tabs">
+            {view === "devcenter" ? <DevCenter onOpenProject={closeDesktopProject} /> : null}
+            {view === "config" ? <div className="page page-narrow"><PageHeading title="Settings" description="Manage project sources, graph appearance, and model context." /><KeyboardSettings />{configError && !config ? <Card className="panel"><EmptyState icon={<TriangleAlert />} tone="bad" title="Project settings unavailable" detail="Retry to load your saved sources and appearance." action={<Button variant="outline" onClick={load}>Retry settings</Button>} /></Card> : <Tabs value={settingsTab} onValueChange={setSettingsTab} className="settings-tabs">
               <TabsList aria-label="Settings sections"><TabsTrigger value="project">Project</TabsTrigger><TabsTrigger value="colors">Graph colors</TabsTrigger><TabsTrigger value="summary">Model summary</TabsTrigger></TabsList>
               <TabsContent value="colors"><Suspense fallback={<ViewLoading />}><GraphColors config={config} transport={transport} overview={overview} onSaved={setConfig} /></Suspense></TabsContent>
               <TabsContent value="summary"><Suspense fallback={<ViewLoading />}><ModelSummary overview={overview} transport={transport} scanning={scanning} /></Suspense></TabsContent>
@@ -543,6 +550,21 @@ function App({ transport = brainTransport }) {
         </main>
       </div>
     </div>
+  );
+}
+
+// App setting of the "/" key (UI design 9.3, A24). It is stored in localStorage, as the theme is.
+function KeyboardSettings() {
+  const [enabled, setEnabled] = useState(slashSearchEnabled);
+  const change = (value) => {
+    setEnabled(value);
+    setSlashSearchEnabled(value);
+  };
+  return (
+    <Card className="panel settings-keyboard">
+      <h2 className="settings-keyboard-title">{devCopy("settings.keyboard.title")}</h2>
+      <Switch label={devCopy("settings.slash.label")} description={devCopy("settings.slash.help")} checked={enabled} onCheckedChange={change} />
+    </Card>
   );
 }
 

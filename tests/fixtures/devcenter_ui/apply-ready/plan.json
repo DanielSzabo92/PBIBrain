@@ -8,21 +8,21 @@
       "object_id": "row-budget",
       "object_name": "Budget",
       "operation": "add_table",
-      "source": "src-finance"
+      "source": "src-2"
     },
     {
       "id": "step-2",
       "object_id": "row-gross-margin",
       "object_name": "Gross Margin",
       "operation": "change_measure",
-      "source": "src-finance"
+      "source": "src-2"
     },
     {
       "id": "step-3",
       "object_id": "row-customer",
       "object_name": "Customer",
       "operation": "rename_table",
-      "source": "src-finance"
+      "source": "src-2"
     }
   ],
   "summary": {

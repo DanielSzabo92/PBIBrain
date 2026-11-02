@@ -1,12 +1,12 @@
 {
   "folders": {
-    "src-finance": [
-      "Revenue",
-      "Cost"
-    ],
-    "src-sales": [
+    "src-1": [
       "Revenue",
       "Revenue/Margin"
+    ],
+    "src-2": [
+      "Revenue",
+      "Cost"
     ]
   }
 }

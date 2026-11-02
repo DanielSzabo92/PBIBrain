@@ -4,7 +4,7 @@
       "action": "merge_choice_set",
       "after": {
         "choice": "take_from",
-        "source": "src-finance"
+        "source": "src-2"
       },
       "author": "user",
       "before": null,
@@ -19,7 +19,7 @@
       "action": "proposal_submit",
       "after": {
         "choice": "take_from",
-        "source": "src-finance"
+        "source": "src-2"
       },
       "author": "agent",
       "before": null,

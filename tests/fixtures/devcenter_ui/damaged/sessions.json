@@ -2,25 +2,29 @@
   "sessions": [
     {
       "display_name": null,
-      "id": "s-merge-lab",
+      "is_open": false,
+      "location": "project",
       "lock_state": "free",
       "plan_status": null,
       "schema_state": "damaged",
-      "source_count": null,
+      "session_id": "5e55a1f0c0de4b6a9d2e7f3a1b8c4d90",
+      "source_count": 0,
       "target_model_name": null,
       "target_report_name": null,
-      "updated_utc": "2026-10-31T09:30:00Z"
+      "updated_at": "2026-10-31T09:30:00Z"
     },
     {
       "display_name": "Budget merge",
-      "id": "s-budget",
+      "is_open": false,
+      "location": "project",
       "lock_state": "free",
       "plan_status": null,
       "schema_state": "ok",
+      "session_id": "b0d6e7a2c4f84e1d8a3b5c7d9e1f2a34",
       "source_count": 3,
       "target_model_name": "Budget model",
       "target_report_name": null,
-      "updated_utc": "2026-10-30T16:05:00Z"
+      "updated_at": "2026-10-30T16:05:00Z"
     }
   ]
 }

@@ -1,5 +1,5 @@
 import React from "react";
-import { LayoutGrid, ListChecks, Search, SlidersHorizontal, SquareMousePointer, Waypoints } from "lucide-react";
+import { GitMerge, LayoutGrid, ListChecks, Search, SlidersHorizontal, SquareMousePointer, Waypoints } from "lucide-react";
 
 const ICONS = {
   overview: LayoutGrid,
@@ -7,6 +7,7 @@ const ICONS = {
   graph: Waypoints,
   inspector: SquareMousePointer,
   review: ListChecks,
+  devcenter: GitMerge,
   config: SlidersHorizontal,
 };
 

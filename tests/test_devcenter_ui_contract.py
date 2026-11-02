@@ -241,5 +241,85 @@ class ErrorShapeTest(unittest.TestCase):
         self.assertEqual(set(fake.ERROR_STATUS), {*SECTION_12_CODES, *CLIENT_CODES})
 
 
+class SessionFixtureContractTest(unittest.TestCase):
+    """Step U3: the session fixtures and the fake session and source replies follow the S2 schemas."""
+
+    FIXTURES = ROOT / "tests" / "fixtures" / "devcenter_ui"
+
+    def validate(self, name: str, value: object) -> None:
+        errors = sorted(_contract_validator(name).iter_errors(value), key=lambda error: list(error.path))
+        self.assertEqual([f"{list(error.path)}: {error.message}"[:300] for error in errors], [], name)
+
+    def test_each_session_fixture_validates_against_the_get_session_schema(self) -> None:
+        checked = 0
+        for path in sorted(self.FIXTURES.glob("*/session.json")):
+            value = json.loads(path.read_text(encoding="utf-8"))
+            if value is None:
+                continue
+            with self.subTest(fixture=path.parent.name):
+                self.validate("http/session.reply.json", value)
+                checked += 1
+        self.assertGreaterEqual(checked, 6)
+
+    def test_each_scenario_gives_get_session_and_get_sessions_replies_of_the_schema(self) -> None:
+        state = fake.FakeDevCenter()
+        for name in fake.SCENARIOS:
+            with self.subTest(scenario=name):
+                state.load(name)
+                try:
+                    self.validate("http/sessions.reply.json", state.read("GET", "/api/devcenter/sessions", {}, {}))
+                except fake.FakeError as error:
+                    self.assertEqual((name, error.body()["error"]["details"]), ("no-project", {"reason": "no_project"}))
+                    self.validate("error.json", error.body())
+                if state.session is not None:
+                    self.validate("http/session.reply.json", state.read("GET", "/api/devcenter/session", {}, {}))
+
+    def call(self, state: fake.FakeDevCenter, method: str, payload: dict) -> dict:
+        request = {"base_revision": state.revision if state.session is not None else None, **payload}
+        self.validate(f"jsapi/{method}.request.json", request)
+        reply = state.call(method, request)
+        self.validate(f"jsapi/{method}.reply.json", reply)
+        return reply
+
+    def test_the_create_flow_replies_follow_the_jsapi_schemas(self) -> None:
+        state = fake.FakeDevCenter()
+        state.load("no-sessions")
+        created = self.call(state, "session_create", {"display_name": "Sales model merge"})
+        self.assertNotIn("session", created)
+        first = self.call(state, "source_add", {"path": "sources/Sales.SemanticModel"})
+        self.call(state, "source_add", {"path": "sources/Finance.SemanticModel"})
+        target = self.call(state, "target_set", {"model": {"mode": "copy_of", "source_id": first["source"]["source_id"], "path": "target/Sales copy"},
+                                                 "report": {"mode": "new_empty"}})
+        self.assertEqual(len(target["sources_added"]), 1)
+        self.validate("http/session.reply.json", state.read("GET", "/api/devcenter/session", {}, {}))
+        rows = state.read("GET", "/api/devcenter/sessions", {}, {})
+        self.validate("http/sessions.reply.json", rows)
+        self.assertEqual((rows["sessions"][0]["display_name"], rows["sessions"][0]["is_open"], rows["sessions"][0]["source_count"]),
+                         ("Sales model merge", True, 3))
+        self.call(state, "sources_check", {})
+        self.call(state, "session_close", {})
+        self.assertIsNone(state.read("GET", "/api/devcenter/sessions", {}, {})["revision"])
+
+    def test_the_open_and_source_replies_follow_the_jsapi_schemas(self) -> None:
+        state = fake.FakeDevCenter()
+        state.load("no-sessions")
+        state.load("default")
+        session_id = state.session["session_id"]
+        self.call(state, "session_close", {})
+        opened = self.call(state, "session_open", {"session_id": session_id})
+        self.assertEqual((opened["session_id"], opened["read_only"]), (session_id, False))
+        removed = self.call(state, "source_remove", {"source_id": "src-2"})
+        self.assertEqual(removed["source_id"], "src-2")
+        self.assertIsInstance(removed["choice_count"], int)
+        self.call(state, "target_set", {"model": {"mode": "existing", "source_id": "src-1"}, "report": None})
+        state.load("source-missing")
+        relinked = self.call(state, "source_relink", {"source_id": "src-1", "path": "sources/Sales again"})
+        self.assertEqual(relinked["source"]["status"], "ok")
+        state.load("locked")
+        self.call(state, "session_close", {})
+        opened = self.call(state, "session_open", {"session_id": session_id})
+        self.assertEqual(opened["read_only"], True)
+
+
 if __name__ == "__main__":
     unittest.main()
