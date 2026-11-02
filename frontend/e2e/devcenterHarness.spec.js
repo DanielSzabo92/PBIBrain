@@ -40,12 +40,12 @@ test("the page loads the shim before the app, and the shim forwards calls to the
 
 test("fault, delay, and agent-proposal change the next reply", async ({ page, request }) => {
   await page.goto("/");
-  await request.post("/__test__/fault", { data: { method: "sources_check", code: "action_not_allowed", message: "Injected." } });
+  await request.post("/__test__/fault", { data: { method: "alignment_override", code: "action_not_allowed", message: "Injected." } });
   await request.post("/__test__/delay", { data: { method: "compare_mode_set", ms: 300, once: true } });
   const result = await page.evaluate(async () => {
     const api = window.pywebview.api;
     const revision = async () => (await (await fetch("/api/devcenter/session")).json()).revision;
-    const faulted = await api.sources_check({ base_revision: await revision() });
+    const faulted = await api.alignment_override({ base_revision: await revision() });
     const started = performance.now();
     const slow = await api.compare_mode_set({ base_revision: await revision(), mode: "names" });
     const elapsed = performance.now() - started;
@@ -61,11 +61,11 @@ test("fault, delay, and agent-proposal change the next reply", async ({ page, re
   const after = await (await request.get("/api/devcenter/session")).json();
   expect(after.proposals.open.map((item) => item.target_id)).toContain("row-date");
 
-  const network = await request.post("/__test__/fault", { data: { method: "sources_check", code: "network" } });
+  const network = await request.post("/__test__/fault", { data: { method: "alignment_override", code: "network" } });
   expect(network.ok()).toBe(true);
   const thrown = await page.evaluate(async () => {
     try {
-      await window.pywebview.api.sources_check({ base_revision: 0 });
+      await window.pywebview.api.alignment_override({ base_revision: 0 });
       return null;
     } catch (error) {
       return error.reply?.error?.code || error.message;
