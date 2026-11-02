@@ -29,7 +29,7 @@ UI lane (UI design section 13): U0, then U1 and U2 in parallel, then U3 (needs S
 | 07 | S3 | [Alignment and compare](issues/07-s3-alignment-compare.md) | 03, 04 | done | worktree-agent-a101747015ba6165e | 3e19201 |
 | 08 | S4 | [Naming rules](issues/08-s4-naming-rules.md) | 04 | done | worktree-agent-a8b5b04ed9fccfcec | 9356869 |
 | 09 | S11 | [Cloud read (fakes)](issues/09-s11-cloud-read.md) | 04 | done | worktree-agent-aa1a79d4dc99d0d19 | 17114f1 |
-| 10 | U3 | [Shell, session list, create flow](issues/10-u3-shell-session-list.md) | 05, 06, 04 | open | dc/10-u3-shell-session-list |  |
+| 10 | U3 | [Shell, session list, create flow](issues/10-u3-shell-session-list.md) | 05, 06, 04 | done | dc/10-u3-shell-session-list | a8c9d52 |
 | 11 | S5 | [Change Plan engine](issues/11-s5-change-plan.md) | 07, 08 | open | worktree-agent-a5650369b679a1ebf |  |
 | 12 | U4 | [Compare grid](issues/12-u4-compare-grid.md) | 10, 07 | open | | |
 | 13 | U5 | [Naming rules UI](issues/13-u5-naming-rules-ui.md) | 10, 08 | open | | |
