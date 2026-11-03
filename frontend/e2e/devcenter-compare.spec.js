@@ -16,6 +16,10 @@ async function fault(request, method, code, extra = {}) {
   await request.post("/__test__/fault", { data: { method, code, ...extra } });
 }
 
+async function delay(request, path, ms, extra = {}) {
+  await request.post("/__test__/delay", { data: { path, ms, ...extra } });
+}
+
 async function openDevCenter(page) {
   await page.goto("/");
   await page.getByRole("navigation", { name: "Main navigation" }).getByRole("button", { name: "Development Center" }).click();
@@ -270,6 +274,68 @@ test.describe("Full grid keyboard map (section 9.3)", () => {
     const search = page.locator('input[type="search"]');
     await expect(search).toBeFocused();
   });
+
+  test("Page Up and Page Down move focus by page of rows", async ({ page }) => {
+    const firstCell = page.locator('.dc-cell[data-r="0"][data-c="1"]');
+    await firstCell.focus();
+    await expect(firstCell).toHaveAttribute("tabindex", "0");
+
+    await page.keyboard.press("PageDown");
+    const lastCell = page.locator('.dc-cell[data-r="3"][data-c="1"]');
+    await expect(lastCell).toHaveAttribute("tabindex", "0");
+    await expect(lastCell).toBeFocused();
+
+    await page.keyboard.press("PageUp");
+    await expect(firstCell).toHaveAttribute("tabindex", "0");
+    await expect(firstCell).toBeFocused();
+  });
+
+  test("Ctrl+A selects all loaded rows", async ({ page }) => {
+    const cell = page.locator('.dc-cell[data-r="0"][data-c="1"]');
+    await cell.focus();
+
+    await page.keyboard.press("Control+a");
+    const count = page.locator(".dc-bulkbar-count");
+    await expect(count).toBeVisible();
+    await expect(count).toContainText("4 selected");
+
+    const rows = page.locator(".dc-body-row");
+    await expect(rows).toHaveCount(4);
+    for (let i = 0; i < 4; i++) {
+      await expect(page.locator(`.dc-body-row[data-i="${i}"]`)).toHaveAttribute("aria-selected", "true");
+    }
+  });
+
+  test("Shift+Up and Shift+Down extend row selection", async ({ page }) => {
+    const cell1 = page.locator('.dc-cell[data-r="1"][data-c="1"]');
+    await cell1.focus();
+
+    // Shift+Down extends selection to row 2.
+    await page.keyboard.press("Shift+ArrowDown");
+    await expect(page.locator('.dc-body-row[data-i="1"]')).toHaveAttribute("aria-selected", "true");
+    await expect(page.locator('.dc-body-row[data-i="2"]')).toHaveAttribute("aria-selected", "true");
+    await expect(page.locator(".dc-bulkbar-count")).toContainText("2 selected");
+
+    // Shift+Up moves focus up.
+    await page.keyboard.press("Shift+ArrowUp");
+    const cellFocused = page.locator('.dc-cell[data-r="1"][data-c="1"]');
+    await expect(cellFocused).toHaveAttribute("tabindex", "0");
+  });
+
+  test("Tab moves focus out of grid and Shift+Tab returns focus", async ({ page }) => {
+    const cell = page.locator('.dc-cell[data-r="0"][data-c="1"]');
+    await cell.focus();
+    await expect(cell).toHaveAttribute("tabindex", "0");
+    await expect(cell).toBeFocused();
+
+    // Tab moves focus out of grid.
+    await page.keyboard.press("Tab");
+    await expect(cell).not.toBeFocused();
+
+    // Shift+Tab returns focus to the grid cell with tabindex 0.
+    await page.keyboard.press("Shift+Tab");
+    await expect(cell).toBeFocused();
+  });
 });
 
 test.describe("Bulk actions and confirmation", () => {
@@ -312,6 +378,76 @@ test.describe("Bulk actions and confirmation", () => {
     // Cancel closes dialog with no action.
     await page.getByRole("button", { name: "Cancel" }).click();
     await expect(dialog).toHaveCount(0);
+  });
+
+  test("bulk replace opens confirmation dialog with replace count", async ({ page }) => {
+    const chk = page.locator('.dc-body-row[data-i="0"] input[type="checkbox"]');
+    await chk.click();
+
+    // Set first Merge Choice to Keep target.
+    const menuBtn = page.getByRole("button", { name: "Set Merge Choice" });
+    await menuBtn.click();
+    await page.getByRole("menuitem", { name: "Keep target" }).click();
+    await expect(page.locator(".ui-toast").last()).toContainText("Merge Choice set for 1 row.");
+
+    // Select first row again.
+    await chk.click();
+
+    // Choose Skip, which replaces the existing choice.
+    await menuBtn.click();
+    await page.getByRole("menuitem", { name: "Skip" }).click();
+
+    // Dialog opens with replace count.
+    const dialog = page.getByRole("alertdialog");
+    await expect(dialog).toBeVisible();
+    await expect(dialog).toContainText('Set "Skip" for 1 row?');
+    await expect(dialog).toContainText("1 row already has a different Merge Choice. This replaces it.");
+
+    // Confirm the replacement.
+    await page.locator("#dok").click();
+    await expect(dialog).toHaveCount(0);
+    await expect(page.locator(".ui-toast").last()).toContainText("Merge Choice set for 1 row.");
+  });
+
+  test("select all matching rows collects keys by paging and sends explicit keys", async ({ page, request }) => {
+    await scenario(request, "large-5000-rows");
+    await openDevCenter(page);
+    await workReady(page);
+
+    // Total rows with default chip is 4000. Select loaded rows (200 rows) with header checkbox.
+    const headerChk = page.locator("#hchk");
+    await headerChk.click();
+
+    // Banner indicates 200 loaded rows are selected.
+    await expect(page.locator(".dc-selall")).toContainText("All 200 loaded rows are selected.");
+
+    // Click select all matching rows button.
+    const selectAllBtn = page.locator("#selallbtn");
+    await expect(selectAllBtn).toContainText("Select all 4000 rows that match the filters");
+    await selectAllBtn.click();
+
+    // Banner confirms all 4000 rows matching filters are selected.
+    await expect(page.locator(".dc-selall")).toContainText("All 4000 rows that match the filters are selected.");
+
+    // Track payload sent to bulk merge choice endpoint.
+    let sentPayload = null;
+    await page.route("**/__test__/jsapi/merge_choice_bulk_set", async (route) => {
+      sentPayload = JSON.parse(route.request().postData() || "{}");
+      await route.continue();
+    });
+
+    // Apply bulk choice.
+    const menuBtn = page.getByRole("button", { name: "Set Merge Choice" });
+    await menuBtn.click();
+    await page.getByRole("menuitem", { name: "Keep target" }).click();
+
+    // Wait for bulk action to complete.
+    await expect(page.getByText("Merge Choice set for 4000 rows.")).toBeVisible({ timeout: 10000 });
+
+    // Verify explicit list of keys was collected and sent (not wildcard or empty).
+    expect(sentPayload).not.toBeNull();
+    expect(Array.isArray(sentPayload.row_keys)).toBe(true);
+    expect(sentPayload.row_keys.length).toBe(4000);
   });
 });
 
@@ -445,6 +581,51 @@ test.describe("A13 accessibility attributes and axe checks", () => {
   });
 });
 
+test.describe("Post-scroll and post-filter A13 attributes", () => {
+  test("grid retains valid ARIA attributes after scroll and after filter change", async ({ page, request }) => {
+    test.setTimeout(60000);
+    await scenario(request, "large-5000-rows");
+    await openDevCenter(page);
+    await workReady(page);
+
+    const grid = page.getByRole("grid", { name: "Compare rows" });
+    await expect(grid).toBeVisible();
+    await expect(grid).toHaveAttribute("aria-rowcount", "4001");
+    await expect(grid).toHaveAttribute("aria-colcount");
+
+    // Scroll down into the virtualized rows.
+    await page.locator(".dc-grid-scroll").evaluate((el) => {
+      el.scrollTop = 1200;
+      el.dispatchEvent(new Event("scroll"));
+    });
+    await page.waitForTimeout(250);
+
+    // Visible body rows have role="row" and valid aria-rowindex.
+    const rowsAfterScroll = page.locator(".dc-body-row");
+    const count = await rowsAfterScroll.count();
+    expect(count).toBeGreaterThan(0);
+
+    const firstVisibleRow = rowsAfterScroll.first();
+    await expect(firstVisibleRow).toHaveAttribute("role", "row");
+    const rowIndex = await firstVisibleRow.getAttribute("aria-rowindex");
+    expect(Number(rowIndex)).toBeGreaterThan(1);
+
+    const firstVisibleCell = firstVisibleRow.locator(".dc-cell").first();
+    await expect(firstVisibleCell).toHaveAttribute("role", "gridcell");
+    await expect(firstVisibleCell).toHaveAttribute("aria-colindex", "1");
+
+    // Apply a search filter.
+    const search = page.locator("#q");
+    await search.fill("Object 00001");
+    await page.waitForTimeout(300);
+
+    // Grid retains valid ARIA attributes after filtering.
+    const rowsAfterFilter = page.locator(".dc-body-row");
+    await expect(rowsAfterFilter.first()).toHaveAttribute("role", "row");
+    await expect(rowsAfterFilter.first().locator(".dc-cell").first()).toHaveAttribute("role", "gridcell");
+  });
+});
+
 test.describe("Grid error and empty states", () => {
   test("shows empty match state when search finds no rows", async ({ page, request }) => {
     await scenario(request, "default");
@@ -479,10 +660,79 @@ test.describe("Grid error and empty states", () => {
     await expect(page.getByText("Could not load the compare")).toBeVisible();
     await expect(page.getByRole("button", { name: "Try again" })).toBeVisible();
   });
+
+  test("shows loading bar and busy state during slow compare read", async ({ page, request }) => {
+    await scenario(request, "default");
+    await openDevCenter(page);
+    await workReady(page);
+
+    // Inject delay on compare rows read.
+    await delay(request, "/api/devcenter/compare-rows", 800, { once: true });
+
+    const search = page.locator('input[type="search"]');
+    await search.fill("Sales");
+    await page.waitForTimeout(200);
+
+    const loadBar = page.locator(".dc-loadbar");
+    await expect(loadBar).toBeAttached();
+
+    await page.waitForTimeout(800);
+    await expect(loadBar).toHaveCount(0);
+    await expect(page.locator(".dc-body-row")).toHaveCount(1);
+  });
+
+  test("loads later page and renders row cells when scrolling down", async ({ page, request }) => {
+    test.setTimeout(60000);
+    await scenario(request, "large-5000-rows");
+    await openDevCenter(page);
+    await workReady(page);
+
+    // Scroll down to row 250.
+    await page.locator(".dc-grid-scroll").evaluate((el) => {
+      el.scrollTop = 250 * 36;
+      el.dispatchEvent(new Event("scroll"));
+    });
+    await page.waitForTimeout(400);
+
+    const row250 = page.locator('.dc-body-row[data-i="250"]');
+    await expect(row250).toBeVisible({ timeout: 5000 });
+    await expect(row250).toHaveAttribute("role", "row");
+    await expect(row250.locator(".dc-obj-name")).toBeVisible();
+  });
+
+  test("shows empty compare state when no objects exist in session", async ({ page, request }) => {
+    await scenario(request, "default");
+    await openDevCenter(page);
+    await workReady(page);
+
+    // Mock compare-rows to return 0 rows.
+    await page.route("**/api/devcenter/compare-rows*", (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ rows: [], total: 0, state_counts: {}, revision: 1 }),
+      })
+    );
+
+    // Clear filters to trigger refetch with no active filters.
+    await page.locator("#clearf").click();
+    await page.waitForTimeout(200);
+
+    await expect(page.getByText("Nothing to compare yet")).toBeVisible();
+    await expect(page.getByText(/Add at least one source on the Sources tab/)).toBeVisible();
+
+    const openSourcesBtn = page.getByRole("button", { name: "Open Sources" });
+    await expect(openSourcesBtn).toBeVisible();
+    await openSourcesBtn.click();
+
+    // Switches to Sources tab.
+    await expect(page.getByRole("tab", { name: "Sources", selected: true })).toBeVisible();
+  });
 });
 
 test.describe("Performance budgets on large-5000-rows", () => {
   test("large-5000-rows loads initial page within budget P1 and limits cached pages P4", async ({ page, request }) => {
+    test.setTimeout(60000);
     await scenario(request, "large-5000-rows");
     await openDevCenter(page);
 

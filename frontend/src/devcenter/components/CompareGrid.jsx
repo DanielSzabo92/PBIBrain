@@ -182,8 +182,12 @@ export default function CompareGrid({
   const bulkMenuBtnRef = useRef(null);
   const [scrollTop, setScrollTop] = useState(0);
   const [clientHeight, setClientHeight] = useState(600);
-  const isFastScrolling = useRef(false);
+  const [isFastScrolling, setIsFastScrolling] = useState(false);
   const fastScrollTimer = useRef(null);
+
+  useEffect(() => {
+    return () => clearTimeout(fastScrollTimer.current);
+  }, []);
 
   // Columns definition.
   // Col 0: chk, Col 1: obj, Col 2: rs, Col 3: tg, Col 4..: donors, Col N-2: mc, Col N-1: mk
@@ -240,6 +244,10 @@ export default function CompareGrid({
     allMatchingRef.current = false;
     anchorRowRef.current = null;
     setAnchorRow(null);
+    setScrollTop(0);
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = 0;
+    }
   }, [queryParams, compareMode]);
 
   // Fetch page helper.
@@ -312,10 +320,10 @@ export default function CompareGrid({
     setScrollTop(el.scrollTop);
     setClientHeight(el.clientHeight);
 
-    isFastScrolling.current = true;
+    setIsFastScrolling(true);
     clearTimeout(fastScrollTimer.current);
     fastScrollTimer.current = setTimeout(() => {
-      isFastScrolling.current = false;
+      setIsFastScrolling(false);
     }, 60);
   }, []);
 
@@ -658,7 +666,30 @@ export default function CompareGrid({
 
   // Bulk Confirm Rows.
   const handleConfirmRows = async () => {
-    const keys = Array.from(selectedKeys);
+    let keys = [];
+    if (allMatching) {
+      // Collect keys by paging up to 5,000.
+      const collected = [];
+      let offset = 0;
+      const limit = 200;
+      let hasMore = true;
+
+      while (hasMore && collected.length < 5000) {
+        try {
+          const res = await http.getCompareRows({ ...queryParams, offset, limit });
+          const rows = res.rows || [];
+          for (const row of rows) collected.push(row.row_key);
+          offset += rows.length;
+          hasMore = Boolean(res.has_more && rows.length > 0);
+        } catch {
+          break;
+        }
+      }
+      keys = collected;
+    } else {
+      keys = Array.from(selectedKeys);
+    }
+
     const reply = await confirmAction.run({ row_keys: keys });
     if (reply) {
       setSelectedKeys(new Set());
@@ -667,9 +698,12 @@ export default function CompareGrid({
       allMatchingRef.current = false;
       anchorRowRef.current = null;
       setAnchorRow(null);
+      const confirmedCount = Array.isArray(reply.confirmed)
+        ? reply.confirmed.length
+        : (reply.confirmed ?? keys.length);
       toast.show({
         tone: "ok",
-        text: tn("compare.bulk.confirm_rows", reply.confirmed || keys.length),
+        text: tn("compare.bulk.confirm_rows", confirmedCount),
       });
       store.load("compareRows", queryParams);
     }
@@ -719,6 +753,21 @@ export default function CompareGrid({
         >
           {colIndex === 0 ? null : <span className="dc-skel-line" />}
         </div>
+      );
+    }
+
+    // Light-row rule during fast scroll: render name (col 1) and state (col 2) only.
+    if (isFastScrolling && colIndex !== 1 && colIndex !== 2) {
+      return (
+        <div
+          key={`cell-${rowIndex}-${colIndex}`}
+          className={`dc-cell ${colIndex < 4 ? `dc-stick dc-col-${["chk", "obj", "rs", "tg"][colIndex]}` : ""}`}
+          role="gridcell"
+          aria-colindex={colIndex + 1}
+          tabIndex={tabIndex}
+          data-r={rowIndex}
+          data-c={colIndex}
+        />
       );
     }
 

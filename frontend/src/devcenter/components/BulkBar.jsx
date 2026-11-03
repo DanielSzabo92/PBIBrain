@@ -198,7 +198,7 @@ export default function BulkBar({
         </Button>
       </div>
 
-      {loadedCount < totalMatching && !allMatching ? (
+      {selectedCount === loadedCount && loadedCount < totalMatching && !allMatching ? (
         <div className="dc-selall" role="status">
           <span>All {loadedCount} loaded rows are selected.</span>
           <button

@@ -425,7 +425,7 @@ class FakeDevCenter:
         mode = payload.get("compare_mode") or payload.get("mode")
         if mode:
             self.session["compare_mode"] = mode
-        return {}
+        return {"compare_mode": self.session.get("compare_mode", "default")}
 
     def _call_merge_choice_set(self, payload: dict[str, Any]) -> dict[str, Any]:
         row = self._row(payload.get("row_key"))
@@ -451,7 +451,7 @@ class FakeDevCenter:
         marks = sum(1 for row in self._rows() if row["marks"])
         self.session["counts"]["marks"] = marks
         self.session["counts"]["marks_by_kind"]["source_changed"] = marks
-        return {"confirmed": len(rows)}
+        return {"confirmed": [row["row_key"] for row in rows], "mark_count": marks}
 
     def _take_proposal(self, proposal_id: Any) -> dict[str, Any]:
         proposals = self.session["proposals"]["open"]
