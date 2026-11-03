@@ -20,3 +20,8 @@
 ## Ticket 15
 - Learning: In large scale impact analysis with 5000 objects, canonical JSON hashing for unused fields like `impact_paths` causes high CPU overhead (2.7 seconds for 75000 records). Making path serialization optional and pre-caching node metadata tables in Python reduces impact derivation time by more than 70 percent (from 5.1 seconds to 1.6 seconds).
 
+## Ticket 16
+- Learning: In TMDL model serialization, candidate paths must strictly validate against the input model definition folder to prevent destructive in-place rewrites.
+- Learning: TOM canonical check detects format-only differences (LF line endings, quoted identifiers, blank lines) without altering semantic tree equivalence, enabling safe format-only promotion.
+- Learning: TOM tree compare must walk unmodeled collections like Perspectives and Cultures to detect and guard changes outside the PBIBrain graph schema.
+- Learning: TOM 19.118.3 rejects lineageTag on root model nodes; lineage tags must strictly attach to child objects (tables, columns, measures, hierarchies).

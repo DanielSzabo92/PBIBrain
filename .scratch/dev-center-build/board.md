@@ -35,7 +35,7 @@ UI lane (UI design section 13): U0, then U1 and U2 in parallel, then U3 (needs S
 | 13 | U5 | [Naming rules UI](issues/13-u5-naming-rules-ui.md) | 10, 08 | done | dc/13-u5-naming-rules-ui | a5b0a43 |
 | 14 | U11 | [Cloud sources UI](issues/14-u11-cloud-ui.md) | 10, 09 | deferred | | |
 | 15 | S6 | [Impact data](issues/15-s6-impact-data.md) | 07, 11 | done | dc/15-s6-impact-data | 263be57 |
-| 16 | S7a | [Model writer (bridge)](issues/16-s7a-model-writer.md) | 11 | open | | |
+| 16 | S7a | [Model writer (bridge)](issues/16-s7a-model-writer.md) | 11 | done | dc/16-s7a-model-writer | 3d3a4ba |
 | 17 | S7b | [PBIR writer](issues/17-s7b-pbir-writer.md) | 11 | open | | |
 | 18 | U7 | [Plan view](issues/18-u7-plan-view.md) | 10, 11 | open | | |
 | 19 | U6 | [Row detail and Merge Choice](issues/19-u6-row-detail.md) | 12, 07, 08, 11 | open | | |
