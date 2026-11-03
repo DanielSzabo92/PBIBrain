@@ -140,7 +140,7 @@ class HealthAndScenarioTest(FakeServerCase):
         self.post("/__test__/scenario", {"name": "source-missing"})
         self.assertEqual(self.get("/api/devcenter/session")["sources"][0]["status"], "missing")
         self.post("/__test__/scenario", {"name": "plan-invalid"})
-        self.assertEqual(self.get("/api/devcenter/plan")["status"], "not_valid")
+        self.assertEqual(self.get("/api/devcenter/plan")["status"], "invalid")
         self.post("/__test__/scenario", {"name": "apply-ready"})
         self.assertEqual(self.get("/api/devcenter/apply/preview")["ready"], True)
         self.post("/__test__/scenario", {"name": "large-5000-rows"})

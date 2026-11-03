@@ -263,6 +263,25 @@ class FakeDevCenter:
                 rules_file["source_rule_counts"] = copy.deepcopy(body["source_rule_counts"])
             return {"ok": True}
 
+    def set_plan(self, body: dict[str, Any]) -> dict[str, Any]:
+        """Change plan and apply-preview test fixtures in memory."""
+        with self.lock:
+            plan_file = self.files.setdefault("plan", {})
+            for key in ("status", "plan_hash", "summary", "steps", "operations", "blocking", "warnings"):
+                if key in body:
+                    plan_file[key] = copy.deepcopy(body[key])
+            if "status" in body and self.session is not None:
+                self.session["plan_status"] = body["status"]
+            if "plan_state" in body and self.session is not None:
+                self.session["plan_state"] = body["plan_state"]
+            if "marks" in body and self.session is not None:
+                self.session.setdefault("counts", {})["marks"] = int(body["marks"])
+            if "apply_preview" in body and isinstance(body["apply_preview"], dict):
+                preview = self.files.setdefault("apply-preview", {})
+                preview.update(copy.deepcopy(body["apply_preview"]))
+                plan_file["apply_preview"] = copy.deepcopy(body["apply_preview"])
+            return {"ok": True}
+
     def before_reply(self, key: str) -> None:
         """Wait for an injected delay, then raise an injected fault. Each one is for the next call of the key."""
         with self.lock:
@@ -407,6 +426,29 @@ class FakeDevCenter:
         self.session["sources"].remove(source)
         choices = [row for row in self.files.get("compare-rows", {}).get("rows", [])
                    if (row.get("merge_choice") or {}).get("source") == source_id]
+        if choices:
+            plan = self.files.setdefault("plan", {})
+            blocking = plan.setdefault("blocking", [])
+            for row in choices:
+                item_id = f"choice_source_removed:{row['row_key']}"
+                if not any(item.get("item_id") == item_id for item in blocking):
+                    blocking.append({
+                        "item_id": item_id,
+                        "kind": "choice_source_removed",
+                        "row_key": row["row_key"],
+                        "row_id": "row_0000000000000004",
+                        "step_id": None,
+                        "object": {
+                            "name": row["name"],
+                            "object_type": row["object_type"],
+                            "table": row.get("table"),
+                        },
+                        "message": f"The Merge Choice for {row['name']} uses removed source {source['display_name']}.",
+                        "params": {"source_id": source_id, "source_name": source["display_name"]},
+                        "actions": [],
+                    })
+            plan["status"] = "invalid"
+            self.session["plan_status"] = "invalid"
         self._source_changed()
         return {"source_id": source_id, "choice_count": len(choices)}
 
@@ -693,7 +735,8 @@ class FakeDevCenter:
                 if mode not in {"quick", "full"}:
                     raise FakeError("invalid_payload", "The mode must be quick or full.", {"field": "mode"})
                 plan = self.files["plan"]
-                return self._reply({"mode": mode, "status": plan["status"], "blocking": plan["blocking"], "warnings": plan["warnings"]})
+                return self._reply({"mode": mode, "plan_hash": plan["plan_hash"], "status": plan["status"],
+                                    "blocking": plan["blocking"], "warnings": plan["warnings"]})
         raise FakeError("not_found", f"The route {method} {path} does not exist.")
 
     def _submit(self, kind: str, body: dict[str, Any]) -> dict[str, Any]:
@@ -856,7 +899,7 @@ class FakeDevCenterHandler(BaseHTTPRequestHandler):
             return self._json(200, self._desktop(route[len("desktop/"):]))
         controls = {"scenario": lambda: state.load(str(body.get("name", ""))), "fault": lambda: state.set_fault(body),
                     "delay": lambda: state.set_delay(body), "agent-proposal": lambda: state.agent_proposal(body),
-                    "rules": lambda: state.set_rules(body)}
+                    "rules": lambda: state.set_rules(body), "plan": lambda: state.set_plan(body)}
         if method == "POST" and route in controls:
             return self._json(200, controls[route]())
         raise FakeError("not_found", f"The test route {method} /__test__/{route} does not exist.")

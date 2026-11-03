@@ -10,6 +10,7 @@ import { useToast } from "@/components/ui/toast";
 import { errorCopy, longCallText, t, tn } from "../copy.js";
 import { useAction, useDevCenterState, useResource } from "../useDevCenter.js";
 import SourcesTab from "./SourcesTab.jsx";
+import PlanTab from "./plan/PlanTab.jsx";
 import CompareGrid from "../components/CompareGrid.jsx";
 import { agentCount, banners, planStatus, targetLine } from "./sessionModel.js";
 
@@ -30,7 +31,11 @@ export default function WorkArea({ session, tabState, onTabs, onRetryLock, onClo
   const longBusy = busy === "long";
   const changeDisabled = readOnly || longBusy;
   const reasonId = readOnly ? LOCKED_REASON_ID : longBusy ? BUSY_REASON_ID : undefined;
-  const status = planStatus(session.plan_status, plan.data, plan.status === "loading" && !plan.data);
+  const status = planStatus(
+    plan.data?.status ?? session.plan_status,
+    plan.data,
+    (plan.status === "loading" && !plan.data) || session.plan_state === "checking",
+  );
   const agent = agentCount(session);
   const blocking = status.blocking ?? 0;
   const stack = banners(session).filter((banner) => !(banner.id === "missing" && tabState.tab === "sources"));
@@ -114,8 +119,20 @@ export default function WorkArea({ session, tabState, onTabs, onRetryLock, onClo
                 changeDisabled={changeDisabled}
                 reasonId={reasonId}
               />
+            ) : tab === "plan" ? (
+              <PlanTab
+                session={session}
+                changeDisabled={changeDisabled}
+                reasonId={reasonId}
+                onTabs={onTabs}
+              />
             ) : (
-              <LaterTab tab={tab} marks={tab === "compare" && tabState.marks} />
+              <LaterTab
+                tab={tab}
+                marks={tab === "compare" && tabState.marks}
+                impactRowKey={tab === "impact" ? tabState.impactRowKey : null}
+                impactItemId={tab === "impact" ? tabState.impactItemId : null}
+              />
             )}
           </TabsContent>
         ))}
@@ -125,11 +142,14 @@ export default function WorkArea({ session, tabState, onTabs, onRetryLock, onClo
 }
 
 // The tabs that later U-steps build (U4 to U10). The frame shows the tab and its filter state.
-function LaterTab({ tab, marks }) {
+function LaterTab({ tab, marks, impactRowKey, impactItemId }) {
   return (
-    <EmptyState headingLevel={2} title={t("work.tab.later.title")}>
-      {t("work.tab.later.body", { tab: t(`work.tab.${tab}`) })}
-      {marks ? ` ${t("work.compare.marks")}` : ""}
-    </EmptyState>
+    <div data-impact-row={impactRowKey || undefined} data-impact-item={impactItemId || undefined}>
+      <EmptyState headingLevel={2} title={t("work.tab.later.title")}>
+        {t("work.tab.later.body", { tab: t(`work.tab.${tab}`) })}
+        {marks ? ` ${t("work.compare.marks")}` : ""}
+        {impactRowKey ? ` Impact target: ${impactRowKey}.` : ""}
+      </EmptyState>
+    </div>
   );
 }

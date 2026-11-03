@@ -1,53 +1,162 @@
 {
   "blocking": [
     {
+      "actions": [],
+      "item_id": "name_clash:row-customer",
       "kind": "name_clash",
-      "message": "Two measures have the name Net Sales.",
-      "object_id": "row-net-sales"
+      "message": "Customer clashes with an existing table name.",
+      "object": {
+        "name": "Customer",
+        "object_type": "table",
+        "table": null
+      },
+      "params": {
+        "clash": {
+          "name": "Customer",
+          "object_type": "table",
+          "table": null
+        },
+        "name": "Customer",
+        "proposed_name": "Customer (Sales)",
+        "table": null
+      },
+      "row_id": "row_0000000000000001",
+      "row_key": "row-customer",
+      "step_id": "step-1"
     },
     {
-      "kind": "choice_source_removed",
-      "message": "The Merge Choice takes from a removed source.",
-      "object_id": "row-gross-margin"
+      "actions": [],
+      "item_id": "need_missing:row-net-sales",
+      "kind": "need_missing",
+      "message": "Net Sales needs ExchangeRate, which is not in the target.",
+      "object": {
+        "name": "Net Sales",
+        "object_type": "measure",
+        "table": "Sales"
+      },
+      "params": {
+        "needed": "ExchangeRate"
+      },
+      "row_id": "row_0000000000000003",
+      "row_key": "row-net-sales",
+      "step_id": "step-2"
     }
   ],
-  "plan_hash": "plan-0012",
-  "status": "not_valid",
+  "operations": [
+    {
+      "domain": "model",
+      "guard_op": "rename_object",
+      "name": "Customers",
+      "needs": [],
+      "new_name": "Customer",
+      "object_type": "table",
+      "old_name": "Customers",
+      "op": "RENAME",
+      "op_id": "op-1",
+      "order": 1,
+      "phase": "renames",
+      "row_key": "row-customer",
+      "step_id": "step-1",
+      "subtype": "table",
+      "table": null
+    },
+    {
+      "domain": "model",
+      "guard_op": "modify_object",
+      "name": "Net Sales",
+      "needs": [],
+      "new_text": "SUM(Sales[Net]) * [ExchangeRate]",
+      "object_type": "measure",
+      "old_text": "SUM(Sales[Amount])",
+      "op": "SET_EXPRESSION",
+      "op_id": "op-2",
+      "order": 2,
+      "phase": "changes",
+      "property": "expression",
+      "row_key": "row-net-sales",
+      "step_id": "step-2",
+      "subtype": "measure",
+      "table": "Sales"
+    }
+  ],
+  "plan_hash": "sha256:0012000000000000000000000000000000000000000000000000000000000099",
   "steps": [
     {
-      "id": "step-1",
-      "object_id": "row-budget",
-      "object_name": "Budget",
-      "operation": "add_table",
-      "source": "src-2"
+      "change": "renamed",
+      "choice": "take",
+      "domain": "model",
+      "kind": "choice",
+      "name": "Customer",
+      "object_type": "table",
+      "operation_ids": [
+        "op-1"
+      ],
+      "row_id": "row_0000000000000001",
+      "row_key": "row-customer",
+      "source_id": "src-1",
+      "step_id": "step-1"
     },
     {
-      "id": "step-2",
-      "object_id": "row-gross-margin",
-      "object_name": "Gross Margin",
-      "operation": "change_measure",
-      "source": "src-2"
-    },
-    {
-      "id": "step-3",
-      "object_id": "row-customer",
-      "object_name": "Customer",
-      "operation": "rename_table",
-      "source": "src-2"
+      "change": "modified",
+      "choice": "take",
+      "domain": "model",
+      "kind": "choice",
+      "name": "Net Sales",
+      "object_type": "measure",
+      "operation_ids": [
+        "op-2"
+      ],
+      "row_id": "row_0000000000000003",
+      "row_key": "row-net-sales",
+      "source_id": "src-2",
+      "step_id": "step-2"
     }
   ],
+  "status": "invalid",
   "summary": {
-    "add": 1,
-    "change": 1,
-    "remove": 0,
-    "rename": 1,
-    "steps": 3
+    "model": {
+      "created": {
+        "by_type": {},
+        "total": 0
+      },
+      "deleted": {
+        "by_type": {},
+        "total": 0
+      },
+      "modified": {
+        "by_type": {
+          "measure": 1
+        },
+        "total": 1
+      },
+      "renamed": {
+        "by_type": {
+          "table": 1
+        },
+        "total": 1
+      },
+      "steps": 2
+    },
+    "report": {
+      "created": {
+        "by_type": {},
+        "total": 0
+      },
+      "deleted": {
+        "by_type": {},
+        "total": 0
+      },
+      "modified": {
+        "by_type": {},
+        "total": 0
+      },
+      "renamed": {
+        "by_type": {},
+        "total": 0
+      },
+      "steps": 0
+    },
+    "steps": 2
   },
-  "warnings": [
-    {
-      "kind": "not_checked",
-      "message": "The report use of this table is not checked.",
-      "object_id": "row-budget"
-    }
-  ]
+  "warnings": []
 }

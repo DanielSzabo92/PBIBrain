@@ -1,36 +1,245 @@
 {
   "blocking": [],
-  "plan_hash": "plan-0012",
-  "status": "valid",
-  "steps": [
+  "operations": [
     {
-      "id": "step-1",
-      "object_id": "row-budget",
-      "object_name": "Budget",
-      "operation": "add_table",
-      "source": "src-2"
+      "domain": "model",
+      "guard_op": "delete_object",
+      "name": "Region",
+      "needs": [],
+      "object_type": "column",
+      "op": "DELETE",
+      "op_id": "op-1",
+      "order": 1,
+      "phase": "deletes",
+      "row_key": "row-region",
+      "step_id": "step-1",
+      "subtype": "column",
+      "table": "Customer"
     },
     {
-      "id": "step-2",
-      "object_id": "row-gross-margin",
-      "object_name": "Gross Margin",
-      "operation": "change_measure",
-      "source": "src-2"
+      "domain": "model",
+      "guard_op": "rename_object",
+      "name": "Customers",
+      "needs": [],
+      "new_name": "Customer",
+      "object_type": "table",
+      "old_name": "Customers",
+      "op": "RENAME",
+      "op_id": "op-2",
+      "order": 2,
+      "phase": "renames",
+      "row_key": "row-customer",
+      "step_id": "step-2",
+      "subtype": "table",
+      "table": null
     },
     {
-      "id": "step-3",
-      "object_id": "row-customer",
-      "object_name": "Customer",
-      "operation": "rename_table",
-      "source": "src-2"
+      "domain": "model",
+      "guard_op": "create_object",
+      "name": "Budget",
+      "needs": [],
+      "new_lineage_tag": false,
+      "object_type": "table",
+      "op": "CREATE",
+      "op_id": "op-3",
+      "order": 3,
+      "phase": "creates",
+      "row_key": "row-budget",
+      "source_id": "src-2",
+      "source_key": "table:Budget",
+      "step_id": "step-3",
+      "subtype": "table",
+      "table": null
+    },
+    {
+      "domain": "model",
+      "guard_op": "modify_object",
+      "name": "Net Sales",
+      "needs": [],
+      "new_text": "SUM(Sales[Net])",
+      "object_type": "measure",
+      "old_text": "SUM(Sales[Amount])",
+      "op": "SET_EXPRESSION",
+      "op_id": "op-4",
+      "order": 4,
+      "phase": "changes",
+      "property": "expression",
+      "row_key": "row-net-sales",
+      "step_id": "step-4",
+      "subtype": "measure",
+      "table": "Sales"
+    },
+    {
+      "domain": "model",
+      "guard_op": "modify_object",
+      "name": "Gross Margin",
+      "needs": [
+        "op-2"
+      ],
+      "new_text": "DIVIDE([Net Sales], COUNTROWS(Customer))",
+      "object_type": "measure",
+      "old_text": "DIVIDE([Net Sales], COUNTROWS(Customers))",
+      "op": "REWRITE_EXPRESSION",
+      "op_id": "op-5",
+      "order": 5,
+      "phase": "rewrites",
+      "property": "expression",
+      "row_key": "row-gross-margin",
+      "step_id": "step-2",
+      "subtype": "measure",
+      "table": "Sales"
+    },
+    {
+      "domain": "report",
+      "guard_op": "copy_visual",
+      "name": "Revenue by Month",
+      "needs": [
+        "op-4"
+      ],
+      "object_type": "visual",
+      "op": "COPY_VISUAL",
+      "op_id": "op-6",
+      "order": 6,
+      "phase": "changes",
+      "replace": true,
+      "row_key": "row-revenue-visual",
+      "source_id": "src-2",
+      "source_key": "visual:Overview/v2",
+      "step_id": "step-5",
+      "subtype": "lineChart",
+      "table": null
     }
   ],
+  "plan_hash": "sha256:0012000000000000000000000000000000000000000000000000000000000024",
+  "steps": [
+    {
+      "change": "deleted",
+      "choice": "remove",
+      "domain": "model",
+      "kind": "choice",
+      "name": "Region",
+      "object_type": "column",
+      "operation_ids": [
+        "op-1"
+      ],
+      "row_id": "row_0000000000000006",
+      "row_key": "row-region",
+      "source_id": null,
+      "step_id": "step-1"
+    },
+    {
+      "change": "renamed",
+      "choice": "take",
+      "domain": "model",
+      "kind": "choice",
+      "name": "Customer",
+      "object_type": "table",
+      "operation_ids": [
+        "op-2",
+        "op-5"
+      ],
+      "row_id": "row_0000000000000001",
+      "row_key": "row-customer",
+      "source_id": "src-1",
+      "step_id": "step-2"
+    },
+    {
+      "change": "created",
+      "choice": "take",
+      "domain": "model",
+      "kind": "choice",
+      "name": "Budget",
+      "object_type": "table",
+      "operation_ids": [
+        "op-3"
+      ],
+      "row_id": "row_0000000000000002",
+      "row_key": "row-budget",
+      "source_id": "src-2",
+      "step_id": "step-3"
+    },
+    {
+      "change": "modified",
+      "choice": "take",
+      "domain": "model",
+      "kind": "choice",
+      "name": "Net Sales",
+      "object_type": "measure",
+      "operation_ids": [
+        "op-4"
+      ],
+      "row_id": "row_0000000000000003",
+      "row_key": "row-net-sales",
+      "source_id": "src-2",
+      "step_id": "step-4"
+    },
+    {
+      "change": "modified",
+      "choice": "take",
+      "domain": "report",
+      "kind": "choice",
+      "name": "Revenue by Month",
+      "object_type": "visual",
+      "operation_ids": [
+        "op-6"
+      ],
+      "row_id": "row_0000000000000007",
+      "row_key": "row-revenue-visual",
+      "source_id": "src-2",
+      "step_id": "step-5"
+    }
+  ],
+  "status": "valid",
   "summary": {
-    "add": 1,
-    "change": 1,
-    "remove": 0,
-    "rename": 1,
-    "steps": 3
+    "model": {
+      "created": {
+        "by_type": {
+          "table": 1
+        },
+        "total": 1
+      },
+      "deleted": {
+        "by_type": {
+          "column": 1
+        },
+        "total": 1
+      },
+      "modified": {
+        "by_type": {
+          "measure": 1
+        },
+        "total": 1
+      },
+      "renamed": {
+        "by_type": {
+          "table": 1
+        },
+        "total": 1
+      },
+      "steps": 4
+    },
+    "report": {
+      "created": {
+        "by_type": {},
+        "total": 0
+      },
+      "deleted": {
+        "by_type": {},
+        "total": 0
+      },
+      "modified": {
+        "by_type": {
+          "visual": 1
+        },
+        "total": 1
+      },
+      "renamed": {
+        "by_type": {},
+        "total": 0
+      },
+      "steps": 1
+    },
+    "steps": 5
   },
   "warnings": []
 }
