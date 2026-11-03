@@ -1,0 +1,131 @@
+{
+  "pages": [
+    {
+      "height": 720,
+      "hidden": false,
+      "id": "detail",
+      "name": "Detail",
+      "visuals": [
+        {
+          "cause_item_ids": [
+            "imp-3626635a34fd1021"
+          ],
+          "group": null,
+          "height": 200,
+          "hidden": false,
+          "id": "calendarmatrix",
+          "status": "breaks",
+          "title": "calendarmatrix",
+          "type": "pivotTable",
+          "width": 300,
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        {
+          "cause_item_ids": [
+            "imp-1a57ebf81b547cfd"
+          ],
+          "group": null,
+          "height": 200,
+          "hidden": false,
+          "id": "target",
+          "status": "breaks",
+          "title": "target",
+          "type": "card",
+          "width": 300,
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        {
+          "cause_item_ids": [],
+          "group": null,
+          "height": 200,
+          "hidden": false,
+          "id": "targetgroup",
+          "status": "unchanged",
+          "title": "targetgroup",
+          "type": "card",
+          "width": 300,
+          "x": 0,
+          "y": 0,
+          "z": 0
+        }
+      ],
+      "width": 1280
+    },
+    {
+      "height": 720,
+      "hidden": false,
+      "id": "overview",
+      "name": "Overview",
+      "visuals": [
+        {
+          "cause_item_ids": [
+            "imp-20515315fed5e4d3"
+          ],
+          "group": null,
+          "height": 200,
+          "hidden": false,
+          "id": "marginbymonth",
+          "status": "breaks",
+          "title": "marginbymonth",
+          "type": "clusteredColumnChart",
+          "width": 300,
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        {
+          "cause_item_ids": [
+            "imp-434d4e0c5de9be80"
+          ],
+          "group": null,
+          "height": 200,
+          "hidden": false,
+          "id": "metrictable",
+          "status": "breaks",
+          "title": "metrictable",
+          "type": "tableEx",
+          "width": 300,
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        {
+          "cause_item_ids": [],
+          "group": null,
+          "height": 200,
+          "hidden": false,
+          "id": "timeslicer",
+          "status": "unchanged",
+          "title": "timeslicer",
+          "type": "slicer",
+          "width": 300,
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        {
+          "cause_item_ids": [
+            "imp-9eb53db52249b998"
+          ],
+          "group": null,
+          "height": 200,
+          "hidden": false,
+          "id": "totalsales",
+          "status": "breaks",
+          "title": "totalsales",
+          "type": "card",
+          "width": 300,
+          "x": 0,
+          "y": 0,
+          "z": 0
+        }
+      ],
+      "width": 1280
+    }
+  ],
+  "report": "SalesA"
+}
