@@ -79,7 +79,6 @@ HOST_OTHER_METHODS = frozenset({
 # The methods of jsapi-methods.json that the host does not have yet, with the build step that adds each one
 # (technical design section 16). Remove a method from this list when its step adds it to the host.
 HOST_PENDING = {
-    "merge_choice_set": "S5", "merge_choice_bulk_set": "S5",
     "removal_policy_set": "S6", "need_mapping_set": "S6", "impact_action_apply": "S6", "offer_select": "S6",
     "format_only_apply": "S9", "apply": "S9", "undo_apply": "S9", "change_report_write": "S9",
     "proposal_accept": "S10", "proposal_reject": "S10", "proposal_accept_all": "S10", "question_answer": "S10",

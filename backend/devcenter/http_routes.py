@@ -90,3 +90,5 @@ def get_session(devcenter: Any, query: Mapping[str, Sequence[str]], body: Any) -
 
 from backend.devcenter.compare import http_routes as _compare_routes  # noqa: E402,F401  (build step S3)
 from backend.devcenter.naming import http_routes as _naming_routes  # noqa: E402,F401  (S4 read routes)
+from backend.devcenter.plan import http_routes as _plan_routes  # noqa: E402,F401  (S5 read routes)
+

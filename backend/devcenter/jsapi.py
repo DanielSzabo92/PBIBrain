@@ -30,6 +30,7 @@ AREA_MODULES = (
     "backend.devcenter.compare.jsapi_methods",
     "backend.devcenter.naming.jsapi_methods",
     "backend.devcenter.sources.cloud_jsapi_methods",
+    "backend.devcenter.plan.jsapi_methods",
 )
 
 Handler = Callable[[Any, Mapping[str, Any]], Mapping[str, Any]]

@@ -11,3 +11,9 @@
 - Learning: In virtualized grids, filter or query changes must reset the scroll position to zero; otherwise, row range calculations based on a previously scrolled offset produce zero or negative render slices when fewer rows match.
 - Learning: Fast scroll performance rules must render light placeholder cells for non-essential columns to maintain frame budgets while retaining ARIA grid attributes.
 - Learning: In-flight state updates in rapid keyboard navigation must be synchronized via immediate refs to avoid stale closures over focused cell coordinates.
+
+## Ticket 11
+- Learning: Plan compiler result must include `"sources": list(self.data.sources.keys())` so `plan_hash()` can compute SHA-256 over all plan facets without KeyError.
+- Learning: Token-exact DAX rewriting must use ANTLR4 lexer character spans (`token.start`, `token.stop + 1`) to preserve whitespace, comments, and casing outside rewritten identifier tokens.
+- Learning: Under UC3, `GET session` (`session_summary()`) must return cached plan status or `plan_state: "computing"` lazily without invoking plan compilation or compare computation.
+

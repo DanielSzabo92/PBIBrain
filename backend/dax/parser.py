@@ -663,12 +663,24 @@ class DaxToken:
     text: str
 
 
-def dax_tokens(source: str) -> tuple[tuple[DaxToken, ...], bool]:
-    """Give the tokens of a DAX text with no whitespace and no comments, and True when the lexer found an error.
+@dataclass(frozen=True, slots=True)
+class DaxSpanToken:
+    """One lexer token with its position: ``source[start:end] == text``."""
 
-    The lexer grammar knows ``//`` and ``/* */`` comments. DAX also has ``--``
-    line comments, so this function removes two adjacent minus signs and the
-    rest of their line. The normalization of the merge compare uses these tokens.
+    kind: str
+    text: str
+    start: int
+    end: int
+
+
+def dax_token_spans(source: str) -> tuple[tuple[DaxSpanToken, ...], bool]:
+    """Give the tokens of a DAX text with their positions, with no whitespace and no comments.
+
+    The second value is True when the lexer found an error. The lexer grammar
+    knows ``//`` and ``/* */`` comments. DAX also has ``--`` line comments, so
+    this function removes two adjacent minus signs and the rest of their line.
+    The positions are string indexes into ``source``. The token-exact rewrite
+    of the Change Plan changes the text only at these positions.
     """
 
     issues: list[DaxSyntaxIssue] = []
@@ -676,7 +688,7 @@ def dax_tokens(source: str) -> tuple[tuple[DaxToken, ...], bool]:
     lexer.removeErrorListeners()
     lexer.addErrorListener(_IssueListener(issues))
     names = lexer.symbolicNames
-    found: list[DaxToken] = []
+    found: list[DaxSpanToken] = []
     skip_line: int | None = None
     previous = None
     for token in lexer.getAllTokens():
@@ -693,6 +705,18 @@ def dax_tokens(source: str) -> tuple[tuple[DaxToken, ...], bool]:
             skip_line = token.line
             previous = None
             continue
-        found.append(DaxToken(kind, token.text))
+        found.append(DaxSpanToken(kind, token.text, token.start, token.stop + 1))
         previous = token
     return tuple(found), bool(issues)
+
+
+def dax_tokens(source: str) -> tuple[tuple[DaxToken, ...], bool]:
+    """Give the tokens of a DAX text with no whitespace and no comments, and True when the lexer found an error.
+
+    The lexer grammar knows ``//`` and ``/* */`` comments. DAX also has ``--``
+    line comments, so this function removes two adjacent minus signs and the
+    rest of their line. The normalization of the merge compare uses these tokens.
+    """
+
+    tokens, failed = dax_token_spans(source)
+    return tuple(DaxToken(token.kind, token.text) for token in tokens), failed
