@@ -25,3 +25,9 @@
 - Learning: TOM canonical check detects format-only differences (LF line endings, quoted identifiers, blank lines) without altering semantic tree equivalence, enabling safe format-only promotion.
 - Learning: TOM tree compare must walk unmodeled collections like Perspectives and Cultures to detect and guard changes outside the PBIBrain graph schema.
 - Learning: TOM 19.118.3 rejects lineageTag on root model nodes; lineage tags must strictly attach to child objects (tables, columns, measures, hierarchies).
+
+
+## Ticket 17
+- Learning: When `compile_plan` emits `COPY_PAGE` followed by `COPY_VISUAL` and `REBIND_FIELD` for child visuals of the copied page, the PBIR writer must map donor row keys (`page:<id>`, `visual:<page>/<id>`) to the clash-resolved candidate IDs so subsequent `COPY_VISUAL` and `REBIND_FIELD` operations target the renamed page and visual folders without duplicating visuals.
+- Learning: `validate_report_documents` requires document keys to start with a `<name>.Report/` root prefix to trigger `PBIR_PAGE_COVERAGE_MISMATCH`, `PBIR_ACTIVE_PAGE_UNRESOLVED`, and `PBIR_PAGE_ID_PATH_MISMATCH` checks even when the candidate output directory name does not end with `.Report`.
+- Learning: Semantic filters in `filterConfig.filters[].filter` bind `Where` column/measure expressions through `From` table aliases (`SourceRef.Source`), so `REBIND_FIELD` on a filter must update both the top-level `filter.field` and any matching `From` entity and `Where` property.
