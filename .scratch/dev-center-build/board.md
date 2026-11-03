@@ -37,7 +37,7 @@ UI lane (UI design section 13): U0, then U1 and U2 in parallel, then U3 (needs S
 | 15 | S6 | [Impact data](issues/15-s6-impact-data.md) | 07, 11 | done | dc/15-s6-impact-data | 263be57 |
 | 16 | S7a | [Model writer (bridge)](issues/16-s7a-model-writer.md) | 11 | done | dc/16-s7a-model-writer | 3d3a4ba |
 | 17 | S7b | [PBIR writer](issues/17-s7b-pbir-writer.md) | 11 | done | dc/17-s7b-pbir-writer | dcc91fc |
-| 18 | U7 | [Plan view](issues/18-u7-plan-view.md) | 10, 11 | open | | |
+| 18 | U7 | [Plan view](issues/18-u7-plan-view.md) | 10, 11 | done | dc/18-u7-plan-view | 95fa5aa |
 | 19 | U6 | [Row detail and Merge Choice](issues/19-u6-row-detail.md) | 12, 07, 08, 11 | open | | |
 | 20 | S8 | [Guard for merge](issues/20-s8-guard-merge.md) | 16, 17 | open | | |
 | 21 | S10 | [Agent MCP tools](issues/21-s10-agent-mcp-tools.md) | 15, 16 | open | | |
