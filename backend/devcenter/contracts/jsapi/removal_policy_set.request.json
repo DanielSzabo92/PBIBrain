@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pbibrain.local/devcenter/contracts/jsapi/removal_policy_set.request.json",
+  "title": "removal_policy_set request (section 14.2, AC6)",
+  "type": "object",
+  "properties": {
+    "base_revision": {
+      "$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/base_revision"
+    },
+    "row_key": {
+      "$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/row_key"
+    },
+    "policy": {
+      "enum": [
+        "block",
+        "cascade",
+        "repoint"
+      ]
+    },
+    "repoint_target": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  },
+  "required": [
+    "base_revision",
+    "policy",
+    "row_key"
+  ],
+  "additionalProperties": false
+}

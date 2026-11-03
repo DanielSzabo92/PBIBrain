@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pbibrain.local/devcenter/contracts/jsapi/offer_select.reply.json",
+  "title": "offer_select reply (section 14.2, AC8)",
+  "type": "object",
+  "properties": {
+    "revision": {
+      "$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/revision"
+    },
+    "offer_id": {
+      "type": "string"
+    },
+    "selected": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "offer_id",
+    "revision",
+    "selected"
+  ],
+  "additionalProperties": false
+}

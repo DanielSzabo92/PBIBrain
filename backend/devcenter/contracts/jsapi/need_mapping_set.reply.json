@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pbibrain.local/devcenter/contracts/jsapi/need_mapping_set.reply.json",
+  "title": "need_mapping_set reply (section 14.2, AC4)",
+  "type": "object",
+  "properties": {
+    "revision": {
+      "$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/revision"
+    },
+    "need_id": {
+      "type": "string"
+    },
+    "action": {
+      "enum": [
+        "add_from_donor",
+        "map_to_target",
+        "drop_added_object"
+      ]
+    },
+    "target_object": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  },
+  "required": [
+    "action",
+    "need_id",
+    "revision"
+  ],
+  "additionalProperties": false
+}

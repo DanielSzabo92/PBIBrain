@@ -1,0 +1,594 @@
+{
+  "facets": {
+    "blocking": {
+      "false": 0,
+      "true": 15
+    },
+    "certainty": {
+      "certain": 15,
+      "possible": 0
+    },
+    "direction": {
+      "breaks": 15,
+      "needs": 0
+    },
+    "object_type": {
+      "column": 3,
+      "measure": 2,
+      "page": 2,
+      "report": 1,
+      "report_measure": 1,
+      "table": 1,
+      "visual": 5
+    },
+    "severity": {
+      "breaks": 15
+    }
+  },
+  "items": [
+    {
+      "allowed_actions": [
+        "set_policy_block",
+        "set_policy_cascade",
+        "set_policy_repoint"
+      ],
+      "blocking": true,
+      "cause": "measure:Sales/Total Sales",
+      "certainty": "certain",
+      "direction": "breaks",
+      "id": "imp-9de832a2a3fcfd4b",
+      "impacted_object": {
+        "domain": "model",
+        "name": "Metric Selector",
+        "object_id": "column:Metric Selector/Metric Selector",
+        "object_type": "column",
+        "source_id": "src-1"
+      },
+      "other_paths_count": 0,
+      "path": [
+        {
+          "edge_phrase": "depends on",
+          "edge_phrase_id": "depends_on",
+          "name": "Metric Selector",
+          "object_id": "table:Metric Selector",
+          "type": "table"
+        },
+        {
+          "edge_phrase": "contains",
+          "edge_phrase_id": "contains",
+          "name": "Metric Selector",
+          "object_id": "column:Metric Selector/Metric Selector",
+          "type": "column"
+        }
+      ],
+      "reason_id": "deleted_object",
+      "reason_text": "Uses a deleted object",
+      "severity": "breaks"
+    },
+    {
+      "allowed_actions": [
+        "set_policy_block",
+        "set_policy_cascade",
+        "set_policy_repoint"
+      ],
+      "blocking": true,
+      "cause": "measure:Sales/Total Sales",
+      "certainty": "certain",
+      "direction": "breaks",
+      "id": "imp-22bb9f2437ad7387",
+      "impacted_object": {
+        "domain": "model",
+        "name": "Metric Selector Fields",
+        "object_id": "column:Metric Selector/Metric Selector Fields",
+        "object_type": "column",
+        "source_id": "src-1"
+      },
+      "other_paths_count": 0,
+      "path": [
+        {
+          "edge_phrase": "depends on",
+          "edge_phrase_id": "depends_on",
+          "name": "Metric Selector",
+          "object_id": "table:Metric Selector",
+          "type": "table"
+        },
+        {
+          "edge_phrase": "contains",
+          "edge_phrase_id": "contains",
+          "name": "Metric Selector Fields",
+          "object_id": "column:Metric Selector/Metric Selector Fields",
+          "type": "column"
+        }
+      ],
+      "reason_id": "deleted_object",
+      "reason_text": "Uses a deleted object",
+      "severity": "breaks"
+    },
+    {
+      "allowed_actions": [
+        "set_policy_block",
+        "set_policy_cascade",
+        "set_policy_repoint"
+      ],
+      "blocking": true,
+      "cause": "measure:Sales/Total Sales",
+      "certainty": "certain",
+      "direction": "breaks",
+      "id": "imp-edd026bfa61532bf",
+      "impacted_object": {
+        "domain": "model",
+        "name": "Metric Selector Order",
+        "object_id": "column:Metric Selector/Metric Selector Order",
+        "object_type": "column",
+        "source_id": "src-1"
+      },
+      "other_paths_count": 0,
+      "path": [
+        {
+          "edge_phrase": "depends on",
+          "edge_phrase_id": "depends_on",
+          "name": "Metric Selector",
+          "object_id": "table:Metric Selector",
+          "type": "table"
+        },
+        {
+          "edge_phrase": "contains",
+          "edge_phrase_id": "contains",
+          "name": "Metric Selector Order",
+          "object_id": "column:Metric Selector/Metric Selector Order",
+          "type": "column"
+        }
+      ],
+      "reason_id": "deleted_object",
+      "reason_text": "Uses a deleted object",
+      "severity": "breaks"
+    },
+    {
+      "allowed_actions": [
+        "set_policy_block",
+        "set_policy_cascade",
+        "set_policy_repoint"
+      ],
+      "blocking": true,
+      "cause": "measure:Sales/Total Sales",
+      "certainty": "certain",
+      "direction": "breaks",
+      "id": "imp-364ab3ce4051082f",
+      "impacted_object": {
+        "domain": "model",
+        "name": "Margin",
+        "object_id": "measure:Sales/Margin",
+        "object_type": "measure",
+        "source_id": "src-1"
+      },
+      "other_paths_count": 0,
+      "path": [
+        {
+          "edge_phrase": "depends on",
+          "edge_phrase_id": "depends_on",
+          "name": "Margin",
+          "object_id": "measure:Sales/Margin",
+          "type": "measure"
+        }
+      ],
+      "reason_id": "deleted_object",
+      "reason_text": "Uses a deleted object",
+      "severity": "breaks"
+    },
+    {
+      "allowed_actions": [
+        "set_policy_block",
+        "set_policy_cascade",
+        "set_policy_repoint"
+      ],
+      "blocking": true,
+      "cause": "measure:Sales/Total Sales",
+      "certainty": "certain",
+      "direction": "breaks",
+      "id": "imp-5a0d359ec1d43fc5",
+      "impacted_object": {
+        "domain": "model",
+        "name": "Sales With Tax",
+        "object_id": "measure:Sales/Sales With Tax",
+        "object_type": "measure",
+        "source_id": "src-1"
+      },
+      "other_paths_count": 0,
+      "path": [
+        {
+          "edge_phrase": "depends on",
+          "edge_phrase_id": "depends_on",
+          "name": "Sales With Tax",
+          "object_id": "measure:Sales/Sales With Tax",
+          "type": "measure"
+        }
+      ],
+      "reason_id": "deleted_object",
+      "reason_text": "Uses a deleted object",
+      "severity": "breaks"
+    },
+    {
+      "allowed_actions": [
+        "set_policy_block",
+        "set_policy_cascade",
+        "set_policy_repoint"
+      ],
+      "blocking": true,
+      "cause": "measure:Sales/Total Sales",
+      "certainty": "certain",
+      "direction": "breaks",
+      "id": "imp-c47bc1398aac889e",
+      "impacted_object": {
+        "domain": "report",
+        "name": "Detail",
+        "object_id": "page:detail",
+        "object_type": "page",
+        "source_id": "src-1"
+      },
+      "other_paths_count": 0,
+      "path": [
+        {
+          "edge_phrase": "uses",
+          "edge_phrase_id": "uses",
+          "name": "calendarmatrix",
+          "object_id": "visual:detail/calendarmatrix",
+          "type": "visual"
+        },
+        {
+          "edge_phrase": "contains",
+          "edge_phrase_id": "contains",
+          "name": "Detail",
+          "object_id": "page:detail",
+          "type": "page"
+        }
+      ],
+      "reason_id": "deleted_object",
+      "reason_text": "Uses a deleted object",
+      "severity": "breaks"
+    },
+    {
+      "allowed_actions": [
+        "set_policy_block",
+        "set_policy_cascade",
+        "set_policy_repoint"
+      ],
+      "blocking": true,
+      "cause": "measure:Sales/Total Sales",
+      "certainty": "certain",
+      "direction": "breaks",
+      "id": "imp-943392b0bf2870b6",
+      "impacted_object": {
+        "domain": "report",
+        "name": "Overview",
+        "object_id": "page:overview",
+        "object_type": "page",
+        "source_id": "src-1"
+      },
+      "other_paths_count": 0,
+      "path": [
+        {
+          "edge_phrase": "uses",
+          "edge_phrase_id": "uses",
+          "name": "totalsales",
+          "object_id": "visual:overview/totalsales",
+          "type": "visual"
+        },
+        {
+          "edge_phrase": "contains",
+          "edge_phrase_id": "contains",
+          "name": "Overview",
+          "object_id": "page:overview",
+          "type": "page"
+        }
+      ],
+      "reason_id": "deleted_object",
+      "reason_text": "Uses a deleted object",
+      "severity": "breaks"
+    },
+    {
+      "allowed_actions": [
+        "set_policy_block",
+        "set_policy_cascade",
+        "set_policy_repoint"
+      ],
+      "blocking": true,
+      "cause": "measure:Sales/Total Sales",
+      "certainty": "certain",
+      "direction": "breaks",
+      "id": "imp-161e4d7026d4ca12",
+      "impacted_object": {
+        "domain": "model",
+        "name": "report",
+        "object_id": "report",
+        "object_type": "report",
+        "source_id": "src-1"
+      },
+      "other_paths_count": 0,
+      "path": [
+        {
+          "edge_phrase": "uses",
+          "edge_phrase_id": "uses",
+          "name": "calendarmatrix",
+          "object_id": "visual:detail/calendarmatrix",
+          "type": "visual"
+        },
+        {
+          "edge_phrase": "contains",
+          "edge_phrase_id": "contains",
+          "name": "Detail",
+          "object_id": "page:detail",
+          "type": "page"
+        },
+        {
+          "edge_phrase": "contains",
+          "edge_phrase_id": "contains",
+          "name": "report",
+          "object_id": "report",
+          "type": "report"
+        }
+      ],
+      "reason_id": "deleted_object",
+      "reason_text": "Uses a deleted object",
+      "severity": "breaks"
+    },
+    {
+      "allowed_actions": [
+        "set_policy_block",
+        "set_policy_cascade",
+        "set_policy_repoint"
+      ],
+      "blocking": true,
+      "cause": "measure:Sales/Total Sales",
+      "certainty": "certain",
+      "direction": "breaks",
+      "id": "imp-39ea6f75aff669ff",
+      "impacted_object": {
+        "domain": "report",
+        "name": "Sales Target",
+        "object_id": "report_measure:Sales/Sales Target",
+        "object_type": "report_measure",
+        "source_id": "src-1"
+      },
+      "other_paths_count": 0,
+      "path": [
+        {
+          "edge_phrase": "depends on",
+          "edge_phrase_id": "depends_on",
+          "name": "Sales Target",
+          "object_id": "report_measure:Sales/Sales Target",
+          "type": "report_measure"
+        }
+      ],
+      "reason_id": "deleted_object",
+      "reason_text": "Uses a deleted object",
+      "severity": "breaks"
+    },
+    {
+      "allowed_actions": [
+        "set_policy_block",
+        "set_policy_cascade",
+        "set_policy_repoint"
+      ],
+      "blocking": true,
+      "cause": "measure:Sales/Total Sales",
+      "certainty": "certain",
+      "direction": "breaks",
+      "id": "imp-9012d533a28c80fd",
+      "impacted_object": {
+        "domain": "model",
+        "name": "Metric Selector",
+        "object_id": "table:Metric Selector",
+        "object_type": "table",
+        "source_id": "src-1"
+      },
+      "other_paths_count": 0,
+      "path": [
+        {
+          "edge_phrase": "depends on",
+          "edge_phrase_id": "depends_on",
+          "name": "Metric Selector",
+          "object_id": "table:Metric Selector",
+          "type": "table"
+        }
+      ],
+      "reason_id": "deleted_object",
+      "reason_text": "Uses a deleted object",
+      "severity": "breaks"
+    },
+    {
+      "allowed_actions": [
+        "set_policy_block",
+        "set_policy_cascade",
+        "set_policy_repoint",
+        "remove_field"
+      ],
+      "blocking": true,
+      "cause": "measure:Sales/Total Sales",
+      "certainty": "certain",
+      "direction": "breaks",
+      "id": "imp-3626635a34fd1021",
+      "impacted_object": {
+        "domain": "report",
+        "name": "calendarmatrix",
+        "object_id": "visual:detail/calendarmatrix",
+        "object_type": "visual",
+        "source_id": "src-1"
+      },
+      "other_paths_count": 0,
+      "path": [
+        {
+          "edge_phrase": "uses",
+          "edge_phrase_id": "uses",
+          "name": "calendarmatrix",
+          "object_id": "visual:detail/calendarmatrix",
+          "type": "visual"
+        }
+      ],
+      "reason_id": "deleted_object",
+      "reason_text": "Uses a deleted object",
+      "severity": "breaks"
+    },
+    {
+      "allowed_actions": [
+        "set_policy_block",
+        "set_policy_cascade",
+        "set_policy_repoint",
+        "remove_field"
+      ],
+      "blocking": true,
+      "cause": "measure:Sales/Total Sales",
+      "certainty": "certain",
+      "direction": "breaks",
+      "id": "imp-1a57ebf81b547cfd",
+      "impacted_object": {
+        "domain": "report",
+        "name": "target",
+        "object_id": "visual:detail/target",
+        "object_type": "visual",
+        "source_id": "src-1"
+      },
+      "other_paths_count": 0,
+      "path": [
+        {
+          "edge_phrase": "depends on",
+          "edge_phrase_id": "depends_on",
+          "name": "Sales Target",
+          "object_id": "report_measure:Sales/Sales Target",
+          "type": "report_measure"
+        },
+        {
+          "edge_phrase": "uses",
+          "edge_phrase_id": "uses",
+          "name": "target",
+          "object_id": "visual:detail/target",
+          "type": "visual"
+        }
+      ],
+      "reason_id": "deleted_object",
+      "reason_text": "Uses a deleted object",
+      "severity": "breaks"
+    },
+    {
+      "allowed_actions": [
+        "set_policy_block",
+        "set_policy_cascade",
+        "set_policy_repoint",
+        "remove_field"
+      ],
+      "blocking": true,
+      "cause": "measure:Sales/Total Sales",
+      "certainty": "certain",
+      "direction": "breaks",
+      "id": "imp-20515315fed5e4d3",
+      "impacted_object": {
+        "domain": "report",
+        "name": "marginbymonth",
+        "object_id": "visual:overview/marginbymonth",
+        "object_type": "visual",
+        "source_id": "src-1"
+      },
+      "other_paths_count": 0,
+      "path": [
+        {
+          "edge_phrase": "depends on",
+          "edge_phrase_id": "depends_on",
+          "name": "Margin",
+          "object_id": "measure:Sales/Margin",
+          "type": "measure"
+        },
+        {
+          "edge_phrase": "uses",
+          "edge_phrase_id": "uses",
+          "name": "marginbymonth",
+          "object_id": "visual:overview/marginbymonth",
+          "type": "visual"
+        }
+      ],
+      "reason_id": "deleted_object",
+      "reason_text": "Uses a deleted object",
+      "severity": "breaks"
+    },
+    {
+      "allowed_actions": [
+        "set_policy_block",
+        "set_policy_cascade",
+        "set_policy_repoint",
+        "remove_field"
+      ],
+      "blocking": true,
+      "cause": "measure:Sales/Total Sales",
+      "certainty": "certain",
+      "direction": "breaks",
+      "id": "imp-434d4e0c5de9be80",
+      "impacted_object": {
+        "domain": "report",
+        "name": "metrictable",
+        "object_id": "visual:overview/metrictable",
+        "object_type": "visual",
+        "source_id": "src-1"
+      },
+      "other_paths_count": 0,
+      "path": [
+        {
+          "edge_phrase": "depends on",
+          "edge_phrase_id": "depends_on",
+          "name": "Metric Selector",
+          "object_id": "table:Metric Selector",
+          "type": "table"
+        },
+        {
+          "edge_phrase": "contains",
+          "edge_phrase_id": "contains",
+          "name": "Metric Selector",
+          "object_id": "column:Metric Selector/Metric Selector",
+          "type": "column"
+        },
+        {
+          "edge_phrase": "uses",
+          "edge_phrase_id": "uses",
+          "name": "metrictable",
+          "object_id": "visual:overview/metrictable",
+          "type": "visual"
+        }
+      ],
+      "reason_id": "deleted_object",
+      "reason_text": "Uses a deleted object",
+      "severity": "breaks"
+    },
+    {
+      "allowed_actions": [
+        "set_policy_block",
+        "set_policy_cascade",
+        "set_policy_repoint",
+        "remove_field"
+      ],
+      "blocking": true,
+      "cause": "measure:Sales/Total Sales",
+      "certainty": "certain",
+      "direction": "breaks",
+      "id": "imp-9eb53db52249b998",
+      "impacted_object": {
+        "domain": "report",
+        "name": "totalsales",
+        "object_id": "visual:overview/totalsales",
+        "object_type": "visual",
+        "source_id": "src-1"
+      },
+      "other_paths_count": 0,
+      "path": [
+        {
+          "edge_phrase": "uses",
+          "edge_phrase_id": "uses",
+          "name": "totalsales",
+          "object_id": "visual:overview/totalsales",
+          "type": "visual"
+        }
+      ],
+      "reason_id": "deleted_object",
+      "reason_text": "Uses a deleted object",
+      "severity": "breaks"
+    }
+  ],
+  "target": "plan",
+  "total": 15
+}

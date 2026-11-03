@@ -1,0 +1,132 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pbibrain.local/devcenter/contracts/http/wireframe.reply.json",
+  "title": "GET /api/devcenter/wireframe/{report} (section 14.1, AC7)",
+  "type": "object",
+  "properties": {
+    "revision": {
+      "$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/revision"
+    },
+    "report": {
+      "type": "string"
+    },
+    "pages": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "width": {
+            "type": "integer"
+          },
+          "height": {
+            "type": "integer"
+          },
+          "hidden": {
+            "type": "boolean"
+          },
+          "filters": {
+            "type": "array"
+          },
+          "visuals": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "type": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "x": {
+                  "type": "integer"
+                },
+                "y": {
+                  "type": "integer"
+                },
+                "z": {
+                  "type": "integer"
+                },
+                "width": {
+                  "type": "integer"
+                },
+                "height": {
+                  "type": "integer"
+                },
+                "group": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "hidden": {
+                  "type": "boolean"
+                },
+                "status": {
+                  "enum": [
+                    "removed",
+                    "breaks",
+                    "changes",
+                    "new",
+                    "not_checked",
+                    "unchanged"
+                  ]
+                },
+                "cause_item_ids": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "filters": {
+                  "type": "array"
+                }
+              },
+              "required": [
+                "cause_item_ids",
+                "height",
+                "hidden",
+                "id",
+                "status",
+                "title",
+                "type",
+                "width",
+                "x",
+                "y",
+                "z"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "height",
+          "hidden",
+          "id",
+          "name",
+          "visuals",
+          "width"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "report_filters": {
+      "type": "array"
+    }
+  },
+  "required": [
+    "pages",
+    "report",
+    "revision"
+  ],
+  "additionalProperties": false
+}
