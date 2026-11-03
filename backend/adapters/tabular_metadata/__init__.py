@@ -1,3 +1,15 @@
-from .bridge import TabularMetadataAdapter, MetadataUnavailable
+from .bridge import (
+    CanonicalCheckFailed,
+    MetadataUnavailable,
+    ModelWriteFailed,
+    TabularMetadataAdapter,
+    TreeCompareFailed,
+)
 
-__all__ = ["TabularMetadataAdapter", "MetadataUnavailable"]
+__all__ = [
+    "TabularMetadataAdapter",
+    "MetadataUnavailable",
+    "ModelWriteFailed",
+    "CanonicalCheckFailed",
+    "TreeCompareFailed",
+]
