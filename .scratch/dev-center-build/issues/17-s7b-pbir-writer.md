@@ -23,3 +23,17 @@ Scope of this ticket: the Python PBIR writer part of S7 only (`backend/adapters/
   - `tree-compare` reports a change in an object type that the graph does not model (perspective).
   - The PBIR writer: page copy with a name clash keeps the old-to-new map and fixes `pages.json`, groups, drillthrough, and interactions; `REBIND_FIELD` changes each field location; a changed file keeps its schema version; output validates against the vendored schemas; no BOM.
   - Refused items (bookmark copy, sync slicer groups, custom visuals, static resources) give fixed reasons.
+
+
+## Build record
+
+- Files changed:
+  - `backend/adapters/pbir/writer.py` (new PBIR report writer: `PBIRWriter`, `write_report`, `PBIRWriteError`, `REFUSED_REASONS`)
+  - `backend/adapters/pbir/__init__.py` (exports `PBIRWriter`, `write_report`, `PBIRWriteError`, `REFUSED_REASONS`)
+  - `tests/test_devcenter_pbir_writer.py` (8 acceptance and integration tests for S7b)
+- Tests run:
+  - `python -m unittest tests/test_devcenter_pbir_writer.py -v` (8 passed)
+  - Full Python test suite via `ag.py gates 17`
+- Notes:
+  - Supports `COPY_PAGE`, `COPY_VISUAL`, `DELETE_PAGE`, `DELETE_VISUAL`, `REBIND_FIELD` (pointer-based and document-tree walk across projections, `queryRef`, `nativeQueryRef`, `sortDefinition`, `filterConfig` with `From`/`Where`, `pageBinding.parameters`, formatting `objects`, `Hierarchy`/`HierarchyLevel`/`Aggregation`, and `reportExtensions.json`), `REMOVE_FIELD`, `CREATE_REPORT_MEASURE`, `REPLACE_REPORT_MEASURE`, `DELETE_REPORT_MEASURE`, and `REWRITE_EXPRESSION`.
+  - Preserves `$schema` versions on modified and copied files, writes UTF-8 without BOM, validates output with `validate_report_documents`, and refuses unsupported version 1 items (`bookmark_copy_not_supported`, `sync_slicer_group_not_supported`, `custom_visual_not_supported`, `static_resource_not_supported`, `destination_is_source_folder`, `pbir_legacy_not_supported`).
