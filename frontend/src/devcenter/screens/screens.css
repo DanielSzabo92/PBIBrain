@@ -73,6 +73,53 @@
 .dc-source-table th[scope="row"] { min-width: 220px; }
 .dc-row-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--space-2); }
 
+/* ---------- Naming rules (U5) -------------------------------------------- */
+.dc-rules-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.dc-seg-control { display: inline-flex; align-items: center; gap: 4px; }
+.dc-grow { flex-grow: 1; }
+.dc-caption { text-align: left; padding: 8px 12px; font-size: 12px; color: var(--text-2); }
+.dc-rules-table { width: 100%; border-collapse: collapse; min-width: 760px; font-size: 13px; }
+.dc-rules-table th { white-space: nowrap; }
+.dc-col-check { width: 36px; text-align: center; }
+.dc-rule-text { min-width: 240px; }
+.dc-rule-group-row td { background: var(--surface-2); font-weight: 600; font-size: 12px; color: var(--text-2); padding: 6px 12px; }
+.dc-row-selected td { background: color-mix(in srgb, var(--brand) 12%, var(--surface)); }
+.dc-rule-rejected .dc-rule-text { color: var(--text-2); }
+.dc-breaks-warn { color: var(--warn); display: inline-flex; align-items: center; gap: 4px; }
+.dc-sticky-actions { position: sticky; right: 0; background: var(--surface); z-index: 1; }
+.dc-rule-group-row .dc-sticky-actions { background: var(--surface-2); }
+.dc-row-selected .dc-sticky-actions { background: color-mix(in srgb, var(--brand) 12%, var(--surface)); }
+.dc-icon-sm { width: 14px; height: 14px; display: inline-block; vertical-align: middle; }
+.dc-rules-filter-empty { padding: var(--space-4) 0; display: flex; flex-direction: column; gap: var(--space-2); align-items: flex-start; }
+.dc-empty-box { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 32px 16px; text-align: center; gap: 8px; border: 1px dashed var(--line); border-radius: var(--radius); }
+.dc-empty-actions { display: flex; gap: var(--space-2); justify-content: center; margin-top: var(--space-2); }
+.dc-checkbox { width: 16px; height: 16px; accent-color: var(--brand); margin: 0; }
+
+/* Rule editor side pane */
+.dc-rule-editor { display: flex; flex-direction: column; gap: var(--space-4); }
+.dc-rule-editor-form { display: flex; flex-direction: column; gap: var(--space-3); }
+.dc-rule-preview { padding: var(--space-3); border-radius: var(--radius); background: var(--surface-2); border: 1px solid var(--line); }
+.dc-rule-preview-label { font-size: 12px; font-weight: 500; color: var(--text-2); display: block; }
+.dc-rule-preview-text { margin: 4px 0 0; font-size: 13px; color: var(--text); }
+.dc-pane-footer { display: flex; justify-content: flex-end; gap: var(--space-2); padding-top: var(--space-3); margin-top: var(--space-2); }
+.dc-duplicate-error { display: flex; flex-direction: column; gap: var(--space-2); align-items: flex-start; margin-top: var(--space-2); }
+
+/* Copy rules dialog */
+.dc-copy-rules-body { display: flex; flex-direction: column; gap: var(--space-3); }
+.dc-radio-group { border: 0; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+.dc-radio-list { display: flex; flex-direction: column; gap: var(--space-2); margin-top: var(--space-2); }
+.dc-radio-card { display: flex; align-items: flex-start; gap: var(--space-3); padding: var(--space-3); border: 1px solid var(--line); border-radius: var(--radius); cursor: pointer; transition: background 0.15s; }
+.dc-radio-card.selected { border-color: var(--brand); background: var(--surface-2); }
+.dc-radio-card.disabled { opacity: 0.6; cursor: not-allowed; }
+.dc-radio-input { margin-top: 3px; accent-color: var(--brand); }
+.dc-radio-content { display: flex; flex-direction: column; gap: 2px; flex-grow: 1; }
+.dc-radio-header { display: flex; justify-content: space-between; align-items: center; }
+.dc-radio-title { font-weight: 600; font-size: 13px; color: var(--text); }
+.dc-radio-count { font-size: 12px; color: var(--text-2); font-variant-numeric: tabular-nums; }
+.dc-radio-desc { font-size: 12px; color: var(--text-2); }
+.dc-radio-reason { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: var(--text-2); margin-top: 4px; }
+.dc-small { font-size: 12px; }
+
 @media (prefers-reduced-motion: reduce) {
   .dc-root .spin { animation: none; }
 }

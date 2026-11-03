@@ -18,6 +18,7 @@ import argparse
 import copy
 import json
 import mimetypes
+import re
 import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -218,6 +219,7 @@ class FakeDevCenter:
             fault = {
                 "code": str(body["code"]), "message": str(body.get("message") or f"Injected {body['code']} fault."),
                 "details": body.get("details") or {}, "once": bool(body.get("once", True)), "status": body.get("status"),
+                "skip": int(body.get("skip", 0)),
             }
             self.faults.setdefault(key, []).append(fault)
             return {"ok": True, "fault": {key: fault}}
@@ -243,6 +245,23 @@ class FakeDevCenter:
             proposal = self._add_proposal(session, body)
             return {"revision": self.revision, "proposal": proposal}
 
+    def set_rules(self, body: dict[str, Any]) -> dict[str, Any]:
+        """Change naming rules test fixtures in memory."""
+        with self.lock:
+            rules_file = self.files.setdefault("naming-rules", {})
+            if "rules" in body:
+                rules_file["rules"] = copy.deepcopy(body["rules"])
+            if "target" in body:
+                if body["target"] is None:
+                    if self.session and "target" in self.session:
+                        self.session["target"]["model"] = None
+                    rules_file["target"] = None
+                else:
+                    rules_file["target"] = copy.deepcopy(body["target"])
+            if "source_rule_counts" in body:
+                rules_file["source_rule_counts"] = copy.deepcopy(body["source_rule_counts"])
+            return {"ok": True}
+
     def before_reply(self, key: str) -> None:
         """Wait for an injected delay, then raise an injected fault. Each one is for the next call of the key."""
         with self.lock:
@@ -256,6 +275,9 @@ class FakeDevCenter:
             if not queue:
                 return
             fault = queue[0]
+            if fault.get("skip", 0) > 0:
+                fault["skip"] -= 1
+                return
             if fault["once"]:
                 queue.pop(0)
                 if not queue:
@@ -479,6 +501,120 @@ class FakeDevCenter:
             raise FakeError("invalid_payload", "The kind must be workspaces, models, or reports.", {"field": "kind"})
         return {"kind": kind, "items": self.files["cloud-items"][kind]}
 
+    def _find_rule(self, rule_id: Any) -> dict[str, Any]:
+        rules = self.files.get("naming-rules", {}).get("rules", [])
+        for rule in rules:
+            if rule["rule_id"] == rule_id:
+                return rule
+        raise FakeError("not_found", f"The rule {rule_id} does not exist.", {"rule_id": rule_id})
+
+    def _call_naming_rule_confirm(self, payload: dict[str, Any]) -> dict[str, Any]:
+        rule = self._find_rule(payload.get("rule_id"))
+        if rule["status"] == "confirmed":
+            raise FakeError("action_not_allowed", "The rule is already confirmed.", {"reason": "already_confirmed", "rule_id": rule["rule_id"]})
+        rule["status"] = "confirmed"
+        return {"rule": rule}
+
+    def _call_naming_rule_reject(self, payload: dict[str, Any]) -> dict[str, Any]:
+        rule = self._find_rule(payload.get("rule_id"))
+        rules = self.files.get("naming-rules", {}).get("rules", [])
+        if rule.get("origin") == "user":
+            rules.remove(rule)
+            return {"rule_id": rule["rule_id"], "removed": True, "rule": None}
+        if rule["status"] == "rejected":
+            raise FakeError("action_not_allowed", "The rule is already rejected.", {"reason": "already_rejected", "rule_id": rule["rule_id"]})
+        rule["status"] = "rejected"
+        return {"rule_id": rule["rule_id"], "removed": False, "rule": rule}
+
+    def _call_naming_rule_edit(self, payload: dict[str, Any]) -> dict[str, Any]:
+        rules = self.files.get("naming-rules", {}).get("rules", [])
+        rule_id = payload.get("rule_id")
+        object_type = payload.get("object_type")
+        check = payload.get("check")
+        if not object_type or not check:
+            raise FakeError("invalid_payload", "The rule edit needs object_type and check.", {"field": "object_type"})
+
+        if check.get("kind") == "regex":
+            try:
+                re.compile(check.get("value", ""))
+            except re.error as exc:
+                raise FakeError("invalid_payload", "The regular expression is not valid.", {"reason": "invalid_regex", "field": "pattern", "position": exc.pos, "detail": str(exc)})
+
+        raw_scope = payload.get("scope") or {}
+        norm_scope = {
+            "table": raw_scope.get("table"),
+            "display_folder": raw_scope.get("display_folder"),
+            "format_kind": raw_scope.get("format_kind"),
+            "name_prefix": raw_scope.get("name_prefix"),
+        }
+        for other in rules:
+            if other["rule_id"] != rule_id and other["status"] != "rejected":
+                other_scope = {
+                    "table": other["scope"].get("table"),
+                    "display_folder": other["scope"].get("display_folder"),
+                    "format_kind": other["scope"].get("format_kind"),
+                    "name_prefix": other["scope"].get("name_prefix"),
+                }
+                if (other["object_type"], other_scope, other["check"]["kind"]) == (object_type, norm_scope, check["kind"]):
+                    raise FakeError("action_not_allowed", "The same rule exists.", {"reason": "duplicate_rule", "existing_rule_id": other["rule_id"]})
+
+        if rule_id:
+            rule = self._find_rule(rule_id)
+            rule["object_type"] = object_type
+            rule["scope"] = norm_scope
+            rule["check"] = check
+            rule["status"] = "confirmed"
+            rule["text"] = f"{object_type} {check['kind']} rule."
+            return {"rule": rule}
+        else:
+            new_id = f"nr-{len(rules) + 1:012x}"
+            new_rule = {
+                "rule_id": new_id,
+                "object_type": object_type,
+                "scope": norm_scope,
+                "check": check,
+                "origin": "user",
+                "status": "confirmed",
+                "copied_from": None,
+                "text": f"{object_type} {check['kind']} rule.",
+                "support": {"count": 0, "total": 0},
+                "breaks": 0,
+            }
+            rules.append(new_rule)
+            return {"rule": new_rule}
+
+    def _call_naming_rules_copy(self, payload: dict[str, Any]) -> dict[str, Any]:
+        source_id = payload.get("source_id")
+        target_source_id = (self.session.get("target", {}).get("model") or {}).get("source_id")
+        if source_id == target_source_id:
+            raise FakeError("action_not_allowed", "Select a model that is not the target.", {"reason": "same_model"})
+        source = next((s for s in self.session.get("sources", []) if s["source_id"] == source_id), None)
+        if source is None:
+            raise FakeError("not_found", f"The source {source_id} does not exist.")
+        counts = self.files.get("naming-rules", {}).get("source_rule_counts", {})
+        count = counts.get(source_id, 0)
+        rules = self.files.get("naming-rules", {}).get("rules", [])
+        copied = []
+        if count > 0:
+            for idx in range(count):
+                copied_id = f"nr-{len(rules) + 100 + idx:012x}"
+                copied_rule = {
+                    "rule_id": copied_id,
+                    "object_type": "measure",
+                    "scope": {"table": None, "display_folder": None, "format_kind": None, "name_prefix": None},
+                    "check": {"kind": "prefix", "value": f"Copied{idx + 1}"},
+                    "origin": "detected",
+                    "status": "proposed",
+                    "copied_from": source["display_name"],
+                    "text": f"Copied rule {idx + 1} from {source['display_name']}.",
+                    "support": {"count": 5, "total": 5},
+                    "breaks": 0,
+                }
+                rules.append(copied_rule)
+                copied.append(copied_rule)
+        return {"copied": copied, "skipped": []}
+
+
     def _add_proposal(self, session: dict[str, Any], body: dict[str, Any], author: str = "agent") -> dict[str, Any]:
         proposal = {
             "id": body.get("id") or f"p-test-{self.next_proposal}", "kind": body.get("kind", "merge_choice"),
@@ -521,13 +657,20 @@ class FakeDevCenter:
                         diff = {"language": "tmdl", "target": "", "source": ""}
                     return self._reply({"row_key": parts[1], "source": source, **diff})
                 simple = {
-                    ("plan",): "plan", ("impact",): "impact", ("naming-rules",): "naming-rules", ("apply", "preview"): "apply-preview",
+                    ("plan",): "plan", ("impact",): "impact", ("apply", "preview"): "apply-preview",
                     ("apply", "progress"): "apply-progress", ("apply", "last"): "apply-last", ("display-folders",): "display-folders",
                 }
                 if tuple(parts) in simple:
                     value = self.files[simple[tuple(parts)]]
                     if parts == ["impact"]:
                         value = self._page(value, "items", query)
+                    return self._reply(value)
+                if parts == ["naming-rules"]:
+                    value = copy.deepcopy(self.files["naming-rules"])
+                    target_model = (self.session or {}).get("target", {}).get("model")
+                    if target_model is None:
+                        value["target"] = None
+                        value["rules"] = []
                     return self._reply(value)
                 if parts == ["log"]:
                     return self._reply(self._page(self.files["log"], "entries", query))
@@ -695,7 +838,8 @@ class FakeDevCenterHandler(BaseHTTPRequestHandler):
         if method == "POST" and route.startswith("desktop/"):
             return self._json(200, self._desktop(route[len("desktop/"):]))
         controls = {"scenario": lambda: state.load(str(body.get("name", ""))), "fault": lambda: state.set_fault(body),
-                    "delay": lambda: state.set_delay(body), "agent-proposal": lambda: state.agent_proposal(body)}
+                    "delay": lambda: state.set_delay(body), "agent-proposal": lambda: state.agent_proposal(body),
+                    "rules": lambda: state.set_rules(body)}
         if method == "POST" and route in controls:
             return self._json(200, controls[route]())
         raise FakeError("not_found", f"The test route {method} /__test__/{route} does not exist.")

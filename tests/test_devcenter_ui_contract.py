@@ -320,6 +320,58 @@ class SessionFixtureContractTest(unittest.TestCase):
         opened = self.call(state, "session_open", {"session_id": session_id})
         self.assertEqual(opened["read_only"], True)
 
+    def test_naming_rules_fixture_validates_against_the_s4_schema(self) -> None:
+        """Step U5: the default naming rules fixture validates against the S4 schema."""
+        path = self.FIXTURES / "default" / "naming-rules.json"
+        value = json.loads(path.read_text(encoding="utf-8"))
+        self.validate("http/naming-rules.reply.json", value)
+
+    def test_the_naming_rules_replies_follow_the_s4_schemas(self) -> None:
+        """Step U5: GET naming-rules and the naming rule JS API calls follow S4 schemas."""
+        state = fake.FakeDevCenter()
+        state.load("default")
+        read_reply = state.read("GET", "/api/devcenter/naming-rules", {}, {})
+        self.validate("http/naming-rules.reply.json", read_reply)
+        rule_id = read_reply["rules"][0]["rule_id"]
+
+        confirmed = self.call(state, "naming_rule_confirm", {"rule_id": rule_id})
+        self.assertEqual(confirmed["rule"]["status"], "confirmed")
+
+        edited = self.call(state, "naming_rule_edit", {
+            "rule_id": rule_id,
+            "object_type": "measure",
+            "scope": {"table": None, "display_folder": None, "format_kind": "currency", "name_prefix": None},
+            "check": {"kind": "suffix", "value": "Amount"},
+        })
+        self.assertEqual(edited["rule"]["status"], "confirmed")
+
+        created = self.call(state, "naming_rule_edit", {
+            "object_type": "table",
+            "scope": {"table": None, "display_folder": None, "format_kind": None, "name_prefix": None},
+            "check": {"kind": "suffix", "value": "Table"},
+        })
+        self.assertEqual(created["rule"]["origin"], "user")
+
+        rejected_user = self.call(state, "naming_rule_reject", {"rule_id": created["rule"]["rule_id"]})
+        self.assertEqual(rejected_user["removed"], True)
+
+        rejected_detected = self.call(state, "naming_rule_reject", {"rule_id": rule_id})
+        self.assertEqual((rejected_detected["removed"], rejected_detected["rule"]["status"]), (False, "rejected"))
+
+        copied = self.call(state, "naming_rules_copy", {"source_id": "src-1"})
+        self.assertEqual(len(copied["copied"]), 2)
+
+        with self.assertRaises(fake.FakeError) as duplicate_ctx:
+            state.call("naming_rule_edit", {
+                "base_revision": state.revision,
+                "object_type": "table",
+                "scope": {"table": None, "display_folder": None, "format_kind": None, "name_prefix": None},
+                "check": {"kind": "prefix", "value": "DimDuplicate"},
+            })
+        self.assertEqual(duplicate_ctx.exception.code, "action_not_allowed")
+        self.assertEqual(duplicate_ctx.exception.details["reason"], "duplicate_rule")
+
 
 if __name__ == "__main__":
     unittest.main()
+

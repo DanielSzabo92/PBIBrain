@@ -12,6 +12,7 @@ import { errorCopy, t, tn } from "../copy.js";
 import { useAction } from "../useDevCenter.js";
 import TargetChoice from "./TargetChoice.jsx";
 import { targetNames, targetPayload } from "./sessionModel.js";
+import NamingRules from "./sources/NamingRules.jsx";
 
 const STATUS = {
   ok: { tone: "ok", key: "sources.status.ok" },
@@ -33,6 +34,7 @@ export default function SourcesTab({ session, changeDisabled, reasonId }) {
   const [findError, setFindError] = useState(null);
   const trigger = useRef(null);
   const titleRef = useRef(null);
+  const changeTargetRef = useRef(null);
   const sources = session.sources ?? [];
   const names = targetNames(session);
 
@@ -121,13 +123,20 @@ export default function SourcesTab({ session, changeDisabled, reasonId }) {
       <section className="dc-section" aria-labelledby="dc-target-title">
         <div className="dc-section-head">
           <h2 id="dc-target-title" className="dc-section-title">{t("sources.target.title")}</h2>
-          <ChangeTarget session={session} disabled={changeDisabled} reasonId={reasonId} />
+          <ChangeTarget session={session} disabled={changeDisabled} reasonId={reasonId} triggerRef={changeTargetRef} />
         </div>
         <dl className="dc-summary">
           <div><dt>{t("sources.target.model")}</dt><dd>{names.model ?? t("shared.not_set")}</dd></div>
           <div><dt>{t("sources.target.report")}</dt><dd>{names.reportNew ? t("create.target.new_report") : names.report ?? t("shared.not_known")}</dd></div>
         </dl>
       </section>
+
+      <NamingRules
+        session={session}
+        changeDisabled={changeDisabled}
+        reasonId={reasonId}
+        onChangeTarget={() => changeTargetRef.current?.click()}
+      />
 
       <AlertDialog open={Boolean(removing)} onOpenChange={(open) => { if (!open) setRemoving(null); }}>
         {removing ? (
@@ -160,7 +169,7 @@ function initialChoice(session) {
   };
 }
 
-function ChangeTarget({ session, disabled, reasonId }) {
+function ChangeTarget({ session, disabled, reasonId, triggerRef }) {
   const setTarget = useAction("target_set");
   const toast = useToast();
   const [open, setOpen] = useState(false);
@@ -191,7 +200,7 @@ function ChangeTarget({ session, disabled, reasonId }) {
 
   return (
     <Dialog open={open} onOpenChange={start}>
-      <DialogTrigger asChild><Button variant="outline" size="sm" disabled={disabled} aria-describedby={reasonId}>{t("sources.target.change")}</Button></DialogTrigger>
+      <DialogTrigger asChild><Button ref={triggerRef} variant="outline" size="sm" disabled={disabled} aria-describedby={reasonId}>{t("sources.target.change")}</Button></DialogTrigger>
       {/* Radix mounts the content only while the dialog is open, and returns focus to the trigger on close. */}
       <DialogContent
           title={t("sources.target.change")}
