@@ -58,6 +58,13 @@
         null
       ]
     },
+    "plan_state": {
+      "enum": [
+        "ready",
+        "computing",
+        null
+      ]
+    },
     "counts": {
       "type": "object",
       "properties": {
@@ -155,6 +162,7 @@
     "created_at",
     "display_name",
     "location",
+    "plan_state",
     "plan_status",
     "proposals",
     "questions",

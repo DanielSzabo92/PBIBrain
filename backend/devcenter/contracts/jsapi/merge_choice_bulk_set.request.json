@@ -1,0 +1,122 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pbibrain.local/devcenter/contracts/jsapi/merge_choice_bulk_set.request.json",
+  "title": "JS API merge_choice_bulk_set: request",
+  "type": "object",
+  "properties": {
+    "base_revision": {
+      "$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/base_revision"
+    },
+    "row_keys": {
+      "type": "array",
+      "items": {
+        "$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/row_key"
+      }
+    },
+    "choice": {
+      "anyOf": [
+        {
+          "type": "string",
+          "enum": [
+            "keep",
+            "take",
+            "take_properties",
+            "add_new_name",
+            "remove",
+            "skip",
+            "promote",
+            "copy_to_report"
+          ]
+        },
+        {
+          "type": "null"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "enum": [
+                "keep",
+                "take",
+                "take_properties",
+                "add_new_name",
+                "remove",
+                "skip",
+                "promote",
+                "copy_to_report"
+              ]
+            },
+            "source_id": {
+              "$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/source_id"
+            },
+            "properties": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "new_name": {
+              "type": "string"
+            },
+            "display_folder": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "row_key": {
+            "$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/row_key"
+          },
+          "choice": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "keep",
+                  "take",
+                  "take_properties",
+                  "add_new_name",
+                  "remove",
+                  "skip",
+                  "promote",
+                  "copy_to_report"
+                ]
+              },
+              {
+                "type": "null"
+              },
+              {
+                "type": "object"
+              }
+            ]
+          }
+        },
+        "required": [
+          "row_key"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "base_revision"
+  ],
+  "additionalProperties": false
+}

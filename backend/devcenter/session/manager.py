@@ -112,6 +112,8 @@ class DevCenterSessions:
         self._lock = threading.RLock()
         self._project_root: Path | None = None
         self._open: _OpenSession | None = None
+        self._cached_plan: dict[str, Any] | None = None
+        self._plan_state: str | None = None
 
     # Project and locations -------------------------------------------------
 
@@ -223,6 +225,8 @@ class DevCenterSessions:
             by_kind = {kind: sum(1 for mark in marks if mark["mark"] == kind) for kind in MARK_KINDS}
             sources = [self._source_view(document, item) for item in document["sources"]]
             questions = document["questions"]
+            plan_status = self._cached_plan["status"] if self._cached_plan is not None else None
+            plan_state = "ready" if self._cached_plan is not None else self._plan_state
             return {
                 "revision": document["revision"],
                 "session_id": document["session_id"],
@@ -235,7 +239,8 @@ class DevCenterSessions:
                 "sources": sources,
                 "target": copy.deepcopy(document["target"]),
                 "compare_mode": document["compare_mode"],
-                "plan_status": None,
+                "plan_status": plan_status,
+                "plan_state": plan_state,
                 "counts": {
                     "sources": len(sources),
                     "donors": sum(1 for item in sources if item["role"] == ROLE_DONOR),
@@ -283,6 +288,8 @@ class DevCenterSessions:
     def _commit(self, current: _OpenSession, draft: dict[str, Any], action: str, target: Any, before: Any, after: Any) -> dict[str, Any]:
         draft["revision"] = current.document["revision"] + 1
         draft["updated_at"] = utc_now()
+        self._cached_plan = None
+        self._plan_state = "computing"
         entry = {
             "time": draft["updated_at"],
             "author": "user",
@@ -387,6 +394,8 @@ class DevCenterSessions:
 
     def _close(self) -> None:
         current, self._open = self._open, None
+        self._cached_plan = None
+        self._plan_state = None
         if current is not None and not current.read_only:
             current.lock.release()
 
@@ -573,6 +582,74 @@ class DevCenterSessions:
                 raise
             return {"revision": saved["revision"], "target": copy.deepcopy(saved["target"]),
                     "sources_added": [self._source_view(saved, item) for item in added]}
+
+    # Merge Choices -----------------------------------------------------------
+
+    def merge_choice_set(self, request: Mapping[str, Any]) -> dict[str, Any]:
+        with self._lock:
+            row_key = request.get("row_key")
+            if not row_key or not isinstance(row_key, str):
+                raise DevCenterError("invalid_payload", "The row key is required.", {"reason": "row_key_required"})
+            choice = request.get("choice")
+            if isinstance(choice, str):
+                choice = {"kind": choice}
+            elif choice is not None and not isinstance(choice, Mapping):
+                raise DevCenterError("invalid_payload", "The choice must be an object, string, or null.", {"reason": "invalid_choice"})
+            if choice is not None:
+                choice = dict(choice)
+
+            def mutate(document: dict[str, Any]) -> tuple[Any, Any]:
+                before = copy.deepcopy(document["merge_choices"].get(row_key))
+                if choice is None:
+                    document["merge_choices"].pop(row_key, None)
+                    after = None
+                else:
+                    document["merge_choices"][row_key] = copy.deepcopy(choice)
+                    after = copy.deepcopy(choice)
+                return before, after
+
+            document = self._change(request, "merge_choice_set", row_key, mutate)
+            return {"revision": document["revision"], "row_key": row_key, "choice": choice}
+
+    def merge_choice_bulk_set(self, request: Mapping[str, Any]) -> dict[str, Any]:
+        with self._lock:
+            row_keys = list(request.get("row_keys") or [])
+            single_choice = request.get("choice")
+            items = list(request.get("items") or [])
+            if not row_keys and not items:
+                raise DevCenterError("invalid_payload", "No rows specified.", {"reason": "row_keys_required"})
+
+            assignments: list[tuple[str, Any]] = []
+            if row_keys:
+                c = {"kind": single_choice} if isinstance(single_choice, str) else dict(single_choice) if isinstance(single_choice, Mapping) else None
+                for key in row_keys:
+                    assignments.append((key, c))
+            for item in items:
+                if isinstance(item, Mapping):
+                    k = item.get("row_key")
+                    c = item.get("choice")
+                    c = {"kind": c} if isinstance(c, str) else dict(c) if isinstance(c, Mapping) else None
+                    if k:
+                        assignments.append((k, c))
+
+            updated_keys: list[str] = []
+
+            def mutate(document: dict[str, Any]) -> tuple[Any, Any]:
+                before = {key: copy.deepcopy(document["merge_choices"].get(key)) for key, _ in assignments}
+                after = {}
+                for key, ch in assignments:
+                    updated_keys.append(key)
+                    if ch is None:
+                        document["merge_choices"].pop(key, None)
+                        after[key] = None
+                    else:
+                        document["merge_choices"][key] = copy.deepcopy(ch)
+                        after[key] = copy.deepcopy(ch)
+                return before, after
+
+            document = self._change(request, "merge_choice_bulk_set", None, mutate)
+            return {"revision": document["revision"], "count": len(updated_keys), "row_keys": updated_keys}
+
 
     # Source check and marks --------------------------------------------------
 

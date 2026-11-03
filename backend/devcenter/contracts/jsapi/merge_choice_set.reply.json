@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pbibrain.local/devcenter/contracts/jsapi/merge_choice_set.reply.json",
+  "title": "JS API merge_choice_set: reply (an error reply uses error.json)",
+  "type": "object",
+  "properties": {
+    "revision": {
+      "$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/revision"
+    },
+    "row_key": {
+      "$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/row_key"
+    },
+    "choice": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "string"
+        },
+        {
+          "type": "object"
+        }
+      ]
+    }
+  },
+  "required": [
+    "revision",
+    "row_key"
+  ],
+  "additionalProperties": false
+}

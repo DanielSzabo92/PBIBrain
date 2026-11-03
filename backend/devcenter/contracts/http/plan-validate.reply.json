@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pbibrain.local/devcenter/contracts/http/plan-validate.reply.json",
+  "title": "POST /api/devcenter/plan-validate (section 14.1, UC2)",
+  "type": "object",
+  "properties": {
+    "revision": {
+      "$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/revision"
+    },
+    "mode": {
+      "enum": [
+        "quick",
+        "full"
+      ]
+    },
+    "status": {
+      "enum": [
+        "valid",
+        "valid_with_warnings",
+        "invalid"
+      ]
+    },
+    "blocking": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "plan_hash": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    }
+  },
+  "required": [
+    "blocking",
+    "mode",
+    "plan_hash",
+    "revision",
+    "status",
+    "warnings"
+  ],
+  "additionalProperties": false
+}
