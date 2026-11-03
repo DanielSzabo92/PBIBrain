@@ -37,3 +37,8 @@
 - Learning: `App.jsx` registers a bubble-phase `window` keydown listener for `/` that navigates the app to Search, so tab-scoped `/` filter shortcuts must register in capture phase (`addEventListener("keydown", handler, true)`) and call `stopImmediatePropagation()`.
 - Learning: `default/apply-preview.json` contains a non-canonical file fixture for U10 Apply, so `PlanTab` must read `plan.apply_preview` from the `plan` resource rather than eagerly merging `applyPreview` on mount, which would cause the Plan block count to disagree with the top bar status badge.
 - Learning: In `frontend/src/devcenter/**` CSS files, `devcenter-lint.test.js` rejects `border-bottom: 1px solid var(--line)` as a one-sided colored border; use `border: 0 solid var(--line); border-bottom-width: 1px;` instead.
+
+
+## Ticket 19
+- Learning: In `devcenter_ui_server.py`, `_call_alignment_override` with `action: "reject_rename"` must tolerate `other_row_key` not existing in current rows when stripping possible rename notes.
+- Learning: When clicking "Use proposed" in `NameField`, prevent default on `mousedown` to avoid blur triggering an input check re-layout before the click resolves.
