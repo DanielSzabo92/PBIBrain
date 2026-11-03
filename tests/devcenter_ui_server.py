@@ -282,6 +282,17 @@ class FakeDevCenter:
                 plan_file["apply_preview"] = copy.deepcopy(body["apply_preview"])
             return {"ok": True}
 
+    def set_compare_rows(self, body: dict[str, Any]) -> dict[str, Any]:
+        """Change compare-rows, removal, and display-folders test fixtures in memory."""
+        with self.lock:
+            if "rows" in body and isinstance(body["rows"], list):
+                self.files.setdefault("compare-rows", {})["rows"] = copy.deepcopy(body["rows"])
+            if "removal" in body and isinstance(body["removal"], dict):
+                self.files.setdefault("removal", {}).update(copy.deepcopy(body["removal"]))
+            if "folders" in body and isinstance(body["folders"], dict):
+                self.files.setdefault("display-folders", {})["folders"] = copy.deepcopy(body["folders"])
+            return {"ok": True}
+
     def before_reply(self, key: str) -> None:
         """Wait for an injected delay, then raise an injected fault. Each one is for the next call of the key."""
         with self.lock:
@@ -494,8 +505,130 @@ class FakeDevCenter:
 
     def _call_merge_choice_set(self, payload: dict[str, Any]) -> dict[str, Any]:
         row = self._row(payload.get("row_key"))
-        row["merge_choice"] = payload.get("choice")
-        return {"row_key": row["row_key"]}
+        choice = payload.get("choice")
+        row["merge_choice"] = choice
+        return {"row_key": row["row_key"], "choice": choice}
+
+    def _call_removal_policy_set(self, payload: dict[str, Any]) -> dict[str, Any]:
+        row = self._row(payload.get("row_key"))
+        policy = payload.get("policy")
+        if policy not in {"block", "cascade", "repoint"}:
+            raise FakeError("invalid_payload", "The policy must be block, cascade, or repoint.", {"field": "policy"})
+        repoint_target = payload.get("repoint_target")
+        if policy == "repoint" and (not isinstance(repoint_target, str) or not repoint_target.strip()):
+            raise FakeError("invalid_payload", "Repoint needs a repoint_target.", {"field": "repoint_target"})
+        row["removal_policy"] = {"policy": policy, "repoint_target": repoint_target if policy == "repoint" else None}
+        return {"row_key": row["row_key"], "policy": policy, "repoint_target": repoint_target if policy == "repoint" else None}
+
+    def _call_alignment_override(self, payload: dict[str, Any]) -> dict[str, Any]:
+        action = payload.get("action")
+        source_id = payload.get("source_id")
+        row_key = payload.get("row_key")
+        other_row_key = payload.get("other_row_key")
+        if action not in {"confirm", "break", "reject_rename", "clear"} or not source_id or not row_key:
+            raise FakeError("invalid_payload", "The alignment override needs action, source_id, and row_key.")
+        if action in {"confirm", "reject_rename"} and not other_row_key:
+            raise FakeError("invalid_payload", "confirm and reject_rename need other_row_key.")
+        row = self._row(row_key)
+        rows = self._rows()
+        removed_choices: list[str] = []
+
+        if action == "break":
+            if row.get("merge_choice") is not None:
+                removed_choices.append(row["row_key"])
+                row["merge_choice"] = None
+            cells = row.get("cells")
+            if isinstance(cells, dict):
+                donor_cell = copy.deepcopy(cells.get(source_id, {"state": "same", "changed": False}))
+                cells[source_id] = {"state": "missing", "changed": False}
+            elif isinstance(cells, list):
+                donor_cell = next((copy.deepcopy(c) for c in cells if c.get("source_id") == source_id), {"source_id": source_id, "state": "same", "changed": False})
+                for c in cells:
+                    if c.get("source_id") == source_id:
+                        c.update({"present": False, "state": "missing", "changed": False, "phrases": [], "notes": []})
+            else:
+                donor_cell = {"state": "same", "changed": False}
+            split_key = f"{row['row_key']}@{source_id}"
+            donor_name = (donor_cell.get("name") if isinstance(donor_cell, dict) else None) or row["name"]
+            new_row = {
+                "row_key": split_key,
+                "object_type": row["object_type"],
+                "name": donor_name,
+                "table": row.get("table"),
+                "display_folder": row.get("display_folder"),
+                "row_state": "missing",
+                "cells": {
+                    "src-3": {"state": "missing", "changed": False},
+                    source_id: {"state": "same", "changed": False, "name": donor_name},
+                },
+                "notes": [],
+                "properties": [],
+                "merge_choice": None,
+                "proposal_status": None,
+                "marks": [],
+            }
+            if not any(r["row_key"] == split_key for r in rows):
+                idx = rows.index(row)
+                rows.insert(idx + 1, new_row)
+            return {"action": action, "row_keys": [row["row_key"], split_key], "removed_choices": removed_choices}
+
+        if action == "confirm":
+            other = self._row(other_row_key)
+            for r in (row, other):
+                if r.get("merge_choice") is not None:
+                    removed_choices.append(r["row_key"])
+                    r["merge_choice"] = None
+            cells = row.get("cells")
+            if isinstance(cells, dict):
+                cells[source_id] = {
+                    "state": "renamed" if other["name"] != row["name"] else "different",
+                    "changed": True,
+                    "name": other["name"],
+                    "step": "manual",
+                }
+            elif isinstance(cells, list):
+                for c in cells:
+                    if c.get("source_id") == source_id:
+                        c.update({
+                            "present": True,
+                            "name": other["name"],
+                            "state": "renamed" if other["name"] != row["name"] else "different",
+                            "changed": True,
+                            "step": "manual",
+                            "notes": [n for n in c.get("notes", []) if n.get("note_id") != "possible_rename"],
+                        })
+            row["notes"] = [
+                n for n in row.get("notes", [])
+                if (n.get("note_id") or n.get("phrase_id")) not in {"possible_rename", "compare.note.possible_rename"}
+            ]
+            row["alignment_step"] = "manual"
+            if other["name"] != row["name"]:
+                row["row_state"] = "renamed"
+            if other in rows:
+                rows.remove(other)
+            return {"action": action, "row_keys": [row["row_key"]], "removed_choices": removed_choices}
+
+        if action == "reject_rename":
+            try:
+                other = self._row(other_row_key)
+            except FakeError:
+                other = None
+            targets = [row] if other is None else [row, other]
+            for r in targets:
+                r["notes"] = [
+                    n for n in r.get("notes", [])
+                    if (n.get("note_id") or n.get("phrase_id")) not in {"possible_rename", "compare.note.possible_rename"}
+                ]
+                if isinstance(r.get("cells"), list):
+                    for c in r["cells"]:
+                        c["notes"] = [n for n in c.get("notes", []) if n.get("note_id") != "possible_rename"]
+                elif isinstance(r.get("cells"), dict):
+                    for c in r["cells"].values():
+                        if isinstance(c, dict) and "notes" in c:
+                            c["notes"] = [n for n in c["notes"] if n.get("note_id") != "possible_rename"]
+            return {"action": action, "row_keys": [r["row_key"] for r in targets], "removed_choices": removed_choices}
+
+        return {"action": action, "row_keys": [row["row_key"]], "removed_choices": removed_choices}
 
     def _call_merge_choice_bulk_set(self, payload: dict[str, Any]) -> dict[str, Any]:
         keys = payload.get("row_keys")
@@ -513,6 +646,10 @@ class FakeDevCenter:
         rows = [self._row(key) for key in keys]
         for row in rows:
             row["marks"] = []
+        confirmed = {row["row_key"] for row in rows}
+        for proposal in self.session.get("proposals", {}).get("open", []):
+            if proposal.get("target_id") in confirmed and proposal.get("blocked") == "source_changed":
+                proposal["blocked"] = None
         marks = sum(1 for row in self._rows() if row["marks"])
         self.session["counts"]["marks"] = marks
         self.session["counts"]["marks_by_kind"]["source_changed"] = marks
@@ -705,9 +842,11 @@ class FakeDevCenter:
                         self._row(parts[1])
                         diff = {"language": "tmdl", "target": "", "source": ""}
                     return self._reply({"row_key": parts[1], "source": source, **diff})
+                if parts == ["display-folders"]:
+                    return self._reply(self._display_folders(query))
                 simple = {
                     ("plan",): "plan", ("impact",): "impact", ("apply", "preview"): "apply-preview",
-                    ("apply", "progress"): "apply-progress", ("apply", "last"): "apply-last", ("display-folders",): "display-folders",
+                    ("apply", "progress"): "apply-progress", ("apply", "last"): "apply-last",
                 }
                 if tuple(parts) in simple:
                     value = self.files[simple[tuple(parts)]]
@@ -728,8 +867,7 @@ class FakeDevCenter:
                 if len(parts) == 2 and parts[0] == "wireframe":
                     return self._reply({**self.files["wireframe"], "report": parts[1]})
             if method == "POST" and parts == ["name-propose"]:
-                candidate = body.get("candidate") or body.get("name") or "New measure"
-                return self._reply({"name": str(candidate).strip().title(), "rule_ids": ["rule-1"], "breaks": [], "clash": None})
+                return self._reply(self._name_propose(body))
             if method == "POST" and parts == ["plan-validate"]:
                 mode = body.get("mode", "quick")
                 if mode not in {"quick", "full"}:
@@ -758,6 +896,140 @@ class FakeDevCenter:
 
     def _reply(self, value: dict[str, Any]) -> dict[str, Any]:
         return {**value, "revision": self.revision}
+
+    def _display_folders(self, query: dict[str, list[str]]) -> dict[str, Any]:
+        source = _one(query, "source")
+        obj_type = _one(query, "object_type")
+        target_model_id = ((self.session or {}).get("target", {}).get("model") or {}).get("source_id")
+        source_id = source or target_model_id
+        raw = self.files.get("display-folders", {})
+        folders_map = raw.get("folders", {})
+        if isinstance(folders_map, dict):
+            if source_id and source_id in folders_map:
+                folders = list(folders_map[source_id])
+            elif "src-1" in folders_map:
+                folders = list(folders_map["src-1"])
+            else:
+                folders = [item for sub in folders_map.values() if isinstance(sub, list) for item in sub]
+        elif isinstance(folders_map, list):
+            folders = list(folders_map)
+        else:
+            folders = []
+        types = [obj_type] if obj_type else ["measure", "column", "hierarchy"]
+        return {"source_id": source_id, "types": types, "folders": sorted(set(folders))}
+
+    def _name_propose(self, body: dict[str, Any]) -> dict[str, Any]:
+        raw_name = str(body.get("name") or body.get("candidate") or "New measure").strip()
+        candidate = str(body["candidate"]).strip() if body.get("candidate") else None
+        obj_type = str(body.get("object_type") or "measure")
+        if obj_type == "column":
+            obj_type = "data_column"
+        table = body.get("table")
+        display_folder = body.get("display_folder")
+        source_id = body.get("source_id")
+        donor_name = None
+        if source_id and self.session:
+            src_obj = next((s for s in self.session.get("sources", []) if s["source_id"] == source_id), None)
+            if src_obj:
+                donor_name = src_obj["display_name"]
+
+        rules = [
+            r for r in self.files.get("naming-rules", {}).get("rules", [])
+            if r.get("status") == "confirmed"
+            and (r.get("object_type") == obj_type or (obj_type == "report_measure" and r.get("object_type") == "measure"))
+        ]
+        used_rule_ids: list[str] = []
+        proposed = raw_name
+        for r in rules:
+            scope = r.get("scope") or {}
+            if scope.get("table") and scope["table"] != table:
+                continue
+            if scope.get("display_folder") and scope["display_folder"] != display_folder:
+                continue
+            kind = r.get("check", {}).get("kind")
+            val = r.get("check", {}).get("value", "")
+            if kind == "letter_case" and val == "title":
+                proposed = " ".join(w.capitalize() if w.islower() else w for w in proposed.split())
+                used_rule_ids.append(r["rule_id"])
+            elif kind == "prefix" and val and not proposed.startswith(val):
+                proposed = f"{val}{proposed}"
+                used_rule_ids.append(r["rule_id"])
+            elif kind == "suffix" and val and not proposed.endswith(val):
+                proposed = f"{proposed} {val}".strip()
+                used_rule_ids.append(r["rule_id"])
+        if not used_rule_ids:
+            proposed = " ".join(w.capitalize() if w.islower() else w for w in proposed.split()) or "New Measure"
+            used_rule_ids = ["nr-000000000002"]
+
+        def _row_key_for(ot: str, tbl: str | None, nm: str) -> str:
+            if ot in {"table", "calculated_table", "calculation_group"}:
+                return f"table:{nm}"
+            prefix = "column" if ot in {"data_column", "calculated_column", "column"} else ot
+            return f"{prefix}:{tbl or 'Table'}/{nm}"
+
+        target_rows = [
+            r for r in self._rows()
+            if (r.get("cells", {}).get("src-1", {}).get("state") if isinstance(r.get("cells"), dict) else "same") != "missing"
+        ]
+
+        def _find_clash(nm: str) -> dict[str, Any] | None:
+            folded = nm.casefold()
+            for r in target_rows:
+                if r["name"].casefold() == folded:
+                    r_type = r.get("object_type", "measure")
+                    if r_type == "column":
+                        r_type = "data_column"
+                    return {
+                        "object_type": r_type,
+                        "name": r["name"],
+                        "table": r.get("table"),
+                        "row_key": _row_key_for(r_type, r.get("table"), r["name"]),
+                    }
+            return None
+
+        resolved_clash = _find_clash(proposed)
+        if resolved_clash is not None:
+            suffix = donor_name or "2"
+            proposed = f"{proposed} ({suffix})"
+
+        checked = candidate if candidate is not None else proposed
+        clash = _find_clash(checked)
+        rule_breaks: list[dict[str, str]] = []
+        for r in rules:
+            scope = r.get("scope") or {}
+            if scope.get("table") and scope["table"] != table:
+                continue
+            if scope.get("display_folder") and scope["display_folder"] != display_folder:
+                continue
+            kind = r.get("check", {}).get("kind")
+            val = r.get("check", {}).get("value", "")
+            if kind == "letter_case" and val == "title":
+                words = checked.split()
+                if any(w and w[0].islower() for w in words) or "_" in checked:
+                    rule_breaks.append({"rule_id": r["rule_id"], "text": r.get("text", "Measure names use Title Case.")})
+            elif kind == "prefix" and val and not checked.startswith(val):
+                rule_breaks.append({"rule_id": r["rule_id"], "text": r.get("text", f"Names start with {val}.")})
+            elif kind == "suffix" and val and not checked.endswith(val):
+                rule_breaks.append({"rule_id": r["rule_id"], "text": r.get("text", f"Names end with {val}.")})
+            elif kind == "separator" and val == "space" and "_" in checked:
+                rule_breaks.append({"rule_id": r["rule_id"], "text": r.get("text", "Table names use space separator.")})
+            elif kind == "regex" and val:
+                try:
+                    if re.fullmatch(val, checked) is None:
+                        rule_breaks.append({"rule_id": r["rule_id"], "text": r.get("text", f"Names match {val}.")})
+                except re.error:
+                    pass
+
+        return {
+            "name": proposed,
+            "rule_ids": used_rule_ids,
+            "table": table,
+            "display_folder": display_folder,
+            "resolved_clash": resolved_clash,
+            "checked_name": checked,
+            "breaks": rule_breaks,
+            "clash": clash,
+        }
 
     def _sessions(self) -> dict[str, Any]:
         """GET sessions as the real backend gives it (UC1, UC2).
@@ -899,7 +1171,8 @@ class FakeDevCenterHandler(BaseHTTPRequestHandler):
             return self._json(200, self._desktop(route[len("desktop/"):]))
         controls = {"scenario": lambda: state.load(str(body.get("name", ""))), "fault": lambda: state.set_fault(body),
                     "delay": lambda: state.set_delay(body), "agent-proposal": lambda: state.agent_proposal(body),
-                    "rules": lambda: state.set_rules(body), "plan": lambda: state.set_plan(body)}
+                    "rules": lambda: state.set_rules(body), "plan": lambda: state.set_plan(body),
+                    "compare-rows": lambda: state.set_compare_rows(body)}
         if method == "POST" and route in controls:
             return self._json(200, controls[route]())
         raise FakeError("not_found", f"The test route {method} /__test__/{route} does not exist.")
