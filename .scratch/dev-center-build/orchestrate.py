@@ -208,7 +208,8 @@ def gates(wt: Path, base: str) -> list[str]:
             "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"], wt)
     changed = sh(["git", "diff", "--name-only", f"{base}...HEAD"], wt).stdout.split()
     ignored = [l[3:] for l in sh(["git", "status", "--porcelain", "--ignored"], wt).stdout.splitlines()
-               if l.startswith("!! ") and re.search(r"^(tests|frontend/(src|e2e|test))/", l[3:])]
+               if l.startswith("!! ") and re.search(r"^(tests|frontend/(src|e2e|test))/", l[3:])
+               and "__pycache__" not in l and not l[3:].endswith((".pyc", ".pyo"))]
     if ignored:
         fails.append("Ignored test or source files that git does not hold: " + ", ".join(ignored[:20]))
     dirty = "\n".join(l for l in sh(["git", "status", "--porcelain"], wt).stdout.splitlines()
