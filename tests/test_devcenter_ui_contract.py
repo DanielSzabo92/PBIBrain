@@ -390,6 +390,80 @@ class SessionFixtureContractTest(unittest.TestCase):
         self.assertEqual(after_remove["status"], "invalid")
         self.assertTrue(any(item["kind"] == "choice_source_removed" for item in after_remove["blocking"]))
 
+    def test_row_detail_reads_and_jsapi_replies_follow_u6_schemas(self) -> None:
+        """Step U6: display-folders, name-propose, impact/removal, merge_choice_set, alignment_override, removal_policy_set, and row_confirm follow the contract schemas."""
+        state = fake.FakeDevCenter()
+        state.load("default")
+
+        folders_reply = state.read("GET", "/api/devcenter/display-folders", {"source": ["src-2"], "object_type": ["measure"]}, {})
+        self.validate("http/display-folders.reply.json", folders_reply)
+
+        propose_req = {"name": "net sales", "object_type": "measure", "table": "Sales", "source_id": "src-2", "candidate": "net_sales"}
+        self.validate("http/name-propose.request.json", propose_req)
+        propose_reply = state.read("POST", "/api/devcenter/name-propose", {}, propose_req)
+        self.validate("http/name-propose.reply.json", propose_reply)
+
+        removal_reply = state.read("GET", "/api/devcenter/impact/removal/row-budget", {}, {})
+        self.validate("http/impact-removal.reply.json", removal_reply)
+
+        # Add a canonical row_key to test the JS API request and reply schemas that require row_key pattern ^[a-z_]+:
+        state.set_compare_rows({
+            "rows": [
+                *state._rows(),
+                {
+                    "row_key": "measure:Sales/Revenue Goal",
+                    "object_type": "measure",
+                    "name": "Revenue Goal",
+                    "table": "Sales",
+                    "display_folder": "Revenue",
+                    "row_state": "different",
+                    "cells": {"src-1": {"state": "same", "changed": False}, "src-2": {"state": "different", "changed": True}},
+                    "notes": [],
+                    "properties": [],
+                    "merge_choice": None,
+                    "proposal_status": None,
+                    "marks": ["source_changed"],
+                },
+                {
+                    "row_key": "measure:Sales/Revenue Target@src-2",
+                    "object_type": "measure",
+                    "name": "Revenue Target",
+                    "table": "Sales",
+                    "display_folder": "Revenue",
+                    "row_state": "missing",
+                    "cells": {"src-1": {"state": "missing", "changed": False}, "src-2": {"state": "same", "changed": False}},
+                    "notes": [],
+                    "properties": [],
+                    "merge_choice": None,
+                    "proposal_status": None,
+                    "marks": [],
+                },
+            ]
+        })
+
+        self.call(state, "merge_choice_set", {
+            "row_key": "measure:Sales/Revenue Goal",
+            "choice": {"kind": "take_properties", "source_id": "src-2", "properties": ["expression", "display_folder"], "display_folder": "KPIs"},
+        })
+        self.call(state, "removal_policy_set", {
+            "row_key": "measure:Sales/Revenue Goal",
+            "policy": "cascade",
+        })
+        self.call(state, "row_confirm", {
+            "row_keys": ["measure:Sales/Revenue Goal"],
+        })
+        self.call(state, "alignment_override", {
+            "action": "break",
+            "source_id": "src-2",
+            "row_key": "measure:Sales/Revenue Goal",
+        })
+        self.call(state, "alignment_override", {
+            "action": "confirm",
+            "source_id": "src-2",
+            "row_key": "measure:Sales/Revenue Goal",
+            "other_row_key": "measure:Sales/Revenue Target@src-2",
+        })
+
 
 if __name__ == "__main__":
     unittest.main()

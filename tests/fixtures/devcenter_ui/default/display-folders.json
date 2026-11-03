@@ -2,11 +2,19 @@
   "folders": {
     "src-1": [
       "Revenue",
-      "Revenue/Margin"
+      "Revenue/Margin",
+      "KPIs"
     ],
     "src-2": [
       "Revenue",
-      "Cost"
+      "Cost",
+      "Finance/Quarterly"
+    ],
+    "src-3": [
+      "Revenue",
+      "Revenue/Margin",
+      "KPIs",
+      "Finance"
     ]
   }
 }

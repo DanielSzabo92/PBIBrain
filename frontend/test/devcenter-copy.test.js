@@ -151,3 +151,10 @@ test("the confirm buttons of section 8.4 restate the action and the object", () 
   for (const [key, text] of Object.entries(confirms)) assert.equal(COPY[key], text, key);
   assert.equal(COPY["shared.cancel"], "Cancel");
 });
+
+test("the alignment_override log action keys match the S3 backend actions", () => {
+  assert.ok(COPY["log.action.alignment_override"]);
+  for (const action of ["confirm", "break", "reject_rename", "clear"]) {
+    assert.ok(COPY[`log.action.alignment_override.${action}`], `missing log.action.alignment_override.${action}`);
+  }
+});
