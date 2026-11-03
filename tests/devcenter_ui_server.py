@@ -443,6 +443,12 @@ class FakeDevCenter:
         return {"sources": [{"source_id": item["source_id"], "status": item["status"]} for item in self.session["sources"]],
                 "mark_count": self.session["counts"]["marks"]}
 
+    def _call_compare_mode_set(self, payload: dict[str, Any]) -> dict[str, Any]:
+        mode = payload.get("compare_mode") or payload.get("mode")
+        if mode:
+            self.session["compare_mode"] = mode
+        return {"compare_mode": self.session.get("compare_mode", "default")}
+
     def _call_merge_choice_set(self, payload: dict[str, Any]) -> dict[str, Any]:
         row = self._row(payload.get("row_key"))
         row["merge_choice"] = payload.get("choice")
@@ -467,7 +473,7 @@ class FakeDevCenter:
         marks = sum(1 for row in self._rows() if row["marks"])
         self.session["counts"]["marks"] = marks
         self.session["counts"]["marks_by_kind"]["source_changed"] = marks
-        return {"confirmed": len(rows)}
+        return {"confirmed": [row["row_key"] for row in rows], "mark_count": marks}
 
     def _take_proposal(self, proposal_id: Any) -> dict[str, Any]:
         proposals = self.session["proposals"]["open"]
@@ -729,7 +735,12 @@ class FakeDevCenter:
 
     def _compare_rows(self, query: dict[str, list[str]]) -> dict[str, Any]:
         rows = self._rows()
-        filters = {"type": "object_type", "table": "table", "folder": "display_folder", "state": "row_state"}
+        state = _one(query, "state")
+        if state in {"not_same", "notsame"}:
+            rows = [row for row in rows if row.get("row_state") != "same"]
+        elif state:
+            rows = [row for row in rows if row.get("row_state") == state]
+        filters = {"type": "object_type", "table": "table", "folder": "display_folder"}
         for name, field in filters.items():
             wanted = _one(query, name)
             if wanted:
@@ -741,6 +752,11 @@ class FakeDevCenter:
             rows = [row for row in rows if any(cell["changed"] for cell in row["cells"].values())]
         if _one(query, "marks") == "true":
             rows = [row for row in rows if row["marks"]]
+        if _one(query, "proposal") == "true":
+            rows = [row for row in rows if row.get("proposal_status")]
+        page_val = _one(query, "page")
+        if page_val:
+            rows = [row for row in rows if row.get("page") == page_val]
         text = (_one(query, "q") or "").casefold()
         if text:
             rows = [row for row in rows if text in row["name"].casefold()]
@@ -754,7 +770,7 @@ class FakeDevCenter:
         counts: dict[str, int] = {}
         for row in rows:
             counts[row["row_state"]] = counts.get(row["row_state"], 0) + 1
-        return {**self._page({"rows": rows}, "rows", query), "state_counts": counts}
+        return {**self._page({"rows": rows}, "rows", query), "state_counts": counts, "compare_mode": (self.session or {}).get("compare_mode", "default")}
 
 
 def _one(query: dict[str, list[str]], key: str) -> str | None:

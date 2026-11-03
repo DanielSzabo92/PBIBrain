@@ -10,6 +10,7 @@ import { useToast } from "@/components/ui/toast";
 import { errorCopy, longCallText, t, tn } from "../copy.js";
 import { useAction, useDevCenterState, useResource } from "../useDevCenter.js";
 import SourcesTab from "./SourcesTab.jsx";
+import CompareGrid from "../components/CompareGrid.jsx";
 import { agentCount, banners, planStatus, targetLine } from "./sessionModel.js";
 
 export const TABS = ["compare", "impact", "plan", "agent", "sources", "log"];
@@ -105,6 +106,14 @@ export default function WorkArea({ session, tabState, onTabs, onRetryLock, onClo
           <TabsContent key={tab} value={tab} className="dc-tab-panel">
             {tab === "sources" ? (
               <SourcesTab session={session} changeDisabled={changeDisabled} reasonId={reasonId} />
+            ) : tab === "compare" ? (
+              <CompareGrid
+                session={session}
+                tabState={tabState}
+                onTabs={onTabs}
+                changeDisabled={changeDisabled}
+                reasonId={reasonId}
+              />
             ) : (
               <LaterTab tab={tab} marks={tab === "compare" && tabState.marks} />
             )}

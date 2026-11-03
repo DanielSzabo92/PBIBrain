@@ -1,0 +1,585 @@
+/* Compare grid styles (UI design section 4.3, 7, 13 U4).
+ * All text follows ASD-STE100 rules.
+ * Colors use theme tokens. No one-sided colored borders.
+ */
+
+.dc-compare {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+  min-height: 0;
+  flex: 1;
+}
+
+.dc-compare-area {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-4);
+  flex: 1;
+  min-height: 480px;
+  height: clamp(480px, calc(100vh - 210px), 880px);
+  padding-bottom: var(--space-4);
+}
+
+.dc-compare-area.with-pane {
+  grid-template-columns: minmax(0, 1fr) var(--pane-w);
+}
+
+@media (max-width: 1279.98px) {
+  .dc-compare-area.with-pane {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* ---------- Toolbar and Bulkbar ----------------------------------------- */
+.dc-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  min-height: 40px;
+}
+
+.dc-search {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: var(--control-h);
+  padding: 0 10px;
+  border: 1px solid var(--control-border);
+  border-radius: 6px;
+  background: var(--surface-2);
+  width: 200px;
+}
+
+.dc-search:focus-within {
+  outline: 2px solid var(--brand);
+  outline-offset: 1px;
+}
+
+.dc-search-input {
+  border: 0;
+  background: transparent;
+  outline: none;
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  font-size: 13px;
+  color: var(--text);
+  min-height: 24px;
+  height: 24px;
+}
+
+.dc-search-icon {
+  width: 15px;
+  height: 15px;
+  color: var(--text-2);
+  flex: none;
+}
+
+.dc-spacer {
+  flex: 1;
+}
+
+.dc-bulkbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  min-height: 40px;
+  padding: 0 var(--space-2) 0 var(--space-3);
+  border: 1px solid var(--brand);
+  background: var(--brand-tint);
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 13px;
+}
+
+.dc-bulkbar-count {
+  font-weight: 600;
+}
+
+.dc-chips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  align-items: center;
+  font-size: 12px;
+}
+
+.dc-selall {
+  font-size: 13px;
+  color: var(--text-2);
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  flex-wrap: wrap;
+  padding: 2px 4px;
+}
+
+/* ---------- Grid Frame -------------------------------------------------- */
+.dc-grid-frame {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.dc-grid-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  position: relative;
+}
+
+.dc-grid {
+  position: relative;
+}
+
+.dc-row {
+  display: grid;
+  grid-template-columns: var(--cols);
+  height: var(--row-h);
+  align-items: stretch;
+}
+
+.dc-hrow {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: var(--surface-2);
+  height: 34px;
+  border: 0 solid var(--line);
+  border-bottom-width: 1px;
+}
+
+.dc-grid-body {
+  position: relative;
+}
+
+.dc-body-row {
+  position: absolute;
+  left: 0;
+  right: 0;
+  border: 0 solid var(--line);
+  border-bottom-width: 1px;
+  background: var(--surface);
+  user-select: none;
+}
+
+.dc-body-row:hover,
+.dc-body-row:hover .dc-cell {
+  background: var(--row-hover);
+}
+
+.dc-body-row[aria-selected="true"],
+.dc-body-row[aria-selected="true"] .dc-cell {
+  background: var(--row-selected);
+}
+
+.dc-body-row.active,
+.dc-body-row.active .dc-cell {
+  background: var(--row-active);
+}
+
+.dc-cell,
+.dc-hcell {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  background: inherit;
+  font-size: 13px;
+}
+
+.dc-hcell {
+  font-size: 12px;
+  color: var(--text-2);
+  font-weight: 600;
+  background: var(--surface-2);
+}
+
+.dc-hcell-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  padding: 0;
+}
+
+.dc-cell:focus-visible,
+.dc-hcell:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: -2px;
+}
+
+.dc-stick {
+  position: sticky;
+  z-index: 2;
+}
+
+.dc-body-row .dc-stick {
+  background: var(--surface);
+}
+
+.dc-col-chk {
+  left: 0;
+  justify-content: center;
+  padding: 0;
+}
+
+.dc-col-obj {
+  left: 40px;
+}
+
+.dc-col-rs {
+  left: 300px;
+}
+
+.dc-col-tg {
+  left: 416px;
+  border: 0 solid var(--line-strong);
+  border-right-width: 1px;
+}
+
+@media (max-width: 1279.98px) {
+  .dc-col-rs,
+  .dc-col-tg {
+    position: static;
+  }
+}
+
+.dc-obj-box {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.25;
+}
+
+.dc-obj-name {
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--text);
+}
+
+.dc-obj-meta {
+  font-size: 11.5px;
+  color: var(--text-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dc-obj-icon {
+  color: var(--text-2);
+  width: 15px;
+  height: 15px;
+  flex: none;
+}
+
+.dc-skel-line {
+  height: 10px;
+  border-radius: 4px;
+  background: var(--surface-3);
+  width: 70%;
+}
+
+/* ---------- State indicators -------------------------------------------- */
+.dc-st {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 13px;
+}
+
+.dc-st svg {
+  width: 14px;
+  height: 14px;
+  flex: none;
+}
+
+.dc-st-conflict,
+.dc-st-type_conflict {
+  color: var(--cmp-conflict);
+  font-weight: 600;
+}
+
+.dc-st-missing {
+  color: var(--cmp-missing);
+}
+
+.dc-st-renamed {
+  color: var(--cmp-renamed);
+}
+
+.dc-st-moved {
+  color: var(--cmp-moved);
+}
+
+.dc-st-different {
+  color: var(--cmp-different);
+}
+
+.dc-st-same {
+  color: var(--cmp-same);
+}
+
+.dc-st-target {
+  color: var(--text);
+}
+
+.dc-st-count {
+  color: var(--text-2);
+  font-size: 12px;
+}
+
+.dc-st-changed {
+  color: var(--cmp-changed);
+  display: inline-flex;
+}
+
+.dc-st-changed svg {
+  width: 8px;
+  height: 8px;
+  fill: currentColor;
+}
+
+.dc-mc-text {
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dc-mc-none {
+  color: var(--text-3);
+}
+
+.dc-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11.5px;
+  font-weight: 500;
+  padding: 1px 6px;
+  border-radius: 99px;
+  white-space: nowrap;
+}
+
+.dc-badge-prop {
+  color: var(--proposal);
+  background: var(--proposal-tint);
+}
+
+.dc-badge-mark {
+  color: var(--warn);
+  background: var(--warn-tint);
+}
+
+.dc-badge-changed {
+  color: var(--brand);
+  background: var(--brand-tint);
+}
+
+.dc-badge svg {
+  width: 12px;
+  height: 12px;
+}
+
+/* ---------- Footer ------------------------------------------------------ */
+.dc-grid-foot {
+  flex: none;
+  display: flex;
+  gap: var(--space-4);
+  white-space: nowrap;
+  overflow: hidden;
+  align-items: center;
+  padding: 6px var(--space-3);
+  border: 0 solid var(--line);
+  border-top-width: 1px;
+  font-size: 12px;
+  color: var(--text-2);
+  background: var(--surface-2);
+}
+
+.dc-foot-counts {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+@media (max-width: 1279.98px) {
+  .dc-foot-counts {
+    display: none;
+  }
+}
+
+/* ---------- Loadbar ----------------------------------------------------- */
+.dc-loadbar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 34px;
+  height: 2px;
+  background: var(--brand);
+  z-index: 6;
+  animation: dc-loadbar-anim 1.2s var(--ease-out) infinite;
+  transform-origin: left;
+}
+
+@keyframes dc-loadbar-anim {
+  0% { transform: scaleX(0.05); }
+  100% { transform: scaleX(1); opacity: 0.2; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dc-loadbar {
+    animation: none;
+  }
+}
+
+/* ---------- Code Diff Dialog -------------------------------------------- */
+.dc-diff-dialog {
+  width: 92vw;
+  height: 86vh;
+  max-width: none;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.dc-diff-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border: 0 solid var(--line);
+  border-bottom-width: 1px;
+  flex-wrap: wrap;
+}
+
+.dc-diff-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.dc-diff-sub {
+  color: var(--text-2);
+  font-size: 12px;
+}
+
+.dc-diff-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  display: grid;
+  grid-template-columns: 1fr;
+  font-family: var(--font-code, monospace);
+  font-size: 13px;
+  background: var(--surface-2);
+}
+
+.dc-diff-body.split {
+  grid-template-columns: 1fr 1fr;
+}
+
+.dc-diff-col {
+  min-width: 0;
+  border: 0 solid var(--line);
+  border-right-width: 1px;
+}
+
+.dc-diff-col-head {
+  position: sticky;
+  top: 0;
+  margin: 0;
+  padding: 6px var(--space-3);
+  font: 500 12px var(--font-ui, sans-serif);
+  color: var(--text-2);
+  background: var(--surface-2);
+  border: 0 solid var(--line);
+  border-bottom-width: 1px;
+  z-index: 1;
+}
+
+.dc-diff-line {
+  display: grid;
+  grid-template-columns: 44px 22px 1fr;
+  white-space: pre-wrap;
+  word-break: break-all;
+  line-height: 20px;
+  padding: 0 4px;
+}
+
+.dc-diff-ln {
+  color: var(--text-3);
+  text-align: right;
+  padding-right: 8px;
+  user-select: none;
+}
+
+.dc-diff-mk {
+  color: var(--text-2);
+  text-align: center;
+}
+
+.dc-diff-line.add {
+  background: var(--ok-tint);
+}
+
+.dc-diff-line.add .dc-diff-mk {
+  color: var(--ok);
+  font-weight: 600;
+}
+
+.dc-diff-line.del {
+  background: var(--bad-tint);
+}
+
+.dc-diff-line.del .dc-diff-mk {
+  color: var(--bad);
+  font-weight: 600;
+}
+
+/* ---------- Row detail placeholder pane --------------------------------- */
+.dc-row-pane {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-height: 0;
+  overflow: auto;
+  padding: var(--space-4);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.dc-row-pane-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+
+.dc-row-pane-ph {
+  border: 1px dashed var(--line-strong);
+  border-radius: 6px;
+  padding: var(--space-3);
+  color: var(--text-2);
+  font-size: 13px;
+}

@@ -84,6 +84,16 @@ test("t replaces placeholders and tn picks the count form", () => {
   assert.equal(`${tn("work.banner.changed", 1)} ${tn("work.banner.changed.rows", 1)}`, "1 source changed since the last check. You must confirm 1 row.");
   assert.equal(`${tn("work.banner.changed", 2)} ${tn("work.banner.changed.rows", 14)}`, "2 sources changed since the last check. You must confirm 14 rows.");
   assert.equal(tn("sources.remove.body", 2, { source: "Sales A" }), "2 Merge Choices take from Sales A. They stay, but the plan is not valid until you change them.");
+  assert.equal(tn("compare.bulk.dialog.set.title", 1, { choice: "Keep target" }), 'Set "Keep target" for 1 row?');
+  assert.equal(tn("compare.bulk.dialog.set.title", 5, { choice: "Keep target" }), 'Set "Keep target" for 5 rows?');
+  assert.equal(tn("compare.bulk.dialog.set.replace", 1), "1 row already has a different Merge Choice. This replaces it.");
+  assert.equal(tn("compare.bulk.dialog.set.replace", 3), "3 rows already have a different Merge Choice. This replaces it.");
+  assert.equal(tn("compare.bulk.dialog.set.skipped", 1, { source: "Sales A" }), "1 row is skipped: the object is missing in Sales A.");
+  assert.equal(tn("compare.bulk.dialog.set.skipped", 4, { source: "Sales A" }), "4 rows are skipped: the object is missing in Sales A.");
+  assert.equal(tn("compare.bulk.toast", 1, { m: 0 }), "Merge Choice set for 1 row. 0 rows skipped.");
+  assert.equal(tn("compare.bulk.toast", 10, { m: 2 }), "Merge Choice set for 10 rows. 2 rows skipped.");
+  assert.equal(tn("compare.no_match.body", 1), "1 row is hidden by the filters. Remove a filter or clear all filters.");
+  assert.equal(tn("compare.no_match.body", 12), "12 rows are hidden by the filters. Remove a filter or clear all filters.");
 });
 
 test("each long method has a status line, and each changing method has a log label", () => {
