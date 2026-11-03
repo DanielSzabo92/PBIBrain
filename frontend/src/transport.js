@@ -1,7 +1,10 @@
 const API_ROOT = "/api";
 
 function apiError(response, body) {
-  const detail = typeof body === "string" ? body : body?.detail || body?.message || body?.error;
+  const err = body?.error;
+  const detail = typeof body === "string"
+    ? body
+    : body?.detail || body?.message || (typeof err === "string" ? err : err?.message) || (err ? JSON.stringify(err) : "");
   return new Error(detail || `${response.status} ${response.statusText}`);
 }
 
