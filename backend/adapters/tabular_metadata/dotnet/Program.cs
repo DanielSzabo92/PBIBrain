@@ -6,10 +6,11 @@ using TomJson = Microsoft.AnalysisServices.Tabular.JsonSerializer;
 Console.OutputEncoding = System.Text.Encoding.UTF8;
 System.Globalization.CultureInfo.CurrentUICulture = System.Globalization.CultureInfo.InvariantCulture;
 
-// This executable accepts source metadata only. It has no mutation commands,
-// generated-script execution, or deployment credentials. Its one server
-// connection is the read-only command "cloud-read" (CloudRead.cs).
-if (args.Length == 1 && args[0] == "cloud-read") { Environment.ExitCode = CloudRead.Run(new StreamReader(Console.OpenStandardInput(), new System.Text.UTF8Encoding(false)), Console.Out); return; }
+// Subcommand routing for Dev Center bridge commands
+if (args.Length >= 1 && args[0] == "cloud-read") { Environment.ExitCode = CloudRead.Run(new StreamReader(Console.OpenStandardInput(), new System.Text.UTF8Encoding(false)), Console.Out); return; }
+if (args.Length >= 1 && args[0] == "write-model") { Environment.ExitCode = ModelWriter.Run(args, new StreamReader(Console.OpenStandardInput(), new System.Text.UTF8Encoding(false)), Console.Out); return; }
+if (args.Length >= 1 && args[0] == "canonical-check") { Environment.ExitCode = CanonicalCheck.Run(args, new StreamReader(Console.OpenStandardInput(), new System.Text.UTF8Encoding(false)), Console.Out); return; }
+if (args.Length >= 1 && args[0] == "tree-compare") { Environment.ExitCode = TreeCompare.Run(args, new StreamReader(Console.OpenStandardInput(), new System.Text.UTF8Encoding(false)), Console.Out); return; }
 try
 {
     if (args.Length < 1 || args.Length > 2 || (args.Length == 2 && args[1] != "--documents")) throw new ArgumentException("One model path required");
