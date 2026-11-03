@@ -1143,6 +1143,10 @@ class FakeDevCenterHandler(BaseHTTPRequestHandler):
                 self._test_route(method, path[len("/__test__/"):], body)
             elif path.startswith("/api/devcenter/"):
                 self._json(200, self.state.read(method, path, query, body))
+            elif path == "/api/overview":
+                self._json(200, {"models": [], "reports": [], "counts": {}, "candidate_count": 0, "warning_count": 0, "validation_state": "passed", "scan_state": "idle", "last_scan": None})
+            elif path == "/api/config":
+                self._json(200, {"name": "Power BI Brain", "sources": [], "graph_colors": {}})
             elif path.startswith("/api/"):
                 raise FakeError("not_found", f"The fake server has no route {path}.")
             elif method == "GET":
