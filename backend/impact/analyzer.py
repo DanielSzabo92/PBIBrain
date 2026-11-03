@@ -57,7 +57,8 @@ def relationship_paths(nodes: Mapping[str, Any], changes: list[dict[str, Any]]) 
 
 def analyze_impact(graph: Any, target_ids: list[str], proposed_changes: list[dict[str, Any]] | None = None, *,
                    baseline_snapshot_id: str | None = None, completeness: Mapping[str, Any] | None = None,
-                   include_report_usage: bool = True, output_limit: int | None = None) -> dict[str, Any]:
+                   include_report_usage: bool = True, output_limit: int | None = None,
+                   include_impact_paths: bool = True) -> dict[str, Any]:
     started = perf_counter()
     raw_nodes, raw_edges = graph_values(graph)
     nodes = {item["id"]: item for item in map(item_dict, raw_nodes)}
@@ -241,11 +242,12 @@ def analyze_impact(graph: Any, target_ids: list[str], proposed_changes: list[dic
               "conditional_impacts": [item for item in shown if item["impact_category"] == "CONDITIONAL"],
               "unknown_impacts": [{"impact_category": "UNKNOWN", "reason": item, "runtime_verification_required": True} for item in sorted(set(unknowns))],
               "affected_model_ids": models, "affected_report_ids": sorted({nodes[item].get("report_id") or item for item in impacted if nodes[item]["type"] == "REPORT" or nodes[item].get("report_id")}),
-              "impacted_objects": impacted, "impact_paths": [{"object_id": item["object_id"], "object_type": item["object_type"], "impact_category": item["impact_category"], "runtime_verification_required": item["runtime_verification_required"], "path_id": content_hash(item), "category": item["analyzer_rule_id"]} for item in ordered],
+              "impacted_objects": impacted,
+              "impact_paths": [{"object_id": item["object_id"], "object_type": item["object_type"], "impact_category": item["impact_category"], "runtime_verification_required": item["runtime_verification_required"], "path_id": content_hash(item), "category": item["analyzer_rule_id"]} for item in ordered] if include_impact_paths else [],
               "required_tests": required_tests, "warnings": sorted(set(warnings)), "evidence": [item["path"] for item in shown],
               "completeness": {**initial_complete, "status": "COMPLETE" if complete else "INCOMPLETE", "analysis_truncated": False,
                                "output_truncated": truncated, "total_impact_records": len(ordered), "nodes_analyzed": len(nodes), "edges_analyzed": len(edges),
                                "missing_execution_evidence": True, "filter_analysis": "CONSERVATIVE_SUPERSET", "not_checked": not_checked}}
-    report["impact_report_id"] = content_hash(report)
+    report["impact_report_id"] = content_hash(report) if include_impact_paths else ""
     report["metrics"] = {"traversal_seconds": perf_counter() - started, "nodes_examined": len(nodes), "edges_examined": len(edges), "impacted_objects": len(impacted), "selected_tests": len(required_tests), "llm_calls": 0}
     return report

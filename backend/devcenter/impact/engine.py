@@ -333,6 +333,7 @@ class ImpactEngine:
                 valid_seed_ids,
                 proposed_changes=None,
                 include_report_usage=True,
+                include_impact_paths=False,
             )
         except Exception:
             analysis = {"direct_impacts": [], "potential_impacts": []}
@@ -341,6 +342,35 @@ class ImpactEngine:
 
         # Map seeds by object_id
         seed_meta = {s["object_id"]: s for s in seeds}
+
+        # Pre-cache node metadata lookup table
+        node_meta: dict[str, tuple[str, str, str, str]] = {}
+        for nid, n in self.target_node_map.items():
+            raw_t = n.get("type") or "object"
+            ntype = raw_t.lower() if isinstance(raw_t, str) else "object"
+            is_rep = ntype in {"visual", "page", "report_measure", "bookmark"}
+            src_id = self.target_report_id if ntype in {"visual", "page", "report"} else self.target_model_id
+            domain = "report" if is_rep else "model"
+            node_meta[nid] = (ntype, n.get("name") or nid, src_id, domain)
+
+        reason_cache = {
+            "deleted_object": _get_phrase("deleted_object")[1],
+            "renamed_object": _get_phrase("renamed_object")[1],
+            "filter_context_may_change": _get_phrase("filter_context_may_change")[1],
+            "modified_object": _get_phrase("modified_object")[1],
+        }
+
+        edge_cache: dict[str, tuple[str, str]] = {}
+        def get_edge_phrase(et: str) -> tuple[str, str]:
+            cached = edge_cache.get(et)
+            if cached is None:
+                cached = _get_phrase(et, et)
+                edge_cache[et] = cached
+            return cached
+
+        append_item = items.append
+        rem_policies = self.removal_policies
+        it_actions = self.item_actions
 
         for rec in all_records:
             obj_id = rec["object_id"]
@@ -353,9 +383,11 @@ class ImpactEngine:
             if obj_id == root_id and rec.get("analyzer_rule_id") == "seed":
                 continue
 
-            node = self.target_node_map.get(obj_id, {})
-            node_type = str(node.get("type") or rec.get("object_type") or "object").lower()
-            node_name = node.get("name") or obj_id
+            ninfo = node_meta.get(obj_id)
+            if ninfo:
+                node_type, node_name, source_id, domain = ninfo
+            else:
+                node_type, node_name, source_id, domain = "object", obj_id, self.target_model_id, "model"
 
             # Determine certainty (AC3): DIRECT/STRUCTURAL + FACT edges only = certain; else possible
             cat = rec.get("impact_category", "STRUCTURAL")
@@ -382,24 +414,35 @@ class ImpactEngine:
                 reason_id = "filter_context_may_change"
             else:
                 reason_id = "modified_object"
-            _, reason_text = _get_phrase(reason_id)
+            reason_text = reason_cache[reason_id]
 
             # Path formatting
-            path_steps: list[dict[str, Any]] = []
-            for step in rec.get("path", []):
+            raw_path = rec.get("path", [])
+            if not raw_path:
+                path_steps: list[dict[str, Any]] = []
+                path_summary = ""
+            elif len(raw_path) == 1:
+                step = raw_path[0]
                 s_to = step.get("to_id", "")
-                s_node = self.target_node_map.get(s_to, {})
+                s_info = node_meta.get(s_to)
+                s_type, s_name = (s_info[0], s_info[1]) if s_info else ("object", s_to)
                 edge_t = step.get("edge_type", "CONSUMER").lower()
-                edge_phrase_id, edge_phrase = _get_phrase(edge_t, edge_t)
-                path_steps.append({
-                    "object_id": s_to,
-                    "name": s_node.get("name") or s_to,
-                    "type": str(s_node.get("type") or "object").lower(),
-                    "edge_phrase_id": edge_phrase_id,
-                    "edge_phrase": edge_phrase,
-                })
+                edge_phrase_id, edge_phrase = get_edge_phrase(edge_t)
+                path_steps = [{"object_id": s_to, "name": s_name, "type": s_type, "edge_phrase_id": edge_phrase_id, "edge_phrase": edge_phrase}]
+                path_summary = s_to
+            else:
+                path_steps = []
+                path_objs = []
+                for step in raw_path:
+                    s_to = step.get("to_id", "")
+                    s_info = node_meta.get(s_to)
+                    s_type, s_name = (s_info[0], s_info[1]) if s_info else ("object", s_to)
+                    edge_t = step.get("edge_type", "CONSUMER").lower()
+                    edge_phrase_id, edge_phrase = get_edge_phrase(edge_t)
+                    path_steps.append({"object_id": s_to, "name": s_name, "type": s_type, "edge_phrase_id": edge_phrase_id, "edge_phrase": edge_phrase})
+                    path_objs.append(s_to)
+                path_summary = ">".join(path_objs)
 
-            path_summary = ">".join(s["object_id"] for s in path_steps)
             item_id = deterministic_item_id("breaks", obj_id, root_id, rec.get("analyzer_rule_id", "break"), path_summary)
 
             # Blocking evaluation
@@ -408,12 +451,12 @@ class ImpactEngine:
                 blocking = False
             else:
                 # Rule 1: Certain breaks caused by deleted object with removal policy Block
-                policy = (self.removal_policies.get(row_key) or {}).get("policy", "block")
-                if ch_type == "deleted" and policy == "block":
-                    blocking = True
+                if ch_type == "deleted":
+                    policy = (rem_policies.get(row_key) or {}).get("policy", "block")
+                    blocking = (policy == "block")
                 # Rule 2: Unselected dependent of a renamed target object
                 elif ch_type == "renamed":
-                    action = (self.item_actions.get(item_id) or {}).get("action")
+                    action = (it_actions.get(item_id) or {}).get("action")
                     blocking = (action != "include_in_rewrite")
                 else:
                     blocking = False
@@ -421,22 +464,22 @@ class ImpactEngine:
             # Allowed actions
             allowed: list[str] = []
             if ch_type == "deleted":
-                allowed.extend(["set_policy_block", "set_policy_cascade", "set_policy_repoint"])
+                allowed = ["set_policy_block", "set_policy_cascade", "set_policy_repoint"]
             elif ch_type == "renamed":
-                allowed.append("include_in_rewrite")
+                allowed = ["include_in_rewrite"]
             if node_type == "visual":
                 allowed.append("remove_field")
 
-            items.append({
+            append_item({
                 "id": item_id,
                 "direction": "breaks",
                 "cause": row_key,
                 "impacted_object": {
-                    "source_id": self.target_report_id if node_type in {"visual", "page", "report"} else self.target_model_id,
+                    "source_id": source_id,
                     "object_id": obj_id,
                     "object_type": node_type,
                     "name": node_name,
-                    "domain": "report" if node_type in {"visual", "page", "report_measure", "bookmark"} else "model",
+                    "domain": domain,
                 },
                 "severity": severity,
                 "certainty": certainty,
