@@ -156,8 +156,16 @@ export default function CompareGrid({
   const [selectedKeys, setSelectedKeys] = useState(new Set());
   const [allMatching, setAllMatching] = useState(false);
   const [anchorRow, setAnchorRow] = useState(null);
-  const [activeRowKey, setActiveRowKey] = useState(null);
+  const [activeRowKey, setActiveRowKey] = useState(tabState?.rowKey || null);
   const [focusedCell, setFocusedCell] = useState({ r: 0, c: 1 });
+
+  useEffect(() => {
+    if (tabState?.rowKey) {
+      setActiveRowKey(tabState.rowKey);
+      setStateFilter("all");
+      setMarksFilter(false);
+    }
+  }, [tabState?.rowKey]);
 
   // Refs for synchronous tracking to avoid stale closures during rapid keyboard actions.
   const focusedCellRef = useRef({ r: 0, c: 1 });

@@ -369,6 +369,27 @@ class SessionFixtureContractTest(unittest.TestCase):
         self.assertEqual(duplicate_ctx.exception.code, "action_not_allowed")
         self.assertEqual(duplicate_ctx.exception.details["reason"], "duplicate_rule")
 
+    def test_plan_fixtures_and_replies_follow_the_s5_schemas(self) -> None:
+        """Step U7: GET plan and POST plan-validate across scenarios follow the S5 schemas."""
+        state = fake.FakeDevCenter()
+        for scenario_name in ("default", "plan-invalid", "apply-ready"):
+            with self.subTest(scenario=scenario_name):
+                state.load(scenario_name)
+                plan_reply = state.read("GET", "/api/devcenter/plan", {}, {})
+                self.validate("http/plan.reply.json", plan_reply)
+                for mode in ("quick", "full"):
+                    validate_reply = state.read("POST", "/api/devcenter/plan-validate", {}, {"mode": mode})
+                    self.validate("http/plan-validate.reply.json", validate_reply)
+                    self.assertEqual(validate_reply["plan_hash"], plan_reply["plan_hash"])
+                    self.assertEqual(validate_reply["status"], plan_reply["status"])
+        state.load("default")
+        removed = self.call(state, "source_remove", {"source_id": "src-2"})
+        self.assertEqual(removed["choice_count"], 1)
+        after_remove = state.read("GET", "/api/devcenter/plan", {}, {})
+        self.validate("http/plan.reply.json", after_remove)
+        self.assertEqual(after_remove["status"], "invalid")
+        self.assertTrue(any(item["kind"] == "choice_source_removed" for item in after_remove["blocking"]))
+
 
 if __name__ == "__main__":
     unittest.main()
