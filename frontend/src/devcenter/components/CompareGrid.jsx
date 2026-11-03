@@ -159,6 +159,18 @@ export default function CompareGrid({
   const [activeRowKey, setActiveRowKey] = useState(null);
   const [focusedCell, setFocusedCell] = useState({ r: 0, c: 1 });
 
+  // Refs for synchronous tracking to avoid stale closures during rapid keyboard actions.
+  const focusedCellRef = useRef({ r: 0, c: 1 });
+  const anchorRowRef = useRef(null);
+  const selectedKeysRef = useRef(selectedKeys);
+  selectedKeysRef.current = selectedKeys;
+  const allMatchingRef = useRef(allMatching);
+  allMatchingRef.current = allMatching;
+  const activeRowKeyRef = useRef(activeRowKey);
+  activeRowKeyRef.current = activeRowKey;
+  const pagesRef = useRef(pages);
+  pagesRef.current = pages;
+
   // Code Diff modal state.
   const [diffTarget, setDiffTarget] = useState(null); // { row, donor, triggerElement }
   const [bulkMenuOpen, setBulkMenuOpen] = useState(false);
@@ -224,6 +236,10 @@ export default function CompareGrid({
     setError(null);
     setSelectedKeys(new Set());
     setAllMatching(false);
+    selectedKeysRef.current = new Set();
+    allMatchingRef.current = false;
+    anchorRowRef.current = null;
+    setAnchorRow(null);
   }, [queryParams, compareMode]);
 
   // Fetch page helper.
@@ -308,6 +324,14 @@ export default function CompareGrid({
   const startRow = Math.max(0, Math.floor(scrollTop / ROW_HEIGHT) - OVERSCAN);
   const endRow = Math.min(totalRows, Math.ceil((scrollTop + clientHeight) / ROW_HEIGHT) + OVERSCAN);
 
+  // Synchronize layout and dimension refs.
+  const totalRowsRef = useRef(totalRows);
+  totalRowsRef.current = totalRows;
+  const totalColsRef = useRef(totalCols);
+  totalColsRef.current = totalCols;
+  const clientHeightRef = useRef(clientHeight);
+  clientHeightRef.current = clientHeight;
+
   // Request visible pages if not in cache.
   useEffect(() => {
     if (total == null) return;
@@ -324,10 +348,10 @@ export default function CompareGrid({
   const getRow = useCallback(
     (rowIndex) => {
       const pageIndex = Math.floor(rowIndex / PAGE_SIZE);
-      const page = pages.get(pageIndex);
+      const page = pagesRef.current?.get(pageIndex);
       return page ? page[rowIndex % PAGE_SIZE] : null;
     },
-    [pages]
+    []
   );
 
   // Active row object.
@@ -356,44 +380,55 @@ export default function CompareGrid({
       const row = getRow(index);
       if (!row) return;
       setAllMatching(false);
+      allMatchingRef.current = false;
 
-      if (range && anchorRow !== null) {
-        const [a, b] = [Math.min(anchorRow, index), Math.max(anchorRow, index)];
-        setSelectedKeys((prev) => {
-          const next = new Set(prev);
-          for (let k = a; k <= b; k++) {
-            const r = getRow(k);
-            if (r) next.add(r.row_key);
-          }
-          return next;
-        });
+      let anchor = anchorRowRef.current;
+      if (range) {
+        if (anchor === null) {
+          anchor = focusedCellRef.current.r;
+          anchorRowRef.current = anchor;
+          setAnchorRow(anchor);
+        }
+        const [a, b] = [Math.min(anchor, index), Math.max(anchor, index)];
+        const next = new Set(selectedKeysRef.current);
+        for (let k = a; k <= b; k++) {
+          const r = getRow(k);
+          if (r) next.add(r.row_key);
+        }
+        selectedKeysRef.current = next;
+        setSelectedKeys(next);
       } else {
-        setSelectedKeys((prev) => {
-          const next = new Set(prev);
-          if (next.has(row.row_key)) next.delete(row.row_key);
-          else next.add(row.row_key);
-          return next;
-        });
+        const next = new Set(selectedKeysRef.current);
+        if (next.has(row.row_key)) next.delete(row.row_key);
+        else next.add(row.row_key);
+        selectedKeysRef.current = next;
+        anchorRowRef.current = index;
         setAnchorRow(index);
+        setSelectedKeys(next);
       }
     },
-    [getRow, anchorRow]
+    [getRow]
   );
 
   // Header checkbox toggle.
   const toggleSelectLoaded = useCallback(() => {
-    if (selectedKeys.size > 0 || allMatching) {
-      setSelectedKeys(new Set());
+    if (selectedKeysRef.current.size > 0 || allMatchingRef.current) {
+      const empty = new Set();
+      selectedKeysRef.current = empty;
+      setSelectedKeys(empty);
       setAllMatching(false);
+      allMatchingRef.current = false;
     } else {
       const next = new Set();
       for (const row of allLoadedRows) {
         next.add(row.row_key);
       }
+      selectedKeysRef.current = next;
       setSelectedKeys(next);
+      anchorRowRef.current = 0;
       setAnchorRow(0);
     }
-  }, [selectedKeys.size, allMatching, allLoadedRows]);
+  }, [allLoadedRows]);
 
   // Global search shortcut "/" handler.
   useEffect(() => {
@@ -407,12 +442,22 @@ export default function CompareGrid({
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
 
+  // Cell focus helper for direct cell focus events.
+  const handleCellFocus = useCallback((r, c) => {
+    focusedCellRef.current = { r, c };
+    setFocusedCell((prev) => {
+      if (prev.r === r && prev.c === c) return prev;
+      return { r, c };
+    });
+  }, []);
+
   // Cell focus helper.
   const moveFocus = useCallback(
     (r, c) => {
-      const maxR = Math.max(0, totalRows - 1);
+      const maxR = Math.max(0, totalRowsRef.current - 1);
       const nextR = Math.max(0, Math.min(maxR, r));
-      const nextC = Math.max(0, Math.min(totalCols - 1, c));
+      const nextC = Math.max(0, Math.min(totalColsRef.current - 1, c));
+      focusedCellRef.current = { r: nextR, c: nextC };
       setFocusedCell({ r: nextR, c: nextC });
 
       // Scroll row into view if needed.
@@ -425,54 +470,86 @@ export default function CompareGrid({
         }
       }
 
-      // Focus cell element.
-      setTimeout(() => {
-        const cellNode = gridRef.current?.querySelector(`[data-r="${nextR}"][data-c="${nextC}"]`);
-        cellNode?.focus();
-      }, 0);
+      // Synchronously focus cell element if present in DOM.
+      const cellNode = gridRef.current?.querySelector(`[data-r="${nextR}"][data-c="${nextC}"]`);
+      if (cellNode) {
+        cellNode.tabIndex = 0;
+        cellNode.focus();
+      } else {
+        setTimeout(() => {
+          const node = gridRef.current?.querySelector(`[data-r="${nextR}"][data-c="${nextC}"]`);
+          if (node) {
+            node.tabIndex = 0;
+            node.focus();
+          }
+        }, 0);
+      }
     },
-    [totalRows, totalCols]
+    []
   );
+
+  // Synchronize actual DOM element focus when focusedCell updates.
+  useEffect(() => {
+    const { r, c } = focusedCell;
+    const cellNode = gridRef.current?.querySelector(`[data-r="${r}"][data-c="${c}"]`);
+    if (cellNode && document.activeElement !== cellNode) {
+      if (
+        gridRef.current?.contains(document.activeElement) ||
+        document.activeElement === scrollRef.current ||
+        document.activeElement === document.body ||
+        !document.activeElement
+      ) {
+        cellNode.focus();
+      }
+    }
+  }, [focusedCell]);
 
   // Keyboard navigation on grid.
   const onGridKeyDown = useCallback(
     (e) => {
-      const { r, c } = focusedCell;
-      const pageRows = Math.max(1, Math.floor(clientHeight / ROW_HEIGHT) - 1);
+      const { r, c } = focusedCellRef.current;
+      const totalR = totalRowsRef.current;
+      const totalC = totalColsRef.current;
+      const pageRows = Math.max(1, Math.floor(clientHeightRef.current / ROW_HEIGHT) - 1);
       const k = e.key;
 
       if (k === "ArrowDown") {
         e.preventDefault();
-        if (e.shiftKey) toggleRowSelection(r + 1, true);
-        moveFocus(r + 1, c);
+        const nextR = Math.min(Math.max(0, totalR - 1), r + 1);
+        if (e.shiftKey) toggleRowSelection(nextR, true);
+        moveFocus(nextR, c);
       } else if (k === "ArrowUp") {
         e.preventDefault();
-        if (e.shiftKey) toggleRowSelection(r - 1, true);
-        moveFocus(r - 1, c);
+        const nextR = Math.max(0, r - 1);
+        if (e.shiftKey) toggleRowSelection(nextR, true);
+        moveFocus(nextR, c);
       } else if (k === "ArrowRight") {
         e.preventDefault();
-        moveFocus(r, c + 1);
+        moveFocus(r, Math.min(totalC - 1, c + 1));
       } else if (k === "ArrowLeft") {
         e.preventDefault();
-        moveFocus(r, c - 1);
+        moveFocus(r, Math.max(0, c - 1));
       } else if (k === "Home") {
         e.preventDefault();
         if (e.ctrlKey) moveFocus(0, 0);
         else moveFocus(r, 0);
       } else if (k === "End") {
         e.preventDefault();
-        if (e.ctrlKey) moveFocus(totalRows - 1, totalCols - 1);
-        else moveFocus(r, totalCols - 1);
+        if (e.ctrlKey) moveFocus(totalR - 1, totalC - 1);
+        else moveFocus(r, totalC - 1);
       } else if (k === "PageDown") {
         e.preventDefault();
-        moveFocus(r + pageRows, c);
+        moveFocus(Math.min(totalR - 1, r + pageRows), c);
       } else if (k === "PageUp") {
         e.preventDefault();
-        moveFocus(r - pageRows, c);
+        moveFocus(Math.max(0, r - pageRows), c);
       } else if (k === "Enter") {
         e.preventDefault();
         const row = getRow(r);
-        if (row) setActiveRowKey(row.row_key);
+        if (row) {
+          activeRowKeyRef.current = row.row_key;
+          setActiveRowKey(row.row_key);
+        }
       } else if (k === " ") {
         e.preventDefault();
         toggleRowSelection(r, e.shiftKey);
@@ -480,12 +557,15 @@ export default function CompareGrid({
         e.preventDefault();
         toggleSelectLoaded();
       } else if (k === "Escape") {
-        if (selectedKeys.size > 0 || allMatching) {
+        if (selectedKeysRef.current.size > 0 || allMatchingRef.current) {
           e.preventDefault();
+          selectedKeysRef.current = new Set();
           setSelectedKeys(new Set());
+          allMatchingRef.current = false;
           setAllMatching(false);
-        } else if (activeRowKey) {
+        } else if (activeRowKeyRef.current) {
           e.preventDefault();
+          activeRowKeyRef.current = null;
           setActiveRowKey(null);
         }
       } else if ((k === "d" || k === "D") && !e.ctrlKey && !e.metaKey && !e.altKey) {
@@ -505,26 +585,13 @@ export default function CompareGrid({
           }
         }
       } else if ((k === "m" || k === "M") && !e.ctrlKey && !e.metaKey && !e.altKey) {
-        if (selectedKeys.size > 0 || allMatching) {
+        if (selectedKeysRef.current.size > 0 || allMatchingRef.current) {
           e.preventDefault();
           setBulkMenuOpen(true);
         }
       }
     },
-    [
-      focusedCell,
-      clientHeight,
-      totalRows,
-      totalCols,
-      donors,
-      getRow,
-      moveFocus,
-      toggleRowSelection,
-      toggleSelectLoaded,
-      selectedKeys.size,
-      allMatching,
-      activeRowKey,
-    ]
+    [donors, getRow, moveFocus, toggleRowSelection, toggleSelectLoaded]
   );
 
   // Compare mode toggle.
@@ -534,6 +601,10 @@ export default function CompareGrid({
     if (reply) {
       setSelectedKeys(new Set());
       setAllMatching(false);
+      selectedKeysRef.current = new Set();
+      allMatchingRef.current = false;
+      anchorRowRef.current = null;
+      setAnchorRow(null);
       store.load("session");
     }
   };
@@ -571,6 +642,10 @@ export default function CompareGrid({
     if (reply) {
       setSelectedKeys(new Set());
       setAllMatching(false);
+      selectedKeysRef.current = new Set();
+      allMatchingRef.current = false;
+      anchorRowRef.current = null;
+      setAnchorRow(null);
       const appliedCount = Math.max(0, keys.length - skippedCount);
       const toastText =
         skippedCount > 0
@@ -588,6 +663,10 @@ export default function CompareGrid({
     if (reply) {
       setSelectedKeys(new Set());
       setAllMatching(false);
+      selectedKeysRef.current = new Set();
+      allMatchingRef.current = false;
+      anchorRowRef.current = null;
+      setAnchorRow(null);
       toast.show({
         tone: "ok",
         text: tn("compare.bulk.confirm_rows", reply.confirmed || keys.length),
@@ -661,7 +740,7 @@ export default function CompareGrid({
           tabIndex={tabIndex}
           data-r={rowIndex}
           data-c={0}
-          onFocus={() => setFocusedCell({ r: rowIndex, c: 0 })}
+          onFocus={() => handleCellFocus(rowIndex, 0)}
           onClick={(e) => {
             e.stopPropagation();
             toggleRowSelection(rowIndex, e.shiftKey);
@@ -690,7 +769,7 @@ export default function CompareGrid({
           tabIndex={tabIndex}
           data-r={rowIndex}
           data-c={1}
-          onFocus={() => setFocusedCell({ r: rowIndex, c: 1 })}
+          onFocus={() => handleCellFocus(rowIndex, 1)}
           onClick={() => setActiveRowKey(row.row_key)}
         >
           <ObjIcon className="dc-obj-icon" aria-hidden="true" />
@@ -728,7 +807,7 @@ export default function CompareGrid({
           tabIndex={tabIndex}
           data-r={rowIndex}
           data-c={2}
-          onFocus={() => setFocusedCell({ r: rowIndex, c: 2 })}
+          onFocus={() => handleCellFocus(rowIndex, 2)}
           onClick={() => setActiveRowKey(row.row_key)}
         >
           <span className={`dc-st dc-st-${state}`}>
@@ -758,7 +837,7 @@ export default function CompareGrid({
           tabIndex={tabIndex}
           data-r={rowIndex}
           data-c={3}
-          onFocus={() => setFocusedCell({ r: rowIndex, c: 3 })}
+          onFocus={() => handleCellFocus(rowIndex, 3)}
           onClick={() => setActiveRowKey(row.row_key)}
         >
           <StateCell cell={targetCell} sourceName={targetSource?.display_name || "Target"} />
@@ -786,7 +865,7 @@ export default function CompareGrid({
           tabIndex={tabIndex}
           data-r={rowIndex}
           data-c={colIndex}
-          onFocus={() => setFocusedCell({ r: rowIndex, c: colIndex })}
+          onFocus={() => handleCellFocus(rowIndex, colIndex)}
           onClick={() => setActiveRowKey(row.row_key)}
         >
           <StateCell
@@ -813,7 +892,7 @@ export default function CompareGrid({
           tabIndex={tabIndex}
           data-r={rowIndex}
           data-c={colIndex}
-          onFocus={() => setFocusedCell({ r: rowIndex, c: colIndex })}
+          onFocus={() => handleCellFocus(rowIndex, colIndex)}
           onClick={() => setActiveRowKey(row.row_key)}
         >
           <span className={`dc-mc-text ${row.merge_choice ? "" : "dc-mc-none"}`}>{mc}</span>
@@ -851,7 +930,7 @@ export default function CompareGrid({
           tabIndex={tabIndex}
           data-r={rowIndex}
           data-c={colIndex}
-          onFocus={() => setFocusedCell({ r: rowIndex, c: colIndex })}
+          onFocus={() => handleCellFocus(rowIndex, colIndex)}
           onClick={() => setActiveRowKey(row.row_key)}
         >
           {hasMarks ? (
@@ -916,8 +995,15 @@ export default function CompareGrid({
           onClearSelection={() => {
             setSelectedKeys(new Set());
             setAllMatching(false);
+            selectedKeysRef.current = new Set();
+            allMatchingRef.current = false;
+            anchorRowRef.current = null;
+            setAnchorRow(null);
           }}
-          onSelectAllMatching={() => setAllMatching(true)}
+          onSelectAllMatching={() => {
+            allMatchingRef.current = true;
+            setAllMatching(true);
+          }}
           disabled={changeDisabled}
           reasonId={reasonId}
           selectedRows={selectedRowsList}
