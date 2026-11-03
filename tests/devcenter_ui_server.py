@@ -1146,7 +1146,14 @@ class FakeDevCenterHandler(BaseHTTPRequestHandler):
             elif path == "/api/overview":
                 self._json(200, {"models": [], "reports": [], "counts": {}, "candidate_count": 0, "warning_count": 0, "validation_state": "passed", "scan_state": "idle", "last_scan": None})
             elif path == "/api/config":
-                self._json(200, {"name": "Power BI Brain", "sources": [], "graph_colors": {}})
+                if method == "POST":
+                    self.state.files.setdefault("legacy_config", {}).update(body)
+                    self._json(200, self.state.files.get("legacy_config", body))
+                else:
+                    cfg = self.state.files.get("legacy_config", {"name": "Power BI Brain", "sources": [], "graph_colors": {}})
+                    self._json(200, cfg)
+            elif path == "/api/scan":
+                self._json(200, {"overview": {"models": [], "reports": [], "counts": {}, "candidate_count": 0, "warning_count": 0, "validation_state": "passed", "scan_state": "idle", "last_scan": "2026-11-03T20:00:00Z"}, "source_count": len(self.state.files.get("legacy_config", {}).get("sources", []))})
             elif path.startswith("/api/"):
                 raise FakeError("not_found", f"The fake server has no route {path}.")
             elif method == "GET":
