@@ -6,9 +6,9 @@ import { cn } from "@/lib/utils"
 // Menu (UI design 6.1, 9.3), on Radix DropdownMenu.
 // groups: [{ label?, items: [{ label, icon?, onSelect?, disabled?, destructive?, checked? }] }].
 // A separator goes between groups. Keys: Enter, Space, Down open; arrows; Home, End; typeahead; Escape closes.
-function Menu({ trigger, groups = [], align = "start", label, contentClassName }) {
+function Menu({ trigger, groups = [], align = "start", label, contentClassName, open, onOpenChange }) {
   return (
-    <MenuPrimitive.Root modal={false}>
+    <MenuPrimitive.Root modal={false} open={open} onOpenChange={onOpenChange}>
       <MenuPrimitive.Trigger asChild>{trigger}</MenuPrimitive.Trigger>
       <MenuPrimitive.Portal>
         <MenuPrimitive.Content data-slot="menu" className={cn("ui-menu", contentClassName)} align={align} sideOffset={4} aria-label={label}>
