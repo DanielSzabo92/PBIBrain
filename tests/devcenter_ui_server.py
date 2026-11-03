@@ -170,6 +170,7 @@ def _empty_session(session_id: str, name: str, revision: int) -> dict[str, Any]:
         "session_id": session_id, "display_name": name, "location": "project", "read_only": False, "revision": revision,
         "created_at": "2026-10-31T10:00:00Z", "updated_at": "2026-10-31T10:00:00Z", "checked_at": None, "sources": [],
         "target": {"model": None, "report": {"mode": "new_empty"}}, "compare_mode": "default", "plan_status": None,
+        "plan_state": None,
         "counts": {"sources": 0, "donors": 0, "merge_choices": 0, "marks": 0,
                    "marks_by_kind": {"source_changed": 0, "source_object_missing": 0, "new_since_start": 0}},
         "questions": {"open": [], "answered": []}, "proposals": {"open": []},

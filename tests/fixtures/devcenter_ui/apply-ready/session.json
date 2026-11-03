@@ -15,6 +15,7 @@
   "created_at": "2026-10-30T08:00:00Z",
   "display_name": "Sales and finance merge",
   "location": "project",
+  "plan_state": "ready",
   "plan_status": "valid",
   "proposals": {
     "open": []
