@@ -39,7 +39,7 @@ UI lane (UI design section 13): U0, then U1 and U2 in parallel, then U3 (needs S
 | 17 | S7b | [PBIR writer](issues/17-s7b-pbir-writer.md) | 11 | done | dc/17-s7b-pbir-writer | dcc91fc |
 | 18 | U7 | [Plan view](issues/18-u7-plan-view.md) | 10, 11 | done | dc/18-u7-plan-view | 95fa5aa |
 | 19 | U6 | [Row detail and Merge Choice](issues/19-u6-row-detail.md) | 12, 07, 08, 11 | done | dc/19-u6-row-detail | 22bc339 |
-| 20 | S8 | [Guard for merge](issues/20-s8-guard-merge.md) | 16, 17 | open | | |
+| 20 | S8 | [Guard for merge](issues/20-s8-guard-merge.md) | 16, 17 | done | dc/20-s8-guard-merge | cc2240a |
 | 21 | S10 | [Agent MCP tools](issues/21-s10-agent-mcp-tools.md) | 15, 16 | open | | |
 | 22 | U8 | [Impact views and removal policy](issues/22-u8-impact-ui.md) | 19, 15 | open | | |
 | 23 | S9 | [Local apply](issues/23-s9-local-apply.md) | 15, 20 | open | | |

@@ -42,3 +42,7 @@
 ## Ticket 19
 - Learning: In `devcenter_ui_server.py`, `_call_alignment_override` with `action: "reject_rename"` must tolerate `other_row_key` not existing in current rows when stripping possible rename notes.
 - Learning: When clicking "Use proposed" in `NameField`, prevent default on `mousedown` to avoid blur triggering an input check re-layout before the click resolves.
+
+## Ticket 20
+- the tree compare finds objects by name, so a rename shows as one delete plus one add, because the compare does not use identity. The guard accepts this only when a planned rename or rewrite explains it.
+- SalesB cannot be the merge target in tests, because it has duplicate lineageTags and the model writer refuses it. Use SalesA or Finance.

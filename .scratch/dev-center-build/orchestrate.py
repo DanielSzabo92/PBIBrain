@@ -26,6 +26,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 import threading
 import time
 from pathlib import Path
@@ -72,8 +73,22 @@ class UsageLimit(RuntimeError):
 def sh(cmd: list[str] | str, cwd: Path = ROOT, timeout: int = 1800, check: bool = False) -> subprocess.CompletedProcess:
     if isinstance(cmd, list):
         cmd = [shutil.which(cmd[0]) or cmd[0], *cmd[1:]]   # npm and npx are .cmd files on Windows
-    result = subprocess.run(cmd, cwd=cwd, env=ENV, capture_output=True, text=True, encoding="utf-8",
-                            errors="replace", timeout=timeout, shell=isinstance(cmd, str))
+    # Output goes to temporary files, not pipes: on Windows a grandchild process that keeps a pipe
+    # handle open makes subprocess.run wait forever, also after the timeout (ticket 20 hung 80 min).
+    with tempfile.TemporaryFile() as out, tempfile.TemporaryFile() as err:
+        proc = subprocess.Popen(cmd, cwd=cwd, env=ENV, stdout=out, stderr=err, stdin=subprocess.DEVNULL,
+                                shell=isinstance(cmd, str))
+        try:
+            code = proc.wait(timeout=timeout)
+            note = ""
+        except subprocess.TimeoutExpired:
+            subprocess.run(["taskkill", "/F", "/T", "/PID", str(proc.pid)], capture_output=True)
+            proc.wait()
+            code, note = 124, f"\nTIMEOUT: the command did not stop in {timeout} s and was killed.\n"
+        out.seek(0)
+        err.seek(0)
+        result = subprocess.CompletedProcess(cmd, code, out.read().decode("utf-8", "replace") + note,
+                                             err.read().decode("utf-8", "replace") + note)
     if check and result.returncode:
         raise RuntimeError(f"{cmd} failed: {result.stdout[-2000:]}{result.stderr[-2000:]}")
     return result
@@ -134,10 +149,14 @@ def claude(role: str, prompt: str, cwd: Path, *, ticket: str, resume: str | None
         raise UsageLimit(tail(text, 3))
     if data.get("is_error") and re.search(r"limit", text, re.I):
         raise UsageLimit(tail(text, 3))
-    if not data.get("session_id") or data.get("permission_denials"):
-        # No JSON reply, or denied tools: the session did not get its flags or its rights.
-        raise RuntimeError(f"{ticket}: bad {role} session: {tail(text, 3)} "
-                           f"denials={len(data.get('permission_denials') or [])}")
+    if not data.get("session_id"):
+        # No JSON reply: the session did not get its flags.
+        raise RuntimeError(f"{ticket}: bad {role} session: {tail(text, 3)}")
+    if data.get("permission_denials"):
+        # A denied tool (for example a learning note in .trail/) is not a broken session. The gates
+        # find any real gap. A restart only repeats the same denial (ticket 20: 7 restarts, 11 min).
+        denied = sorted({str(d.get("tool_name", "?")) for d in data["permission_denials"]})
+        log(f"{ticket}: {role} had {len(data['permission_denials'])} denied tool calls: {', '.join(denied)}")
     return {"text": str(data.get("result", out)), "session_id": data.get("session_id")}
 
 
