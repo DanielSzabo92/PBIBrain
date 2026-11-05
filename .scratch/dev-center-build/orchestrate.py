@@ -60,7 +60,7 @@ TOOLS = [
 REVIEW_TOOLS = ["Read", "Grep", "Glob", "Bash(git:*)", "Bash(python:*)", "Bash(npm:*)", "Bash(npx:*)",
                 "Bash(grep:*)", "Bash(ls:*)", "Bash(cat:*)"]
 
-LOCK = threading.Lock()
+LOCK = threading.RLock()     # reentrant: the merge holds it and calls set_board and log, which take it too
 ENV = dict(os.environ, LBUG_C_API_LIB_PATH=LBUG, CI="1", PYTHONUTF8="1")
 
 
