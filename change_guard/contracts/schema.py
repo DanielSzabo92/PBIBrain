@@ -7,7 +7,8 @@ from typing import Any, Mapping
 from backend.diff.snapshots import MISSING
 from backend.snapshots.manifest import canonical_json, content_hash, utc_now
 
-OPERATIONS = {"SET_PROPERTY", "CREATE_OBJECT", "DELETE_OBJECT", "RENAME_OBJECT", "REPLACE_EXPRESSION", "ADD_REFERENCE", "REMOVE_REFERENCE", "CHANGE_BINDING"}
+# RENAME_PAIR: a rename of an object with no lineageTag, as one linked delete-and-create pair (merge only).
+OPERATIONS = {"SET_PROPERTY", "CREATE_OBJECT", "DELETE_OBJECT", "RENAME_OBJECT", "RENAME_PAIR", "REPLACE_EXPRESSION", "ADD_REFERENCE", "REMOVE_REFERENCE", "CHANGE_BINDING"}
 
 
 class ContractError(ValueError):
@@ -27,7 +28,17 @@ def _text(value: Any) -> None:
 
 def validate_contract(payload: Mapping[str, Any], objects: Mapping[str, Any] | None = None) -> dict[str, Any]:
     value = json.loads(canonical_json(dict(payload)))
-    _object(value, {"contract_version", "task_id", "project_id", "baseline", "intent", "targets", "allowed_mutations", "forbidden", "behavior", "validation", "approval"})
+    _object(value, {"contract_version", "task_id", "project_id", "baseline", "intent", "targets", "allowed_mutations", "forbidden", "behavior", "validation", "approval"}, {"merge"})
+    if "merge" in value:
+        from change_guard.merge import MergeGuardError, validate_merge_section
+        try:
+            validate_merge_section(value["merge"])
+        except MergeGuardError as error:
+            raise ContractError(str(error)) from error
+        # The merge guard proves each object against the TOM tree (section 8), not against scanner object IDs.
+        objects = None
+    elif any(item.get("operation") == "RENAME_PAIR" for item in value["allowed_mutations"] if isinstance(item, dict)):
+        raise ContractError("A rename pair is a merge operation only")
     if type(value["contract_version"]) is not int or value["contract_version"] < 1:
         raise ContractError("Contract version must be a positive integer")
     for key in ("task_id", "project_id"):
@@ -66,7 +77,7 @@ def validate_contract(payload: Mapping[str, Any], objects: Mapping[str, Any] | N
         keys.add(marker)
         if mutation["operation"] in {"CREATE_OBJECT", "DELETE_OBJECT"} and mutation["property"] != "$object":
             raise ContractError("Object operations require an exact $object definition")
-        if mutation["operation"] == "RENAME_OBJECT" and mutation["property"] != "name":
+        if mutation["operation"] in {"RENAME_OBJECT", "RENAME_PAIR"} and mutation["property"] != "name":
             raise ContractError("Rename may only change name")
         if mutation["operation"] == "REPLACE_EXPRESSION" and "expression" not in mutation["property"].casefold():
             raise ContractError("Expression operation requires an expression property")

@@ -6,6 +6,7 @@ from functools import wraps
 import getpass
 import json
 from pathlib import Path
+import tempfile
 import uuid
 from typing import Any
 
@@ -19,6 +20,7 @@ from backend.snapshots.scan import scan_snapshot
 from change_guard.audit import AuditStore
 from change_guard.audit.records import exclusive_lock
 from change_guard.contracts import ChangeContract, authorize_contract, validate_contract, enforce_scope
+from change_guard.merge import is_merge_contract, merge_impact, verify_merge_candidate, write_merge_files, write_record
 from change_guard.policy import Policy, evaluate_candidate
 from change_guard.promotion import LocalPromotion
 from change_guard.regression import execute_regression_plan
@@ -136,9 +138,12 @@ class ChangeGuard:
         self.store.save(operation_id + "/baseline.json", snapshot, exclusive=True)
         baseline_root = self.store.root / operation_id / "baseline_sources"
         create_candidate(self.source_root, baseline_root, snapshot["source_manifest"])
-        changes = [{"object_id": item["object_id"], "property": item["property"], "new_value": item["expected_after"]} for item in contract["allowed_mutations"] if item["operation"] not in {"CREATE_OBJECT", "DELETE_OBJECT"}]
-        impact = analyze_impact(snapshot["analysis"]["graph"], [item["object_id"] for item in contract["targets"] if item["object_id"] in snapshot["analysis"]["objects"]], changes,
-                                baseline_snapshot_id=baseline.snapshot_id, completeness=snapshot["completeness"])
+        if is_merge_contract(contract):
+            impact = merge_impact(contract, baseline.snapshot_id)
+        else:
+            changes = [{"object_id": item["object_id"], "property": item["property"], "new_value": item["expected_after"]} for item in contract["allowed_mutations"] if item["operation"] not in {"CREATE_OBJECT", "DELETE_OBJECT"}]
+            impact = analyze_impact(snapshot["analysis"]["graph"], [item["object_id"] for item in contract["targets"] if item["object_id"] in snapshot["analysis"]["objects"]], changes,
+                                    baseline_snapshot_id=baseline.snapshot_id, completeness=snapshot["completeness"])
         self.store.save(operation_id + "/preflight.json", impact, exclusive=True)
         state["state"] = "PREFLIGHT"
         state["baseline_root"] = str(baseline_root)
@@ -166,7 +171,7 @@ class ChangeGuard:
                 state["state"] = "BASELINE_CAPTURED"
                 self._save(state, "BASELINE_PINNED", {"baseline_snapshot_id": baseline.snapshot_id})
                 return self._create_candidate(state, baseline)
-            if purpose not in {"HIGH_RISK_PROMOTION", "UNEXPECTED_BEHAVIOR", "PROMOTE"}:
+            if purpose not in {"HIGH_RISK_PROMOTION", "UNEXPECTED_BEHAVIOR", "UNCHECKED_IMPACT", "PROMOTE"}:
                 raise GuardError("INVALID_APPROVAL_OPERATION", "Explicit approval purpose required")
             evidence = self.store.load(operation_id + "/verification.json")
             candidate = Snapshot.from_dict(self.store.load(operation_id + "/candidate.json"))
@@ -287,9 +292,38 @@ class ChangeGuard:
         return self._create_candidate(state, baseline)
 
     @operation_locked
+    def write_merge_candidate(self, operation_id: str, *, report_writer=None) -> dict:
+        """App write step for a merge Change Plan (technical design section 8).
+
+        The app writers produce the candidate files. The guard keeps an app write
+        record that replaces the isolation receipt. A hash binds it to the contract.
+        """
+        state = self._operation(operation_id)
+        contract = self._contract(state)
+        if not is_merge_contract(contract.to_dict()) or self.policy.profile != "merge":
+            raise GuardError("PROFILE_MISMATCH", "The app write step needs a merge contract and the merge policy")
+        if state["state"] != "CANDIDATE_READY":
+            raise GuardError("INVALID_STAGE", "The app write step requires a fresh authorized candidate")
+        baseline = self.store.load(operation_id + "/baseline.json")
+        state["state"] = "IMPLEMENTING"
+        self._save(state, "APP_WRITE_STARTED", {"attempt": state["attempt"]})
+        try:
+            with tempfile.TemporaryDirectory(prefix="merge-write-") as work:
+                files = write_merge_files(Path(state["baseline_root"]), Path(state["candidate_root"]), contract.to_dict()["merge"], self.adapter,
+                                          Path(work), report_writer=report_writer)
+        except Exception as error:
+            state["state"] = "FAILED"
+            self._save(state, "APP_WRITE_FAILED", {"error_type": type(error).__name__, "code": getattr(error, "code", None)})
+            raise
+        record = write_record(contract.contract_hash, baseline["source_manifest"], files)
+        self.store.save(operation_id + "/write-record-" + str(state["attempt"]) + ".json", record, exclusive=True)
+        return self._save(state, "APP_WRITE_RECORDED", {"record_hash": record["record_hash"], "file_count": len(files)})
+
+    @operation_locked
     def run_agent(self, operation_id: str, isolation: DockerIsolation, command: list[str]) -> dict:
         state = self._operation(operation_id)
-        self._contract(state)
+        if is_merge_contract(self._contract(state).to_dict()):
+            raise GuardError("PROFILE_MISMATCH", "An agent never writes a merge candidate; the app write step does")
         if state["state"] != "CANDIDATE_READY":
             raise GuardError("INVALID_STAGE", "Agent implementation requires a fresh authorized candidate")
         state["state"] = "IMPLEMENTING"
@@ -313,6 +347,9 @@ class ChangeGuard:
             if state["state"] not in {"IMPLEMENTING", "CANDIDATE_READY", "REJECTED", "VALIDATION_INCONCLUSIVE", "APPROVAL_REQUIRED", "ELIGIBLE_FOR_PROMOTION", "STATIC_VALIDATION", "RUNTIME_VALIDATION", "POLICY_EVALUATION"}:
                 raise GuardError("INVALID_STAGE", "Candidate cannot be validated in this stage")
             contract = self._contract(state)
+            merge = is_merge_contract(contract.to_dict())
+            if merge != (self.policy.profile == "merge"):
+                raise GuardError("PROFILE_MISMATCH", "A merge contract needs the merge policy, and the merge policy needs a merge contract")
             baseline = Snapshot.from_dict(self.store.load(operation_id + "/baseline.json"))
             baseline_value = baseline.to_dict()
             if not self._baseline_matches(baseline_value) or source_manifest(state["baseline_root"]) != baseline_value["source_manifest"]:
@@ -337,23 +374,39 @@ class ChangeGuard:
                 raise GuardError("SOURCE_INTEGRITY_FAILURE", "Candidate metadata verification failed") from error
             if manifest != source_manifest(state["candidate_root"]):
                 raise GuardError("CANDIDATE_STALE", "Candidate changed during verification")
-            comparison = compare_snapshots(baseline, candidate, before_root=state["baseline_root"], after_root=state["candidate_root"])
-            scope = enforce_scope(contract, comparison)
-            receipt_path = operation_id + "/isolation-" + str(state["attempt"]) + ".json"
-            receipt = self.store.load(receipt_path) if safe_path(self.store.root, receipt_path).exists() else {"status": "NOT_RUN"}
-            isolated = receipt.get("backend") == "DOCKER" or (receipt.get("backend") == "WINDOWS_APPCONTAINER" and receipt.get("token_is_appcontainer") is True and receipt.get("capability_count") == 0 and receipt.get("descendants_exited") is True and receipt.get("inherited_handles") is False)
-            security = {"status": "PASSED" if receipt.get("status") == "PASSED" and isolated and receipt.get("candidate_source_hash") == content_hash(manifest) else "NOT_RUN", "receipt_hash": content_hash(receipt)}
+            merge_result = None
+            if merge:
+                # Merge: the app write record replaces the isolation receipt, and the merge proof replaces the line accounting.
+                record_path = operation_id + "/write-record-" + str(state["attempt"]) + ".json"
+                record = self.store.load(record_path) if safe_path(self.store.root, record_path).exists() else None
+                merge_result = verify_merge_candidate(contract.to_dict(), contract.contract_hash, state["baseline_root"], state["candidate_root"], record, self.adapter)
+                comparison = compare_snapshots(baseline, candidate, before_root=state["baseline_root"], after_root=state["candidate_root"],
+                                               proven_sources=merge_result["proven_sources"])
+                scope = merge_result["scope"]
+                security = merge_result["security"]
+            else:
+                comparison = compare_snapshots(baseline, candidate, before_root=state["baseline_root"], after_root=state["candidate_root"])
+                scope = enforce_scope(contract, comparison)
+                receipt_path = operation_id + "/isolation-" + str(state["attempt"]) + ".json"
+                receipt = self.store.load(receipt_path) if safe_path(self.store.root, receipt_path).exists() else {"status": "NOT_RUN"}
+                isolated = receipt.get("backend") == "DOCKER" or (receipt.get("backend") == "WINDOWS_APPCONTAINER" and receipt.get("token_is_appcontainer") is True and receipt.get("capability_count") == 0 and receipt.get("descendants_exited") is True and receipt.get("inherited_handles") is False)
+                security = {"status": "PASSED" if receipt.get("status") == "PASSED" and isolated and receipt.get("candidate_source_hash") == content_hash(manifest) else "NOT_RUN", "receipt_hash": content_hash(receipt)}
             targets = [item["object_id"] for item in contract.to_dict()["targets"] if item["object_id"] in baseline_value["analysis"]["objects"]]
             changes = [{"object_id": item["object_id"], "property": item["property_path"], "new_value": item["new_value"]} for item in comparison["property_changes"] if item["object_id"] in targets]
-            impact = self.impact_cache.analyze(baseline, targets, changes)
-            post_impact = self.impact_cache.analyze(candidate, [item for item in targets if item in analyzed["objects"]])
+            if merge:
+                impact = post_impact = merge_impact(contract.to_dict(), baseline.snapshot_id)
+            else:
+                impact = self.impact_cache.analyze(baseline, targets, changes)
+                post_impact = self.impact_cache.analyze(candidate, [item for item in targets if item in analyzed["objects"]])
             # Candidate uncertainty is mandatory even if baseline impact was complete.
-            if post_impact["completeness"]["status"] != "COMPLETE":
+            if not merge and post_impact["completeness"]["status"] != "COMPLETE":
                 impact["completeness"]["status"] = "INCOMPLETE"
                 impact["unknown_impacts"].extend(post_impact["unknown_impacts"])
                 impact["impact_report_id"] = content_hash({key: value for key, value in impact.items() if key not in {"impact_report_id", "metrics"}})
+            source_passed = not comparison["unknown_differences"] and (merge_result is None or merge_result["source"]["status"] == "PASSED")
             evidence = {"verification_version": 1, "security": security, "scope": {"status": scope["status"], **scope}, "baseline": {"status": "PASSED"},
-                        "source": {"status": "PASSED" if not comparison["unknown_differences"] else "FAILED"}, "static": {"status": analyzed["validation_status"], "validation": analyzed["validation"]},
+                        "source": {"status": "PASSED" if source_passed else "FAILED", **({"violations": merge_result["source"]["violations"]} if merge_result else {})},
+                        "static": {"status": analyzed["validation_status"], "validation": analyzed["validation"]},
                         "impact": impact, "post_impact": post_impact, "runtime": {"status": "NOT_RUN", "certified": False}, "comparison": comparison,
                         "candidate_hash": content_hash(manifest), "candidate_snapshot_id": candidate.snapshot_id, "baseline_snapshot_id": baseline.snapshot_id, "contract_hash": contract.contract_hash,
                         "policy_hash": self.policy.policy_hash}
