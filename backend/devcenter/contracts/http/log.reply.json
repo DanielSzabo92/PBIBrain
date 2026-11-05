@@ -1,0 +1,119 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pbibrain.local/devcenter/contracts/http/log.reply.json",
+  "title": "GET /api/devcenter/log (section 14.1, UC2, UC8)",
+  "type": "object",
+  "properties": {
+    "revision": {
+      "$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/revision"
+    },
+    "entries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "time_utc": {
+            "anyOf": [
+              {
+                "$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/utc_time"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "author": {
+            "enum": [
+              "user",
+              "agent"
+            ]
+          },
+          "mcp_client": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "action": {
+            "type": "string"
+          },
+          "target": {},
+          "before": {},
+          "after": {},
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "proposal_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "revision_after": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "action",
+          "after",
+          "author",
+          "before",
+          "mcp_client",
+          "proposal_id",
+          "reason",
+          "revision_after",
+          "target",
+          "time_utc"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "total": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "limit": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "offset": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "has_more": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "entries",
+    "has_more",
+    "limit",
+    "offset",
+    "revision",
+    "total"
+  ],
+  "additionalProperties": false
+}

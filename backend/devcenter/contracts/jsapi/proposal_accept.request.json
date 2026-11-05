@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pbibrain.local/devcenter/contracts/jsapi/proposal_accept.request.json",
+  "title": "JS API proposal_accept: request",
+  "type": "object",
+  "properties": {
+    "base_revision": {
+      "$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/base_revision"
+    },
+    "proposal_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 100
+    }
+  },
+  "required": [
+    "base_revision",
+    "proposal_id"
+  ],
+  "additionalProperties": false
+}

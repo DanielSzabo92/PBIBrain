@@ -1,0 +1,627 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pbibrain.local/devcenter/contracts/agent.json",
+  "title": "Agent proposals and questions (technical design section 12, build step S10)",
+  "$defs": {
+    "payload_merge_choice": {
+      "type": "object",
+      "properties": {
+        "choice": {
+          "anyOf": [
+            {
+              "enum": [
+                "keep",
+                "take",
+                "take_properties",
+                "add_new_name",
+                "remove",
+                "skip",
+                "promote",
+                "copy_to_report"
+              ]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "enum": [
+                    "keep",
+                    "take",
+                    "take_properties",
+                    "add_new_name",
+                    "remove",
+                    "skip",
+                    "promote",
+                    "copy_to_report"
+                  ]
+                },
+                "source_id": {
+                  "$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/source_id"
+                },
+                "properties": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "new_name": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 500
+                },
+                "display_folder": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "additionalProperties": false
+            }
+          ]
+        }
+      },
+      "required": [
+        "choice"
+      ],
+      "additionalProperties": false
+    },
+    "payload_name": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "object_type": {
+          "$ref": "https://pbibrain.local/devcenter/contracts/naming.json#/$defs/object_type"
+        },
+        "table": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "display_folder": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "format_string": {
+          "anyOf": [
+            {
+              "type": "string",
+              "maxLength": 500
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "source_id": {
+          "anyOf": [
+            {
+              "$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/source_id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "name",
+        "object_type"
+      ],
+      "additionalProperties": false
+    },
+    "payload_alignment": {
+      "type": "object",
+      "properties": {
+        "source_id": {
+          "$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/source_id"
+        },
+        "action": {
+          "enum": [
+            "confirm",
+            "break",
+            "reject_rename"
+          ]
+        },
+        "target_key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "donor_key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        }
+      },
+      "required": [
+        "action",
+        "donor_key",
+        "source_id",
+        "target_key"
+      ],
+      "additionalProperties": false
+    },
+    "payload_removal_policy": {
+      "type": "object",
+      "properties": {
+        "policy": {
+          "enum": [
+            "block",
+            "cascade",
+            "repoint"
+          ]
+        },
+        "repoint_target": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "policy"
+      ],
+      "additionalProperties": false
+    },
+    "payload_need_mapping": {
+      "type": "object",
+      "properties": {
+        "action": {
+          "enum": [
+            "add_from_donor",
+            "map_to_target",
+            "drop_added_object"
+          ]
+        },
+        "target_object": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "action"
+      ],
+      "additionalProperties": false
+    },
+    "payload_impact_action": {
+      "type": "object",
+      "properties": {
+        "action": {
+          "enum": [
+            "include_in_rewrite",
+            "remove_field"
+          ]
+        }
+      },
+      "required": [
+        "action"
+      ],
+      "additionalProperties": false
+    },
+    "proposal_kind": {
+      "enum": [
+        "merge_choice",
+        "name",
+        "alignment",
+        "removal_policy",
+        "need_mapping",
+        "impact_action"
+      ]
+    },
+    "target": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1000
+    },
+    "mcp_client": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 100
+    },
+    "option": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 50
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "proposal": {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "enum": [
+                "merge_choice",
+                "name",
+                "alignment",
+                "removal_policy",
+                "need_mapping",
+                "impact_action"
+              ]
+            },
+            "payload": {
+              "type": "object"
+            }
+          },
+          "required": [
+            "kind",
+            "payload"
+          ],
+          "additionalProperties": false,
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "kind": {
+                    "const": "merge_choice"
+                  }
+                },
+                "required": [
+                  "kind"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "payload": {
+                    "$ref": "https://pbibrain.local/devcenter/contracts/agent.json#/$defs/payload_merge_choice"
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "kind": {
+                    "const": "name"
+                  }
+                },
+                "required": [
+                  "kind"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "payload": {
+                    "$ref": "https://pbibrain.local/devcenter/contracts/agent.json#/$defs/payload_name"
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "kind": {
+                    "const": "alignment"
+                  }
+                },
+                "required": [
+                  "kind"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "payload": {
+                    "$ref": "https://pbibrain.local/devcenter/contracts/agent.json#/$defs/payload_alignment"
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "kind": {
+                    "const": "removal_policy"
+                  }
+                },
+                "required": [
+                  "kind"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "payload": {
+                    "$ref": "https://pbibrain.local/devcenter/contracts/agent.json#/$defs/payload_removal_policy"
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "kind": {
+                    "const": "need_mapping"
+                  }
+                },
+                "required": [
+                  "kind"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "payload": {
+                    "$ref": "https://pbibrain.local/devcenter/contracts/agent.json#/$defs/payload_need_mapping"
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "kind": {
+                    "const": "impact_action"
+                  }
+                },
+                "required": [
+                  "kind"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "payload": {
+                    "$ref": "https://pbibrain.local/devcenter/contracts/agent.json#/$defs/payload_impact_action"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "label"
+      ],
+      "additionalProperties": false
+    },
+    "proposal": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "enum": [
+            "merge_choice",
+            "name",
+            "alignment",
+            "removal_policy",
+            "need_mapping",
+            "impact_action"
+          ]
+        },
+        "target_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1000
+        },
+        "target_name": {
+          "type": "string"
+        },
+        "payload": {
+          "type": "object"
+        },
+        "summary": {
+          "type": "string"
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        },
+        "mcp_client": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "author": {
+          "enum": [
+            "agent",
+            "user"
+          ]
+        },
+        "created_utc": {
+          "$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/utc_time"
+        },
+        "status": {
+          "enum": [
+            "proposed",
+            "accepted",
+            "rejected",
+            "replaced"
+          ]
+        },
+        "blocked": {
+          "enum": [
+            "source_changed",
+            "user_choice_conflict",
+            null
+          ]
+        },
+        "replaced_by": {
+          "type": "string"
+        },
+        "decided_utc": {
+          "$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/utc_time"
+        }
+      },
+      "required": [
+        "blocked",
+        "confidence",
+        "created_utc",
+        "id",
+        "kind",
+        "mcp_client",
+        "payload",
+        "reason",
+        "status",
+        "summary",
+        "target_id",
+        "target_name"
+      ],
+      "additionalProperties": false
+    },
+    "question": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "target_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1000
+        },
+        "target_name": {
+          "type": "string"
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "options": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 5,
+          "items": {
+            "$ref": "https://pbibrain.local/devcenter/contracts/agent.json#/$defs/option"
+          }
+        },
+        "recommended_option": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        },
+        "mcp_client": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "author": {
+          "enum": [
+            "agent",
+            "user"
+          ]
+        },
+        "created_utc": {
+          "$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/utc_time"
+        },
+        "status": {
+          "enum": [
+            "open",
+            "answered"
+          ]
+        },
+        "blocked": {
+          "enum": [
+            "source_changed",
+            null
+          ]
+        },
+        "selected_option": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "answered_utc": {
+          "anyOf": [
+            {
+              "$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/utc_time"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "answered_utc",
+        "blocked",
+        "created_utc",
+        "id",
+        "mcp_client",
+        "options",
+        "reason",
+        "recommended_option",
+        "selected_option",
+        "status",
+        "target_id",
+        "target_name",
+        "text"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pbibrain.local/devcenter/contracts/http/proposals.reply.json",
+  "title": "POST /api/devcenter/proposals: reply (section 12, UC2)",
+  "type": "object",
+  "properties": {
+    "revision": {
+      "$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/revision"
+    },
+    "proposal": {
+      "$ref": "https://pbibrain.local/devcenter/contracts/agent.json#/$defs/proposal"
+    },
+    "replaced_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "proposal",
+    "replaced_ids",
+    "revision"
+  ],
+  "additionalProperties": false
+}

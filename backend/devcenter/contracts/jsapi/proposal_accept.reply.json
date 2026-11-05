@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pbibrain.local/devcenter/contracts/jsapi/proposal_accept.reply.json",
+  "title": "JS API proposal_accept: reply",
+  "type": "object",
+  "properties": {
+    "revision": {
+      "$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/revision"
+    },
+    "accepted_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "accepted_ids",
+    "revision"
+  ],
+  "additionalProperties": false
+}
