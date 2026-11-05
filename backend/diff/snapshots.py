@@ -111,11 +111,14 @@ def _bim_covered(old: dict[str, Any], new: dict[str, Any], diffs: list[dict[str,
     return canonical_json(result) == canonical_json(new)
 
 
-def _raw_coverage(before_root: Path, after_root: Path, changes: list[dict[str, Any]], diffs: list[dict[str, Any]], graph: dict[str, Any], objects: dict[str, Any]) -> list[dict[str, Any]]:
+def _raw_coverage(before_root: Path, after_root: Path, changes: list[dict[str, Any]], diffs: list[dict[str, Any]], graph: dict[str, Any], objects: dict[str, Any],
+                  proven_sources: frozenset[str] = frozenset()) -> list[dict[str, Any]]:
     """Narrow verified TMDL scalar replacements. Anything else fails closed.
 
     TOM proves model semantics; this independent layer accounts for comments,
     unrecognized text, control files and formatting that TOM could discard.
+    A file in proven_sources has a merge guard proof (canonical TMDL and full
+    TOM tree compare, or the planned report content; ADR 0001).
     """
     import re
     graph_nodes = {item["id"]: item for item in graph.get("nodes", [])}
@@ -134,6 +137,8 @@ def _raw_coverage(before_root: Path, after_root: Path, changes: list[dict[str, A
     unknown = []
     for change in changes:
         relative = change["source_file"]
+        if relative in proven_sources:
+            continue
         if change["classification"] == "SOURCE_CHANGED" and Path(relative).suffix.casefold() in {".json", ".pbir"}:
             import json
             old = json.loads(safe_path(before_root, relative).read_text(encoding="utf-8-sig"))
@@ -217,7 +222,8 @@ def _raw_coverage(before_root: Path, after_root: Path, changes: list[dict[str, A
 
 
 def compare_snapshots(before: Snapshot | Mapping[str, Any], after: Snapshot | Mapping[str, Any], *,
-                      before_root: str | Path | None = None, after_root: str | Path | None = None) -> dict[str, Any]:
+                      before_root: str | Path | None = None, after_root: str | Path | None = None,
+                      proven_sources: Any = ()) -> dict[str, Any]:
     a = before.to_dict() if isinstance(before, Snapshot) else dict(before)
     b = after.to_dict() if isinstance(after, Snapshot) else dict(after)
     objects_a = a.get("analysis", {}).get("objects", {})
@@ -227,7 +233,8 @@ def compare_snapshots(before: Snapshot | Mapping[str, Any], after: Snapshot | Ma
         differences.append({"object_id": "$identity", "object_type": "IDENTITY", "property_path": "identity_manifest", "previous_value": a.get("identity_manifest"),
                             "new_value": b.get("identity_manifest"), "classification": "IDENTITY_CHANGED", "confidence": "EXACT"})
     source_changes = verify_source_coverage(a["source_manifest"], b["source_manifest"])
-    unknown = _raw_coverage(Path(before_root), Path(after_root), source_changes, differences, b.get("analysis", {}).get("graph", {}), objects_b) if before_root and after_root else (
+    unknown = _raw_coverage(Path(before_root), Path(after_root), source_changes, differences, b.get("analysis", {}).get("graph", {}), objects_b,
+                            frozenset(proven_sources)) if before_root and after_root else (
         [{**item, "classification": "UNKNOWN_DIFFERENCE", "reason": "Raw coverage verification not run"} for item in source_changes])
     if not objects_a or not objects_b or not a.get("analysis", {}).get("tabular_metadata") or not b.get("analysis", {}).get("tabular_metadata"):
         unknown.append({"classification": "UNKNOWN_DIFFERENCE", "reason": "Authoritative metadata missing"})

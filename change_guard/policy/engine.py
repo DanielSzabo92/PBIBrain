@@ -13,10 +13,21 @@ class Policy:
     risk_overrides: str = "{}"
     retry_limit: int = 3
     retain_results: bool = False
+    # "standard" is the agent profile. "merge" is the app write profile (technical design section 8).
+    profile: str = "standard"
 
     @property
     def policy_hash(self) -> str:
-        return content_hash({"version": self.version, "risk_overrides": self.risk_overrides, "retry_limit": self.retry_limit, "retain_results": self.retain_results})
+        value = {"version": self.version, "risk_overrides": self.risk_overrides, "retry_limit": self.retry_limit, "retain_results": self.retain_results}
+        if self.profile != "standard":
+            # The standard profile keeps its old hash, so old operations stay valid.
+            value["profile"] = self.profile
+        return content_hash(value)
+
+
+def merge_policy(**values: Any) -> Policy:
+    """The policy for an app write of a merge Change Plan."""
+    return Policy(version="guard-policy-merge-1", profile="merge", **values)
 
 
 def classify_risk(contract: ChangeContract, policy: Policy) -> str:
@@ -41,8 +52,47 @@ def classify_risk(contract: ChangeContract, policy: Policy) -> str:
     return max(levels, key=ranks.get)
 
 
+MERGE_CRITICAL_TYPES = {"ROLE", "PARTITION", "TABLE_PERMISSION"}
+
+
+def _evaluate_merge(contract: ChangeContract, evidence: Mapping[str, Any], policy: Policy) -> dict[str, Any]:
+    """Merge profile: no runtime value test. A failed scope, source, security, or static gate always blocks.
+
+    HIGH and CRITICAL risk, and items that the app did not check, need the explicit user approval.
+    """
+    payload = contract.to_dict()
+    ranks = {"LOW": 0, "MEDIUM": 1, "HIGH": 2, "CRITICAL": 3}
+    risk = classify_risk(contract, policy)
+    if any(item["object_type"] in MERGE_CRITICAL_TYPES for item in payload["targets"]):
+        risk = "CRITICAL"
+    reasons, approval_reasons = [], []
+    if not isinstance(payload.get("merge"), dict):
+        reasons.append({"code": "PROFILE_MISMATCH", "gate": "policy", "status": "FAILED"})
+    gates = [("security", "SECURITY_VIOLATION"), ("scope", "UNAUTHORIZED_MUTATION"), ("baseline", "BASELINE_MISMATCH"),
+             ("source", "SOURCE_INTEGRITY_FAILURE"), ("static", "STRUCTURAL_VALIDATION_FAILURE")]
+    for name, reason in gates:
+        status = evidence.get(name, {}).get("status", "NOT_RUN")
+        if status != "PASSED":
+            # In the merge profile a gate that did not run is a failure, not an open question.
+            reasons.append({"code": reason, "gate": name, "status": status if status in {"FAILED", "REJECTED_SCOPE"} else "FAILED"})
+    if ranks[risk] >= ranks["HIGH"]:
+        approval_reasons.append("HIGH_RISK_PROMOTION")
+    if (payload.get("merge") or {}).get("unchecked_items"):
+        approval_reasons.append("UNCHECKED_IMPACT")
+    approved = set(evidence.get("valid_approval_operations", []))
+    missing_approval = [item for item in approval_reasons if item not in approved]
+    decision = "REJECT" if reasons else "APPROVAL_REQUIRED" if missing_approval else "ALLOW"
+    runtime = evidence.get("runtime", {})
+    return {"decision": decision, "scope_compliant": evidence.get("scope", {}).get("status") == "PASSED", "static_valid": evidence.get("static", {}).get("status") == "PASSED",
+            "runtime_valid": False, "regression_status": runtime.get("status", "NOT_RUN"), "impact_coverage": evidence.get("impact", {}).get("completeness", {}).get("status", "UNKNOWN"),
+            "risk": risk, "blocking_reasons": reasons, "approval_reasons": missing_approval, "eligible_for_promotion": decision == "ALLOW",
+            "policy_version": policy.version, "policy_hash": policy.policy_hash, "profile": policy.profile}
+
+
 def evaluate_candidate(contract: ChangeContract, evidence: Mapping[str, Any], policy: Policy) -> dict[str, Any]:
     """Blocking precedence is independent of human/agent explanations."""
+    if policy.profile == "merge":
+        return _evaluate_merge(contract, evidence, policy)
     payload = contract.to_dict()
     risk = classify_risk(contract, policy)
     reasons, approval_reasons = [], []
