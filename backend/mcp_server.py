@@ -46,6 +46,30 @@ class BrainClient:
         except (HTTPError, URLError) as error:
             raise RuntimeError("Read-only Brain analysis failed") from error
 
+    def devcenter(self, method: str, path: str, query: dict[str, Any] | None, body: dict[str, Any] | None) -> dict[str, Any]:
+        """Send one agent tool request. Only the routes of the agent tool allowlist are permitted."""
+
+        from backend.devcenter.agent_tools import TOOL_ROUTES
+
+        if (method, path) not in set(TOOL_ROUTES.values()):
+            raise ValueError("The route is not in the agent tool allowlist")
+        url = f"{self.url}/api/devcenter/{path}" + (f"?{urlencode(query)}" if query else "")
+        data = json.dumps(body).encode("utf-8") if body is not None else None
+        request = Request(url, data=data, headers={"Content-Type": "application/json"} if data else {}, method=method)
+        try:
+            with self.opener.open(request, timeout=60) as response:
+                return json.load(response)
+        except HTTPError as exc:
+            try:
+                reply = json.loads(exc.read())
+            except (ValueError, AttributeError):
+                reply = None
+            if isinstance(reply, dict) and isinstance(reply.get("error"), dict):
+                return reply
+            return {"error": {"code": "action_not_allowed", "message": f"The app gave HTTP status {exc.code}.", "details": {}}}
+        except URLError as exc:
+            raise RuntimeError("PBIBrain is unavailable. Start the app, then retry.") from exc
+
 
 def create_server(url: str = "http://127.0.0.1:8000", *, session_id: str | None = None) -> Any:
     try:
@@ -101,6 +125,9 @@ def create_server(url: str = "http://127.0.0.1:8000", *, session_id: str | None 
         """Compare two previously prepared immutable snapshot IDs. No paths/writes."""
         return client.post("compare", {"before": before, "after": after})
 
+    from backend.devcenter.agent_tools import register as register_agent_tools
+
+    register_agent_tools(server, client.devcenter)  # Build step S10: the eight Development Center agent tools.
     return server
 
 

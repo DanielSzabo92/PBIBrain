@@ -19,6 +19,7 @@ from backend.devcenter.impact.offers import extract_offers
 from backend.devcenter.impact.removal import get_removal_preview
 from backend.devcenter.impact.wireframe import build_report_wireframe
 from backend.devcenter.plan import service as plan_service
+from backend.devcenter.session import proposals
 
 
 def _snapshot(devcenter: Any) -> dict[str, Any]:
@@ -80,19 +81,22 @@ def get_impact(devcenter: Any, query: Mapping[str, Sequence[str]]) -> dict[str, 
     """``GET impact`` (UC29): paged impact items with pre-paging total and facet breakdown."""
     document = _snapshot(devcenter)
     revision = document["revision"]
+    # S10, UC11: the agent proposals that the read adds to the accepted state.
+    mode = proposals.include_mode(_get_query_val(query, "include_proposals"))
+    document = proposals.with_proposals(document, mode)
 
     target_param = _get_query_val(query, "target") or "plan"
     single_row = None if target_param == "plan" else target_param
 
     # Cache check
-    cache_key = (revision, target_param)
+    cache_key = (revision, target_param, mode)
     cached = getattr(devcenter, "_cached_impact", None)
     if cached and cached.get("key") == cache_key:
         all_items = cached["items"]
         offers = cached["offers"]
         completeness = cached["completeness"]
     else:
-        plan = plan_service.build_plan(devcenter, document)
+        plan = plan_service.build_plan(devcenter, document, include_proposals=mode is not None)
         engine, target_objs, donor_objs = _get_engine(devcenter, document, plan=plan)
 
         all_items = engine.evaluate_all(single_row_key=single_row)

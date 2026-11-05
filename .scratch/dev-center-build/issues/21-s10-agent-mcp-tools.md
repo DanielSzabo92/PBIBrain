@@ -24,3 +24,26 @@ The goal, the code areas, and the acceptance tests are the design text below. Ea
   - UC10: `proposal_accept_all` accepts the ready proposals, skips a proposal on an unconfirmed marked row and one in conflict with a user choice (with reason codes), returns one revision, and writes one log entry for each proposal.
   - UC11: `include_proposals=ready` on `GET plan` and `GET impact` includes only the proposals that `proposal_accept_all` would accept.
   - UC12: `proposal_accept` replaces a user choice and logs before and after; on an unconfirmed marked row it returns `source_changed`.
+
+## Build record
+
+Built (build step S10, ticket 21):
+- `backend/devcenter/session/proposals.py`: agent proposals (six kinds), agent questions, blocked state (`source_changed`, `user_choice_conflict`), `include_proposals` overlay (`true` and `ready`), user decisions, and the `GET log` read with filters and paging.
+- `backend/devcenter/session/http_routes.py`: `POST proposals`, `POST questions` (kind proposal), `GET log` (UC8). One import line in `backend/devcenter/http_routes.py`.
+- `backend/devcenter/session/proposal_jsapi_methods.py`: JS API `proposal_accept` (UC12), `proposal_reject`, `proposal_accept_all` (UC10), `question_answer`. Removed from `HOST_PENDING`.
+- `backend/devcenter/agent_tools.py`: the eight MCP tools and the fixed endpoint allowlist `TOOL_ROUTES`. `backend/mcp_server.py` registers them and refuses a route outside the allowlist.
+- `GET session` (UC9): each field of each open proposal and question, the blocked state, and `selected_option` and `answered_utc` of answered questions.
+- `GET plan`, `GET impact`, `POST plan-validate`: `include_proposals` (`true`, `false`, `ready`, UC11). The HTTP default stays accepted state only; the MCP tools send `true` by default. Apply and the session plan cache use accepted state only.
+- `DevCenterSessions._change` and `_commit` take optional log entries (author, MCP client name, reason, proposal ID); one revision can write many log entries.
+- Contracts: `agent.json`, `http/proposals.*`, `http/questions.*`, `http/log.reply.json`, `jsapi/{proposal_accept, proposal_reject, proposal_accept_all, question_answer}.{request,reply}.json`, and the proposal and question items of `http/session.reply.json`.
+
+Tests: `tests/test_devcenter_agent_tools.py` (18 tests, all acceptance items of S10, UC8 to UC12). `tests/test_mcp_adapter.py` now expects the eight new tools.
+
+Commands and counts:
+- `python -m unittest tests.test_devcenter_agent_tools tests.test_mcp_adapter tests.test_devcenter_ui_contract tests.test_devcenter_http_routes tests.test_devcenter_route_list tests.test_devcenter_plan tests.test_devcenter_impact tests.test_devcenter_session_store tests.test_devcenter_naming`: 144 tests, OK.
+- Full suite and e2e: not run by the worker (the orchestrator runs them).
+
+Open items:
+- `plan_validate` `full` mode gives the same checks as `quick` (the TMDL round trip needs S7 and S9 wiring).
+- `GET compare-rows` still gives `proposal_status: null` for each row.
+- No kit gates: this step has no screen.

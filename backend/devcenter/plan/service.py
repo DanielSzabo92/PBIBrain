@@ -16,6 +16,7 @@ from backend.devcenter.errors import DevCenterError
 from backend.devcenter.naming import service as naming_service
 from backend.devcenter.naming.rules import is_active
 from backend.devcenter.plan.compiler import PlanInput, compile_plan, plan_hash
+from backend.devcenter.session import proposals
 
 
 def _detect_compatibility_level(devcenter: Any, document: Mapping[str, Any], target_model: str | None) -> int | None:
@@ -99,14 +100,15 @@ def _one(query: Mapping[str, Sequence[str]], name: str) -> str | None:
 
 
 def get_plan(devcenter: Any, query: Mapping[str, Sequence[str]]) -> dict[str, Any]:
-    """``GET plan``: plan status, summary, steps, operations, blocking items, warnings, plan_hash."""
-    proposals_val = _one(query, "include_proposals")
-    include_proposals = False
-    if proposals_val is not None:
-        include_proposals = proposals_val.lower() in {"true", "1", "ready"}
+    """``GET plan``: plan status, summary, steps, operations, blocking items, warnings, plan_hash.
 
+    ``include_proposals`` (S10, UC11): ``true`` adds the open agent proposals, ``ready``
+    adds only the proposals that ``proposal_accept_all`` accepts. The default is the
+    accepted state only.
+    """
+    mode = proposals.include_mode(_one(query, "include_proposals"))
     document = _snapshot(devcenter)
-    plan = build_plan(devcenter, document, include_proposals=include_proposals)
+    plan = build_plan(devcenter, proposals.with_proposals(document, mode), include_proposals=mode is not None)
     return {
         "revision": document["revision"],
         **plan,
@@ -119,8 +121,9 @@ def validate_plan(devcenter: Any, payload: Mapping[str, Any]) -> dict[str, Any]:
     if mode not in {"quick", "full"}:
         raise DevCenterError("invalid_payload", "The mode must be quick or full.", {"reason": "invalid_mode", "field": "mode"})
 
+    include = proposals.include_mode(payload.get("include_proposals"))
     document = _snapshot(devcenter)
-    plan = build_plan(devcenter, document)
+    plan = build_plan(devcenter, proposals.with_proposals(document, include), include_proposals=include is not None)
 
     return {
         "revision": document["revision"],

@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pbibrain.local/devcenter/contracts/http/questions.request.json",
+  "title": "POST /api/devcenter/questions: request (section 12, 14.3)",
+  "type": "object",
+  "properties": {
+    "target": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1000
+    },
+    "target_name": {
+      "type": "string",
+      "maxLength": 500
+    },
+    "text": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 2000
+    },
+    "options": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 5,
+      "items": {
+        "$ref": "https://pbibrain.local/devcenter/contracts/agent.json#/$defs/option"
+      }
+    },
+    "recommended_option": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 50
+    },
+    "reason": {
+      "type": "string",
+      "maxLength": 2000
+    },
+    "base_revision": {
+      "$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/base_revision"
+    },
+    "mcp_client": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 100
+    }
+  },
+  "required": [
+    "base_revision",
+    "options",
+    "reason",
+    "recommended_option",
+    "target",
+    "text"
+  ],
+  "additionalProperties": false
+}

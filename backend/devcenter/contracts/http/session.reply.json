@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://pbibrain.local/devcenter/contracts/http/session.reply.json",
-  "title": "GET /api/devcenter/session (section 14.1, UC2)",
+  "title": "GET /api/devcenter/session (section 14.1, UC2, UC9)",
   "type": "object",
   "properties": {
     "revision": {
@@ -123,13 +123,13 @@
         "open": {
           "type": "array",
           "items": {
-            "type": "object"
+            "$ref": "https://pbibrain.local/devcenter/contracts/agent.json#/$defs/question"
           }
         },
         "answered": {
           "type": "array",
           "items": {
-            "type": "object"
+            "$ref": "https://pbibrain.local/devcenter/contracts/agent.json#/$defs/question"
           }
         }
       },
@@ -145,7 +145,7 @@
         "open": {
           "type": "array",
           "items": {
-            "type": "object"
+            "$ref": "https://pbibrain.local/devcenter/contracts/agent.json#/$defs/proposal"
           }
         }
       },

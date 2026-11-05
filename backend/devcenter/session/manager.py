@@ -15,6 +15,7 @@ import uuid
 from typing import Any, Callable, Mapping
 
 from backend.devcenter.errors import DevCenterError, not_allowed
+from backend.devcenter.session.proposals import session_lists
 from backend.devcenter.session.secrets import check_secrets
 from backend.devcenter.session.store import (
     LOCK_FREE,
@@ -271,7 +272,6 @@ class DevCenterSessions:
             marks = document["source_marks"]
             by_kind = {kind: sum(1 for mark in marks if mark["mark"] == kind) for kind in MARK_KINDS}
             sources = [self._source_view(document, item) for item in document["sources"]]
-            questions = document["questions"]
             plan_status = self._cached_plan["status"] if self._cached_plan is not None else None
             plan_state = "ready" if self._cached_plan is not None else self._plan_state
             return {
@@ -295,11 +295,8 @@ class DevCenterSessions:
                     "marks": len(marks),
                     "marks_by_kind": by_kind,
                 },
-                "questions": {
-                    "open": [item for item in questions if item.get("status") != "answered"],
-                    "answered": [item for item in questions if item.get("status") == "answered"],
-                },
-                "proposals": {"open": [item for item in document["proposals"] if item.get("status") == "proposed"]},
+                # UC9: each field of each open proposal and question, with the blocked state.
+                **session_lists(document),
             }
 
     @staticmethod
@@ -320,8 +317,14 @@ class DevCenterSessions:
     # Change frame ------------------------------------------------------------
 
     def _change(self, request: Mapping[str, Any], action: str, target: Any,
-                mutate: Callable[[dict[str, Any]], tuple[Any, Any]]) -> dict[str, Any]:
-        """Run one state change: check the revision, change a copy, save it, then log it."""
+                mutate: Callable[[dict[str, Any]], tuple[Any, Any]], *,
+                log: Callable[[], list[Mapping[str, Any]]] | None = None) -> dict[str, Any]:
+        """Run one state change: check the revision, change a copy, save it, then log it.
+
+        ``log`` gives the log entries after ``mutate`` ran (build step S10). Each
+        entry replaces fields of the default entry. With no ``log``, the change
+        writes one user entry.
+        """
 
         current = self._require_open()
         require_writable(current.read_only)
@@ -330,14 +333,15 @@ class DevCenterSessions:
             raise DevCenterError("stale_revision", "The session changed. Load it again.", {"revision": revision})
         draft = copy.deepcopy(current.document)
         before, after = mutate(draft)
-        return self._commit(current, draft, action, target, before, after)
+        return self._commit(current, draft, action, target, before, after, log() if log is not None else None)
 
-    def _commit(self, current: _OpenSession, draft: dict[str, Any], action: str, target: Any, before: Any, after: Any) -> dict[str, Any]:
+    def _commit(self, current: _OpenSession, draft: dict[str, Any], action: str, target: Any, before: Any, after: Any,
+                log: list[Mapping[str, Any]] | None = None) -> dict[str, Any]:
         draft["revision"] = current.document["revision"] + 1
         draft["updated_at"] = utc_now()
         self._cached_plan = None
         self._plan_state = "computing"
-        entry = {
+        default = {
             "time": draft["updated_at"],
             "author": "user",
             "mcp_client": None,
@@ -349,11 +353,14 @@ class DevCenterSessions:
             "proposal_id": None,
             "revision": draft["revision"],
         }
-        check_secrets(entry)
+        entries = [{**default, **dict(item)} for item in log] if log is not None else [default]
+        for entry in entries:
+            check_secrets(entry)
         current.files.save(draft)
         current.document = draft
         try:
-            current.files.append_log(entry)
+            for entry in entries:
+                current.files.append_log(entry)
         except OSError:
             # The state is saved. A lost log line must not undo it.
             pass

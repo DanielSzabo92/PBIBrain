@@ -292,6 +292,23 @@ class SessionFiles:
             handle.flush()
             os.fsync(handle.fileno())
 
+    def read_log(self) -> list[dict[str, Any]]:
+        """Give all log entries, oldest first. Skip a line that is not a JSON object (for example a cut last line)."""
+
+        try:
+            raw = self.log_path.read_bytes()
+        except FileNotFoundError:
+            return []
+        entries = []
+        for line in raw.decode("utf-8", errors="replace").splitlines():
+            try:
+                value = json.loads(line)
+            except ValueError:
+                continue
+            if isinstance(value, dict):
+                entries.append(value)
+        return entries
+
 
 def sessions_dir(base: Path) -> Path:
     return base / SESSIONS_FOLDER
