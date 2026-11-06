@@ -106,7 +106,7 @@
 .dc-wire-page { width: 100%; justify-content: flex-start; }
 .dc-wire-page[aria-current="page"] { background: var(--surface-3); }
 .dc-wire-canvas { position: relative; flex: 0 0 auto; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface-2); overflow: hidden; }
-.dc-wire-box { position: absolute; display: flex; border-radius: 4px; background: var(--surface); overflow: hidden; }
+.dc-wire-box { position: absolute; display: flex; border-radius: var(--r-xs); background: var(--surface); overflow: hidden; }
 .dc-wire-box[data-status="removed"] { border: 1px solid var(--impact-removed); background: repeating-linear-gradient(45deg, var(--impact-removed-tint) 0 6px, var(--surface) 6px 12px); }
 .dc-wire-box[data-status="removed"] .dc-wire-title { text-decoration: line-through; }
 .dc-wire-box[data-status="breaks"] { border: 3px solid var(--impact-breaks); }

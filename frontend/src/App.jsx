@@ -36,16 +36,6 @@ const VIEWS = [
   ["config", "Settings"],
 ];
 
-const VIEW_HINTS = {
-  overview: "Project health at a glance",
-  search: "Names, formulas and descriptions",
-  graph: "How objects depend on each other",
-  inspector: "One object, fully explained",
-  review: "Confirm what PBIBrain inferred",
-  devcenter: "Merge many models into one target",
-  config: "Appearance, sources and agent context",
-};
-
 const EDGE_COLORS = {
   DEPENDS_ON: "#8cb9ff",
   REFERENCES: "#83d7bd",
@@ -664,7 +654,7 @@ function ViewLoading() {
 }
 
 function DesktopConnecting({ error, onRetry }) {
-  return <main className="onboarding-shell"><Card className="onboarding-card connecting-card" aria-live="polite"><BrandMark size={44} className="onboarding-mark" /><p className="eyebrow">PBIBrain</p><h1>{error ? "Desktop connection needed" : "Opening PBIBrain"}</h1><p className="onboarding-copy">{error || "Preparing your private project workspace."}</p>{error ? <Button onClick={onRetry}><RefreshCw />Retry connection</Button> : <span className="connecting-indicator"><i /><i /><i /><span>Connecting</span></span>}</Card></main>;
+  return <main className="onboarding-shell"><Card className="onboarding-card connecting-card" aria-live="polite"><BrandMark size={44} className="onboarding-mark" /><h1>{error ? "Desktop connection needed" : "Opening PBIBrain"}</h1><p className="onboarding-copy">{error || "Preparing your private project workspace."}</p>{error ? <Button onClick={onRetry}><RefreshCw />Retry connection</Button> : <span className="connecting-indicator"><i /><i /><i /><span>Connecting</span></span>}</Card></main>;
 }
 
 function DesktopOnboarding({ api, error, onOpen }) {
@@ -692,7 +682,6 @@ function DesktopOnboarding({ api, error, onOpen }) {
   return <main className="onboarding-shell">
     <Card className="onboarding-card" aria-labelledby="onboarding-title">
       <BrandMark size={44} className="onboarding-mark" />
-      <p className="eyebrow">PBIBrain</p>
       <h1 id="onboarding-title">Start a project brain</h1>
       <p className="onboarding-copy">Choose one folder. PBIBrain keeps the project, scan results, and agent-ready context together.</p>
       <form onSubmit={open} className="onboarding-form">
@@ -729,10 +718,10 @@ function DesktopProjectView({ api, project, overview, config, transport, scannin
     finally { setSourceWorking(false); }
   };
   return <>
-    <PageHeading kicker="Desktop project" title={project.name} description="Everything PBIBrain creates stays with this project folder." action={<Button variant="outline" onClick={onChange} disabled={scanning}><FolderOpen />Change project</Button>} />
+    <PageHeading title={project.name} description="Everything PBIBrain creates stays with this project folder." action={<Button variant="outline" onClick={onChange} disabled={scanning}><FolderOpen />Change project</Button>} />
     <Card className="panel desktop-project-panel">
-      <div className="project-location"><span className="icon-tile" aria-hidden="true"><FolderOpen /></span><div><p className="eyebrow">Project folder</p><strong title={project.folder}>{project.folder}</strong></div></div>
-      <div className="desktop-sources"><div className="panel-heading"><div><p className="eyebrow">Power BI inputs</p><h3>Source files</h3></div><Button variant="outline" onClick={addSources} disabled={sourceWorking || scanning}><Plus />{sourceWorking ? "Adding…" : "Add source files"}</Button></div>{sources.length ? <div className="source-list">{sources.map((source) => <div className="desktop-source-row" key={source}><FileText className="source-icon" aria-hidden="true" /><span title={source}>{source}</span><Button variant="ghost" size="icon-sm" onClick={() => removeSource(source)} disabled={sourceWorking || scanning} aria-label={`Remove ${source}`}><X /></Button></div>)}</div> : <EmptyState icon={<FileText />} title="No source files yet" detail="Add PBIP projects or model JSON files to scan them with this project." />}{sourceError ? <p className="onboarding-error" role="alert">{sourceError}</p> : null}</div>
+      <div className="project-location"><div><p className="field-label">Project folder</p><strong title={project.folder}>{project.folder}</strong></div></div>
+      <div className="desktop-sources"><div className="panel-heading"><div><h2>Power BI source files</h2></div><Button variant="outline" onClick={addSources} disabled={sourceWorking || scanning}><Plus />{sourceWorking ? "Adding…" : "Add source files"}</Button></div>{sources.length ? <div className="source-list">{sources.map((source) => <div className="desktop-source-row" key={source}><FileText className="source-icon" aria-hidden="true" /><span title={source}>{source}</span><Button variant="ghost" size="icon-sm" onClick={() => removeSource(source)} disabled={sourceWorking || scanning} aria-label={`Remove ${source}`}><X /></Button></div>)}</div> : <EmptyState icon={<FileText />} title="No source files yet" detail="Add PBIP projects or model JSON files to scan them with this project." />}{sourceError ? <p className="onboarding-error" role="alert">{sourceError}</p> : null}</div>
       <div className="config-actions" data-ui-actions=""><Button onClick={onScan} disabled={scanning}><ScanLine />{scanning ? "Scanning…" : "Scan project"}</Button></div>
     </Card>
   </>;
@@ -763,26 +752,33 @@ function Overview({ overview, config, counts, loading, projectName, onView, onSe
   const issues = overview.validation_issues || [];
   const pending = counts.review;
   const ValidationIcon = validationState === "valid" ? ShieldCheck : ShieldAlert;
-  const validation = <Card className={`overview-card validation-card tone-${validationState}`} role={validationState === "invalid" ? "alert" : "status"}>
-    <div className="overview-card-head"><span className="icon-tile" aria-hidden="true"><ValidationIcon /></span><h3>{validationLabel}</h3></div>
-    <p className="muted-copy">{validationState === "not_run" ? "Scan sources to check graph validity." : validationState === "invalid" ? "Sources were extracted, but graph issues need attention." : "Graph validity is checked separately from source extraction and review decisions."}</p>
-    {issues.length ? <details className="validation-issues"><summary>View validation issues ({issues.length})</summary><ul>{issues.map((item, index) => <li key={`${item.code}-${index}`}><span className={`severity severity-${String(item.severity).toLowerCase()}`}>{item.severity}</span><span className="issue-message">{item.message}</span>{item.object_id || item.from_id || item.to_id ? <Button variant="link" size="sm" onClick={() => onSelect(item.object_id || item.from_id || item.to_id, "inspector")}>Inspect affected object</Button> : null}</li>)}</ul></details> : null}
-  </Card>;
-  const sourcesCard = <Card className="overview-card project-scan-bar">
-    <div className="overview-card-head"><span className="icon-tile" aria-hidden="true"><Database /></span><div><strong>{scanning ? "Scanning sources…" : hasObjects ? "Sources indexed" : "Sources"}</strong><span className="scan-meta">{sourceCount === undefined ? "Source settings unavailable" : `${sourceCount} ${sourceCount === 1 ? "source" : "sources"}`}{hasObjects ? ` · ${lastScan ? `Last scan ${formatDate(lastScan)}` : "Last scan time unavailable"}` : ""}</span></div></div>
-    <div className="project-scan-actions" data-ui-actions=""><Button variant="ghost" size="sm" onClick={onSources}>Manage sources</Button>{hasObjects ? <Button variant="outline" size="sm" onClick={onScan} disabled={scanning || !hasSources}><RefreshCw className={scanning ? "spin" : ""} />{scanning ? "Scanning…" : scanLabel}</Button> : null}</div>
-  </Card>;
+  const validationTone = { valid: "ok", invalid: "bad", warning: "warn" }[validationState] || "idle";
+  const validation = <div className={`status-row tone-${validationTone}`} role={validationState === "invalid" ? "alert" : "status"}>
+    <ValidationIcon className="status-icon" aria-hidden="true" />
+    <div className="status-copy">
+      <h2>{validationLabel}</h2>
+      <p>{validationState === "not_run" ? "Scan sources to check graph validity." : validationState === "invalid" ? "Sources were extracted, but graph issues need attention." : "Graph validity is checked separately from source extraction and review decisions."}</p>
+      {issues.length ? <details className="validation-issues"><summary>View validation issues ({issues.length})</summary><ul>{issues.map((item, index) => <li key={`${item.code}-${index}`}><span className={`severity severity-${String(item.severity).toLowerCase()}`}>{item.severity}</span><span className="issue-message">{item.message}</span>{item.object_id || item.from_id || item.to_id ? <Button variant="link" size="sm" onClick={() => onSelect(item.object_id || item.from_id || item.to_id, "inspector")}>Inspect affected object</Button> : null}</li>)}</ul></details> : null}
+    </div>
+  </div>;
+  const sourcesRow = <div className="status-row tone-idle">
+    <Database className="status-icon" aria-hidden="true" />
+    <div className="status-copy">
+      <h2>{scanning ? "Scanning sources…" : hasObjects ? "Sources indexed" : "Sources"}</h2>
+      <p className="scan-meta">{sourceCount === undefined ? "Source settings unavailable" : `${sourceCount} ${sourceCount === 1 ? "source" : "sources"}`}{hasObjects ? ` · ${lastScan ? `Last scan ${formatDate(lastScan)}` : "Last scan time unavailable"}` : ""}</p>
+    </div>
+    <div className="status-actions" data-ui-actions=""><Button variant="ghost" size="sm" onClick={onSources}>Manage sources</Button>{hasObjects ? <Button variant="ghost" size="sm" onClick={onSummary}>Export agent context</Button> : null}{hasObjects ? <Button variant="outline" size="sm" onClick={onScan} disabled={scanning || !hasSources}><RefreshCw className={scanning ? "spin" : ""} />{scanning ? "Scanning…" : scanLabel}</Button> : null}</div>
+  </div>;
+  const facts = [["model", "models", counts.models], ["report", "reports", counts.reports], ["object", "objects", counts.objects], ["relationship", "relationships", counts.edges]];
   return <div className="page page-overview" data-ui-stack="">
     <header className="overview-hero">
-      <p className="eyebrow">Project overview</p>
       <h1>{projectName}</h1>
-      <p className="hero-meta">{hasObjects ? <>{counts.objects.toLocaleString()} objects indexed{lastScan ? <> · last scan {formatDate(lastScan)}</> : null}</> : "Connect your Power BI sources to build the project brain."}</p>
+      {hasObjects ? <dl className="project-counts" aria-label="Project counts">{facts.map(([one, many, count]) => <div key={many}><dd>{count.toLocaleString()}</dd><dt>{count === 1 ? one : many}</dt></div>)}{lastScan ? <div><dt>last scan</dt><dd className="fact-date">{formatDate(lastScan)}</dd></div> : null}</dl> : <p className="hero-meta">Connect your Power BI sources to build the project brain.</p>}
     </header>
-    {loading && !hasObjects ? <div className="overview-loading"><div className="skeleton skeleton-search" /><div className="skeleton-row">{[0, 1, 2, 3].map((index) => <div className="skeleton skeleton-stat" key={index} />)}</div><p role="status" className="sr-only">{scanning ? "Scanning sources…" : "Loading project…"}</p></div> : !hasObjects ?
+    {loading && !hasObjects ? <div className="overview-loading"><div className="skeleton skeleton-search" /><div className="skeleton skeleton-panel" /><p role="status" className="sr-only">{scanning ? "Scanning sources…" : "Loading project…"}</p></div> : !hasObjects ?
       <div className="overview-grid">
-        <Card className="project-start">
-          <span className="icon-tile icon-tile-lg" aria-hidden="true">{hasSources ? <ScanLine /> : <Plus />}</span>
-          <h3>{hasSources ? "Ready for the first scan" : "Add your project sources"}</h3>
+        <Card className="project-start" role="region" aria-labelledby="project-start-title">
+          <h2 id="project-start-title">{hasSources ? "Ready for the first scan" : "Add your project sources"}</h2>
           <p>{hasSources ? "Scan your files to find models, reports, and their dependencies." : "Choose your PBIP project or exported model and report files."}</p>
           <ol className="start-steps" aria-label="Getting started">
             <li className={hasSources ? "done" : "current"}><span>{hasSources ? <Check aria-hidden="true" /> : "1"}</span>Add PBIP or model files</li>
@@ -791,33 +787,25 @@ function Overview({ overview, config, counts, loading, projectName, onView, onSe
           </ol>
           <Button size="lg" onClick={hasSources ? onScan : onSources} disabled={!config || scanning}>{hasSources ? <ScanLine /> : <Plus />}{hasSources ? scanLabel : "Add sources"}</Button>
         </Card>
-        <div className="overview-side">{validation}{sourcesCard}</div>
+        <Card className="status-panel" role="region" aria-label="Project status">{validation}{sourcesRow}</Card>
       </div> : <>
-        <Card className="project-search-card">
-          <Label htmlFor="project-search" className="project-search-label">Find an object</Label>
-          <form className="project-search-form" onSubmit={(event) => { event.preventDefault(); if (query.trim()) onSearch(query.trim()); }}>
-            <div className="command-input"><NavIcon name="search" size={18} /><Input type="search" id="project-search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Measure, table, column, or visual…" /><kbd aria-hidden="true">Enter</kbd></div>
-            <Button type="submit" aria-label="Search project" disabled={!query.trim()}>Search <ArrowRight aria-hidden="true" /></Button>
-          </form>
-        </Card>
-        <dl className="project-counts" aria-label="Project counts">
-          {[["Models", counts.models, Database], ["Reports", counts.reports, ChartColumn], ["Objects", counts.objects, Boxes], ["Relationships", counts.edges, Waypoints]].map(([label, count, Icon]) => <div key={label} className="stat-tile"><dt><Icon aria-hidden="true" />{label}</dt><dd data-ui-number="">{count.toLocaleString()}</dd></div>)}
-        </dl>
-        <div className="overview-grid">
-          <div className="overview-main">
-            <Card className={`project-review-card ${pending ? "has-pending" : ""}`}>
-              <div className="review-card-count" aria-hidden="true"><strong data-ui-number="">{pending}</strong><span>{pending === 1 ? "open item" : "open items"}</span></div>
-              <div className="review-card-copy"><h3>{validationState === "invalid" ? "Resolve graph issues before review" : pending ? "Ready for review" : "No pending reviews"}</h3><p>{pending ? "Check suggested meanings and resolve uncertain matches." : "All suggestions have been reviewed."}</p>{counts.warnings || counts.stale ? <p className="review-card-split"><span>{counts.candidates} suggestions</span>{counts.warnings ? <span>{counts.warnings} conflicts</span> : null}{counts.stale ? <span>{counts.stale} outdated decisions</span> : null}</p> : null}</div>
-              <Button variant={pending ? "default" : "outline"} onClick={onReview}>Open review queue <ArrowRight aria-hidden="true" /></Button>
-            </Card>
-            <div className="quick-actions" data-ui-actions="">
-              <Button variant="ghost" className="quick-action project-graph-link" onClick={() => onView("graph")}><span className="icon-tile" aria-hidden="true"><Waypoints /></span><span><strong>Explore relationships in the graph</strong><small>Trace lineage from model to visual</small></span><ArrowUpRight className="quick-arrow" aria-hidden="true" /></Button>
-              <Button variant="ghost" className="quick-action" onClick={() => onView("inspector")}><span className="icon-tile" aria-hidden="true"><NavIcon name="inspector" /></span><span><strong>Browse measures</strong><small>Formulas, dependencies and usage</small></span><ArrowUpRight className="quick-arrow" aria-hidden="true" /></Button>
-              <Button variant="ghost" className="quick-action" onClick={onSummary}><span className="icon-tile" aria-hidden="true"><Sparkles /></span><span><strong>Export agent context</strong><small>One Markdown file per model</small></span><ArrowUpRight className="quick-arrow" aria-hidden="true" /></Button>
+        <form className="project-search-form" role="search" onSubmit={(event) => { event.preventDefault(); if (query.trim()) onSearch(query.trim()); }}>
+          <Label htmlFor="project-search" className="sr-only">Find an object</Label>
+          <div className="command-input"><NavIcon name="search" size={16} /><Input type="search" id="project-search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Find an object: measure, table, column, or visual" /><kbd aria-hidden="true">Enter</kbd></div>
+          <Button type="submit" variant="outline" aria-label="Search project" disabled={!query.trim()}>Search</Button>
+        </form>
+        <Card className="status-panel" role="region" aria-label="Project status">
+          <div className={`status-row ${pending ? "tone-brand" : "tone-ok"}`}>
+            <span className="status-count" aria-hidden="true" data-ui-number="">{pending}</span>
+            <div className="status-copy">
+              <h2>{validationState === "invalid" ? "Resolve graph issues before review" : pending ? "Ready for review" : "No pending reviews"}</h2>
+              <p>{pending ? <><span className="sr-only">{pending} {pending === 1 ? "open item" : "open items"}. </span>Check suggested meanings and resolve uncertain matches.</> : "All suggestions have been reviewed."}{counts.warnings || counts.stale ? <span className="review-card-split"><span>{counts.candidates} suggestions</span>{counts.warnings ? <span>{counts.warnings} conflicts</span> : null}{counts.stale ? <span>{counts.stale} outdated decisions</span> : null}</span> : null}</p>
             </div>
+            <div className="status-actions"><Button variant={pending ? "default" : "outline"} size="sm" onClick={onReview}>Open review queue <ArrowRight aria-hidden="true" /></Button></div>
           </div>
-          <div className="overview-side">{validation}{sourcesCard}</div>
-        </div>
+          {validation}
+          {sourcesRow}
+        </Card>
       </>}
   </div>;
 }
@@ -987,7 +975,7 @@ function Inspector({ node, details, loading, error, snapshot, snapshotLoaded, sn
     <div className="object-workspace">
       <div className="object-main">
         <Card className="panel object-summary">
-          <h3 className="panel-title">Definition</h3>
+          <h2 className="panel-title">Definition</h2>
           {node.description ? <p className="description-copy">{formatValue(node.description)}</p> : null}
           {expression ? <ExpressionBlock expression={formatValue(expression)} /> : !node.description ? <p className="muted-copy">No description recorded.</p> : null}
           {fields.length ? <dl className="metadata-grid">{fields.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl> : null}
@@ -998,7 +986,7 @@ function Inspector({ node, details, loading, error, snapshot, snapshotLoaded, sn
         {observations.length ? <details className="object-metadata object-observed panel"><summary><span>Observed report usage</span><span className="summary-count">{observations.length}</span></summary>{observations.map((edge) => <div className="usage-row" key={edge.id}><span>{scopeName(edge.from_id === node.id ? edge.to_id : edge.from_id)}</span><strong>{formatValue(edge.properties?.count || edge.count || "observed")}</strong></div>)}<p className="footnote">Co-occurrence does not establish compatibility.</p></details> : null}
       </div>
       <Card className="panel object-lineage">
-        <h3 className="panel-title">Lineage</h3>
+        <h2 className="panel-title">Lineage</h2>
         <VisualBindings bindings={details?.visual_bindings} onSelect={(item) => onSelect(item.id, "inspector")} />
         <RelationshipGroup title="Used by" nodeId={node.id} edges={incoming.filter((edge) => usageTypes.has(edge.type))} nodes={relatedNodes} onSelect={onSelect} empty="No direct uses recorded." />
         <RelationshipGroup title="Dependencies" nodeId={node.id} edges={outgoing.filter((edge) => usageTypes.has(edge.type))} nodes={relatedNodes} onSelect={onSelect} empty="No direct dependencies recorded." />
@@ -1092,7 +1080,7 @@ function ReviewQueue({ session, onSession, snapshot, loaded, loading, error, onR
     <PageHeading title="Review queue" description="Confirm suggested meanings with the evidence behind each one." />
     {error && !loaded ? <Card className="panel" role="alert"><EmptyState icon={<TriangleAlert />} tone="bad" title="Review queue unavailable" detail={readableText(error)} action={<Button variant="outline" onClick={onRetry}><RefreshCw />Retry review queue</Button>} /></Card> : <>
     {error ? <Card className="panel" role="alert"><EmptyState icon={<TriangleAlert />} tone="bad" title="Review refresh failed" detail={`Showing last loaded reviews. ${readableText(error)}`} action={<Button variant="outline" onClick={onRetry}><RefreshCw />Retry review queue</Button>} /></Card> : null}
-    <div className="review-purpose"><span className="icon-tile" aria-hidden="true"><ShieldCheck /></span><p>Confirm the meanings PBIBrain inferred. Approval saves a trusted label for search and context; rejection excludes it. Your Power BI files stay unchanged.</p><span className="queue-count"><strong data-ui-number="">{loading ? "…" : filtered.length}</strong>{loading ? "Loading…" : " to review"}</span></div>
+    <div className="review-purpose"><p>Confirm the meanings PBIBrain inferred. Approval saves a trusted label for search and context; rejection excludes it. Your Power BI files stay unchanged.</p><span className="queue-count"><strong data-ui-number="">{loading ? "…" : filtered.length}</strong>{loading ? "Loading…" : " to review"}</span></div>
     <div className="queue-toolbar" data-ui-actions="">
       <Label className="select-field"><span>Issue</span><NativeSelect aria-label="Issue" value={issue} onChange={(event) => change({ issue: event.target.value })}><option value="ALL">All issues</option><option value="candidate">Suggestions</option><option value="conflict">Conflicts</option><option value="stale">Outdated decisions</option></NativeSelect></Label>
       <Label className="select-field"><span>Object</span><NativeSelect aria-label="Object" value={objectType} onChange={(event) => change({ objectType: event.target.value })}><option value="ALL">All types</option>{types.map((type) => <option key={type} value={type}>{typeLabel(type)}</option>)}</NativeSelect></Label>
