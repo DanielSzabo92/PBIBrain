@@ -393,7 +393,7 @@ html { scroll-padding-top: 12px; }
 .status-copy { min-width: 0; }
 .status-copy h2 { font-size: var(--fs-emphasis); font-weight: 600; line-height: 20px; }
 .status-copy p { margin-top: 2px; color: var(--text-2); font-size: var(--fs-body); }
-.status-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 4px; }
+.status-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: var(--space-2); }
 .review-card-split { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 4px; }
 .review-card-split span::before { content: ""; display: inline-block; width: 6px; height: 6px; margin-right: 6px; border-radius: 50%; background: var(--info); vertical-align: 1px; }
 .review-card-split span + span::before { background: var(--warn); }
@@ -441,7 +441,7 @@ html { scroll-padding-top: 12px; }
 .search-error { display: flex; align-items: center; gap: 10px; margin: 12px 16px 0; padding: 10px 12px; border: 1px solid color-mix(in srgb, var(--bad) 35%, transparent); border-radius: var(--r-md); background: var(--bad-soft); font-size: var(--fs-body); }
 .search-error > svg { width: 16px; height: 16px; color: var(--bad); }
 .search-error > span { flex: 1; }
-.search-results { display: flex; flex-direction: column; padding: 4px; }
+.search-results { display: flex; flex-direction: column; padding: var(--space-2); }
 /* Desktop list rows: one line per object (name, then scope), ~30 px, keyboard focus reads as selection. */
 .search-result {
   display: grid; grid-template-columns: 132px minmax(0, 1fr) auto 16px; align-items: center; gap: 12px; height: auto; min-height: 30px; padding: 3px 10px;

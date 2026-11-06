@@ -1,9 +1,15 @@
 {
   "fonts": [
+    "Segoe UI Variable Text",
+    "Segoe UI Variable",
+    "Segoe UI",
     "Inter Variable",
     "Inter",
     "JetBrains Mono Variable",
     "JetBrains Mono",
+    "Cascadia Code",
+    "Consolas",
+    "ui-monospace",
     "system-ui",
     "sans-serif",
     "monospace"
@@ -37,12 +43,14 @@
     {
       "selector": "h1",
       "sizes": [
+        20,
         24
       ]
     },
     {
       "selector": "h2",
       "sizes": [
+        14,
         16,
         20
       ]
@@ -213,6 +221,20 @@
         "control-inset"
       ],
       "reason": "Link-variant buttons render as inline text links with no box; the 8px inset applies to boxed buttons. Their hit height is held at >=24px."
+    },
+    {
+      "selector": ".app-menubar > .app-menubar-trigger, .app-statusbar > .statusbar-item",
+      "rules": [
+        "control-gap"
+      ],
+      "reason": "Desktop chrome: menu-bar titles and status-bar segments are contiguous strips (Windows/VS Code convention); each segment has its own hover fill and the status bar separates segments with 1px rules."
+    },
+    {
+      "selector": ".topbar-actions > .ui-button",
+      "rules": [
+        "control-inset"
+      ],
+      "reason": "Desktop view toolbar: 26px toolbar buttons are vertically centred in the 36px toolbar row (5px each side), like Fluent/VS Code command bars. Horizontal spacing still uses the 8px grid."
     }
   ]
 }

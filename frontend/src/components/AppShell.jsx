@@ -3,6 +3,7 @@ import { Menubar as MenubarPrimitive } from "radix-ui";
 import { Check, CircleCheck, Keyboard, Moon, Sun, TriangleAlert } from "lucide-react";
 import BrandMark from "./BrandMark";
 import { Dialog, DialogContent } from "./ui/dialog";
+import { Tooltip } from "./ui/tooltip";
 import { SHORTCUTS, displayKeys } from "../shortcuts";
 
 // Desktop shell parts: the menu bar (title row), the status bar, and the shortcut sheet.
@@ -97,8 +98,8 @@ export function StatusBar({ connection, projectName, counts, pending, onReview, 
       <span className="statusbar-item statusbar-scan">{lastScan}</span>
       <span className="statusbar-spacer" />
       {notice ? <span className={`statusbar-item toast ${noticeFailed ? "toast-error" : ""}`} role="status">{noticeFailed ? <TriangleAlert aria-hidden="true" /> : <CircleCheck aria-hidden="true" />}{notice}</span> : null}
-      <button type="button" className="statusbar-item statusbar-button" onClick={onShortcuts} aria-label="Keyboard shortcuts" title="Keyboard shortcuts (F1)"><Keyboard aria-hidden="true" /></button>
-      <button type="button" className="statusbar-item statusbar-button theme-toggle" onClick={onTheme} aria-label={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"} title={`${theme === "dark" ? "Light" : "Dark"} theme (Ctrl+Shift+L)`}>{theme === "dark" ? <Sun aria-hidden="true" /> : <Moon aria-hidden="true" />}</button>
+      <Tooltip content="Keyboard shortcuts (F1)"><button type="button" className="statusbar-item statusbar-button" onClick={onShortcuts} aria-label="Keyboard shortcuts"><Keyboard aria-hidden="true" /></button></Tooltip>
+      <Tooltip content={`${theme === "dark" ? "Light" : "Dark"} theme (Ctrl+Shift+L)`}><button type="button" className="statusbar-item statusbar-button theme-toggle" onClick={onTheme} aria-label={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}>{theme === "dark" ? <Sun aria-hidden="true" /> : <Moon aria-hidden="true" />}</button></Tooltip>
     </footer>
   );
 }
