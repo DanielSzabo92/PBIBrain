@@ -1141,7 +1141,7 @@ export default function CompareGrid({
           onMenuOpenChange={setBulkMenuOpen}
         />
       ) : (
-        <div className="dc-toolbar" role="toolbar" aria-label="Filters">
+        <div className="dc-toolbar" data-ui-actions="" role="toolbar" aria-label="Filters">
           <label className="dc-search" title="Search names (/)">
             <Search className="dc-search-icon" aria-hidden="true" />
             <input

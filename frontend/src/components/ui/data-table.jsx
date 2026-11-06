@@ -26,7 +26,7 @@ function DataTable({ caption, columns = [], rows = [], checked, onCheckedChange,
             {renderDetail ? <th scope="col" className="ui-table-tight"><span className="sr-only">Details</span></th> : null}
             {selectable ? <th scope="col" className="ui-table-tight"><span className="sr-only">Select</span></th> : null}
             {columns.map((column) => <th key={column.key} scope="col">{column.header}</th>)}
-            {renderActions ? <th scope="col" className="ui-table-actions">Actions</th> : null}
+            {renderActions ? <th scope="col" className="ui-table-actions" data-ui-actions="">Actions</th> : null}
           </tr>
         </thead>
         <tbody>
@@ -53,7 +53,7 @@ function DataTable({ caption, columns = [], rows = [], checked, onCheckedChange,
                     const content = column.render ? column.render(row) : row[column.key]
                     return column.rowHeader ? <th key={column.key} scope="row">{content}</th> : <td key={column.key}>{content}</td>
                   })}
-                  {renderActions ? <td className="ui-table-actions">{renderActions(row)}</td> : null}
+                  {renderActions ? <td className="ui-table-actions" data-ui-actions="">{renderActions(row)}</td> : null}
                 </tr>
                 {renderDetail ? (
                   <tr id={detailId} className="ui-table-detail" hidden={!expanded}>

@@ -1,12 +1,12 @@
 .guard-stack { display: grid; gap: 1rem; margin-top: 1rem; }
 .guard-fields { display: flex; flex-wrap: wrap; align-items: end; gap: .75rem; }
 .guard-fields label { display: grid; gap: .4rem; min-width: 12rem; flex: 1; }
-.guard-warning { border: 1px solid var(--border); border-left: 3px solid var(--primary); padding: .8rem; background: var(--muted-surface); }
+.guard-warning { border: 1px solid color-mix(in srgb, var(--warn) 35%, var(--line)); border-radius: var(--r-sm); padding: .8rem; background: var(--warn-tint); }
 .impact-flow { height: 24rem; min-height: 16rem; border: 1px solid var(--border); border-radius: var(--radius); background: var(--background); }
 .impact-flow .react-flow__node-default { color: var(--foreground); background: var(--card); border-color: var(--border); }
 .guard-records { list-style: none; padding: 0; display: grid; gap: .8rem; }
 .guard-records > li { border-bottom: 1px solid var(--border); padding-bottom: .8rem; }
-.guard-records span { display: block; color: var(--muted-foreground); font-size: .85rem; }
+.guard-records span { display: block; color: var(--muted-foreground); font-size: var(--fs-meta); }
 .guard-review { margin: auto; max-width: 84rem; padding: 2rem; }
 .guard-review .panel { padding: 1.25rem; min-width: 0; }
 .guard-review li { overflow-wrap: anywhere; }

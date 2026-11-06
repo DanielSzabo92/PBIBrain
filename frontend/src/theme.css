@@ -30,6 +30,21 @@
   --radius-md: calc(var(--radius) - 1px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
+  /* Tailwind text-* utilities map onto the app type scale below, so primitives and pages share it. */
+  --text-2xs: var(--fs-micro);
+  --text-2xs--line-height: 1.35;
+  --text-xs: var(--fs-meta);
+  --text-xs--line-height: 1.4;
+  --text-sm: var(--fs-body);
+  --text-sm--line-height: 1.45;
+  --text-base: var(--fs-emphasis);
+  --text-base--line-height: 1.5;
+  --text-lg: var(--fs-title);
+  --text-lg--line-height: 1.4;
+  --text-xl: var(--fs-heading);
+  --text-xl--line-height: 1.3;
+  --text-2xl: var(--fs-page);
+  --text-2xl--line-height: 1.2;
 }
 
 /*
@@ -37,11 +52,44 @@
  * derived from these, so the light theme is a straight re-mapping.
  */
 :root {
-  --font-ui: "Inter Variable", "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  --font-ui: "Segoe UI Variable Text", "Segoe UI Variable", "Inter Variable", "Segoe UI", system-ui, sans-serif;
   --font-code: "JetBrains Mono Variable", "Cascadia Code", Consolas, ui-monospace, monospace;
-  --radius: 0.5rem;
+  --radius: 0.375rem;
+  /* Shape: three radii. Controls and rows are near-square; panels are 8px; pills stay pills. */
+  --r-xs: 4px;
+  --r-sm: 6px;
+  --r-md: 8px;
+
+  /*
+   * Type scale (dense desktop data tool). Seven steps, every font-size in the app uses one of them;
+   * ui-policy.json enforces the same list. Do not add half-pixel sizes.
+   *   micro    11  uppercase eyebrows, kbd, counters, badges
+   *   meta     12  secondary metadata, small buttons, table meta, hints
+   *   body     13  default UI text, controls, table cells
+   *   emphasis 14  prose (descriptions), card/panel titles, inputs
+   *   title    16  dialog and panel headings
+   *   heading  20  object titles, section headings
+   *   page     24  page title (h1) and KPI numbers
+   */
+  --fs-micro: 11px;
+  --fs-meta: 12px;
+  --fs-body: 13px;
+  --fs-emphasis: 14px;
+  --fs-title: 16px;
+  --fs-heading: 20px;
+  --fs-page: 24px;
+
+  /* Spacing scale: 4px grid. Gaps between controls in a group are never below --space-2. */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
-  --ease-spring: cubic-bezier(0.34, 1.4, 0.64, 1);
+  /* Former spring curve; kept as a name so callers keep working, now a plain quint ease-out. */
+  --ease-spring: cubic-bezier(0.22, 1, 0.36, 1);
   --dur-fast: 120ms;
   --dur: 200ms;
   --dur-slow: 320ms;
@@ -215,7 +263,7 @@
   body {
     @apply bg-background text-foreground;
     font-family: var(--font-ui);
-    font-size: 14px;
+    font-size: var(--fs-body);
     line-height: 1.5;
     font-feature-settings: "cv11", "ss01", "ss03";
     -webkit-font-smoothing: antialiased;

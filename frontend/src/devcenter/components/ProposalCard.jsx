@@ -97,7 +97,7 @@ export default function ProposalCard({
           <span>{errText}</span>
         </p>
       ) : null}
-      <div className="dc-proposal-actions">
+      <div className="dc-proposal-actions" data-ui-actions="">
         {isMarked ? (
           <Button
             type="button"

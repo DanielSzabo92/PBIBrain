@@ -51,7 +51,7 @@ export default function GuardReview({ fetcher = globalThis.fetch }) {
   const canReject = review?.review_binding && !working && !["CANCELLED", "PROMOTING", "PROMOTED", "POST_PROMOTION_VERIFIED", "PROMOTION_RECOVERY_REQUIRED"].includes(operation.state);
   const rejected = operation.user_decision === "REJECTED";
   return <main className="guard-review page page-wide">
-    <header><p className="eyebrow">Proposed Power BI changes</p><h1>Review changes</h1><p>Review the edits and their effects. You choose whether to accept or reject them.</p></header>
+    <header><h1>Review proposed Power BI changes</h1><p>Review the edits and their effects. You choose whether to accept or reject them.</p></header>
     <form className="guard-fields" onSubmit={(event) => { event.preventDefault(); load(); }}><label>Operation reference<Input value={operationId} disabled={working} onChange={(event) => { version.current += 1; setOperationId(event.target.value); setReview(null); }} required /></label><Button type="submit" disabled={working || !operationId}>{working ? "Loading…" : "Load candidate"}</Button></form>
     {error ? <p role="alert" className="inline-error">{error}</p> : null}
     {review ? <div className="guard-stack">

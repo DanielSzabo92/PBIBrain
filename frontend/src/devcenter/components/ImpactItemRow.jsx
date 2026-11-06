@@ -77,7 +77,7 @@ export default function ImpactItemRow({
       <td className="dc-impact-cell-place">{place}</td>
       <td className="dc-impact-cell-severity">{severityLabel(item.severity)}</td>
       <td className="dc-impact-cell-action">
-        <div className="dc-impact-actions">
+        <div className="dc-impact-actions" data-ui-actions="">
           {primary ? (
             <Button
               variant="outline"

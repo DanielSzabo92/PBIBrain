@@ -8,16 +8,21 @@ function TooltipProvider({ children, delayDuration = 300 }) {
   return <TooltipPrimitive.Provider delayDuration={delayDuration}>{children}</TooltipPrimitive.Provider>
 }
 
-function Tooltip({ content, children, side = "top", className }) {
+// Each tooltip carries its own provider, so a Tooltip works anywhere (no app-level provider needed).
+// data-ui-tooltip names the content element, so UI checks (lintapple) can find the tooltip before it opens.
+function Tooltip({ content, children, side = "top", className, delayDuration = 300 }) {
+  const id = `tooltip-${React.useId().replace(/:/g, "")}`
   return (
+    <TooltipPrimitive.Provider delayDuration={delayDuration}>
     <TooltipPrimitive.Root>
-      <TooltipPrimitive.Trigger asChild>{children}</TooltipPrimitive.Trigger>
+      <TooltipPrimitive.Trigger asChild data-ui-tooltip={id}>{children}</TooltipPrimitive.Trigger>
       <TooltipPrimitive.Portal>
-        <TooltipPrimitive.Content side={side} sideOffset={6} className={cn("ui-tooltip", className)}>
+        <TooltipPrimitive.Content id={id} side={side} sideOffset={6} className={cn("ui-tooltip", className)}>
           {content}
         </TooltipPrimitive.Content>
       </TooltipPrimitive.Portal>
     </TooltipPrimitive.Root>
+    </TooltipPrimitive.Provider>
   )
 }
 

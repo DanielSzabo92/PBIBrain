@@ -303,7 +303,7 @@ export default function CompareRowDetail({
               id="dc-row-pane-title"
               ref={headingRef}
               tabIndex={-1}
-              className="text-[15px] font-semibold m-0 truncate outline-none"
+              className="text-base font-semibold m-0 truncate outline-none"
             >
               {t("row.multi.title", { n: selectedCount })}
             </h2>
@@ -900,7 +900,7 @@ export default function CompareRowDetail({
             id="dc-row-pane-title"
             ref={headingRef}
             tabIndex={-1}
-            className="text-[15px] font-semibold m-0 truncate outline-none"
+            className="text-base font-semibold m-0 truncate outline-none"
           >
             {row.name}
           </h2>
@@ -1221,7 +1221,7 @@ export default function CompareRowDetail({
               return null;
             })}
 
-            <div className="dc-align-actions">
+            <div className="dc-align-actions" data-ui-actions="">
               {possibleRename ? (
                 <>
                   <Button

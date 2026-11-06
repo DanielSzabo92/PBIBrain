@@ -35,7 +35,7 @@ function DialogContent({ title, description, progress = false, children, footer,
         <DialogPrimitive.Title className="ui-dialog-title">{title}</DialogPrimitive.Title>
         {description ? <DialogPrimitive.Description className="ui-dialog-description">{description}</DialogPrimitive.Description> : null}
         <div className="ui-dialog-body">{children}</div>
-        {footer ? <div className="ui-dialog-footer">{footer}</div> : null}
+        {footer ? <div className="ui-dialog-footer" data-ui-actions="">{footer}</div> : null}
         {progress ? null : <DialogPrimitive.Close className="ui-dialog-close" aria-label="Close"><X aria-hidden="true" /></DialogPrimitive.Close>}
       </DialogPrimitive.Content>
     </DialogPrimitive.Portal>
@@ -63,7 +63,7 @@ function AlertDialogContent({ title, description, progress = false, children, fo
         <AlertPrimitive.Title className="ui-dialog-title">{title}</AlertPrimitive.Title>
         {description ? <AlertPrimitive.Description className="ui-dialog-description">{description}</AlertPrimitive.Description> : null}
         {children ? <div className="ui-dialog-body">{children}</div> : null}
-        {footer ? <div className="ui-dialog-footer">{footer}</div> : null}
+        {footer ? <div className="ui-dialog-footer" data-ui-actions="">{footer}</div> : null}
       </AlertPrimitive.Content>
     </AlertPrimitive.Portal>
   )
