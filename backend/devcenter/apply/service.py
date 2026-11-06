@@ -225,7 +225,8 @@ class ApplyService:
     def _job(self, apply_id: str, kind: str, document: Mapping[str, Any], target: _Target, plan: Mapping[str, Any],
              approvals: Sequence[str] = ()) -> ApplyJob:
         state_root = self._folder() / GUARD_FOLDER
-        state_root.mkdir(parents=True, exist_ok=True)
+        if apply_id != "preview":  # A preview is a read: it makes no folder.
+            state_root.mkdir(parents=True, exist_ok=True)
         unchecked = [{"item_id": item["object_id"], "row_key": item["object_id"]} for item in not_checked(plan)]
         return ApplyJob(apply_id=apply_id, kind=kind, project_id=document["session_id"], target_root=Path(target.root), state_root=state_root,
                         model_path=target.model_path, report_path=target.report_path, plan=plan, donor_paths=target.donors,
