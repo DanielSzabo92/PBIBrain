@@ -192,7 +192,7 @@ export default function NamingRules({ session, changeDisabled, reasonId, onChang
         </div>
         <EmptyState headingLevel={3} title={t("rules.empty.title")}>
           <p className="dc-muted">{t("rules.empty.body", { model: targetModelName })}</p>
-          <div className="dc-empty-actions">
+          <div className="dc-empty-actions" data-ui-actions="">
             <Button
               variant="default"
               disabled={changeDisabled}
@@ -251,7 +251,7 @@ export default function NamingRules({ session, changeDisabled, reasonId, onChang
         <Notice tone="bad">{errorCopy(actionError).body}</Notice>
       ) : null}
 
-      <div className="dc-rules-toolbar">
+      <div className="dc-rules-toolbar" data-ui-actions="">
         <div className="dc-seg-control" role="group" aria-label="Show rules by status">
           <Button
             variant={filter === "proposed" ? "default" : "outline"}
@@ -341,7 +341,7 @@ export default function NamingRules({ session, changeDisabled, reasonId, onChang
                 <th scope="col">Support</th>
                 <th scope="col">Breaks</th>
                 <th scope="col">Status</th>
-                <th scope="col" className="dc-sticky-actions">
+                <th scope="col" className="dc-sticky-actions" data-ui-actions="">
                   <span className="sr-only">Actions</span>
                 </th>
               </tr>
@@ -431,8 +431,8 @@ export default function NamingRules({ session, changeDisabled, reasonId, onChang
                         <td>
                           <StatusBadge tone={statusProps.tone} label={statusProps.label} />
                         </td>
-                        <td className="dc-sticky-actions">
-                          <div className="dc-row-actions">
+                        <td className="dc-sticky-actions" data-ui-actions="">
+                          <div className="dc-row-actions" data-ui-actions="">
                             {isProposed ? (
                               <>
                                 <Button

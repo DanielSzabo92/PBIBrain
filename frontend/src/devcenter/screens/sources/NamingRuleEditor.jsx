@@ -352,7 +352,7 @@ export default function NamingRuleEditor({
         ) : null}
       </div>
 
-      <div className="dc-pane-footer">
+      <div className="dc-pane-footer" data-ui-actions="">
         <Button variant="outline" onClick={onClose}>
           {t("shared.cancel")}
         </Button>

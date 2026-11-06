@@ -4,12 +4,13 @@ import * as React from "react"
 import { cn } from "@/lib/utils"
 import { Checkbox as CheckboxPrimitive } from "radix-ui"
 
-// UI design 6.1: size "target" gives a 24 x 24 px hit target around the 16 px box.
+// UI design 6.1: size "target" (the default) gives a 24 x 24 px hit target around the 16 px box.
+// size "default" is the bare 16 px box; use it only where a surrounding control supplies the hit area.
 // checked="indeterminate" shows the mixed state. aria-invalid shows the error state.
 // One svg holds the check path and the dash path; CSS shows the path of the state.
 function Checkbox({
   className,
-  size = "default",
+  size = "target",
   ...props
 }) {
   const box = (

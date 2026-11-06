@@ -266,7 +266,7 @@ export default function PlanTab({ session, changeDisabled, reasonId, onTabs, onC
           <StatusBadge tone={strip.badgeTone} label={strip.badgeLabel} />
           <span className="dc-plan-strip-body">{strip.body}</span>
         </div>
-        <div className="dc-plan-strip-actions">
+        <div className="dc-plan-strip-actions" data-ui-actions="">
           {strip.reason ? (
             <span id="dc-plan-apply-reason" className="dc-plan-strip-reason">{strip.reason}</span>
           ) : null}
@@ -438,7 +438,7 @@ export default function PlanTab({ session, changeDisabled, reasonId, onTabs, onC
                   placeholder="Filter steps by name"
                   aria-label="Filter steps by name"
                   aria-keyshortcuts="/"
-                  className="ui-input h-8 w-full min-w-0 rounded-md px-2.5 text-[13px] outline-none placeholder:text-[var(--text-3)] disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive dc-plan-search"
+                  className="ui-input h-8 w-full min-w-0 rounded-md px-2.5 text-sm outline-none placeholder:text-[var(--text-3)] disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive dc-plan-search"
                 />
               </div>
             </div>

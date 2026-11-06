@@ -3,9 +3,10 @@ import { cva } from "class-variance-authority";
 import { cn } from "@/lib/utils"
 import { Slot } from "radix-ui"
 import { LoaderCircle } from "lucide-react"
+import { Tooltip } from "./tooltip"
 
 const buttonVariants = cva(
-  "ui-button inline-flex shrink-0 items-center justify-center gap-1.5 rounded-md text-[13px] font-medium whitespace-nowrap select-none disabled:pointer-events-none disabled:opacity-45 aria-invalid:border-destructive [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-[15px]",
+  "ui-button inline-flex shrink-0 items-center justify-center gap-1.5 rounded-md text-sm font-medium whitespace-nowrap select-none disabled:pointer-events-none disabled:opacity-45 aria-invalid:border-destructive [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   {
     variants: {
       variant: {
@@ -21,7 +22,7 @@ const buttonVariants = cva(
       size: {
         default: "h-8 px-3 has-[>svg]:px-2.5",
         xs: "h-6 gap-1 rounded-[5px] px-2 text-xs [&_svg:not([class*='size-'])]:size-3",
-        sm: "h-7 gap-1.5 rounded-[6px] px-2.5 text-[12.5px] has-[>svg]:px-2",
+        sm: "h-7 gap-1.5 rounded-[6px] px-2.5 text-xs has-[>svg]:px-2 [&_svg:not([class*='size-'])]:size-3.5",
         lg: "h-10 rounded-lg px-5 text-sm",
         icon: "size-8",
         "icon-xs": "size-6 rounded-[5px] [&_svg:not([class*='size-'])]:size-3",
@@ -38,7 +39,7 @@ const buttonVariants = cva(
 
 // tone: ok, warn, or bad for the "status" variant (UI design 6.1).
 // loading: the button shows a spinner and loadingText, and it does not act (aria-busy, aria-disabled).
-const Button = React.forwardRef(function Button({
+const Button = React.forwardRef(function ButtonBase({
   className,
   variant = "default",
   size = "default",
@@ -48,10 +49,18 @@ const Button = React.forwardRef(function Button({
   asChild = false,
   children,
   onClick,
+  tooltip,
   ...props
 }, ref) {
   const Comp = asChild ? Slot.Root : "button"
   const busy = Boolean(loading)
+  // An icon-only button gets a visible text tooltip from its accessible name (or the tooltip prop),
+  // instead of a native title, which is slow, unstyled and invisible to keyboard users.
+  const tip = tooltip === false ? null : tooltip || (String(size).startsWith("icon") && typeof props["aria-label"] === "string" ? props["aria-label"] : null)
+  if (tip && !asChild) {
+    const { title: _title, ...rest } = props
+    return <Tooltip content={tip}><Button ref={ref} variant={variant} size={size} tone={tone} loading={loading} loadingText={loadingText} className={className} onClick={onClick} tooltip={false} {...rest}>{children}</Button></Tooltip>
+  }
   return (
     <Comp
       {...props}
@@ -69,5 +78,7 @@ const Button = React.forwardRef(function Button({
     </Comp>
   );
 });
+
+Button.displayName = "Button"
 
 export { Button, buttonVariants }

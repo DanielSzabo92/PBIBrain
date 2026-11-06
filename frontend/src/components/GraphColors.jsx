@@ -60,7 +60,7 @@ export default function GraphColors({ config, transport, overview, onSaved }) {
     <CardContent>
       <fieldset disabled={saving}>
         <div className="palette-grid" role="group" aria-label="Color palettes">{PALETTES.map((palette) => { const pressed = sameColors(draft, palette); return <Button key={palette.name} variant="ghost" className="palette-option" aria-pressed={pressed} onClick={() => { setDraft({ groups: { ...palette.groups }, types: { ...palette.types } }); setMessage(""); }}><span className="palette-swatches" aria-hidden="true">{Object.values(palette.types).map((color, index) => <i key={index} style={{ background: color }} />)}</span><span className="palette-copy"><strong>{palette.name}</strong><small>{palette.description}</small></span>{pressed ? <span className="palette-check" aria-hidden="true"><Check /></span> : null}</Button>; })}</div>
-        <div className="color-preview" aria-label="Graph color preview">
+        <div className="color-preview" role="img" aria-label="Graph color preview">
           {["TABLE", "COLUMN", "MEASURE", "REPORT", "PAGE", "VISUAL"].map((type, index, list) => <React.Fragment key={type}><div className="color-preview-node" style={{ "--artifact-color": typeColor(type) }}><span className="artifact-dot" /><span>{typeLabel(type)}</span></div>{index < list.length - 1 ? <ChevronRight className="preview-arrow" aria-hidden="true" /> : null}</React.Fragment>)}
         </div>
         <details className="customize-colors"><summary>Customize colors</summary>
@@ -83,7 +83,7 @@ export default function GraphColors({ config, transport, overview, onSaved }) {
           </TabsContent>)}
         </Tabs>
         </details>
-        <div className="settings-actions">
+        <div className="settings-actions" data-ui-actions="">
           <Button onClick={save} disabled={!dirty || saving || !config}>{saving ? "Saving…" : "Save colors"}</Button>
           <Button variant="outline" onClick={() => { setDraft(normalizeColors()); setMessage(""); }}>Restore defaults</Button>
           {dirty ? <Button variant="ghost" onClick={() => { setDraft(saved); setMessage(""); }}>Discard changes</Button> : null}

@@ -17,7 +17,7 @@ function ResultPanel({ tone = "success", title, children, actions, onClose, titl
       <div className="ui-result-body">
         <Heading ref={titleRef} tabIndex={-1} className="ui-result-title">{title}</Heading>
         {children ? <div className="ui-result-text">{children}</div> : null}
-        {actions ? <div className="ui-result-actions">{actions}</div> : null}
+        {actions ? <div className="ui-result-actions" data-ui-actions="">{actions}</div> : null}
       </div>
       {onClose ? <Button variant="ghost" size="icon-sm" className="ui-result-close" aria-label="Close result" onClick={onClose}><X /></Button> : null}
     </section>

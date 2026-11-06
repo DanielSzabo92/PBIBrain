@@ -87,7 +87,7 @@ export default function ImpactPane({ item, http, policy, disabled, reasonId, pen
             </>
           ) : null}
         </dl>
-        <section className="dc-impact-pane-actions">
+        <section className="dc-impact-pane-actions" data-ui-actions="">
           <h3 className="dc-impact-pane-h3">{t("impact.pane.actions")}</h3>
           {!allowed.length ? <p className="dc-impact-pane-line">{t("impact.pane.no_actions")}</p> : null}
           {hasPolicy ? (

@@ -251,7 +251,7 @@ export default function AgentTab({ session, changeDisabled = false, reasonId, on
                   <th scope="col">{t("agent.column.reason")}</th>
                   <th scope="col">{t("agent.column.from")}</th>
                   <th scope="col">{t("agent.column.status")}</th>
-                  <th scope="col" className="dc-agent-col-actions">{t("agent.column.actions")}</th>
+                  <th scope="col" className="dc-agent-col-actions" data-ui-actions="">{t("agent.column.actions")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -331,8 +331,8 @@ function ProposalRow({ proposal, checked, onCheck, failedError, disabled, reason
           <p id={errorId} className="dc-agent-error" role="alert">{errorCopy(error).body}</p>
         ) : null}
       </td>
-      <td className="dc-agent-col-actions">
-        <div className="dc-agent-actions">
+      <td className="dc-agent-col-actions" data-ui-actions="">
+        <div className="dc-agent-actions" data-ui-actions="">
           {action === "open_row" || error?.code === "source_changed" ? (
             <Button size="sm" variant="outline" onClick={() => onOpenRow(proposal.target_id)}>{t("agent.open_row")}</Button>
           ) : (

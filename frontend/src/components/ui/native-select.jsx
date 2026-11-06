@@ -15,7 +15,7 @@ function NativeSelect({
         data-slot="native-select"
         data-size={size}
         className={cn(
-          "ui-select h-8 w-full min-w-0 appearance-none rounded-md pl-2.5 pr-8 text-[13px] outline-none disabled:pointer-events-none disabled:cursor-not-allowed data-[size=sm]:h-7",
+          "ui-select h-8 w-full min-w-0 appearance-none rounded-md pl-2.5 pr-8 text-sm outline-none disabled:pointer-events-none disabled:cursor-not-allowed data-[size=sm]:h-7",
           "aria-invalid:border-destructive",
           className
         )}

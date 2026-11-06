@@ -147,7 +147,22 @@ function useTheme() {
   return [theme, () => setTheme((current) => current === "dark" ? "light" : "dark")];
 }
 
+// True below the compact breakpoint (app.css, max-width 760px), where the navigation shows icons only.
+function useCompactNav() {
+  const query = "(max-width: 760px)";
+  const [compact, setCompact] = useState(() => Boolean(globalThis.matchMedia?.(query).matches));
+  useEffect(() => {
+    const list = globalThis.matchMedia?.(query);
+    if (!list) return undefined;
+    const update = () => setCompact(list.matches);
+    list.addEventListener("change", update);
+    return () => list.removeEventListener("change", update);
+  }, []);
+  return compact;
+}
+
 function App({ transport = brainTransport }) {
+  const compactNav = useCompactNav();
   const desktopHost = Boolean(globalThis.__PBIBRAIN_DESKTOP__);
   const [theme, toggleTheme] = useTheme();
   const [snapshot, setSnapshot] = useState(() => normalizeSnapshot(null));
@@ -493,10 +508,10 @@ function App({ transport = brainTransport }) {
         </div>
         <nav aria-label="Main navigation" className="sidebar-nav">
           {VIEWS.map(([key, label]) => (
-            <Button variant="ghost" key={key} aria-current={view === key ? "page" : undefined} className={`nav-button ${view === key ? "active" : ""} ${key === "config" ? "nav-settings" : ""}`} onClick={() => navigate(key)}>
+            <Button variant="ghost" key={key} tooltip={compactNav ? label : undefined} aria-current={view === key ? "page" : undefined} className={`nav-button ${view === key ? "active" : ""} ${key === "config" ? "nav-settings" : ""}`} onClick={() => navigate(key)}>
               <NavIcon name={key} />
               <span className="nav-label">{label}</span>
-              {key === "review" && pending > 0 ? <span className="nav-count">{pending > 99 ? "99+" : pending}</span> : null}
+              {key === "review" && pending > 0 ? <span className="nav-count" data-ui-number="">{pending > 99 ? "99+" : pending}</span> : null}
               {key === "search" ? <kbd className="nav-kbd" aria-hidden="true">Ctrl K</kbd> : null}
             </Button>
           ))}
@@ -516,7 +531,7 @@ function App({ transport = brainTransport }) {
             <span className="breadcrumb-view">{VIEWS.find(([key]) => key === view)?.[1]}</span>
             <span className="breadcrumb-hint">{VIEW_HINTS[view]}</span>
           </div>
-          <div className="topbar-actions">
+          <div className="topbar-actions" data-ui-actions="">
             {scanning ? <span className="topbar-scanning"><RefreshCw className="spin" aria-hidden="true" />Scanning</span> : null}
             {activeProject ? <Button variant="ghost" size="sm" className="project-switch" onClick={closeDesktopProject} disabled={scanning}><FolderOpen />Change project</Button> : null}
             <Button variant="ghost" size="icon-sm" onClick={reloadBrain} disabled={loading || scanning} title="Reload Brain" aria-label="Reload Brain"><RefreshCw className={loading ? "spin" : ""} /></Button>
@@ -535,12 +550,12 @@ function App({ transport = brainTransport }) {
           <div className="view-frame" key={view}>
             <Suspense fallback={<div className="view-loading" role="status"><RefreshCw className="spin" aria-hidden="true" />Loading view…</div>}>
             {view === "overview" ? <Overview onSelect={selectNode} overview={overview} config={config} counts={counts} loading={loading} projectName={projectName} onView={navigate} onSearch={(query) => { setSearchSession({ query, modelId: "", reportId: "", result: null }); setView("search"); }} onSources={() => { setSettingsTab("project"); setView("config"); }} onSummary={() => { setSettingsTab("summary"); setView("config"); }} onScan={applyScan} scanning={scanning} scanLabel={activeProject ? "Scan project" : "Scan sources"} onReview={() => navigate("review")} /> : null}
-            {view === "search" ? <div className="page page-narrow"><SearchView session={searchSession} onSession={setSearchSession} colors={graphColors} transport={transport} overview={overview} onSelect={selectNode} /></div> : null}
+            {view === "search" ? <div className="page page-narrow" data-ui-stack=""><SearchView session={searchSession} onSession={setSearchSession} colors={graphColors} transport={transport} overview={overview} onSelect={selectNode} /></div> : null}
             {view === "graph" ? <GraphView session={graphSession} onSession={setGraphSession} colors={graphColors} transport={transport} overview={overview} snapshot={snapshot} selectedId={selectedId} onSelect={selectNode} /> : null}
-            {view === "inspector" ? <div className="page page-wide">{selectedId ? <><Button variant="ghost" size="sm" className="inspector-back" onClick={() => { if (inspectorOrigin === "inspector") { setSelectedId(null); setInspectedObject(null); } else setView(inspectorOrigin); }}><ArrowLeft aria-hidden="true" />{inspectorOrigin === "search" ? "Back to results" : inspectorOrigin === "inspector" ? "Browse objects" : `Back to ${VIEWS.find(([key]) => key === inspectorOrigin)?.[1]?.toLowerCase() || "overview"}`}</Button><Inspector key={selectedId} transport={transport} scanning={scanning} colors={graphColors} node={selected} details={inspectedDetails} loading={Boolean(selectedId && !inspectedDetails && !inspectorError)} error={inspectorError} snapshot={snapshot} snapshotLoaded={snapshotLoaded} snapshotError={snapshotError} onEvidenceRetry={() => loadSnapshot().catch(() => {})} overview={overview} onSelect={selectNode} onRetry={() => selectNode(selectedId)} onReview={review} onGraph={() => setView("graph")} /></> : <SearchView browse session={inspectorSession} onSession={setInspectorSession} colors={graphColors} transport={transport} overview={overview} onSelect={(id) => { setInspectorOrigin("inspector"); selectNode(id); }} />}</div> : null}
-            {view === "review" ? <div className="page page-wide"><ReviewQueue scanning={scanning} session={reviewSession} onSession={setReviewSession} snapshot={snapshot} loaded={snapshotLoaded} loading={!snapshotLoaded && (snapshotLoading || !snapshotError)} error={snapshotError} onRetry={() => loadSnapshot().catch(() => {})} overview={overview} onSelect={selectNode} onReview={review} /></div> : null}
+            {view === "inspector" ? <div className="page page-wide" data-ui-stack="">{selectedId ? <><Button variant="ghost" size="sm" className="inspector-back" onClick={() => { if (inspectorOrigin === "inspector") { setSelectedId(null); setInspectedObject(null); } else setView(inspectorOrigin); }}><ArrowLeft aria-hidden="true" />{inspectorOrigin === "search" ? "Back to results" : inspectorOrigin === "inspector" ? "Browse objects" : `Back to ${VIEWS.find(([key]) => key === inspectorOrigin)?.[1]?.toLowerCase() || "overview"}`}</Button><Inspector key={selectedId} transport={transport} scanning={scanning} colors={graphColors} node={selected} details={inspectedDetails} loading={Boolean(selectedId && !inspectedDetails && !inspectorError)} error={inspectorError} snapshot={snapshot} snapshotLoaded={snapshotLoaded} snapshotError={snapshotError} onEvidenceRetry={() => loadSnapshot().catch(() => {})} overview={overview} onSelect={selectNode} onRetry={() => selectNode(selectedId)} onReview={review} onGraph={() => setView("graph")} /></> : <SearchView browse session={inspectorSession} onSession={setInspectorSession} colors={graphColors} transport={transport} overview={overview} onSelect={(id) => { setInspectorOrigin("inspector"); selectNode(id); }} />}</div> : null}
+            {view === "review" ? <div className="page page-wide" data-ui-stack=""><ReviewQueue scanning={scanning} session={reviewSession} onSession={setReviewSession} snapshot={snapshot} loaded={snapshotLoaded} loading={!snapshotLoaded && (snapshotLoading || !snapshotError)} error={snapshotError} onRetry={() => loadSnapshot().catch(() => {})} overview={overview} onSelect={selectNode} onReview={review} /></div> : null}
             {view === "devcenter" ? <DevCenter onOpenProject={closeDesktopProject} /> : null}
-            {view === "config" ? <div className="page page-narrow"><PageHeading title="Settings" description="Manage project sources, graph appearance, and model context." /><KeyboardSettings />{configError && !config ? <Card className="panel"><EmptyState icon={<TriangleAlert />} tone="bad" title="Project settings unavailable" detail="Retry to load your saved sources and appearance." action={<Button variant="outline" onClick={load}>Retry settings</Button>} /></Card> : <Tabs value={settingsTab} onValueChange={setSettingsTab} className="settings-tabs">
+            {view === "config" ? <div className="page page-narrow" data-ui-stack=""><PageHeading title="Settings" description="Manage project sources, graph appearance, and model context." /><KeyboardSettings />{configError && !config ? <Card className="panel"><EmptyState icon={<TriangleAlert />} tone="bad" title="Project settings unavailable" detail="Retry to load your saved sources and appearance." action={<Button variant="outline" onClick={load}>Retry settings</Button>} /></Card> : <Tabs value={settingsTab} onValueChange={setSettingsTab} className="settings-tabs">
               <TabsList aria-label="Settings sections"><TabsTrigger value="project">Project</TabsTrigger><TabsTrigger value="colors">Graph colors</TabsTrigger><TabsTrigger value="summary">Model summary</TabsTrigger></TabsList>
               <TabsContent value="colors"><Suspense fallback={<ViewLoading />}><GraphColors config={config} transport={transport} overview={overview} onSaved={setConfig} /></Suspense></TabsContent>
               <TabsContent value="summary"><Suspense fallback={<ViewLoading />}><ModelSummary overview={overview} transport={transport} scanning={scanning} /></Suspense></TabsContent>
@@ -642,7 +657,7 @@ function DesktopProjectView({ api, project, overview, config, transport, scannin
     <Card className="panel desktop-project-panel">
       <div className="project-location"><span className="icon-tile" aria-hidden="true"><FolderOpen /></span><div><p className="eyebrow">Project folder</p><strong title={project.folder}>{project.folder}</strong></div></div>
       <div className="desktop-sources"><div className="panel-heading"><div><p className="eyebrow">Power BI inputs</p><h3>Source files</h3></div><Button variant="outline" onClick={addSources} disabled={sourceWorking || scanning}><Plus />{sourceWorking ? "Adding…" : "Add source files"}</Button></div>{sources.length ? <div className="source-list">{sources.map((source) => <div className="desktop-source-row" key={source}><FileText className="source-icon" aria-hidden="true" /><span title={source}>{source}</span><Button variant="ghost" size="icon-sm" onClick={() => removeSource(source)} disabled={sourceWorking || scanning} aria-label={`Remove ${source}`}><X /></Button></div>)}</div> : <EmptyState icon={<FileText />} title="No source files yet" detail="Add PBIP projects or model JSON files to scan them with this project." />}{sourceError ? <p className="onboarding-error" role="alert">{sourceError}</p> : null}</div>
-      <div className="config-actions"><Button onClick={onScan} disabled={scanning}><ScanLine />{scanning ? "Scanning…" : "Scan project"}</Button></div>
+      <div className="config-actions" data-ui-actions=""><Button onClick={onScan} disabled={scanning}><ScanLine />{scanning ? "Scanning…" : "Scan project"}</Button></div>
     </Card>
   </>;
 }
@@ -679,9 +694,9 @@ function Overview({ overview, config, counts, loading, projectName, onView, onSe
   </Card>;
   const sourcesCard = <Card className="overview-card project-scan-bar">
     <div className="overview-card-head"><span className="icon-tile" aria-hidden="true"><Database /></span><div><strong>{scanning ? "Scanning sources…" : hasObjects ? "Sources indexed" : "Sources"}</strong><span className="scan-meta">{sourceCount === undefined ? "Source settings unavailable" : `${sourceCount} ${sourceCount === 1 ? "source" : "sources"}`}{hasObjects ? ` · ${lastScan ? `Last scan ${formatDate(lastScan)}` : "Last scan time unavailable"}` : ""}</span></div></div>
-    <div className="project-scan-actions"><Button variant="ghost" size="sm" onClick={onSources}>Manage sources</Button>{hasObjects ? <Button variant="outline" size="sm" onClick={onScan} disabled={scanning || !hasSources}><RefreshCw className={scanning ? "spin" : ""} />{scanning ? "Scanning…" : scanLabel}</Button> : null}</div>
+    <div className="project-scan-actions" data-ui-actions=""><Button variant="ghost" size="sm" onClick={onSources}>Manage sources</Button>{hasObjects ? <Button variant="outline" size="sm" onClick={onScan} disabled={scanning || !hasSources}><RefreshCw className={scanning ? "spin" : ""} />{scanning ? "Scanning…" : scanLabel}</Button> : null}</div>
   </Card>;
-  return <div className="page page-overview">
+  return <div className="page page-overview" data-ui-stack="">
     <header className="overview-hero">
       <p className="eyebrow">Project overview</p>
       <h1>{projectName}</h1>
@@ -710,16 +725,16 @@ function Overview({ overview, config, counts, loading, projectName, onView, onSe
           </form>
         </Card>
         <dl className="project-counts" aria-label="Project counts">
-          {[["Models", counts.models, Database], ["Reports", counts.reports, ChartColumn], ["Objects", counts.objects, Boxes], ["Relationships", counts.edges, Waypoints]].map(([label, count, Icon]) => <div key={label} className="stat-tile"><dt><Icon aria-hidden="true" />{label}</dt><dd>{count.toLocaleString()}</dd></div>)}
+          {[["Models", counts.models, Database], ["Reports", counts.reports, ChartColumn], ["Objects", counts.objects, Boxes], ["Relationships", counts.edges, Waypoints]].map(([label, count, Icon]) => <div key={label} className="stat-tile"><dt><Icon aria-hidden="true" />{label}</dt><dd data-ui-number="">{count.toLocaleString()}</dd></div>)}
         </dl>
         <div className="overview-grid">
           <div className="overview-main">
             <Card className={`project-review-card ${pending ? "has-pending" : ""}`}>
-              <div className="review-card-count" aria-hidden="true"><strong>{pending}</strong><span>{pending === 1 ? "open item" : "open items"}</span></div>
+              <div className="review-card-count" aria-hidden="true"><strong data-ui-number="">{pending}</strong><span>{pending === 1 ? "open item" : "open items"}</span></div>
               <div className="review-card-copy"><h3>{validationState === "invalid" ? "Resolve graph issues before review" : pending ? "Ready for review" : "No pending reviews"}</h3><p>{pending ? "Check suggested meanings and resolve uncertain matches." : "All suggestions have been reviewed."}</p>{counts.warnings || counts.stale ? <p className="review-card-split"><span>{counts.candidates} suggestions</span>{counts.warnings ? <span>{counts.warnings} conflicts</span> : null}{counts.stale ? <span>{counts.stale} outdated decisions</span> : null}</p> : null}</div>
               <Button variant={pending ? "default" : "outline"} onClick={onReview}>Open review queue <ArrowRight aria-hidden="true" /></Button>
             </Card>
-            <div className="quick-actions">
+            <div className="quick-actions" data-ui-actions="">
               <Button variant="ghost" className="quick-action project-graph-link" onClick={() => onView("graph")}><span className="icon-tile" aria-hidden="true"><Waypoints /></span><span><strong>Explore relationships in the graph</strong><small>Trace lineage from model to visual</small></span><ArrowUpRight className="quick-arrow" aria-hidden="true" /></Button>
               <Button variant="ghost" className="quick-action" onClick={() => onView("inspector")}><span className="icon-tile" aria-hidden="true"><NavIcon name="inspector" /></span><span><strong>Browse measures</strong><small>Formulas, dependencies and usage</small></span><ArrowUpRight className="quick-arrow" aria-hidden="true" /></Button>
               <Button variant="ghost" className="quick-action" onClick={onSummary}><span className="icon-tile" aria-hidden="true"><Sparkles /></span><span><strong>Export agent context</strong><small>One Markdown file per model</small></span><ArrowUpRight className="quick-arrow" aria-hidden="true" /></Button>
@@ -791,7 +806,7 @@ function SearchView({ transport, overview, onSelect, colors, session, onSession,
   return <div ref={panel}>
     <PageHeading title={browse ? "Browse objects" : "Search"} description={browse ? "Choose an object to inspect its formula, dependencies, and report usage." : "Find objects by name, description, or part of a DAX formula."} />
     <Card className="panel search-panel" aria-busy={loading}>
-      <div className="search-toolbar">
+      <div className="search-toolbar" data-ui-actions="">
         <Label htmlFor={inputId} className="search-query-label">{browse ? "Filter by name or formula" : "Name or formula"}</Label>
         <div className="search-field"><NavIcon name="search" size={18} /><Input id={inputId} type="search" value={query} onChange={(event) => change({ query: event.target.value })} onKeyDown={(event) => { if (event.key === "Enter") runSearch(); }} placeholder={browse ? "Filter objects by name…" : "Measure, table, column, or visual…"} aria-label="Search the brain" />{loading && active ? <RefreshCw className="search-spinner spin" aria-hidden="true" /> : null}</div>
         <div className="search-filters">
@@ -843,7 +858,7 @@ function ConfigView({ transport, config, onSaved, onScan, scanning }) {
           <Button variant="outline" size="sm" className="add-source" onClick={() => setDraft({ ...draft, sources: [...draft.sources, ""] })}><Plus />Add source</Button>
         </div>
       </div>
-      <div className="config-actions"><Button onClick={save} disabled={saving || scanning || !dirty}>{saving ? "Saving…" : "Save configuration"}</Button><Button variant="outline" onClick={onScan} disabled={scanning || saving || dirty || !config?.sources?.length}><ScanLine />{scanning ? "Scanning…" : "Scan saved sources"}</Button>{dirty ? <span className="muted-copy compact">Save changes before scanning.</span> : null}{message ? <span role={message === "Saved" ? "status" : "alert"} className={message === "Saved" ? "success-text" : "error-copy"}>{message === "Saved" ? <Check aria-hidden="true" /> : null}{message}</span> : null}</div>
+      <div className="config-actions" data-ui-actions=""><Button onClick={save} disabled={saving || scanning || !dirty}>{saving ? "Saving…" : "Save configuration"}</Button><Button variant="outline" onClick={onScan} disabled={scanning || saving || dirty || !config?.sources?.length}><ScanLine />{scanning ? "Scanning…" : "Scan saved sources"}</Button>{dirty ? <span className="muted-copy compact">Save changes before scanning.</span> : null}{message ? <span role={message === "Saved" ? "status" : "alert"} className={message === "Saved" ? "success-text" : "error-copy"}>{message === "Saved" ? <Check aria-hidden="true" /> : null}{message}</span> : null}</div>
     </Card>
   </>;
 }
@@ -979,8 +994,8 @@ function ReviewQueue({ session, onSession, snapshot, loaded, loading, error, onR
     <PageHeading title="Review queue" description="Confirm suggested meanings with the evidence behind each one." />
     {error && !loaded ? <Card className="panel" role="alert"><EmptyState icon={<TriangleAlert />} tone="bad" title="Review queue unavailable" detail={readableText(error)} action={<Button variant="outline" onClick={onRetry}><RefreshCw />Retry review queue</Button>} /></Card> : <>
     {error ? <Card className="panel" role="alert"><EmptyState icon={<TriangleAlert />} tone="bad" title="Review refresh failed" detail={`Showing last loaded reviews. ${readableText(error)}`} action={<Button variant="outline" onClick={onRetry}><RefreshCw />Retry review queue</Button>} /></Card> : null}
-    <div className="review-purpose"><span className="icon-tile" aria-hidden="true"><ShieldCheck /></span><p>Confirm the meanings PBIBrain inferred. Approval saves a trusted label for search and context; rejection excludes it. Your Power BI files stay unchanged.</p><span className="queue-count"><strong>{loading ? "…" : filtered.length}</strong>{loading ? "Loading…" : " to review"}</span></div>
-    <div className="queue-toolbar">
+    <div className="review-purpose"><span className="icon-tile" aria-hidden="true"><ShieldCheck /></span><p>Confirm the meanings PBIBrain inferred. Approval saves a trusted label for search and context; rejection excludes it. Your Power BI files stay unchanged.</p><span className="queue-count"><strong data-ui-number="">{loading ? "…" : filtered.length}</strong>{loading ? "Loading…" : " to review"}</span></div>
+    <div className="queue-toolbar" data-ui-actions="">
       <Label className="select-field"><span>Issue</span><NativeSelect aria-label="Issue" value={issue} onChange={(event) => change({ issue: event.target.value })}><option value="ALL">All issues</option><option value="candidate">Suggestions</option><option value="conflict">Conflicts</option><option value="stale">Outdated decisions</option></NativeSelect></Label>
       <Label className="select-field"><span>Object</span><NativeSelect aria-label="Object" value={objectType} onChange={(event) => change({ objectType: event.target.value })}><option value="ALL">All types</option>{types.map((type) => <option key={type} value={type}>{typeLabel(type)}</option>)}</NativeSelect></Label>
       {models.length > 1 ? <Label className="select-field"><span>Model</span><NativeSelect aria-label="Model" value={modelId} onChange={(event) => change({ modelId: event.target.value, reportId: "ALL" })}><option value="ALL">All models</option>{models.map((value, index) => <option key={value} value={value}>{scopeName(value, "Model", index)}</option>)}</NativeSelect></Label> : null}
@@ -1010,8 +1025,8 @@ function ReviewItem({ item, nodes, onSelect, onReview, disabled = false }) {
   return <div className={`review-item issue-${item.issue}`} aria-busy={pending}>
     <Button variant="ghost" className="review-target" data-review-id={item.id || itemTarget(item)} disabled={!targetNode} onClick={() => onSelect(targetNode.id, "inspector")}><span className={`review-dot ${item.issue}`} /><span className="review-target-copy"><strong>{targetNode ? labelFor(targetNode) : "Source object unavailable"}</strong><small className="review-scope">{objectScope(targetNode, nodes)}</small><small className="review-suggestion">{item.issue === "conflict" ? "Conflicting suggestions" : item.issue === "stale" ? "Outdated saved decision" : suggestionLabel(item)}</small>{targetNode ? <small className="review-type">{typeLabel(targetNode.type)}</small> : null}</span></Button>
     <div className="review-evidence"><p>{readableText(reason, nodes)}</p>{evidence ? <small>{evidence}</small> : null}</div>
-    <div className={`review-score level-${level}`}><strong>{score === null ? "—" : `${confidence(itemConfidence(item))}%`}</strong><span className="meter" aria-hidden="true"><i style={{ width: `${score ?? 0}%` }} /></span><small>{item.issue === "conflict" ? "Conflict" : item.issue === "stale" ? "Outdated" : "Suggested"}</small></div>
-    <div className="review-actions">{item.issue === "stale" ? <Button variant="destructive" size="sm" disabled={pending || disabled} onClick={() => decide("remove")}>Remove decision</Button> : <><Button variant="outline" size="sm" className="approve-button" disabled={pending || disabled} onClick={() => decide("approve")}><Check aria-hidden="true" />Approve</Button><Button variant="ghost" size="sm" className="reject-button" disabled={pending || disabled} onClick={() => decide("reject")}><X aria-hidden="true" />Reject</Button></>}</div>
+    <div className={`review-score level-${level}`}><strong data-ui-number="">{score === null ? "—" : `${confidence(itemConfidence(item))}%`}</strong><span className="meter" aria-hidden="true"><i style={{ width: `${score ?? 0}%` }} /></span><small>{item.issue === "conflict" ? "Conflict" : item.issue === "stale" ? "Outdated" : "Suggested"}</small></div>
+    <div className="review-actions" data-ui-actions="">{item.issue === "stale" ? <Button variant="destructive" size="sm" disabled={pending || disabled} onClick={() => decide("remove")}>Remove decision</Button> : <><Button variant="outline" size="sm" className="approve-button" disabled={pending || disabled} onClick={() => decide("approve")}><Check aria-hidden="true" />Approve</Button><Button variant="ghost" size="sm" className="reject-button" disabled={pending || disabled} onClick={() => decide("reject")}><X aria-hidden="true" />Reject</Button></>}</div>
     {error ? <p className="review-decision-error" role="alert">{error}</p> : null}
   </div>;
 }
@@ -1029,7 +1044,7 @@ function CandidateActions({ item, onReview, disabled = false }) {
     finally { setPending(false); }
   };
   const score = confidence(item.confidence ?? item.properties?.confidence);
-  return <fieldset className="candidate-actions" disabled={pending || disabled}>
+  return <fieldset className="candidate-actions" data-ui-actions="" disabled={pending || disabled}>
     <div className="candidate-action-title"><span>{suggestionLabel(item)}</span><span className="count-pill">{score === null ? "" : `${score}%`}</span></div>
     {editingAction ? <div className="edit-row"><Input value={value} onChange={(event) => setValue(event.target.value)} aria-label={`${editingAction} semantic value`} /><Button variant="outline" size="sm" disabled={!value.trim()} onClick={() => decide(editingAction, value)}>Save meaning</Button><Button variant="link" size="sm" onClick={() => setEditingAction("")}>Cancel</Button></div> : <div className="action-buttons"><Button variant="outline" size="sm" onClick={() => decide("approve")}>Approve</Button><Button variant="ghost" size="sm" onClick={() => beginEdit("edit")}>Edit</Button><Button variant="ghost" size="sm" onClick={() => decide("reject")}>Reject</Button><Button variant="link" size="sm" onClick={() => beginEdit("override")}>Set meaning</Button></div>}
   </fieldset>;

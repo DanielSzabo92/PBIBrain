@@ -9,61 +9,104 @@
     "monospace"
   ],
   "fontSizes": [
+    11,
     12,
+    13,
     14,
     16,
-    18,
     20,
-    24,
-    32,
-    40,
-    48,
-    64
+    24
   ],
   "typeRules": [
     {
+      "selector": ".react-flow__node, .react-flow__node *",
+      "sizes": [
+        11,
+        12,
+        13,
+        14
+      ]
+    },
+    {
+      "selector": ".nav-count, .count-pill, kbd, .ui-badge",
+      "sizes": [
+        11,
+        12
+      ]
+    },
+    {
       "selector": "h1",
       "sizes": [
-        24,
-        32,
-        40,
-        48,
-        64
+        24
       ]
     },
     {
       "selector": "h2",
       "sizes": [
-        20,
-        24,
-        32
+        16,
+        20
       ]
     },
     {
       "selector": "h3",
       "sizes": [
-        18,
-        20,
-        24
+        13,
+        14,
+        16
       ]
     },
     {
-      "selector": "button, [role=button]",
+      "selector": "button, [role=button], [role=tab], [role=combobox]",
       "sizes": [
+        12,
+        13
+      ]
+    },
+    {
+      "selector": "input, textarea, select",
+      "sizes": [
+        13,
+        14
+      ]
+    },
+    {
+      "selector": "[data-ui-number]",
+      "sizes": [
+        11,
+        12,
+        13,
+        14,
+        16,
+        20,
+        24
+      ]
+    }
+  ],
+  "minControlSize": 15,
+  "controlSizeRules": [
+    {
+      "selector": "button, [role=button], [role=tab], [role=combobox], input:not([type=checkbox]):not([type=radio]), select",
+      "minSize": 24
+    }
+  ],
+  "minControlGap": 8,
+  "minControlInset": 8,
+  "controlContainers": [
+    "[data-ui-container]",
+    ".ui-dialog",
+    ".topbar"
+  ],
+  "contentInsetRules": [],
+  "iconSizeRules": [
+    {
+      "selector": ".ui-button > svg, .nav-button > svg, .icon-tile > svg",
+      "sizes": [
+        12,
         14,
         16
       ]
     }
   ],
-  "minControlSize": 15,
-  "controlSizeRules": [],
-  "minControlGap": 8,
-  "minControlInset": 8,
-  "controlContainers": [
-    "[data-ui-container]"
-  ],
-  "contentInsetRules": [],
-  "iconSizeRules": [],
   "minLayoutGap": 8,
   "bannedCopy": [
     "unlock your potential",
@@ -81,7 +124,95 @@
     }
   ],
   "colorSchemes": [
+    "dark",
     "light"
   ],
-  "exceptions": []
+  "exceptions": [
+    {
+      "selector": ".react-flow__node, .react-flow__node *, .react-flow__edge, .react-flow__edge *, .react-flow__minimap, .react-flow__minimap *",
+      "rules": [
+        "content-clipping",
+        "viewport-bounds",
+        "content-overflow",
+        "control-size",
+        "control-inset",
+        "content-inset",
+        "target-size",
+        "text-contrast"
+      ],
+      "reason": "Graph canvas: nodes sit on a pannable, zoomable plane, so their on-screen size, position and clipping depend on the zoom level the user picks. Node typography, icons, ARIA and label consistency are still checked. Edge-label contrast cannot be measured on SVG text."
+    },
+    {
+      "selector": ".react-flow__edges svg, .react-flow__edges svg *, svg.react-flow__marker, svg.react-flow__marker *",
+      "rules": [
+        "viewport-bounds"
+      ],
+      "reason": "React Flow's edge layer is an unbounded SVG plane positioned by the viewport transform."
+    },
+    {
+      "selector": ".sr-only, .sr-only *, .skip-link:not(:focus), .sidebar-nav .nav-label",
+      "rules": [
+        "content-clipping",
+        "font-size"
+      ],
+      "reason": "Visually hidden text (screen-reader labels, the skip link until focused, nav labels in the compact icon-only navigation) is clipped on purpose."
+    },
+    {
+      "selector": ".sidebar-nav > .nav-button",
+      "rules": [
+        "control-gap"
+      ],
+      "reason": "Vertical navigation list (desktop): rows are a single list separated by their own hover/active fill, like any OS sidebar. The compact (<=760px) icon row uses an 8px gap and is not affected by this rule's intent."
+    },
+    {
+      "selector": ".ui-tabs-list > [role=tab], [data-slot=tabs-list] > [role=tab]",
+      "rules": [
+        "control-gap"
+      ],
+      "reason": "Segmented control: tabs share one track by design; separation comes from the selected thumb."
+    },
+    {
+      "selector": ".search-results > .search-result",
+      "rules": [
+        "control-gap"
+      ],
+      "reason": "Result list rows separated by a 1px divider; an 8px gap between list rows would break the list rhythm. Row insets from the list container are still checked."
+    },
+    {
+      "selector": ".ui-button[data-size^=icon] > svg",
+      "rules": [
+        "content-inset"
+      ],
+      "reason": "Icon-only buttons are square hit targets (24-32px) with a centered 14-16px glyph; the 8px text inset rule targets labelled buttons. Their size is still checked by control-size (>=24px) and they carry text tooltips."
+    },
+    {
+      "selector": ".ui-switch",
+      "rules": [
+        "icon-button-tooltip"
+      ],
+      "reason": "Every Switch is rendered by components/ui/switch.jsx with a visible <label for> next to it; the label, not a tooltip, names it."
+    },
+    {
+      "selector": ".ui-checkbox-target, .ui-checkbox",
+      "rules": [
+        "icon-button-tooltip"
+      ],
+      "reason": "Checkboxes are named by a wrapping or associated visible <label> (or aria-label in table rows); a tooltip would duplicate it."
+    },
+    {
+      "selector": ".sidebar-nav .nav-count",
+      "rules": [
+        "content-inset"
+      ],
+      "reason": "Notification badge on the compact icon-only nav deliberately overlaps the button corner (standard badge pattern)."
+    },
+    {
+      "selector": ".ui-button-link",
+      "rules": [
+        "content-inset",
+        "control-inset"
+      ],
+      "reason": "Link-variant buttons render as inline text links with no box; the 8px inset applies to boxed buttons. Their hit height is held at >=24px."
+    }
+  ]
 }

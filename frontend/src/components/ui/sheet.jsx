@@ -40,14 +40,14 @@ function SheetContent({
     <SheetPortal>
       <SheetPrimitive.Content
         data-slot="sheet-content"
+        data-ui-container=""
         data-side={side}
         className={cn("ui-sheet fixed z-50 flex flex-col", className)}
         {...props}>
         {children}
         {showCloseButton && (
-          <div className="ui-sheet-close"><SheetPrimitive.Close asChild><Button variant="ghost" size="icon-sm">
-            <XIcon className="size-4" />
-            <span className="sr-only">Close</span>
+          <div className="ui-sheet-close"><SheetPrimitive.Close asChild><Button variant="ghost" size="icon-sm" aria-label="Close">
+            <XIcon className="size-4" aria-hidden="true" />
           </Button></SheetPrimitive.Close></div>
         )}
       </SheetPrimitive.Content>
@@ -98,7 +98,7 @@ function SheetDescription({
   return (
     <SheetPrimitive.Description
       data-slot="sheet-description"
-      className={cn("text-[13px] text-muted-foreground", className)}
+      className={cn("text-sm text-muted-foreground", className)}
       {...props} />
   );
 }

@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "test": "node --test",
     "test:e2e": "npm run build && playwright test",
-    "lint:ui": "lintapple http://localhost:5173"
+    "lint:ui": "lintapple http://localhost:5173",
+    "lint:ui:states": "node scripts/lint-ui-states.mjs --url http://localhost:5173"
   },
   "dependencies": {
     "@dagrejs/dagre": "^3.1.1",

@@ -78,7 +78,7 @@ export default function SourcesTab({ session, changeDisabled, reasonId }) {
                   <th scope="col">{t("sources.column.role")}</th>
                   <th scope="col">{t("sources.column.access")}</th>
                   <th scope="col">{t("sources.column.status")}</th>
-                  <th scope="col" className="ui-table-actions">Actions</th>
+                  <th scope="col" className="ui-table-actions" data-ui-actions="">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -99,8 +99,8 @@ export default function SourcesTab({ session, changeDisabled, reasonId }) {
                       <td>{t(`sources.role.${source.role}`)}</td>
                       <td>{source.access_type ?? t("sources.access.local")}</td>
                       <td><StatusBadge tone={state.tone} label={state.label} /></td>
-                      <td className="ui-table-actions">
-                        <div className="dc-row-actions">
+                      <td className="ui-table-actions" data-ui-actions="">
+                        <div className="dc-row-actions" data-ui-actions="">
                           {source.status !== "ok" && !source.cloud ? (
                             <Button variant="outline" size="sm" disabled={changeDisabled} aria-describedby={reasonId} aria-label={t("sources.find.label", { source: source.display_name })} onClick={() => find(source)}>
                               <FolderSearch aria-hidden="true" />{t("sources.status.missing.find")}

@@ -538,7 +538,7 @@ export default function ImpactTab({ session, tabState, onTabs, changeDisabled, r
 
   return (
     <div className="dc-impact" data-view={view} data-group={group || undefined} data-impact-row={scope !== "plan" ? scope : undefined} data-impact-item={tabState?.impactItemId || undefined}>
-      <div className="dc-impact-toolbar">
+      <div className="dc-impact-toolbar" data-ui-actions="">
         <Select label={t("impact.scope.label")} value={scope} onValueChange={(value) => setScope(value)} options={scopeOptions} className="dc-impact-scope" />
         <div className="dc-impact-field">
           <span className="ui-field-label" id="dc-impact-group-label">{t("impact.group.label")}</span>

@@ -72,7 +72,7 @@ export default function WorkArea({ session, tabState, onTabs, onRetryLock, onClo
           <h1 className="dc-title">{session.display_name}</h1>
           <p className="dc-subtitle">{targetLine(session)}</p>
         </div>
-        <div className="dc-work-actions">
+        <div className="dc-work-actions" data-ui-actions="">
           <Button variant={status.tone === "plain" ? "outline" : "status"} tone={status.tone === "plain" ? undefined : status.tone} aria-label={`${status.text}. ${t("work.plan.open")}`} onClick={() => onTabs({ tab: "plan" })}>
             {status.checking ? <LoaderCircle className="spin" aria-hidden="true" /> : null}
             {status.text}
