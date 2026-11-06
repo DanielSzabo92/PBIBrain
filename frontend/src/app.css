@@ -18,6 +18,8 @@ kbd {
 }
 
 :focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+/* A7 (WCAG 2.4.11): the sticky top bar (52 px) must not hide an element that gets focus after a scroll. */
+html { scroll-padding-top: 64px; }
 .skip-link { position: fixed; top: 8px; left: 8px; z-index: 100; padding: 10px 16px; border: 2px solid var(--brand); border-radius: 8px; background: var(--surface); color: var(--text); transform: translateY(-160%); }
 .skip-link:focus { transform: none; }
 .content:focus { outline: none; }

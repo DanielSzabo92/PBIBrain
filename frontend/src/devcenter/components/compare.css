@@ -16,7 +16,9 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: var(--space-4);
-  flex: 1;
+  /* No flex grow: the parent has no fixed height, so a flex basis takes the content height and the
+   * grid stops to scroll (U12: the 5000-row list was 144000 px high and the page scrolled). */
+  flex: none;
   min-height: 480px;
   height: clamp(480px, calc(100vh - 210px), 880px);
   padding-bottom: var(--space-4);

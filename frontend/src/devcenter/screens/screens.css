@@ -165,7 +165,7 @@
 .dc-plan-step-row { border: 0 solid var(--line); border-bottom-width: 1px; }
 .dc-plan-step-btn { display: grid; grid-template-columns: 16px 110px minmax(0, 1fr) auto; align-items: center; gap: var(--space-2); width: 100%; min-height: 34px; padding: 6px var(--space-4); border: 0; background: transparent; color: var(--text); text-align: left; font: inherit; font-size: 13px; cursor: pointer; }
 .dc-plan-step-btn:hover { background: var(--surface-3); }
-.dc-plan-step-btn:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+.dc-plan-step-btn:focus-visible { outline: 2px solid var(--brand); outline-offset: -2px; }
 .dc-plan-chev { width: 14px; height: 14px; color: var(--text-2); transition: transform 120ms ease; }
 .dc-plan-chev-open { transform: rotate(90deg); }
 .dc-plan-step-type { color: var(--text-2); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
