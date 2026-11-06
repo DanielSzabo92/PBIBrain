@@ -55,6 +55,10 @@ def wsgi(app, method: str, path: str, body: bytes = b"") -> tuple[int, dict]:
     return response["status"], json.loads(raw) if raw else {}
 
 
+# The apply reads of build step S9 (ticket 23).
+APPLY_READS = {("apply", "preview"), ("apply", "progress"), ("apply", "last")}
+
+
 class RouteListTests(unittest.TestCase):
     def setUp(self) -> None:
         self.temporary = tempfile.TemporaryDirectory()
@@ -87,6 +91,9 @@ class RouteListTests(unittest.TestCase):
                     self.assertIn("/".join(route.path), http_routes.READ_POSTS)
                 if route.kind == "proposal":
                     self.assertIn(route.path, {("proposals",), ("questions",)})
+                if route.path in APPLY_READS:
+                    # Section 14.1 and UC5, UC7: these GET reads of the apply state start with "apply" and change nothing.
+                    continue
                 self.assertFalse(names & set(route.path), "A route path must not name a state change")
 
     def test_no_http_route_changes_session_state(self):

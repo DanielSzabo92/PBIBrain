@@ -102,6 +102,46 @@ class LocalPromotion:
                 # all inputs and refuses to overwrite concurrent human edits.
                 raise PromotionError("Promotion interrupted; verified recovery required") from error
 
+    def undo(self, operation_id: str) -> dict:
+        """Restore the backup of a committed promotion (Development Center undo, technical design section 13).
+
+        The undo refuses a target that changed after the promotion: it never overwrites a later human edit.
+        """
+        journal_path = operation_id + "/promotion.json"
+        journal = self.store.load(journal_path)
+        source = Path(journal["source_root"])
+        lock_id = content_hash(str(source.resolve())).split(":")[1]
+        with exclusive_lock(self.store.root / "locks" / (lock_id + ".lock")):
+            if journal["status"] != "COMMITTED":
+                raise PromotionError("Only a committed promotion can be undone")
+            if source_manifest(source) != journal["candidate_manifest"]:
+                raise PromotionError("Target changed after the promotion")
+            for replacement in journal["replacements"]:
+                if replacement["before_hash"] is not None and file_hash(safe_path(self.store.root, replacement["backup"], must_exist=True)) != replacement["before_hash"]:
+                    raise PromotionError("Undo backup corrupted")
+            journal["status"] = "UNDOING"
+            self.store.save(journal_path, journal)
+            try:
+                for replacement in reversed(journal["replacements"]):
+                    destination = safe_path(source, replacement["path"])
+                    if replacement["before_hash"] is None:
+                        if destination.exists():
+                            destination.unlink()
+                    else:
+                        staging = safe_path(self.store.root, operation_id + "/staging/" + replacement["path"])
+                        durable_write(destination, safe_path(self.store.root, replacement["backup"], must_exist=True).read_bytes(), temporary_path=staging)
+                if source_manifest(source) != journal["baseline_manifest"]:
+                    raise PromotionError("Undone project does not match baseline")
+            except Exception as error:
+                journal["status"] = "PROMOTION_RECOVERY_REQUIRED"
+                self.store.save(journal_path, journal)
+                raise PromotionError("Undo incomplete") from error
+            journal["status"] = "UNDONE"
+            journal["undone_at"] = utc_now()
+            self.store.save(journal_path, journal)
+            self.store.append(operation_id, "UNDO_VERIFIED", {"source_hash": content_hash(source_manifest(source))})
+            return journal
+
     def require_recovery(self, operation_id: str, reason: str) -> None:
         journal_path = operation_id + "/promotion.json"
         journal = self.store.load(journal_path)

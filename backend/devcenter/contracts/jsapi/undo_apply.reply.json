@@ -1,0 +1,85 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pbibrain.local/devcenter/contracts/jsapi/undo_apply.reply.json",
+  "title": "JS API undo_apply: reply (an error reply uses error.json)",
+  "type": "object",
+  "properties": {
+    "revision": {
+      "$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/revision"
+    },
+    "apply_id": {
+      "type": "string",
+      "pattern": "^apl-[0-9a-f]{16}$"
+    },
+    "undo_id": {
+      "type": "string",
+      "pattern": "^apl-[0-9a-f]{16}$"
+    },
+    "file_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "files": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "desktop_state": {
+      "enum": [
+        "not_open",
+        "open_saved",
+        "open_unsaved",
+        "not_reachable"
+      ]
+    },
+    "notices": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "apply_external_changes",
+          "desktop_not_checked"
+        ]
+      },
+      "uniqueItems": true
+    },
+    "rescan_differences": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "object": {
+            "type": "string",
+            "minLength": 1
+          },
+          "expected": {
+            "type": "string",
+            "minLength": 1
+          },
+          "found": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "expected",
+          "found",
+          "object"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "apply_id",
+    "desktop_state",
+    "file_count",
+    "files",
+    "notices",
+    "rescan_differences",
+    "revision",
+    "undo_id"
+  ],
+  "additionalProperties": false
+}

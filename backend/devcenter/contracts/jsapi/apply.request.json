@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pbibrain.local/devcenter/contracts/jsapi/apply.request.json",
+  "title": "JS API apply: request",
+  "type": "object",
+  "properties": {
+    "base_revision": {
+      "$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/base_revision"
+    },
+    "plan_hash": {
+      "type": "string",
+      "minLength": 1
+    },
+    "approvals": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "HIGH_RISK_PROMOTION",
+          "UNCHECKED_IMPACT"
+        ]
+      },
+      "uniqueItems": true,
+      "maxItems": 2
+    }
+  },
+  "required": [
+    "approvals",
+    "base_revision",
+    "plan_hash"
+  ],
+  "additionalProperties": false
+}

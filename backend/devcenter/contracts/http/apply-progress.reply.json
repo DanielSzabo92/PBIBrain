@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pbibrain.local/devcenter/contracts/http/apply-progress.reply.json",
+  "title": "GET apply/progress: reply (UC5)",
+  "type": "object",
+  "properties": {
+    "revision": {
+      "$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/revision"
+    },
+    "apply_id": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^apl-[0-9a-f]{16}$"
+    },
+    "step": {
+      "enum": [
+        "source_check",
+        "plan_status",
+        "desktop_check",
+        "canonical_check",
+        "validation",
+        "approval",
+        "write",
+        "guard",
+        "promotion",
+        "rescan",
+        "fingerprint",
+        "change_report",
+        "backup_check",
+        null
+      ]
+    },
+    "step_index": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "step_count": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "state": {
+      "enum": [
+        "running",
+        "done",
+        "failed"
+      ]
+    }
+  },
+  "required": [
+    "apply_id",
+    "revision",
+    "state",
+    "step",
+    "step_count",
+    "step_index"
+  ],
+  "additionalProperties": false
+}

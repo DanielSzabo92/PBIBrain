@@ -93,4 +93,4 @@ from backend.devcenter.naming import http_routes as _naming_routes  # noqa: E402
 from backend.devcenter.plan import http_routes as _plan_routes  # noqa: E402,F401  (S5 read routes)
 from backend.devcenter.impact import http_routes as _impact_routes  # noqa: E402,F401  (S6 read routes)
 from backend.devcenter.session import http_routes as _agent_routes  # noqa: E402,F401  (S10 proposal routes and log)
-
+from backend.devcenter.apply import http_routes as _apply_routes  # noqa: E402,F401  (S9 apply reads)

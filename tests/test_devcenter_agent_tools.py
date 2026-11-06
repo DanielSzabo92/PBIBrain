@@ -161,6 +161,10 @@ class AllowlistTests(AgentToolsTestCase):
         for route in http_routes.ROUTES:
             with self.subTest(route="/".join(route.path)):
                 self.assertIn((route.kind, route.method), {("read", "GET"), ("read", "POST"), ("proposal", "POST")})
+                if route.path in {("apply", "preview"), ("apply", "progress"), ("apply", "last")}:
+                    # Section 14.1, UC5, UC7 (ticket 23): GET reads of the apply state. They change nothing.
+                    self.assertEqual(("read", "GET"), (route.kind, route.method))
+                    continue
                 self.assertFalse(names & set(route.path))
         for name in ("proposal_accept", "proposal_accept_all", "question_answer", "apply"):
             for method in ("GET", "POST", "PUT"):
