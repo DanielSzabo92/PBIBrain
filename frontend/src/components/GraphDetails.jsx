@@ -91,7 +91,7 @@ export default function GraphDetails({ node, colors, transport, onClose, onSelec
           </TabsContent>
         </Tabs>
       </div>
-      <div className="graph-detail-actions"><Button variant="outline" onClick={() => { onCenter(current); onClose(); }}><Crosshair />Center graph here</Button><Button onClick={() => onInspect(current.id)}>Full inspector <ArrowUpRight /></Button></div>
+      <div className="graph-detail-actions" data-ui-actions=""><Button variant="outline" onClick={() => { onCenter(current); onClose(); }}><Crosshair />Center graph here</Button><Button onClick={() => onInspect(current.id)}>Full inspector <ArrowUpRight /></Button></div>
     </SheetContent>
   </Sheet>;
 }

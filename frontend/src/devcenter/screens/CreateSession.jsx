@@ -137,7 +137,7 @@ export default function CreateSession({ onCancel, onDone, onOpenPartial }) {
         {step === 0 ? (
           <>
             <p className="dc-subtitle">{t("create.sources.body")}</p>
-            <div className="dc-toolbar">
+            <div className="dc-toolbar" data-ui-actions="">
               <Menu
                 label={t("create.add_source")}
                 trigger={<Button variant="outline"><Plus aria-hidden="true" />{t("create.add_source")}</Button>}

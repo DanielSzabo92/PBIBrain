@@ -57,7 +57,7 @@ export default function QuestionCard({ question, donors = [], disabled = false, 
       {answer.error ? (
         <p className="ui-field-hint is-error" role="alert"><span>{errorCopy(answer.error).body}</span></p>
       ) : null}
-      <div className="dc-proposal-actions">
+      <div className="dc-proposal-actions" data-ui-actions="">
         <Button type="button" size="sm" loading={answer.pending} disabled={disabled || blocked || !value} aria-describedby={reasonId} onClick={submit}>
           {t("agent.question.answer")}
         </Button>

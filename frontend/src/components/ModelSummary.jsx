@@ -53,11 +53,11 @@ export default function ModelSummary({ overview, transport, scanning }) {
   return <Card className="panel model-summary-panel">
     <div className="settings-panel-head"><span className="icon-tile" aria-hidden="true"><Sparkles /></span><div><p className="eyebrow">Agent context</p><h2>Model summary</h2><p className="muted-copy">Model overview, exact formulas, relationships, and reviewed meanings in one Markdown file.</p></div></div>
     {models.length ? <>
-      <div className="model-summary-toolbar">
+      <div className="model-summary-toolbar" data-ui-actions="">
         <div className="model-summary-choice"><Label htmlFor="summary-model">Semantic model</Label><NativeSelect id="summary-model" value={modelId} onChange={(event) => setSelectedId(event.target.value)} disabled={scanning}>
           {models.map((item) => <option key={item.id} value={item.id}>{item.name || item.id}</option>)}
         </NativeSelect></div>
-        <div className="model-summary-actions">
+        <div className="model-summary-actions" data-ui-actions="">
           <Button variant="ghost" size="sm" onClick={() => setRevision((value) => value + 1)} disabled={loading || scanning}><RefreshCw className={loading ? "spin" : ""} />Refresh</Button>
           <Button variant="outline" size="sm" onClick={copy} disabled={!ready}><Copy />Copy context</Button>
           <Button size="sm" onClick={save} disabled={!ready}><Download />Save Markdown</Button>

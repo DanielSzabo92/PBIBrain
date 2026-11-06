@@ -21,7 +21,7 @@ function Notice({ tone = "info", title, children, actions, blocking = false, ban
         {title ? <p className="ui-notice-title">{title}</p> : null}
         {children ? <div className="ui-notice-text">{children}</div> : null}
       </div>
-      {actions ? <div className="ui-notice-actions">{actions}</div> : null}
+      {actions ? <div className="ui-notice-actions" data-ui-actions="">{actions}</div> : null}
     </div>
   )
 }

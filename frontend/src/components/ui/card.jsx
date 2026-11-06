@@ -8,6 +8,7 @@ function Card({
   return (
     <div
       data-slot="card"
+      data-ui-container=""
       className={cn("ui-card flex flex-col text-card-foreground", className)}
       {...props} />
   );

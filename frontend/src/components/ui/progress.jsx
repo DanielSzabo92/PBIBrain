@@ -45,7 +45,7 @@ function ProgressList({ lines = [], footer, label, className }) {
           )
         })}
       </ul>
-      {footer ? <p className="ui-progress-footer">{footer}</p> : null}
+      {footer ? <p className="ui-progress-footer" data-ui-actions="">{footer}</p> : null}
     </div>
   )
 }
