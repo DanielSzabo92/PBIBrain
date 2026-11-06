@@ -1,7 +1,7 @@
 import VisualBindings from "./components/VisualBindings";
 import ImpactExplorer from "./components/ImpactExplorer";
 import React, { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, ArrowRight, ArrowUpRight, Boxes, Check, ChartColumn, ChevronRight, CircleCheck, Copy, Database, FileText, FolderOpen, Moon, Plus, RefreshCw, ScanLine, ShieldAlert, ShieldCheck, Sparkles, Sun, TriangleAlert, Waypoints, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, ArrowUpRight, Boxes, Check, ChartColumn, ChevronRight, CircleCheck, PanelLeft, ScanSearch, Copy, Database, FileText, FolderOpen, Moon, Plus, RefreshCw, ScanLine, ShieldAlert, ShieldCheck, Sparkles, Sun, TriangleAlert, Waypoints, X } from "lucide-react";
 import { brainTransport, normalizeSnapshot } from "./transport";
 import { desktopRequest, subscribeToDesktopBridge } from "./desktop";
 import NavIcon from "./NavIcon";
@@ -23,6 +23,8 @@ import { Switch } from "./components/ui/switch";
 import { setSlashSearchEnabled, slashGoesToSearch, slashSearchEnabled } from "./devcenter/preferences.js";
 import { t as devCopy } from "./devcenter/copy.js";
 import { artifactColor, normalizeColors, typeLabel } from "./graphPresentation";
+import { AppMenuBar, ShortcutsDialog, StatusBar } from "./components/AppShell";
+import { commandFor, displayKeys, shortcutKeys } from "./shortcuts";
 
 const VIEWS = [
   ["overview", "Overview"],
@@ -147,9 +149,28 @@ function useTheme() {
   return [theme, () => setTheme((current) => current === "dark" ? "light" : "dark")];
 }
 
+const SIDEBAR_KEY = "pbibrain-sidebar";
+
+function useSidebar() {
+  const [collapsed, setCollapsed] = useState(() => { try { return globalThis.localStorage?.getItem(SIDEBAR_KEY) === "collapsed"; } catch { return false; } });
+  useEffect(() => { try { globalThis.localStorage?.setItem(SIDEBAR_KEY, collapsed ? "collapsed" : "expanded"); } catch { /* Storage can be unavailable. */ } }, [collapsed]);
+  return [collapsed, () => setCollapsed((current) => !current)];
+}
+
+// Only the content pane scrolls (desktop shell); views save and restore its position, not the window's.
+function contentScroller() {
+  return document.getElementById("main-content") || document.scrollingElement || document.documentElement;
+}
+
+function focusSearchField() {
+  requestAnimationFrame(() => document.querySelector(".search-field input")?.focus());
+}
+
 function App({ transport = brainTransport }) {
   const desktopHost = Boolean(globalThis.__PBIBRAIN_DESKTOP__);
   const [theme, toggleTheme] = useTheme();
+  const [sidebarCollapsed, toggleSidebar] = useSidebar();
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [snapshot, setSnapshot] = useState(() => normalizeSnapshot(null));
   const [snapshotLoaded, setSnapshotLoaded] = useState(false);
   const [snapshotLoading, setSnapshotLoading] = useState(false);
@@ -448,15 +469,34 @@ function App({ transport = brainTransport }) {
     if (key === "review") loadSnapshot().catch(() => {});
   }, [loadSnapshot]);
 
-  // Ctrl/Cmd+K (or "/" outside a text field) jumps straight to search.
-  // The Settings switch "Use the / key to go to search" turns the "/" key off (UI design 9.3, A24).
+  const goBack = useCallback(() => {
+    if (currentView.current !== "inspector" || !selectedId) return;
+    if (inspectorOrigin === "inspector") { setSelectedId(null); setInspectedObject(null); }
+    else setView(inspectorOrigin);
+  }, [inspectorOrigin, selectedId]);
+
+  // Shell commands. Menus, toolbar buttons and keys all run through here (shortcuts.js holds the key map).
+  const commands = useRef({});
+  commands.current = {
+    find: () => { setView("search"); focusSearchField(); },
+    back: goBack,
+    sidebar: toggleSidebar,
+    theme: toggleTheme,
+    shortcuts: () => setShortcutsOpen(true),
+  };
+  // "/" outside a text field also jumps to search; Settings can turn that key off (UI design 9.3, A24).
+  // Keys are ignored while a dialog or menu owns focus, so Escape and arrows stay with it.
   useEffect(() => {
     const onKey = (event) => {
-      if (((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") || slashGoesToSearch(event)) {
-        event.preventDefault();
-        setView("search");
-        requestAnimationFrame(() => document.querySelector(".search-field input")?.focus());
-      }
+      if (event.defaultPrevented) return;
+      if (slashGoesToSearch(event)) { event.preventDefault(); commands.current.find(); return; }
+      const command = commandFor(event);
+      if (!command) return;
+      if (document.querySelector("[role=dialog], [role=alertdialog]") && command !== "shortcuts") return;
+      const run = commands.current[command] || (command.startsWith("view:") ? () => commands.current.view(command.slice(5)) : null);
+      if (!run) return;
+      event.preventDefault();
+      run();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -483,48 +523,81 @@ function App({ transport = brainTransport }) {
     else if (snapshotLoaded || view === "review") loadSnapshot().catch(() => {});
   };
   const failedNotice = /failed/i.test(String(notice));
+  const hasSources = !config || !Array.isArray(config.sources) || config.sources.length > 0 || Boolean(activeProject?.source_count);
+  const runScan = () => { if (!scanning && hasSources) applyScan(); };
+  const openSettings = (tab = "project") => { setSettingsTab(tab); setView("config"); };
+  commands.current.view = (key) => { navigate(key); if (key === "search") focusSearchField(); };
+  commands.current.reload = () => { if (!loading && !scanning) reloadBrain(); };
+  commands.current.scan = runScan;
+  const lastScan = overview.last_scan ? `Scanned ${formatDate(overview.last_scan)}` : overview.scan_state === "not_scanned" ? "Not scanned" : "Last scan time unknown";
+  const viewLabel = VIEWS.find(([key]) => key === view)?.[1];
+  const menus = [
+    { id: "file", label: "File", items: [
+      activeProject ? { label: "Change project…", onSelect: closeDesktopProject, disabled: scanning } : null,
+      { label: "Scan sources", keys: shortcutKeys("scan"), onSelect: runScan, disabled: scanning || !hasSources },
+      { separator: true },
+      { label: "Project sources…", onSelect: () => openSettings("project") },
+      { label: "Export agent context…", onSelect: () => openSettings("summary") },
+      { label: "Settings", keys: shortcutKeys("view:config"), onSelect: () => openSettings(settingsTab) },
+    ] },
+    { id: "view", label: "View", items: [
+      { label: "Reload data", keys: shortcutKeys("reload"), onSelect: commands.current.reload, disabled: loading || scanning },
+      { separator: true },
+      { label: "Side bar", keys: shortcutKeys("sidebar"), checked: !sidebarCollapsed, onSelect: toggleSidebar },
+      { label: "Dark theme", keys: shortcutKeys("theme"), checked: theme === "dark", onSelect: toggleTheme },
+      { label: "Graph colors…", onSelect: () => openSettings("colors") },
+    ] },
+    { id: "go", label: "Go", items: [
+      ...VIEWS.filter(([key]) => key !== "config").map(([key, label]) => ({ label, keys: shortcutKeys(`view:${key}`), onSelect: () => commands.current.view(key) })),
+      { separator: true },
+      { label: "Find object…", keys: shortcutKeys("find"), onSelect: commands.current.find },
+      { label: "Back", keys: shortcutKeys("back"), onSelect: goBack, disabled: !(view === "inspector" && selectedId) },
+    ] },
+    { id: "help", label: "Help", items: [
+      { label: "Keyboard shortcuts", keys: shortcutKeys("shortcuts"), onSelect: () => setShortcutsOpen(true) },
+    ] },
+  ];
   return (
-    <div className="app-shell">
+    <div className={`app-shell ${sidebarCollapsed ? "sidebar-collapsed" : ""}`}>
       <a className="skip-link" href="#main-content">Skip to content</a>
-      <aside className="sidebar">
-        <div className="sidebar-brand">
-          <BrandMark size={28} />
-          <span className="sidebar-wordmark">PBIBrain</span>
-        </div>
-        <nav aria-label="Main navigation" className="sidebar-nav">
-          {VIEWS.map(([key, label]) => (
-            <Button variant="ghost" key={key} aria-current={view === key ? "page" : undefined} className={`nav-button ${view === key ? "active" : ""} ${key === "config" ? "nav-settings" : ""}`} onClick={() => navigate(key)}>
-              <NavIcon name={key} />
-              <span className="nav-label">{label}</span>
-              {key === "review" && pending > 0 ? <span className="nav-count">{pending > 99 ? "99+" : pending}</span> : null}
-              {key === "search" ? <kbd className="nav-kbd" aria-hidden="true">Ctrl K</kbd> : null}
-            </Button>
-          ))}
-        </nav>
-        <div className="sidebar-footer">
-          <span className={`connection connection-${connection}`} title={loading ? "Loading" : error ? "Offline" : "Connected"}><i />{loading ? "Loading" : error ? "Offline" : "Connected"}</span>
-          <Button variant="ghost" size="icon-sm" className="theme-toggle" onClick={toggleTheme} aria-label={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"} title={theme === "dark" ? "Light theme" : "Dark theme"}>{theme === "dark" ? <Sun /> : <Moon />}</Button>
-        </div>
-      </aside>
+      <AppMenuBar menus={menus} projectName={projectName}>
+        <button type="button" className="command-center" onClick={commands.current.find} title={`Find an object (${displayKeys("Ctrl+K")})`}>
+          <ScanSearch aria-hidden="true" /><span>Find measure, table, column or visual</span><kbd aria-hidden="true">{displayKeys("Ctrl+K")}</kbd>
+        </button>
+      </AppMenuBar>
+      <div className="workbench">
+        <aside className="sidebar" aria-label="Views">
+          <nav aria-label="Main navigation" className="sidebar-nav">
+            {VIEWS.map(([key, label]) => {
+              const keys = displayKeys(shortcutKeys(`view:${key}`));
+              return (
+                <Button variant="ghost" key={key} aria-current={view === key ? "page" : undefined} className={`nav-button ${view === key ? "active" : ""} ${key === "config" ? "nav-settings" : ""}`} onClick={() => navigate(key)} title={`${label} (${keys})`}>
+                  <NavIcon name={key} />
+                  <span className="nav-label">{label}</span>
+                  {key === "review" && pending > 0 ? <span className="nav-count">{pending > 99 ? "99+" : pending}</span> : <kbd className="nav-kbd" aria-hidden="true">{keys}</kbd>}
+                </Button>
+              );
+            })}
+          </nav>
+          <Button variant="ghost" size="icon-sm" className="sidebar-collapse" onClick={toggleSidebar} aria-label={sidebarCollapsed ? "Expand side bar" : "Collapse side bar"} aria-expanded={!sidebarCollapsed} title={`${sidebarCollapsed ? "Expand" : "Collapse"} side bar (${displayKeys("Ctrl+B")})`}><PanelLeft aria-hidden="true" /></Button>
+        </aside>
 
       <div className="main-column">
-        <header className="topbar">
+        <header className="topbar view-toolbar">
           <div className="breadcrumb">
-            <span className="project-avatar" aria-hidden="true">{projectName.trim().slice(0, 1).toUpperCase() || "P"}</span>
-            <span className="breadcrumb-project" title={projectName}>{projectName}</span>
-            <ChevronRight className="breadcrumb-sep" aria-hidden="true" />
-            <span className="breadcrumb-view">{VIEWS.find(([key]) => key === view)?.[1]}</span>
+            <NavIcon name={view} />
+            <span className="breadcrumb-view">{viewLabel}</span>
             <span className="breadcrumb-hint">{VIEW_HINTS[view]}</span>
           </div>
-          <div className="topbar-actions">
-            {scanning ? <span className="topbar-scanning"><RefreshCw className="spin" aria-hidden="true" />Scanning</span> : null}
+          <div className="topbar-actions" role="toolbar" aria-label={`${viewLabel} toolbar`}>
             {activeProject ? <Button variant="ghost" size="sm" className="project-switch" onClick={closeDesktopProject} disabled={scanning}><FolderOpen />Change project</Button> : null}
-            <Button variant="ghost" size="icon-sm" onClick={reloadBrain} disabled={loading || scanning} title="Reload Brain" aria-label="Reload Brain"><RefreshCw className={loading ? "spin" : ""} /></Button>
+            <Button variant="ghost" size="sm" onClick={runScan} disabled={scanning || !hasSources} title={hasSources ? `Re-read every source and rebuild the brain (${displayKeys("Ctrl+F5")})` : "Add sources in Settings first"}><ScanLine aria-hidden="true" />{scanning ? "Scanning…" : "Rescan"}</Button>
+            <span className="toolbar-sep" aria-hidden="true" />
+            <Button variant="ghost" size="icon-sm" onClick={reloadBrain} disabled={loading || scanning} title={`Reload data (${displayKeys("F5")})`} aria-label="Reload Brain"><RefreshCw className={loading ? "spin" : ""} /></Button>
           </div>
         </header>
 
         <main id="main-content" tabIndex={-1} className={`content content-${view}`}>
-          {notice ? <div className={`toast ${failedNotice ? "toast-error" : ""}`} role="status">{failedNotice ? <TriangleAlert aria-hidden="true" /> : <CircleCheck aria-hidden="true" />}{notice}</div> : null}
           {(view !== "devcenter" && (error || configError || operationError)) || desktopError ? (
             <div className="error-banner" role="alert">
               <TriangleAlert aria-hidden="true" />
@@ -549,6 +622,9 @@ function App({ transport = brainTransport }) {
           </div>
         </main>
       </div>
+      </div>
+      <StatusBar connection={connection} projectName={projectName} counts={counts} pending={pending} onReview={() => navigate("review")} scanning={scanning} lastScan={lastScan} notice={notice} noticeFailed={failedNotice} theme={theme} onTheme={toggleTheme} onShortcuts={() => setShortcutsOpen(true)} />
+      <ShortcutsDialog open={shortcutsOpen} onOpenChange={setShortcutsOpen} />
     </div>
   );
 }
@@ -780,7 +856,7 @@ function SearchView({ transport, overview, onSelect, colors, session, onSession,
     const frame = requestAnimationFrame(() => {
       const current = latest.current;
       const selected = [...(panel.current?.querySelectorAll("[data-result-id]") || [])].find((element) => element.dataset.resultId === current.selectedId);
-      if (selected) { selected.focus({ preventScroll: true }); window.scrollTo(0, current.scrollY || 0); }
+      if (selected) { selected.focus({ preventScroll: true }); contentScroller().scrollTop = current.scrollY || 0; }
       else panel.current?.querySelector("input")?.focus({ preventScroll: true });
     });
     return () => { cancelAnimationFrame(frame); request.current += 1; };
@@ -793,7 +869,7 @@ function SearchView({ transport, overview, onSelect, colors, session, onSession,
     <Card className="panel search-panel" aria-busy={loading}>
       <div className="search-toolbar">
         <Label htmlFor={inputId} className="search-query-label">{browse ? "Filter by name or formula" : "Name or formula"}</Label>
-        <div className="search-field"><NavIcon name="search" size={18} /><Input id={inputId} type="search" value={query} onChange={(event) => change({ query: event.target.value })} onKeyDown={(event) => { if (event.key === "Enter") runSearch(); }} placeholder={browse ? "Filter objects by name…" : "Measure, table, column, or visual…"} aria-label="Search the brain" />{loading && active ? <RefreshCw className="search-spinner spin" aria-hidden="true" /> : null}</div>
+        <div className="search-field"><NavIcon name="search" size={18} /><Input id={inputId} type="search" value={query} onChange={(event) => change({ query: event.target.value })} onKeyDown={(event) => { if (event.key === "Enter") runSearch(); else if (event.key === "ArrowDown" && moveInList(panel.current?.querySelector(".search-results"), "first")) event.preventDefault(); }} placeholder={browse ? "Filter objects by name…" : "Measure, table, column, or visual…"} aria-label="Search the brain" />{loading && active ? <RefreshCw className="search-spinner spin" aria-hidden="true" /> : null}</div>
         <div className="search-filters">
           <Label className="select-field"><span>Model</span><NativeSelect aria-label="Model" value={modelId} onChange={(event) => change({ modelId: event.target.value, reportId: "" })}><option value="">All models</option>{models.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</NativeSelect></Label>
           <Label className="select-field"><span>Report</span><NativeSelect aria-label="Report" value={reportId} onChange={(event) => change({ reportId: event.target.value, modelId: "" })}><option value="">All reports</option>{reports.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</NativeSelect></Label>
@@ -805,10 +881,32 @@ function SearchView({ transport, overview, onSelect, colors, session, onSession,
       {error ? <div className="search-error" role="alert"><TriangleAlert aria-hidden="true" /><span>{readableText(error.message)}</span><Button variant="outline" size="sm" onClick={() => runSearch(error.offset)}>Retry search</Button></div> : null}
       {!active ? <EmptyState icon={<NavIcon name="search" size={20} />} title="What are you looking for?" detail="Find a measure to inspect its formula and dependencies." action={<p className="empty-hint"><kbd>Ctrl</kbd><kbd>K</kbd> jumps here from anywhere</p>} /> : null}
       {active && !loading && !result?.items?.length && !error ? <EmptyState icon={<NavIcon name="search" size={20} />} title="No matches" detail="Try a shorter name or clear the filters." /> : null}
-      {active && result?.items?.length ? <div className="search-results">{result.items.map((item) => { const object = searchObject(item); const color = artifactColor(object, colors); const match = browse && !query.trim() ? "" : searchMatch(item); return <Button variant="ghost" key={object.id} data-result-id={object.id} className="search-result" style={{ "--artifact-color": color }} onClick={() => { onSession((current) => ({ ...current, selectedId: object.id, scrollY: window.scrollY })); onSelect(object.id, "inspector"); }}><span className="result-type"><span className="artifact-dot" />{typeLabel(object.type)}</span><span className="result-copy"><strong>{labelFor(object)}</strong><small>{scopeName(object) || readableText(object.description) || typeLabel(object.type)}</small></span>{match ? <span className="result-match">{match}</span> : null}<ChevronRight className="result-chevron" aria-hidden="true" /></Button>; })}</div> : null}
+      {active && result?.items?.length ? <div className="search-results" onKeyDown={(event) => listKeys(event, () => panel.current?.querySelector(".search-field input")?.focus())}>{result.items.map((item) => { const object = searchObject(item); const color = artifactColor(object, colors); const match = browse && !query.trim() ? "" : searchMatch(item); return <Button variant="ghost" key={object.id} data-result-id={object.id} className="search-result" style={{ "--artifact-color": color }} onClick={() => { onSession((current) => ({ ...current, selectedId: object.id, scrollY: contentScroller().scrollTop })); onSelect(object.id, "inspector"); }}><span className="result-type"><span className="artifact-dot" />{typeLabel(object.type)}</span><span className="result-copy"><strong>{labelFor(object)}</strong><small>{scopeName(object) || readableText(object.description) || typeLabel(object.type)}</small></span>{match ? <span className="result-match">{match}</span> : null}<ChevronRight className="result-chevron" aria-hidden="true" /></Button>; })}</div> : null}
       {active && result?.has_more ? <div className="search-footer"><Button variant="outline" size="sm" disabled={loading} onClick={() => runSearch(Number(result.offset || 0) + Number(result.limit || 50))}>{pending ? "Loading…" : "More results"}</Button></div> : null}
     </Card>
   </div>;
+}
+
+// Arrow-key movement through a list of buttons, as in a desktop list box. Up from the first row
+// returns to the field above (onTop), so search -> results -> search works without the mouse.
+function moveInList(container, where, from) {
+  const rows = [...(container?.querySelectorAll(":scope > button:not(:disabled)") || [])];
+  if (!rows.length) return false;
+  const index = rows.indexOf(from);
+  const next = where === "first" ? 0 : where === "last" ? rows.length - 1 : index + (where === "next" ? 1 : -1);
+  if (next < 0 || next >= rows.length) return false;
+  rows[next].focus();
+  rows[next].scrollIntoView({ block: "nearest" });
+  return true;
+}
+
+function listKeys(event, onTop) {
+  const where = { ArrowDown: "next", ArrowUp: "previous", Home: "first", End: "last" }[event.key];
+  if (!where || event.altKey || event.ctrlKey || event.metaKey) return;
+  const from = event.target.closest?.("button");
+  if (!from || from.parentElement !== event.currentTarget) return;
+  event.preventDefault();
+  if (!moveInList(event.currentTarget, where, from) && where === "previous") onTop?.();
 }
 
 function ConfigView({ transport, config, onSaved, onScan, scanning }) {
@@ -914,7 +1012,7 @@ function RelationshipGroup({ title, nodeId, edges, nodes, onSelect, empty }) {
   const [expanded, setExpanded] = useState(false);
   const unique = [...new Map(edges.map((edge) => [edge.from_id === nodeId ? edge.to_id : edge.from_id, edge])).values()];
   const shown = expanded ? unique : unique.slice(0, 10);
-  return <section className="relationship-group" aria-label={title}><h3 className="relationship-title">{title}<span className="count-pill">{unique.length}</span></h3>{unique.length ? <div className="relationship-list">{shown.map((edge) => { const targetId = edge.from_id === nodeId ? edge.to_id : edge.from_id; const resolved = nodes.find((node) => node.id === targetId); return <Button variant="ghost" className="relationship-row" key={targetId} onClick={() => onSelect(targetId, "inspector")}><span className="edge-chip" style={{ background: EDGE_COLORS[edge.type] || "#738294" }} /><span className="relationship-copy"><strong>{resolved ? labelFor(resolved) : "Related object"}</strong><small>{typeLabel(resolved?.type || edge.type)}</small></span><ChevronRight className="row-chevron" aria-hidden="true" /></Button>; })}</div> : <p className="muted-copy compact">{empty}</p>}{unique.length > 10 ? <Button variant="link" size="sm" className="relationship-more" onClick={() => setExpanded((current) => !current)}>{expanded ? "Show fewer" : `Show all ${unique.length}`}</Button> : null}</section>;
+  return <section className="relationship-group" aria-label={title}><h3 className="relationship-title">{title}<span className="count-pill">{unique.length}</span></h3>{unique.length ? <div className="relationship-list" onKeyDown={(event) => listKeys(event)}>{shown.map((edge) => { const targetId = edge.from_id === nodeId ? edge.to_id : edge.from_id; const resolved = nodes.find((node) => node.id === targetId); return <Button variant="ghost" className="relationship-row" key={targetId} onClick={() => onSelect(targetId, "inspector")}><span className="edge-chip" style={{ background: EDGE_COLORS[edge.type] || "#738294" }} /><span className="relationship-copy"><strong>{resolved ? labelFor(resolved) : "Related object"}</strong><small>{typeLabel(resolved?.type || edge.type)}</small></span><ChevronRight className="row-chevron" aria-hidden="true" /></Button>; })}</div> : <p className="muted-copy compact">{empty}</p>}{unique.length > 10 ? <Button variant="link" size="sm" className="relationship-more" onClick={() => setExpanded((current) => !current)}>{expanded ? "Show fewer" : `Show all ${unique.length}`}</Button> : null}</section>;
 }
 
 function reviewIssue(item) {
@@ -947,7 +1045,7 @@ function ReviewQueue({ session, onSession, snapshot, loaded, loading, error, onR
   useEffect(() => {
     const frame = requestAnimationFrame(() => {
       const selected = [...(panel.current?.querySelectorAll("[data-review-id]") || [])].find((element) => element.dataset.reviewId === session.selectedId);
-      if (selected) { selected.focus({ preventScroll: true }); window.scrollTo(0, session.scrollY || 0); }
+      if (selected) { selected.focus({ preventScroll: true }); contentScroller().scrollTop = session.scrollY || 0; }
     });
     return () => cancelAnimationFrame(frame);
   }, []);
@@ -991,7 +1089,7 @@ function ReviewQueue({ session, onSession, snapshot, loaded, loading, error, onR
     <Card className="panel queue-panel" aria-busy={loading}>
       {loading ? <div className="queue-loading">{[0, 1, 2].map((index) => <div className="skeleton skeleton-row-item" key={index} />)}<p className="sr-only" role="status">Loading suggestions…</p></div> : filtered.length ? <>
         <div className="review-columns" aria-hidden="true"><span>Object &amp; suggestion</span><span>Why review this?</span><span>Confidence</span><span>Decision</span></div>
-        <div className="queue-list">{filtered.map((item) => <ReviewItem key={item.id || `${item.issue}-${itemTarget(item)}`} item={item} nodes={snapshot.nodes} disabled={scanning} onSelect={(id, nextView) => { change({ selectedId: item.id || itemTarget(item), scrollY: window.scrollY }); onSelect(id, nextView); }} onReview={onReview} />)}</div>
+        <div className="queue-list">{filtered.map((item) => <ReviewItem key={item.id || `${item.issue}-${itemTarget(item)}`} item={item} nodes={snapshot.nodes} disabled={scanning} onSelect={(id, nextView) => { change({ selectedId: item.id || itemTarget(item), scrollY: contentScroller().scrollTop }); onSelect(id, nextView); }} onReview={onReview} />)}</div>
       </> : <EmptyState icon={hasFilters ? <ShieldCheck /> : <CircleCheck />} tone={hasFilters ? undefined : "ok"} title={hasFilters ? "No matching reviews" : "Queue is clear"} detail={hasFilters ? "Choose different filters to see the remaining reviews." : "All suggestions have been reviewed."} action={hasFilters ? <Button variant="outline" onClick={() => change({ issue: "ALL", objectType: "ALL", modelId: "ALL", reportId: "ALL" })}>Clear filters</Button> : null} />}
     </Card>
     </>}
