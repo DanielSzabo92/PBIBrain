@@ -523,7 +523,10 @@ class ApplyService:
             raise DevCenterError("not_found", "No apply has a change report.", {"reason": "no_apply"})
         if request.get("apply_id") not in (None, record["apply_id"]):
             raise DevCenterError("not_found", "Only the last apply has a change report.", {"reason": "not_last_apply"})
-        path = self._folder() / APPLY_FOLDER / f"change-report-{record['apply_id']}.md"
+        file_name = request.get("file_name") or f"change-report-{record['apply_id']}.md"
+        if file_name.startswith(".") or "\\" in file_name or Path(file_name).name != file_name:
+            raise DevCenterError("invalid_payload", "The file name must be a plain file name.", {"field": "file_name"})
+        path = self._folder() / APPLY_FOLDER / file_name
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(record["change_report"], encoding="utf-8", newline="\n")
         return {"revision": revision, "apply_id": record["apply_id"], "path": self.devcenter.relative_path(path),

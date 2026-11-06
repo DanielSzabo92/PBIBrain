@@ -1,4 +1,4 @@
-// Plan tab without Apply (UI design 4.6, 5.5, 8, step U7).
+// Plan tab (UI design 4.6, 5.5, 5.6, 8, steps U7 and U10).
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronRight, CircleX, TriangleAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -6,12 +6,16 @@ import { Notice } from "@/components/ui/notice";
 import { EmptyState, Skeleton } from "@/components/ui/result-panel";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { useToast } from "@/components/ui/toast";
 import { errorCopy, t } from "../../copy.js";
 import { normalizeError } from "../../errors.js";
 import { createDevCenterHttp } from "../../httpClient.js";
 import { slashGoesToSearch } from "../../preferences.js";
-import { useAction, useDevCenterStore, useResource } from "../../useDevCenter.js";
+import { useDevCenterStore, useResource } from "../../useDevCenter.js";
 import { targetNames } from "../sessionModel.js";
+import ApplyFlowDialog from "./ApplyFlowDialog.jsx";
+import ApplyReportDialog from "./ApplyReportDialog.jsx";
+import { needsDesktopBanner, timeOf, undoState } from "./applyModel.js";
 import {
   buildBlockList,
   formatCheckTime,
@@ -27,11 +31,19 @@ const DOMAIN_OPTIONS = [
   { value: "report", label: "Report" },
 ];
 
-export default function PlanTab({ session, changeDisabled, reasonId, onTabs, onChangeTarget }) {
+export default function PlanTab({ session, changeDisabled, reasonId, onTabs, onChangeTarget, onDesktopBanner }) {
   const store = useDevCenterStore();
+  const toast = useToast();
   const http = useMemo(() => createDevCenterHttp(), []);
   const planResource = useResource("plan");
-  const formatOnlyAction = useAction("format_only_apply");
+  const lastResource = useResource("applyLast");
+  // The preview of the last "Apply plan" click. Its blocks go to the block list.
+  const [preview, setPreview] = useState(null);
+  const [previewing, setPreviewing] = useState(false);
+  const [previewError, setPreviewError] = useState(null);
+  // The open flow dialog: { kind, preview, plan, last }, or the change report dialog: { kind: "report" }.
+  const [flow, setFlow] = useState(null);
+  const blocksTitleRef = useRef(null);
 
   const [checking, setChecking] = useState(false);
   const [checkTime, setCheckTime] = useState(() => formatCheckTime(session?.checked_at));
@@ -80,9 +92,10 @@ export default function PlanTab({ session, changeDisabled, reasonId, onTabs, onC
     () => buildBlockList({
       plan: effectivePlan,
       session,
+      applyPreview: preview,
       targetModelName,
     }),
-    [effectivePlan, session, targetModelName],
+    [effectivePlan, session, preview, targetModelName],
   );
 
   const isChecking = checking || session?.plan_state === "checking";
@@ -170,11 +183,45 @@ export default function PlanTab({ session, changeDisabled, reasonId, onTabs, onC
     } else if (action.type === "check_plan") {
       await handleCheckPlan();
     } else if (action.type === "format_files") {
-      await formatOnlyAction.run({});
-      await store.load("applyPreview");
-      await store.load("plan");
+      setFlow({ kind: "format", preview: preview ?? effectivePlan?.apply_preview ?? null, plan: effectivePlan });
     }
   };
+
+  // "Apply plan": GET apply/preview first. Blocks go to the block list, and the dialog does not open.
+  const handleApply = async () => {
+    if (previewing) return;
+    setPreviewing(true);
+    setPreviewError(null);
+    setAnnouncement(t("plan.preview.loading"));
+    try {
+      const reply = await http.getApplyPreview();
+      const found = buildBlockList({ plan: effectivePlan, session, applyPreview: reply, targetModelName });
+      setPreview(reply);
+      if (found.length > 0) {
+        setAnnouncement(found.length === 1 ? "1 item stops the apply" : t("plan.before_apply.count", { n: found.length }));
+        requestAnimationFrame(() => blocksTitleRef.current?.focus());
+      } else {
+        setAnnouncement("");
+        setFlow({ kind: "apply", preview: reply, plan: effectivePlan });
+      }
+    } catch (raw) {
+      setPreviewError(normalizeError(raw, { source: "http" }));
+    } finally {
+      setPreviewing(false);
+    }
+  };
+
+  const afterFlow = (kind, reply) => {
+    if (kind === "undo") toast.show({ tone: "ok", text: t("undo.toast", { time: timeOf(lastResource.data?.finished_utc) }) });
+    setPreview(null);
+    setValidationOverride(null);
+    if (needsDesktopBanner(reply)) onDesktopBanner?.();
+    store.load("applyLast");
+    // After a format only apply, the app runs "Check plan" (full) automatically (UI design 5.6).
+    if (kind === "format") handleCheckPlan();
+  };
+
+  const undo = undoState(lastResource.data);
 
   if (planResource.error && !effectivePlan) {
     const copy = errorCopy(planResource.error);
@@ -203,7 +250,7 @@ export default function PlanTab({ session, changeDisabled, reasonId, onTabs, onC
   const stepCount = effectivePlan?.steps?.length ?? 0;
   const warnings = effectivePlan?.warnings ?? [];
   const openProposalsCount = session?.proposals?.open?.length ?? 0;
-  const activeError = checkError || formatOnlyAction.error;
+  const activeError = checkError || previewError;
   const activeErrorCopy = activeError ? errorCopy(activeError) : null;
 
   return (
@@ -230,10 +277,27 @@ export default function PlanTab({ session, changeDisabled, reasonId, onTabs, onC
             onClick={handleCheckPlan}>
             {t("plan.check")}
           </Button>
+          {undo.available ? (
+            <Button
+              variant="outline"
+              disabled={changeDisabled}
+              aria-describedby={changeDisabled ? reasonId : undefined}
+              onClick={() => setFlow({ kind: "undo", last: lastResource.data, preview: preview ?? effectivePlan?.apply_preview ?? null })}>
+              {t("undo.action")}
+            </Button>
+          ) : null}
+          {lastResource.data?.apply_id && lastResource.data?.kind === "apply" && !lastResource.data?.undone ? (
+            <Button variant="outline" disabled={changeDisabled} onClick={() => setFlow({ kind: "report" })}>
+              {t("report.action")}
+            </Button>
+          ) : null}
           <Button
             variant={strip.applyVariant}
             disabled={applyDisabled}
-            aria-describedby={applyDescId}>
+            aria-describedby={applyDescId}
+            loading={previewing}
+            loadingText={t("plan.preview.loading")}
+            onClick={handleApply}>
             {t("apply.action")}
           </Button>
         </div>
@@ -242,7 +306,7 @@ export default function PlanTab({ session, changeDisabled, reasonId, onTabs, onC
       {blocks.length > 0 ? (
         <section className="dc-card dc-plan-blocks" aria-labelledby="dc-plan-blocks-title">
           <div className="dc-plan-blocks-head">
-            <h2 id="dc-plan-blocks-title" className="dc-section-title">{t("plan.before_apply")}</h2>
+            <h2 id="dc-plan-blocks-title" ref={blocksTitleRef} tabIndex={-1} className="dc-section-title">{t("plan.before_apply")}</h2>
             <span className="dc-plan-blocks-count dc-num">
               {blocks.length === 1
                 ? "1 item stops the apply"
@@ -453,6 +517,28 @@ export default function PlanTab({ session, changeDisabled, reasonId, onTabs, onC
             ? "This plan uses accepted choices only. 1 agent proposal is open and is not in it."
             : t("plan.proposals", { n: openProposalsCount })}
         </Notice>
+      ) : null}
+
+      {flow && flow.kind !== "report" ? (
+        <ApplyFlowDialog
+          kind={flow.kind}
+          preview={flow.preview}
+          plan={flow.plan}
+          last={flow.last}
+          targetName={targetModelName}
+          onClose={() => setFlow(null)}
+          onDone={(reply) => afterFlow(flow.kind, reply)}
+          onCheckPlan={handleCheckPlan}
+          onOpenLog={() => onTabs({ tab: "log" })}
+          onWriteReport={() => setFlow({ kind: "report" })}
+        />
+      ) : null}
+      {flow?.kind === "report" ? (
+        <ApplyReportDialog
+          sessionName={session?.display_name}
+          applyId={lastResource.data?.apply_id ?? null}
+          onClose={() => setFlow(null)}
+        />
       ) : null}
     </div>
   );

@@ -10,6 +10,12 @@
     "apply_id": {
       "type": "string",
       "pattern": "^apl-[0-9a-f]{16}$"
+    },
+    "file_name": {
+      "type": "string",
+      "minLength": 4,
+      "maxLength": 200,
+      "pattern": "^[^/\\\\:*?\"<>|]+\\.md$"
     }
   },
   "required": [

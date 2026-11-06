@@ -1,5 +1,5 @@
 // Work area frame of an open session (UI design 4.2): header, banner stack, and the six tabs.
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { LoaderCircle, MoreHorizontal, RefreshCw, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Banner } from "@/components/ui/notice";
@@ -43,6 +43,8 @@ export default function WorkArea({ session, tabState, onTabs, onRetryLock, onClo
   const blocking = status.blocking ?? 0;
   const stack = banners(session).filter((banner) => !(banner.id === "missing" && tabState.tab === "sources"));
   const busyText = longBusy && running ? longCallText(running) : null;
+  // Step U10: after an apply, undo, or format with the target open in Power BI Desktop.
+  const [desktopBanner, setDesktopBanner] = useState(false);
 
   useEffect(() => {
     if (readOnly || checkedOnOpen.has(session.session_id)) return;
@@ -88,6 +90,11 @@ export default function WorkArea({ session, tabState, onTabs, onRetryLock, onClo
       </header>
       {busyText ? <p id={BUSY_REASON_ID} className="dc-busy-line" role="status"><LoaderCircle className="spin" aria-hidden="true" />{busyText}</p> : null}
       {check.error ? <Banner tone="bad">{errorCopy(check.error).body}</Banner> : null}
+      {desktopBanner ? (
+        <Banner tone="info" data-banner="desktop" actions={<Button variant="outline" size="sm" onClick={() => setDesktopBanner(false)}>{t("work.banner.desktop.action")}</Button>}>
+          {t("work.banner.desktop")}
+        </Banner>
+      ) : null}
       {stack.length > 0 ? (
         <div className="dc-banners">
           {stack.map((banner) => (
@@ -130,6 +137,7 @@ export default function WorkArea({ session, tabState, onTabs, onRetryLock, onClo
                 changeDisabled={changeDisabled}
                 reasonId={reasonId}
                 onTabs={onTabs}
+                onDesktopBanner={() => setDesktopBanner(true)}
               />
             ) : tab === "agent" ? (
               <AgentTab session={session} changeDisabled={changeDisabled} reasonId={reasonId} onTabs={onTabs} />

@@ -428,6 +428,17 @@ class ApplySequenceTests(ApplyTestCase):
         self.assertTrue(report["path"].startswith(".pbibrain/sessions/"))
         self.assertNotIn("—", text)
 
+    def test_08b_the_change_report_uses_the_file_name_of_the_save_dialog(self) -> None:
+        self.choose(MARGIN, PAGE)
+        reply = self.applied()
+        name = "Sales merge change report 2026-11-06.md"
+        report = self.ok("change_report_write", {"base_revision": self.rev, "apply_id": reply["apply_id"], "file_name": name})
+        self.assertTrue(report["path"].endswith("/" + name))
+        self.assertTrue((self.root / report["path"]).is_file())
+        for bad in ("../x.md", ".hidden.md", "a\\b.md"):
+            error = self.failed("change_report_write", {"base_revision": self.rev, "file_name": bad})
+            self.assertEqual("invalid_payload", error["code"])
+
     def test_09_apply_budget(self) -> None:
         self.choose(MARGIN, PAGE)
         started = time.monotonic()

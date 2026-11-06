@@ -1086,6 +1086,28 @@ export const COPY = Object.freeze({
   "report.toast": "Change report saved",
   "report.toast.action": "Show in folder",
   "report.fail": "Could not save the change report. {reason} Select a different folder and try again.",
+
+  // Apply flow parts of step U10
+  "apply.progress.fallback.other": "{action}. {elapsed} elapsed.",
+  "apply.step.approval.name": "Approval",
+  "apply.result.close": "Close",
+  "apply.result.heading": "Apply result",
+  "format.result.heading": "Format result",
+  "undo.result.heading": "Undo result",
+  "flow.format.running": "Formatting files",
+  "flow.undo.running": "Undoing apply",
+  "format.action": "Format files first",
+  "format.progress.title": "Formatting the files",
+  "undo.progress.title": "Undoing the apply",
+  "undo.progress.body": "Do not close PBIBrain. If a step fails, the app restores nothing.",
+  "undo.done.title": "Apply undone",
+  "undo.fail.title": "Undo stopped",
+  "report.dialog.title": "Save the change report?",
+  "report.dialog.body": "The app saves a Markdown file with the changes of the last apply. The app does not commit or push.",
+  "report.dialog.name": "File name",
+  "report.dialog.folder": "Folder",
+  "report.dialog.folder.value": "The session folder of the project",
+  "report.confirm": "Save change report",
 });
 
 const PLACEHOLDER = /\{([a-z_]+)\}/g;

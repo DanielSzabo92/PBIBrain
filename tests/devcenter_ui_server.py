@@ -318,6 +318,16 @@ class FakeDevCenter:
                 plan_file["apply_preview"] = copy.deepcopy(body["apply_preview"])
             return {"ok": True}
 
+    def set_apply(self, body: dict[str, Any]) -> dict[str, Any]:
+        """Step U10: change GET apply/last, apply/progress, apply/preview, and the extra reply fields of the apply calls in memory."""
+        with self.lock:
+            for key in ("apply-last", "apply-progress", "apply-preview"):
+                if isinstance(body.get(key), dict):
+                    self.files[key] = {**self.files.get(key, {}), **copy.deepcopy(body[key])}
+            if isinstance(body.get("replies"), dict):
+                self.files.setdefault("apply-replies", {}).update(copy.deepcopy(body["replies"]))
+            return {"ok": True}
+
     def set_compare_rows(self, body: dict[str, Any]) -> dict[str, Any]:
         """Change compare-rows, removal, and display-folders test fixtures in memory."""
         with self.lock:
@@ -797,6 +807,44 @@ class FakeDevCenter:
         question.update(status="answered", selected_option=payload["option_id"], answered_utc="2026-10-31T10:00:00Z")
         questions["answered"].append(question)
         return {"question_id": question["id"], "option_id": payload["option_id"], "applied": True}
+
+    # Step U10: the apply calls. The test route /__test__/apply can change the extra reply fields.
+
+    def _apply_reply(self, method: str) -> dict[str, Any]:
+        reply = {"apply_id": "apl-00000000000000a1", "file_count": 2,
+                 "files": ["Sales.SemanticModel/definition/tables/Sales.tmdl", "Sales.Report/definition/report.json"],
+                 "desktop_state": "not_open", "notices": [], "rescan_differences": []}
+        reply.update(copy.deepcopy((self.files.get("apply-replies") or {}).get(method) or {}))
+        return reply
+
+    def _record_last(self, reply: dict[str, Any], kind: str) -> None:
+        self.files["apply-last"] = {"apply_id": reply["apply_id"], "kind": kind, "finished_utc": "2026-10-31T10:00:00Z",
+                                    "file_count": reply["file_count"], "backup_present": True, "target_changed": False,
+                                    "changed_files": [], "rescan_differences": reply["rescan_differences"], "undone": False}
+
+    def _call_apply(self, _payload: dict[str, Any]) -> dict[str, Any]:
+        reply = {"kind": "apply", **self._apply_reply("apply")}
+        self._record_last(reply, "apply")
+        return reply
+
+    def _call_format_only_apply(self, _payload: dict[str, Any]) -> dict[str, Any]:
+        reply = {"kind": "format_only", **self._apply_reply("format_only_apply")}
+        self._record_last(reply, "format_only")
+        self.files.setdefault("apply-preview", {})["non_canonical_files"] = []
+        return reply
+
+    def _call_undo_apply(self, _payload: dict[str, Any]) -> dict[str, Any]:
+        last = self.files.get("apply-last") or {}
+        reply = {**self._apply_reply("undo_apply"), "apply_id": last.get("apply_id") or "apl-00000000000000a1",
+                 "undo_id": "apl-00000000000000b2"}
+        self.files["apply-last"] = {**last, "undone": True, "backup_present": False}
+        return reply
+
+    def _call_change_report_write(self, payload: dict[str, Any]) -> dict[str, Any]:
+        last = self.files.get("apply-last") or {}
+        name = payload.get("file_name") or "change-report.md"
+        return {"apply_id": last.get("apply_id") or "apl-00000000000000a1",
+                "path": f".pbibrain/sessions/apply/{name}", "markdown": "# Change report\n"}
 
     def _call_cloud_items_list(self, payload: dict[str, Any]) -> dict[str, Any]:
         kind = payload.get("kind", "workspaces")
@@ -1375,7 +1423,8 @@ class FakeDevCenterHandler(BaseHTTPRequestHandler):
                     "delay": lambda: state.set_delay(body), "agent-proposal": lambda: state.agent_proposal(body),
                     "agent-review": lambda: state.agent_review(body),
                     "rules": lambda: state.set_rules(body), "plan": lambda: state.set_plan(body),
-                    "compare-rows": lambda: state.set_compare_rows(body), "impact": lambda: state.set_impact(body)}
+                    "compare-rows": lambda: state.set_compare_rows(body), "impact": lambda: state.set_impact(body),
+                    "apply": lambda: state.set_apply(body)}
         if method == "POST" and route in controls:
             return self._json(200, controls[route]())
         raise FakeError("not_found", f"The test route {method} /__test__/{route} does not exist.")
