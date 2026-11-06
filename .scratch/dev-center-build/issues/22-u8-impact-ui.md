@@ -43,3 +43,5 @@ Not run here (Linux): the full Python suite, the full e2e suite, the .NET bridge
 
 Limits:
 - The S6 impact item has no proposal field and no policy field. The "Proposed" tag marks an item of a row with an open proposal while the switch is on. The pane shows the policy that the user set in this view, else "Block" for a blocking removal item.
+
+Review: review 1 FAIL (Needs banner count form). Fixed in d75ed79 (one and other forms, policy toast count from the blocking drop, wireframe with an empty group). Review 2 PASS.
