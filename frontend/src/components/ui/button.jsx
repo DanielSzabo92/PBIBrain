@@ -5,7 +5,7 @@ import { Slot } from "radix-ui"
 import { LoaderCircle } from "lucide-react"
 
 const buttonVariants = cva(
-  "ui-button inline-flex shrink-0 items-center justify-center gap-1.5 rounded-md text-[13px] font-medium whitespace-nowrap select-none disabled:pointer-events-none disabled:opacity-45 aria-invalid:border-destructive [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-[15px]",
+  "ui-button inline-flex shrink-0 items-center justify-center gap-1.5 rounded-[4px] text-[13px] font-medium whitespace-nowrap select-none disabled:pointer-events-none disabled:opacity-45 aria-invalid:border-destructive [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-[15px]",
   {
     variants: {
       variant: {
@@ -20,12 +20,12 @@ const buttonVariants = cva(
       },
       size: {
         default: "h-8 px-3 has-[>svg]:px-2.5",
-        xs: "h-6 gap-1 rounded-[5px] px-2 text-xs [&_svg:not([class*='size-'])]:size-3",
-        sm: "h-7 gap-1.5 rounded-[6px] px-2.5 text-[12.5px] has-[>svg]:px-2",
-        lg: "h-10 rounded-lg px-5 text-sm",
+        xs: "h-6 gap-1 rounded-[4px] px-2 text-xs [&_svg:not([class*='size-'])]:size-3",
+        sm: "h-7 gap-1.5 rounded-[4px] px-2.5 text-[12px] has-[>svg]:px-2",
+        lg: "h-10 rounded-[6px] px-5 text-[14px]",
         icon: "size-8",
-        "icon-xs": "size-6 rounded-[5px] [&_svg:not([class*='size-'])]:size-3",
-        "icon-sm": "size-7 rounded-[6px]",
+        "icon-xs": "size-6 rounded-[4px] [&_svg:not([class*='size-'])]:size-3",
+        "icon-sm": "size-7 rounded-[4px]",
         "icon-lg": "size-10",
       },
     },

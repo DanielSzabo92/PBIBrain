@@ -50,7 +50,7 @@
   min-height: var(--control-h);
   padding: 0 10px;
   border: 1px solid var(--control-border);
-  border-radius: 6px;
+  border-radius: var(--r-sm);
   background: var(--surface-2);
   width: 200px;
 }
@@ -67,7 +67,7 @@
   flex: 1;
   min-width: 0;
   font: inherit;
-  font-size: 13px;
+  font-size: var(--type-ui);
   color: var(--text);
   min-height: 24px;
   height: 24px;
@@ -93,9 +93,9 @@
   padding: 0 var(--space-2) 0 var(--space-3);
   border: 1px solid var(--brand);
   background: var(--brand-tint);
-  border-radius: 6px;
+  border-radius: var(--r-sm);
   color: var(--text);
-  font-size: 13px;
+  font-size: var(--type-ui);
 }
 
 .dc-bulkbar-count {
@@ -107,11 +107,11 @@
   gap: 6px;
   flex-wrap: wrap;
   align-items: center;
-  font-size: 12px;
+  font-size: var(--type-meta);
 }
 
 .dc-selall {
-  font-size: 13px;
+  font-size: var(--type-ui);
   color: var(--text-2);
   display: flex;
   gap: var(--space-2);
@@ -127,7 +127,7 @@
   min-height: 0;
   height: 100%;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: var(--r-md);
   background: var(--surface);
   overflow: hidden;
   display: flex;
@@ -201,11 +201,11 @@
   white-space: nowrap;
   overflow: hidden;
   background: inherit;
-  font-size: 13px;
+  font-size: var(--type-ui);
 }
 
 .dc-hcell {
-  font-size: 12px;
+  font-size: var(--type-meta);
   color: var(--text-2);
   font-weight: 600;
   background: var(--surface-2);
@@ -280,7 +280,7 @@
 }
 
 .dc-obj-meta {
-  font-size: 11.5px;
+  font-size: var(--type-meta);
   color: var(--text-2);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -295,7 +295,7 @@
 
 .dc-skel-line {
   height: 10px;
-  border-radius: 4px;
+  border-radius: var(--r-xs);
   background: var(--surface-3);
   width: 70%;
 }
@@ -305,7 +305,7 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  font-size: 13px;
+  font-size: var(--type-ui);
 }
 
 .dc-st svg {
@@ -346,7 +346,7 @@
 
 .dc-st-count {
   color: var(--text-2);
-  font-size: 12px;
+  font-size: var(--type-meta);
 }
 
 .dc-st-changed {
@@ -361,7 +361,7 @@
 }
 
 .dc-mc-text {
-  font-size: 13px;
+  font-size: var(--type-ui);
   overflow: hidden;
   text-overflow: ellipsis;
 }
@@ -374,7 +374,7 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: 11.5px;
+  font-size: var(--type-meta);
   font-weight: 500;
   padding: 1px 6px;
   border-radius: 99px;
@@ -412,7 +412,7 @@
   padding: 6px var(--space-3);
   border: 0 solid var(--line);
   border-top-width: 1px;
-  font-size: 12px;
+  font-size: var(--type-meta);
   color: var(--text-2);
   background: var(--surface-2);
 }
@@ -475,14 +475,14 @@
 }
 
 .dc-diff-title {
-  font-size: 16px;
+  font-size: var(--type-title);
   font-weight: 600;
   margin: 0;
 }
 
 .dc-diff-sub {
   color: var(--text-2);
-  font-size: 12px;
+  font-size: var(--type-meta);
 }
 
 .dc-diff-body {
@@ -492,7 +492,7 @@
   display: grid;
   grid-template-columns: 1fr;
   font-family: var(--font-code, monospace);
-  font-size: 13px;
+  font-size: var(--type-ui);
   background: var(--surface-2);
 }
 
@@ -511,7 +511,7 @@
   top: 0;
   margin: 0;
   padding: 6px var(--space-3);
-  font: 500 12px var(--font-ui, sans-serif);
+  font: 500 var(--type-meta) var(--font-ui, sans-serif);
   color: var(--text-2);
   background: var(--surface-2);
   border: 0 solid var(--line);
@@ -567,7 +567,7 @@
   overflow: auto;
   padding: var(--space-4);
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: var(--r-md);
   background: var(--surface);
 }
 
@@ -580,10 +580,10 @@
 
 .dc-row-pane-ph {
   border: 1px dashed var(--line-strong);
-  border-radius: 6px;
+  border-radius: var(--r-sm);
   padding: var(--space-3);
   color: var(--text-2);
-  font-size: 13px;
+  font-size: var(--type-ui);
 }
 
 
@@ -610,7 +610,7 @@
 .dc-link:focus-visible {
   outline: 2px solid var(--brand);
   outline-offset: 2px;
-  border-radius: 4px;
+  border-radius: var(--r-xs);
 }
 
 .dc-name-field {
@@ -651,7 +651,7 @@
   border: 1px solid var(--proposal);
   border-radius: var(--radius-md);
   background: var(--proposal-tint);
-  font-size: 12.5px;
+  font-size: var(--type-ui);
 }
 
 .dc-proposal-head {
@@ -664,7 +664,7 @@
 
 .dc-proposal-meta {
   color: var(--text-2);
-  font-size: 11.5px;
+  font-size: var(--type-meta);
 }
 
 .dc-proposal-summary {
@@ -732,13 +732,13 @@
 }
 
 .dc-prop-check-label {
-  font-size: 12.5px;
+  font-size: var(--type-ui);
   font-weight: 500;
   color: var(--text);
 }
 
 .dc-prop-check-summary {
-  font-size: 11.5px;
+  font-size: var(--type-meta);
   color: var(--text-2);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -755,7 +755,7 @@
 }
 
 .dc-choice-group-label {
-  font-size: 11.5px;
+  font-size: var(--type-meta);
   font-weight: 600;
   color: var(--text-2);
 }
@@ -771,7 +771,7 @@
 
 .dc-pane-sec-title {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--type-ui);
   font-weight: 600;
   color: var(--text);
 }
@@ -796,7 +796,7 @@
 .dc-source-diff-list {
   margin: 0;
   padding-left: 16px;
-  font-size: 12px;
+  font-size: var(--type-meta);
   color: var(--text);
   display: flex;
   flex-direction: column;
@@ -813,7 +813,7 @@
   border: 0;
   background: transparent;
   color: var(--text);
-  font-size: 13px;
+  font-size: var(--type-ui);
   font-weight: 600;
   cursor: pointer;
   align-self: flex-start;
@@ -822,7 +822,7 @@
 .dc-align-toggle:focus-visible {
   outline: 2px solid var(--brand);
   outline-offset: 2px;
-  border-radius: 4px;
+  border-radius: var(--r-xs);
 }
 
 .dc-align-body {
@@ -833,11 +833,11 @@
   border: 1px solid var(--line);
   border-radius: var(--radius-md);
   background: var(--surface-2);
-  font-size: 12.5px;
+  font-size: var(--type-ui);
 }
 
 .dc-align-meta {
-  font-size: 12px;
+  font-size: var(--type-meta);
 }
 
 .dc-align-actions {

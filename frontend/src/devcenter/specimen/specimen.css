@@ -1,16 +1,16 @@
 /* Layout of the part specimen page (test page only). */
 .specimen { display: flex; flex-direction: column; gap: var(--space-4); max-width: 1280px; margin: 0 auto; padding: var(--space-6); color: var(--text); }
 .specimen-header { display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); }
-.specimen-header h1 { margin: 0; font-size: 22px; font-weight: 600; }
-.specimen-part { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-4); border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
-.specimen-part > h2 { margin: 0; font-size: 15px; font-weight: 600; }
+.specimen-header h1 { margin: 0; font-size: var(--type-heading); font-weight: 600; }
+.specimen-part { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-4); border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface); }
+.specimen-part > h2 { margin: 0; font-size: var(--type-body); font-weight: 600; }
 .specimen-row { display: flex; flex-wrap: wrap; align-items: flex-start; gap: var(--space-4); }
 .specimen-state { display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; }
-.specimen-state-label { margin: 0; color: var(--text-2); font-size: 12px; }
-.specimen-inline { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; }
-.specimen-field { display: flex; flex-direction: column; gap: var(--space-1); font-size: 12.5px; font-weight: 500; }
-.specimen-error { margin: 0; color: var(--bad); font-size: 12px; }
-.specimen-note { margin: 0; color: var(--text-2); font-size: 12px; }
+.specimen-state-label { margin: 0; color: var(--text-2); font-size: var(--type-meta); }
+.specimen-inline { display: inline-flex; align-items: center; gap: 6px; font-size: var(--type-ui); }
+.specimen-field { display: flex; flex-direction: column; gap: var(--space-1); font-size: var(--type-ui); font-weight: 500; }
+.specimen-error { margin: 0; color: var(--bad); font-size: var(--type-meta); }
+.specimen-note { margin: 0; color: var(--text-2); font-size: var(--type-meta); }
 .specimen-wrap { display: flex; flex-wrap: wrap; gap: var(--space-2); }
 .specimen-stack { display: flex; flex: 1; flex-direction: column; gap: var(--space-2); min-width: 0; }
 .specimen-pane-layout { display: flex; flex: 1; gap: var(--space-4); min-height: 200px; }

@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Copy, Download, RefreshCw, Sparkles, TriangleAlert } from "lucide-react";
+import { Copy, Download, RefreshCw, TriangleAlert } from "lucide-react";
 import { Button } from "./ui/button";
 import { Card } from "./ui/card";
 import { Label } from "./ui/label";
@@ -51,7 +51,7 @@ export default function ModelSummary({ overview, transport, scanning }) {
   const lines = ready ? result.markdown.split("\n").length : 0;
 
   return <Card className="panel model-summary-panel">
-    <div className="settings-panel-head"><span className="icon-tile" aria-hidden="true"><Sparkles /></span><div><p className="eyebrow">Agent context</p><h2>Model summary</h2><p className="muted-copy">Model overview, exact formulas, relationships, and reviewed meanings in one Markdown file.</p></div></div>
+    <div className="settings-panel-head"><div><h2>Model summary</h2><p className="muted-copy">Model overview, exact formulas, relationships, and reviewed meanings in one Markdown file.</p></div></div>
     {models.length ? <>
       <div className="model-summary-toolbar">
         <div className="model-summary-choice"><Label htmlFor="summary-model">Semantic model</Label><NativeSelect id="summary-model" value={modelId} onChange={(event) => setSelectedId(event.target.value)} disabled={scanning}>

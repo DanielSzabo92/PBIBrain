@@ -1,33 +1,33 @@
 /* Apply, Undo, format only, and change report dialogs (UI design 5.5, 5.6, step U10). Tokens only, no hex values. */
 .dc-apply-dialog, .dc-report-dialog { width: min(560px, calc(100vw - 32px)); }
 .dc-apply-dialog .ui-dialog-body { gap: var(--space-2); }
-.dc-apply-h3 { margin: var(--space-1) 0 0; font-size: 13px; font-weight: 600; color: var(--text); }
-.dc-apply-counts { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-4); margin: 0; padding: 0; list-style: none; font-size: 13px; }
-.dc-apply-deletes { margin: 0; font-size: 13px; color: var(--text); }
-.dc-apply-approvals { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; font-size: 13px; }
+.dc-apply-h3 { margin: var(--space-1) 0 0; font-size: var(--type-ui); font-weight: 600; color: var(--text); }
+.dc-apply-counts { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-4); margin: 0; padding: 0; list-style: none; font-size: var(--type-ui); }
+.dc-apply-deletes { margin: 0; font-size: var(--type-ui); color: var(--text); }
+.dc-apply-approvals { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; font-size: var(--type-ui); }
 .dc-apply-approvals li { display: flex; align-items: baseline; gap: var(--space-2); }
 .dc-apply-severity { min-width: 88px; font-weight: 600; color: var(--text-2); }
 .dc-apply-severity[data-severity="critical"] { color: var(--bad); }
 .dc-apply-severity[data-severity="high"] { color: var(--warn); }
-.dc-apply-desktop, .dc-apply-note { margin: 0; padding: var(--space-2) var(--space-3); border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface-2); font-size: 13px; color: var(--text); }
-.dc-apply-approve { display: flex; align-items: flex-start; gap: var(--space-2); font-size: 13px; }
+.dc-apply-desktop, .dc-apply-note { margin: 0; padding: var(--space-2) var(--space-3); border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface-2); font-size: var(--type-ui); color: var(--text); }
+.dc-apply-approve { display: flex; align-items: flex-start; gap: var(--space-2); font-size: var(--type-ui); }
 .dc-apply-approve label { padding-top: 3px; cursor: pointer; }
-.dc-apply-files { margin: 0; padding-left: var(--space-4); font-size: 12px; }
+.dc-apply-files { margin: 0; padding-left: var(--space-4); font-size: var(--type-meta); }
 .dc-apply-progress { display: flex; flex-direction: column; gap: var(--space-2); }
-.dc-apply-steps { display: grid; gap: 2px; margin: 0; padding: 0; list-style: none; font-size: 13px; }
+.dc-apply-steps { display: grid; gap: 2px; margin: 0; padding: 0; list-style: none; font-size: var(--type-ui); }
 .dc-apply-step { display: grid; grid-template-columns: 20px minmax(0, 1fr) auto; align-items: center; gap: var(--space-2); min-height: 26px; }
 .dc-apply-step[data-state="waiting"] .dc-apply-step-label { color: var(--text-2); }
 .dc-apply-step-icon { width: 16px; height: 16px; }
 .dc-apply-step-wait { display: inline-block; width: 10px; height: 10px; margin: 3px; border: 1px solid var(--line-strong); border-radius: 50%; }
-.dc-apply-step-state { color: var(--text-2); font-size: 12px; }
-.dc-apply-progress-line { margin: 0; color: var(--text-2); font-size: 12.5px; }
+.dc-apply-step-state { color: var(--text-2); font-size: var(--type-meta); }
+.dc-apply-progress-line { margin: 0; color: var(--text-2); font-size: var(--type-ui); }
 .dc-apply-result { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-3); border: 1px solid var(--line-strong); border-radius: var(--radius-md); background: var(--surface-2); }
 .dc-apply-result-head { display: flex; align-items: center; gap: var(--space-2); }
 .dc-apply-result-icon { width: 18px; height: 18px; flex: none; }
-.dc-apply-result-title { margin: 0; font-size: 15px; font-weight: 600; color: var(--text); }
+.dc-apply-result-title { margin: 0; font-size: var(--type-body); font-weight: 600; color: var(--text); }
 .dc-apply-result-title:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
-.dc-apply-result-body, .dc-apply-result-step, .dc-apply-result-help { margin: 0; font-size: 13px; }
-.dc-apply-diff { width: 100%; font-size: 12.5px; }
+.dc-apply-result-body, .dc-apply-result-step, .dc-apply-result-help { margin: 0; font-size: var(--type-ui); }
+.dc-apply-diff { width: 100%; font-size: var(--type-ui); }
 .dc-tone-ok { color: var(--ok); }
-.dc-report-fields { display: grid; grid-template-columns: 90px minmax(0, 1fr); gap: 4px var(--space-3); margin: 0; font-size: 13px; }
+.dc-report-fields { display: grid; grid-template-columns: 90px minmax(0, 1fr); gap: 4px var(--space-3); margin: 0; font-size: var(--type-ui); }
 .dc-report-fields dd { margin: 0; word-break: break-word; }
