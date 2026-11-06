@@ -592,7 +592,6 @@ function App({ transport = brainTransport }) {
           <div className="breadcrumb">
             <NavIcon name={view} />
             <span className="breadcrumb-view">{viewLabel}</span>
-            <span className="breadcrumb-hint">{VIEW_HINTS[view]}</span>
           </div>
           <div className="topbar-actions" role="toolbar" aria-label={`${viewLabel} toolbar`} data-ui-actions="">
             {activeProject ? <Button variant="ghost" size="sm" className="project-switch" onClick={closeDesktopProject} disabled={scanning}><FolderOpen />Change project</Button> : null}
