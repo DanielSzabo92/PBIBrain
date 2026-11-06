@@ -1,0 +1,954 @@
+{
+  "description": "Step U9: open agent proposals in each status, open and answered questions, and a long log. POST /__test__/agent-review puts these files over the default scenario.",
+  "files": {
+    "compare-rows": {
+      "rows": [
+        {
+          "cells": {
+            "src-1": {
+              "changed": true,
+              "state": "different"
+            },
+            "src-2": {
+              "changed": true,
+              "state": "different"
+            }
+          },
+          "display_folder": "Revenue",
+          "marks": [],
+          "merge_choice": null,
+          "name": "Net Sales",
+          "notes": [],
+          "object_type": "measure",
+          "properties": [
+            {
+              "new": "SUM(Sales[Net])",
+              "old": "SUM(Sales[Amount])",
+              "phrase_id": "compare.property.expression"
+            }
+          ],
+          "proposal_status": "proposed",
+          "row_key": "row-net-sales",
+          "row_state": "conflict",
+          "table": "Sales"
+        },
+        {
+          "cells": {
+            "src-1": {
+              "changed": false,
+              "state": "same"
+            },
+            "src-2": {
+              "changed": true,
+              "state": "different"
+            }
+          },
+          "display_folder": "Revenue",
+          "marks": [],
+          "merge_choice": {
+            "choice": "take_from",
+            "source": "src-2"
+          },
+          "name": "Gross Margin",
+          "notes": [],
+          "object_type": "measure",
+          "properties": [
+            {
+              "new": "0.00%",
+              "old": "0.0%",
+              "phrase_id": "compare.property.format_string"
+            }
+          ],
+          "proposal_status": null,
+          "row_key": "row-gross-margin",
+          "row_state": "different",
+          "table": "Sales"
+        },
+        {
+          "cells": {
+            "src-1": {
+              "changed": false,
+              "state": "missing"
+            },
+            "src-2": {
+              "changed": false,
+              "state": "same"
+            }
+          },
+          "display_folder": null,
+          "marks": [],
+          "merge_choice": {
+            "choice": "keep"
+          },
+          "name": "Budget",
+          "notes": [],
+          "object_type": "table",
+          "properties": [],
+          "proposal_status": null,
+          "row_key": "row-budget",
+          "row_state": "missing",
+          "table": null
+        },
+        {
+          "cells": {
+            "src-1": {
+              "changed": false,
+              "state": "same"
+            },
+            "src-2": {
+              "changed": true,
+              "state": "renamed"
+            }
+          },
+          "display_folder": null,
+          "marks": [
+            "source_changed"
+          ],
+          "merge_choice": null,
+          "name": "Customer",
+          "notes": [
+            {
+              "phrase_id": "compare.note.same_after_rename"
+            }
+          ],
+          "object_type": "table",
+          "properties": [],
+          "proposal_status": null,
+          "row_key": "row-customer",
+          "row_state": "renamed",
+          "table": null
+        },
+        {
+          "cells": {
+            "src-1": {
+              "changed": false,
+              "state": "same"
+            },
+            "src-2": {
+              "changed": false,
+              "state": "same"
+            }
+          },
+          "display_folder": null,
+          "marks": [],
+          "merge_choice": null,
+          "name": "Date",
+          "notes": [],
+          "object_type": "table",
+          "properties": [],
+          "proposal_status": null,
+          "row_key": "row-date",
+          "row_state": "same",
+          "table": null
+        },
+        {
+          "cells": {
+            "src-1": {
+              "changed": false,
+              "state": "same"
+            },
+            "src-2": {
+              "changed": false,
+              "state": "same"
+            }
+          },
+          "display_folder": null,
+          "marks": [],
+          "merge_choice": null,
+          "name": "Region",
+          "notes": [],
+          "object_type": "column",
+          "properties": [],
+          "proposal_status": null,
+          "row_key": "row-region",
+          "row_state": "same",
+          "table": "Customer"
+        }
+      ]
+    },
+    "plan": {
+      "blocking": [
+        {
+          "actions": [],
+          "item_id": "name_clash:row-customer",
+          "kind": "name_clash",
+          "message": "Customer clashes with an existing table name.",
+          "object": {
+            "name": "Customer",
+            "object_type": "table",
+            "table": null
+          },
+          "params": {
+            "clash": {
+              "name": "Customer",
+              "object_type": "table",
+              "table": null
+            },
+            "name": "Customer",
+            "proposed_name": "Customer (Sales)",
+            "table": null
+          },
+          "row_id": "row_0000000000000001",
+          "row_key": "row-customer",
+          "step_id": "step-1"
+        }
+      ],
+      "operations": [
+        {
+          "domain": "model",
+          "guard_op": "rename_object",
+          "name": "Customers",
+          "needs": [],
+          "new_name": "Customer",
+          "object_type": "table",
+          "old_name": "Customers",
+          "op": "RENAME",
+          "op_id": "op-1",
+          "order": 1,
+          "phase": "renames",
+          "row_key": "row-customer",
+          "step_id": "step-1",
+          "subtype": "table",
+          "table": null
+        },
+        {
+          "domain": "model",
+          "guard_op": "create_object",
+          "name": "Budget",
+          "needs": [],
+          "new_lineage_tag": false,
+          "object_type": "table",
+          "op": "CREATE",
+          "op_id": "op-2",
+          "order": 2,
+          "phase": "creates",
+          "row_key": "row-budget",
+          "source_id": "src-2",
+          "source_key": "table:Budget",
+          "step_id": "step-2",
+          "subtype": "table",
+          "table": null
+        },
+        {
+          "domain": "model",
+          "guard_op": "modify_object",
+          "name": "Net Sales",
+          "needs": [],
+          "new_text": "SUM(Sales[Net])",
+          "object_type": "measure",
+          "old_text": "SUM(Sales[Amount])",
+          "op": "SET_EXPRESSION",
+          "op_id": "op-3",
+          "order": 3,
+          "phase": "changes",
+          "property": "expression",
+          "row_key": "row-net-sales",
+          "step_id": "step-3",
+          "subtype": "measure",
+          "table": "Sales"
+        },
+        {
+          "domain": "model",
+          "guard_op": "modify_object",
+          "name": "Gross Margin",
+          "needs": [
+            "op-1"
+          ],
+          "new_text": "DIVIDE([Net Sales], COUNTROWS(Customer))",
+          "object_type": "measure",
+          "old_text": "DIVIDE([Net Sales], COUNTROWS(Customers))",
+          "op": "REWRITE_EXPRESSION",
+          "op_id": "op-4",
+          "order": 4,
+          "phase": "rewrites",
+          "property": "expression",
+          "row_key": "row-gross-margin",
+          "step_id": "step-1",
+          "subtype": "measure",
+          "table": "Sales"
+        },
+        {
+          "domain": "report",
+          "field_kind": "column",
+          "guard_op": "rebind_field",
+          "name": "Sales by Customer",
+          "needs": [
+            "op-1"
+          ],
+          "new_entity": "Customer",
+          "new_property": "CustomerKey",
+          "new_text": "Customer.CustomerKey",
+          "object_type": "visual",
+          "old_entity": "Customers",
+          "old_property": "CustomerKey",
+          "old_text": "Customers.CustomerKey",
+          "op": "REBIND_FIELD",
+          "op_id": "op-5",
+          "order": 5,
+          "phase": "changes",
+          "pointer": "/pages/Overview/visuals/v1/query",
+          "row_key": "row-customer",
+          "step_id": "step-1",
+          "subtype": "barChart",
+          "table": null
+        }
+      ],
+      "plan_hash": "sha256:0012000000000000000000000000000000000000000000000000000000000012",
+      "status": "invalid",
+      "steps": [
+        {
+          "change": "renamed",
+          "choice": "take",
+          "domain": "model",
+          "kind": "choice",
+          "name": "Customer",
+          "object_type": "table",
+          "operation_ids": [
+            "op-1",
+            "op-4",
+            "op-5"
+          ],
+          "row_id": "row_0000000000000001",
+          "row_key": "row-customer",
+          "source_id": "src-1",
+          "step_id": "step-1"
+        },
+        {
+          "change": "created",
+          "choice": "take",
+          "domain": "model",
+          "kind": "choice",
+          "name": "Budget",
+          "object_type": "table",
+          "operation_ids": [
+            "op-2"
+          ],
+          "row_id": "row_0000000000000002",
+          "row_key": "row-budget",
+          "source_id": "src-2",
+          "step_id": "step-2"
+        },
+        {
+          "change": "modified",
+          "choice": "take",
+          "domain": "model",
+          "kind": "choice",
+          "name": "Net Sales",
+          "object_type": "measure",
+          "operation_ids": [
+            "op-3"
+          ],
+          "row_id": "row_0000000000000003",
+          "row_key": "row-net-sales",
+          "source_id": "src-2",
+          "step_id": "step-3"
+        }
+      ],
+      "summary": {
+        "model": {
+          "created": {
+            "by_type": {
+              "table": 1
+            },
+            "total": 1
+          },
+          "deleted": {
+            "by_type": {},
+            "total": 0
+          },
+          "modified": {
+            "by_type": {
+              "measure": 1
+            },
+            "total": 1
+          },
+          "renamed": {
+            "by_type": {
+              "table": 1
+            },
+            "total": 1
+          },
+          "steps": 3
+        },
+        "report": {
+          "created": {
+            "by_type": {},
+            "total": 0
+          },
+          "deleted": {
+            "by_type": {},
+            "total": 0
+          },
+          "modified": {
+            "by_type": {},
+            "total": 0
+          },
+          "renamed": {
+            "by_type": {},
+            "total": 0
+          },
+          "steps": 0
+        },
+        "steps": 3
+      },
+      "warnings": [
+        {
+          "actions": [],
+          "item_id": "keep_difference:row-gross-margin",
+          "kind": "keep_difference",
+          "message": "Target differs from Finance model on format string, and the choice is Keep target.",
+          "object": {
+            "name": "Gross Margin",
+            "object_type": "measure",
+            "table": "Sales"
+          },
+          "params": {
+            "source_id": "src-2",
+            "source_name": "Finance model"
+          },
+          "row_id": "row_0000000000000004",
+          "row_key": "row-gross-margin",
+          "step_id": null
+        }
+      ]
+    },
+    "plan-proposals": {
+      "blocking": [],
+      "operations": [
+        {
+          "domain": "model",
+          "guard_op": "rename_object",
+          "name": "Customers",
+          "needs": [],
+          "new_name": "Customer",
+          "object_type": "table",
+          "old_name": "Customers",
+          "op": "RENAME",
+          "op_id": "op-1",
+          "order": 1,
+          "phase": "renames",
+          "row_key": "row-customer",
+          "step_id": "step-1",
+          "subtype": "table",
+          "table": null
+        },
+        {
+          "domain": "model",
+          "guard_op": "create_object",
+          "name": "Budget",
+          "needs": [],
+          "new_lineage_tag": false,
+          "object_type": "table",
+          "op": "CREATE",
+          "op_id": "op-2",
+          "order": 2,
+          "phase": "creates",
+          "row_key": "row-budget",
+          "source_id": "src-2",
+          "source_key": "table:Budget",
+          "step_id": "step-2",
+          "subtype": "table",
+          "table": null
+        },
+        {
+          "domain": "model",
+          "guard_op": "modify_object",
+          "name": "Net Sales",
+          "needs": [],
+          "new_text": "SUM(Sales[Net])",
+          "object_type": "measure",
+          "old_text": "SUM(Sales[Amount])",
+          "op": "SET_EXPRESSION",
+          "op_id": "op-3",
+          "order": 3,
+          "phase": "changes",
+          "property": "expression",
+          "row_key": "row-net-sales",
+          "step_id": "step-3",
+          "subtype": "measure",
+          "table": "Sales"
+        },
+        {
+          "domain": "model",
+          "guard_op": "modify_object",
+          "name": "Gross Margin",
+          "needs": [
+            "op-1"
+          ],
+          "new_text": "DIVIDE([Net Sales], COUNTROWS(Customer))",
+          "object_type": "measure",
+          "old_text": "DIVIDE([Net Sales], COUNTROWS(Customers))",
+          "op": "REWRITE_EXPRESSION",
+          "op_id": "op-4",
+          "order": 4,
+          "phase": "rewrites",
+          "property": "expression",
+          "row_key": "row-gross-margin",
+          "step_id": "step-1",
+          "subtype": "measure",
+          "table": "Sales"
+        },
+        {
+          "domain": "report",
+          "field_kind": "column",
+          "guard_op": "rebind_field",
+          "name": "Sales by Customer",
+          "needs": [
+            "op-1"
+          ],
+          "new_entity": "Customer",
+          "new_property": "CustomerKey",
+          "new_text": "Customer.CustomerKey",
+          "object_type": "visual",
+          "old_entity": "Customers",
+          "old_property": "CustomerKey",
+          "old_text": "Customers.CustomerKey",
+          "op": "REBIND_FIELD",
+          "op_id": "op-5",
+          "order": 5,
+          "phase": "changes",
+          "pointer": "/pages/Overview/visuals/v1/query",
+          "row_key": "row-customer",
+          "step_id": "step-1",
+          "subtype": "barChart",
+          "table": null
+        }
+      ],
+      "plan_hash": "sha256:0012000000000000000000000000000000000000000000000000000000000012",
+      "status": "valid_with_warnings",
+      "steps": [
+        {
+          "change": "renamed",
+          "choice": "take",
+          "domain": "model",
+          "kind": "choice",
+          "name": "Customer",
+          "object_type": "table",
+          "operation_ids": [
+            "op-1",
+            "op-4",
+            "op-5"
+          ],
+          "row_id": "row_0000000000000001",
+          "row_key": "row-customer",
+          "source_id": "src-1",
+          "step_id": "step-1"
+        },
+        {
+          "change": "created",
+          "choice": "take",
+          "domain": "model",
+          "kind": "choice",
+          "name": "Budget",
+          "object_type": "table",
+          "operation_ids": [
+            "op-2"
+          ],
+          "row_id": "row_0000000000000002",
+          "row_key": "row-budget",
+          "source_id": "src-2",
+          "step_id": "step-2"
+        },
+        {
+          "change": "modified",
+          "choice": "take",
+          "domain": "model",
+          "kind": "choice",
+          "name": "Net Sales",
+          "object_type": "measure",
+          "operation_ids": [
+            "op-3"
+          ],
+          "row_id": "row_0000000000000003",
+          "row_key": "row-net-sales",
+          "source_id": "src-2",
+          "step_id": "step-3"
+        }
+      ],
+      "summary": {
+        "model": {
+          "created": {
+            "by_type": {
+              "table": 1
+            },
+            "total": 1
+          },
+          "deleted": {
+            "by_type": {},
+            "total": 0
+          },
+          "modified": {
+            "by_type": {
+              "measure": 1
+            },
+            "total": 1
+          },
+          "renamed": {
+            "by_type": {
+              "table": 1
+            },
+            "total": 1
+          },
+          "steps": 3
+        },
+        "report": {
+          "created": {
+            "by_type": {},
+            "total": 0
+          },
+          "deleted": {
+            "by_type": {},
+            "total": 0
+          },
+          "modified": {
+            "by_type": {},
+            "total": 0
+          },
+          "renamed": {
+            "by_type": {},
+            "total": 0
+          },
+          "steps": 0
+        },
+        "steps": 3
+      },
+      "warnings": [
+        {
+          "actions": [],
+          "item_id": "keep_difference:row-gross-margin",
+          "kind": "keep_difference",
+          "message": "Target differs from Finance model on format string, and the choice is Keep target.",
+          "object": {
+            "name": "Gross Margin",
+            "object_type": "measure",
+            "table": "Sales"
+          },
+          "params": {
+            "source_id": "src-2",
+            "source_name": "Finance model"
+          },
+          "row_id": "row_0000000000000004",
+          "row_key": "row-gross-margin",
+          "step_id": null
+        }
+      ]
+    },
+    "session": {
+      "checked_at": "2026-10-31T09:30:00Z",
+      "compare_mode": "default",
+      "counts": {
+        "donors": 3,
+        "marks": 1,
+        "marks_by_kind": {
+          "new_since_start": 0,
+          "source_changed": 1,
+          "source_object_missing": 0
+        },
+        "merge_choices": 2,
+        "sources": 5
+      },
+      "created_at": "2026-10-30T08:00:00Z",
+      "display_name": "Sales and finance merge",
+      "location": "project",
+      "plan_state": "ready",
+      "plan_status": "invalid",
+      "proposals": {
+        "open": [
+          {
+            "blocked": null,
+            "confidence": 0.94,
+            "created_utc": "2026-10-31T09:00:00Z",
+            "id": "p-1",
+            "kind": "merge_choice",
+            "mcp_client": "Test agent",
+            "payload": {
+              "choice": "take_from",
+              "source": "src-2"
+            },
+            "reason": "Finance model has the newer expression.",
+            "status": "proposed",
+            "summary": "Take from Finance model",
+            "target_id": "row-net-sales",
+            "target_name": "Net Sales"
+          },
+          {
+            "blocked": null,
+            "confidence": 0.97,
+            "created_utc": "2026-10-31T09:05:00Z",
+            "id": "p-2",
+            "kind": "merge_choice",
+            "mcp_client": "Test agent",
+            "payload": {
+              "choice": "keep"
+            },
+            "reason": "The target Date table is the same in each source, so the target can stay as it is.",
+            "status": "proposed",
+            "summary": "Keep target",
+            "target_id": "row-date",
+            "target_name": "Date"
+          },
+          {
+            "blocked": "user_choice_conflict",
+            "confidence": 0.91,
+            "created_utc": "2026-10-31T09:10:00Z",
+            "id": "p-3",
+            "kind": "merge_choice",
+            "mcp_client": "Test agent",
+            "payload": {
+              "choice": "keep"
+            },
+            "reason": "The format string of the target is the house format.",
+            "status": "proposed",
+            "summary": "Keep target",
+            "target_id": "row-gross-margin",
+            "target_name": "Gross Margin"
+          },
+          {
+            "blocked": "source_changed",
+            "confidence": 0.92,
+            "created_utc": "2026-10-31T09:15:00Z",
+            "id": "p-4",
+            "kind": "merge_choice",
+            "mcp_client": "Test agent",
+            "payload": {
+              "choice": "take_from",
+              "source": "src-1"
+            },
+            "reason": "Sales model has the full column list.",
+            "status": "proposed",
+            "summary": "Take from Sales model",
+            "target_id": "row-customer",
+            "target_name": "Customer"
+          }
+        ]
+      },
+      "questions": {
+        "answered": [
+          {
+            "answered_utc": "2026-10-31T08:55:00Z",
+            "author": "agent",
+            "blocked": null,
+            "created_utc": "2026-10-31T08:50:00Z",
+            "id": "q-0",
+            "mcp_client": "Test agent",
+            "options": [
+              {
+                "id": "a",
+                "label": "Take from Finance model",
+                "proposal": {
+                  "kind": "merge_choice",
+                  "payload": {
+                    "choice": {
+                      "kind": "take",
+                      "source_id": "src-2"
+                    }
+                  }
+                }
+              },
+              {
+                "id": "b",
+                "label": "Keep target",
+                "proposal": {
+                  "kind": "merge_choice",
+                  "payload": {
+                    "choice": "keep"
+                  }
+                }
+              }
+            ],
+            "reason": "Two sources have a different expression for this measure.",
+            "recommended_option": "b",
+            "selected_option": "b",
+            "status": "answered",
+            "target_id": "row-date",
+            "target_name": "Date",
+            "text": "Which Date table is the main date table?"
+          }
+        ],
+        "open": [
+          {
+            "answered_utc": null,
+            "author": "agent",
+            "blocked": null,
+            "created_utc": "2026-10-31T09:20:00Z",
+            "id": "q-1",
+            "mcp_client": "Test agent",
+            "options": [
+              {
+                "id": "a",
+                "label": "Take from Finance model",
+                "proposal": {
+                  "kind": "merge_choice",
+                  "payload": {
+                    "choice": {
+                      "kind": "take",
+                      "source_id": "src-2"
+                    }
+                  }
+                }
+              },
+              {
+                "id": "b",
+                "label": "Keep target",
+                "proposal": {
+                  "kind": "merge_choice",
+                  "payload": {
+                    "choice": "keep"
+                  }
+                }
+              }
+            ],
+            "reason": "Two sources have a different expression for this measure.",
+            "recommended_option": "a",
+            "selected_option": null,
+            "status": "open",
+            "target_id": "row-region",
+            "target_name": "Region",
+            "text": "Which source has the correct Region table?"
+          },
+          {
+            "answered_utc": null,
+            "author": "agent",
+            "blocked": null,
+            "created_utc": "2026-10-31T09:25:00Z",
+            "id": "q-2",
+            "mcp_client": "Test agent",
+            "options": [
+              {
+                "id": "a",
+                "label": "Take from Finance model",
+                "proposal": {
+                  "kind": "merge_choice",
+                  "payload": {
+                    "choice": {
+                      "kind": "take",
+                      "source_id": "src-2"
+                    }
+                  }
+                }
+              },
+              {
+                "id": "b",
+                "label": "Keep target",
+                "proposal": {
+                  "kind": "merge_choice",
+                  "payload": {
+                    "choice": "keep"
+                  }
+                }
+              }
+            ],
+            "reason": "Two sources have a different expression for this measure.",
+            "recommended_option": "b",
+            "selected_option": null,
+            "status": "open",
+            "target_id": "row-budget",
+            "target_name": "Budget",
+            "text": "Must Budget stay in the target model?"
+          }
+        ]
+      },
+      "read_only": false,
+      "revision": 12,
+      "session_id": "5e55a1f0c0de4b6a9d2e7f3a1b8c4d90",
+      "sources": [
+        {
+          "access_type": null,
+          "display_name": "Sales model",
+          "fingerprint_state": "same",
+          "kind": "pbip",
+          "mark_count": 0,
+          "model_format": "tmdl",
+          "model_path": "sources/Sales.SemanticModel",
+          "path": "sources/Sales",
+          "report_format": null,
+          "report_path": null,
+          "role": "donor",
+          "source_id": "src-1",
+          "status": "ok"
+        },
+        {
+          "access_type": null,
+          "display_name": "Finance model",
+          "fingerprint_state": "same",
+          "kind": "pbip",
+          "mark_count": 0,
+          "model_format": "tmdl",
+          "model_path": "sources/Finance.SemanticModel",
+          "path": "sources/Finance",
+          "report_format": null,
+          "report_path": null,
+          "role": "donor",
+          "source_id": "src-2",
+          "status": "ok"
+        },
+        {
+          "access_type": null,
+          "display_name": "Combined model",
+          "fingerprint_state": "same",
+          "kind": "tmdl_folder",
+          "mark_count": 0,
+          "model_format": "tmdl",
+          "model_path": "target/Combined.SemanticModel",
+          "path": "target/Combined.SemanticModel",
+          "report_format": null,
+          "report_path": null,
+          "role": "target",
+          "source_id": "src-3",
+          "status": "ok"
+        },
+        {
+          "access_type": null,
+          "display_name": "Combined report",
+          "fingerprint_state": "same",
+          "kind": "pbir_report",
+          "mark_count": 0,
+          "model_format": null,
+          "model_path": null,
+          "path": "target/Combined.Report",
+          "report_format": "pbir",
+          "report_path": "target/Combined.Report",
+          "role": "target",
+          "source_id": "src-4",
+          "status": "ok"
+        },
+        {
+          "access_type": "Read",
+          "cloud": {
+            "dataset_id": "7f1c2a9e-4b3d-4e8f-9a6b-2c1d0e9f8a7b",
+            "item_id": "7f1c2a9e-4b3d-4e8f-9a6b-2c1d0e9f8a7b",
+            "last_schema_update": "2026-10-30T07:45:00Z",
+            "tenant_id": null,
+            "workspace_id": "3c9d8e7f-6a5b-4c3d-2e1f-0a9b8c7d6e5f",
+            "workspace_name": "Marketing analytics"
+          },
+          "display_name": "Marketing model",
+          "fingerprint_state": "same",
+          "kind": "cloud_model",
+          "mark_count": 0,
+          "model_format": null,
+          "model_path": null,
+          "path": null,
+          "report_format": null,
+          "report_path": null,
+          "role": "donor",
+          "source_id": "src-5",
+          "status": "ok"
+        }
+      ],
+      "target": {
+        "model": {
+          "copy_of": "src-1",
+          "mode": "copy_of",
+          "source_id": "src-3"
+        },
+        "report": {
+          "mode": "existing",
+          "source_id": "src-4"
+        }
+      },
+      "updated_at": "2026-10-31T09:30:00Z"
+    }
+  },
+  "log_entries": 60
+}

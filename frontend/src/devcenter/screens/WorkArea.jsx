@@ -12,6 +12,8 @@ import { useAction, useDevCenterState, useResource } from "../useDevCenter.js";
 import SourcesTab from "./SourcesTab.jsx";
 import PlanTab from "./plan/PlanTab.jsx";
 import ImpactTab from "./impact/ImpactTab.jsx";
+import AgentTab from "./agent/AgentTab.jsx";
+import LogTab from "./log/LogTab.jsx";
 import CompareGrid from "../components/CompareGrid.jsx";
 import { agentCount, banners, planStatus, targetLine } from "./sessionModel.js";
 
@@ -129,6 +131,10 @@ export default function WorkArea({ session, tabState, onTabs, onRetryLock, onClo
                 reasonId={reasonId}
                 onTabs={onTabs}
               />
+            ) : tab === "agent" ? (
+              <AgentTab session={session} changeDisabled={changeDisabled} reasonId={reasonId} onTabs={onTabs} />
+            ) : tab === "log" ? (
+              <LogTab onTabs={onTabs} />
             ) : (
               <LaterTab
                 tab={tab}

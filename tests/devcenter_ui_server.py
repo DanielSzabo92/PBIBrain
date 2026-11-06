@@ -105,6 +105,17 @@ def load_scenario_files(name: str, fixtures: Path = FIXTURES) -> tuple[dict[str,
     return meta, files
 
 
+def _generate_log(files: dict[str, Any], count: int) -> None:
+    """Step U9: add older user log entries after the fixture entries, so that the Log tab has more than one page."""
+    entries = files.setdefault("log", {"entries": []}).setdefault("entries", [])
+    for index in range(count):
+        entries.append({
+            "time_utc": "2026-10-30T08:00:00Z", "author": "user", "mcp_client": None, "action": "merge_choice_set",
+            "target": f"row-old-{index:03d}", "before": None, "after": {"choice": "keep"}, "reason": None,
+            "proposal_id": None, "revision_after": max(1, 10 - index // 10),
+        })
+
+
 def _generate_large(files: dict[str, Any], plan: dict[str, int]) -> None:
     """Make the large-5000-rows data in memory, so that the repository has no large fixture file."""
     session = files["session"]
@@ -252,6 +263,17 @@ class FakeDevCenter:
             else:
                 self.delays[key] = {"ms": milliseconds, "once": bool(body.get("once", False))}
             return {"ok": True, "delay": {key: milliseconds}}
+
+    def agent_review(self, _body: dict[str, Any]) -> dict[str, Any]:
+        """Step U9: load the default scenario, then put the files of default/agent-review.json over it."""
+        with self.lock:
+            self.load("default")
+            bundle = copy.deepcopy(self.files["agent-review"])
+            self.files.update(bundle["files"])
+            _generate_log(self.files, int(bundle.get("log_entries", 0)))
+            self.session = self.files["session"]
+            self.scenario = "default+agent-review"
+            return self.health()
 
     def agent_proposal(self, body: dict[str, Any]) -> dict[str, Any]:
         """Add a proposal as an agent would, with no revision check. For the poll test (A19)."""
@@ -761,6 +783,21 @@ class FakeDevCenter:
         self.session["proposals"]["open"] = kept
         return {"accepted_ids": accepted, "skipped": skipped}
 
+    def _call_question_answer(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """Step U9: move the question to answered, as S10 does."""
+        questions = self.session["questions"]
+        question = next((item for item in questions["open"] if item["id"] == payload.get("question_id")), None)
+        if question is None:
+            raise FakeError("not_found", "The question does not exist.", {"question_id": payload.get("question_id")})
+        if payload.get("option_id") not in {option["id"] for option in question.get("options", [])}:
+            raise FakeError("not_found", "The option does not exist.", {"option_id": payload.get("option_id")})
+        if question.get("blocked") == "source_changed":
+            raise FakeError("source_changed", "The source of this row changed. Confirm the row first.", {"question_id": question["id"]})
+        questions["open"].remove(question)
+        question.update(status="answered", selected_option=payload["option_id"], answered_utc="2026-10-31T10:00:00Z")
+        questions["answered"].append(question)
+        return {"question_id": question["id"], "option_id": payload["option_id"], "applied": True}
+
     def _call_cloud_items_list(self, payload: dict[str, Any]) -> dict[str, Any]:
         kind = payload.get("kind", "workspaces")
         if kind not in {"workspaces", "models", "reports"}:
@@ -932,6 +969,8 @@ class FakeDevCenter:
                     value = self.files[simple[tuple(parts)]]
                     if parts == ["impact"]:
                         value = self._impact(query)
+                    if parts == ["plan"] and _one(query, "include_proposals") in {"true", "ready"}:
+                        value = self.files.get("plan-proposals", value)
                     return self._reply(value)
                 if parts == ["naming-rules"]:
                     value = copy.deepcopy(self.files["naming-rules"])
@@ -941,7 +980,8 @@ class FakeDevCenter:
                         value["rules"] = []
                     return self._reply(value)
                 if parts == ["log"]:
-                    return self._reply(self._page(self.files["log"], "entries", query))
+                    page = self._page(self._log(query), "entries", query)
+                    return self._reply({**page, "limit": _int(query, "limit", 200), "offset": _int(query, "offset", 0)})
                 if len(parts) == 3 and parts[:2] == ["impact", "removal"]:
                     removal = (self.files.get("removals") or {}).get(parts[2]) or self.files["removal"]
                     return self._reply({**copy.deepcopy(removal), "object": parts[2]})
@@ -968,8 +1008,12 @@ class FakeDevCenter:
         if not str(body.get("reason") or "").strip():
             raise FakeError("reason_required", "A proposal needs a reason.")
         if kind == "questions":
-            question = {"id": f"q-test-{self.next_proposal}", "target_id": body.get("target_id"), "text": body.get("text"),
-                        "options": body.get("options", []), "recommended": body.get("recommended"), "reason": body.get("reason")}
+            question = {"id": f"q-test-{self.next_proposal}", "target_id": body.get("target_id"),
+                        "target_name": body.get("target_name", body.get("target_id")), "text": body.get("text"),
+                        "options": body.get("options", []), "recommended_option": body.get("recommended_option"),
+                        "reason": body.get("reason"), "mcp_client": body.get("mcp_client", "Test agent"), "author": "agent",
+                        "created_utc": "2026-10-31T10:00:00Z", "status": "open", "blocked": None,
+                        "selected_option": None, "answered_utc": None}
             self.next_proposal += 1
             session["questions"]["open"].append(question)
             self._step("question_ask", {"target_id": question["target_id"], "reason": question["reason"]}, "agent")
@@ -1126,6 +1170,15 @@ class FakeDevCenter:
         open_id = (self.session or {}).get("session_id")
         rows = [{**row, "is_open": row["session_id"] == open_id} for row in self.files["sessions"]["sessions"]]
         return {"sessions": rows, "revision": self.revision if self.session is not None else None}
+
+    def _log(self, query: dict[str, list[str]]) -> dict[str, Any]:
+        """Step U9: the GET log filters of S10 (author, action, target, proposal_id) before the paging."""
+        entries = self.files["log"]["entries"]
+        for key in ("author", "action", "target", "proposal_id"):
+            wanted = _one(query, key)
+            if wanted:
+                entries = [entry for entry in entries if str(entry.get(key)) == wanted]
+        return {**self.files["log"], "entries": entries}
 
     def _page(self, value: dict[str, Any], key: str, query: dict[str, list[str]]) -> dict[str, Any]:
         items = value[key]
@@ -1320,6 +1373,7 @@ class FakeDevCenterHandler(BaseHTTPRequestHandler):
             return self._json(200, self._desktop(route[len("desktop/"):]))
         controls = {"scenario": lambda: state.load(str(body.get("name", ""))), "fault": lambda: state.set_fault(body),
                     "delay": lambda: state.set_delay(body), "agent-proposal": lambda: state.agent_proposal(body),
+                    "agent-review": lambda: state.agent_review(body),
                     "rules": lambda: state.set_rules(body), "plan": lambda: state.set_plan(body),
                     "compare-rows": lambda: state.set_compare_rows(body), "impact": lambda: state.set_impact(body)}
         if method == "POST" and route in controls:

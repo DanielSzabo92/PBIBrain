@@ -1,0 +1,58 @@
+/* Agent tab and Log tab (UI design 4.7, step U9). Tokens only, no hex values. */
+.dc-agent, .dc-log { display: flex; flex-direction: column; gap: var(--space-3); min-width: 0; }
+.dc-agent-check { display: flex; align-items: center; justify-content: flex-end; gap: var(--space-2); }
+.dc-agent-last { color: var(--text-2); font-size: 12.5px; }
+.dc-agent-section { display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; }
+.dc-agent-h2 { margin: 0; font-size: 15px; font-weight: 600; color: var(--text); }
+.dc-agent-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-2); }
+.dc-agent-bulk { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.dc-agent-reason-text { color: var(--text-2); font-size: 12.5px; }
+.dc-agent-more, .dc-agent-new .ui-button { align-self: flex-start; }
+.dc-agent-new { display: flex; align-items: center; padding: var(--space-1) var(--space-3); border: 1px solid var(--line-strong); border-radius: var(--radius); background: var(--surface-2); }
+.dc-agent-disclosure { align-self: flex-start; }
+.dc-agent-answered { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-1); font-size: 13px; }
+.dc-agent-answered li { display: flex; flex-wrap: wrap; gap: var(--space-3); padding: var(--space-1) var(--space-3); border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+.dc-agent-answered-option { color: var(--text-2); }
+.dc-agent-filters, .dc-log-filters { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--space-3); }
+.dc-agent-filters .ui-field, .dc-log-filters .ui-field { min-width: 160px; }
+.dc-agent-search, .dc-log-search { display: flex; flex-direction: column; gap: 4px; width: 220px; }
+
+.dc-agent-scroll, .dc-log-scroll { overflow: auto; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+.dc-agent-table, .dc-log-table { width: 100%; min-width: 1080px; border-collapse: separate; border-spacing: 0; font-size: 13px; }
+.dc-agent-table thead th, .dc-log-table thead th { position: sticky; top: 0; z-index: 1; height: 34px; padding: 0 var(--space-3); text-align: left; font-weight: 600; font-size: 12px; color: var(--text-2); background: var(--surface-3); border: 0 solid var(--line); border-bottom-width: 1px; white-space: nowrap; }
+.dc-agent-table td, .dc-log-table td { padding: var(--space-2) var(--space-3); border: 0 solid var(--line); border-bottom-width: 1px; vertical-align: top; text-align: left; }
+.dc-agent-row:hover > td, .dc-log-row:hover > td { background: var(--row-hover); }
+.dc-agent-col-check { width: 44px; }
+.dc-agent-col-conf { width: 96px; white-space: nowrap; }
+.dc-agent-col-actions { position: sticky; right: 0; background: var(--surface); border: 0 solid var(--line); border-left-width: 1px; border-bottom-width: 1px; }
+thead .dc-agent-col-actions { z-index: 2; background: var(--surface-3); }
+.dc-agent-row:hover > td.dc-agent-col-actions { background: var(--row-hover-solid, var(--surface-2)); }
+.dc-agent-actions { display: flex; align-items: center; gap: var(--space-1); white-space: nowrap; }
+.dc-agent-kind { display: block; color: var(--text-2); font-size: 12px; }
+.dc-agent-link { border: 0; padding: 2px 0; background: transparent; color: var(--text); font: inherit; font-weight: 600; cursor: pointer; text-align: left; text-decoration: underline; text-underline-offset: 2px; min-height: 24px; }
+.dc-agent-link:focus-visible, .dc-agent-reason:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+.dc-agent-reason { display: block; max-width: 260px; min-height: 24px; border: 0; padding: 2px 0; background: transparent; color: var(--text); font: inherit; text-align: left; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dc-agent-reason[data-expanded] { white-space: normal; }
+.dc-agent-from { color: var(--text-2); white-space: nowrap; }
+.dc-agent-error { margin: var(--space-1) 0 0; max-width: 260px; color: var(--bad); font-size: 12.5px; }
+
+.dc-question-card { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-3); border: 1px solid var(--line-strong); border-radius: var(--radius-md); background: var(--surface-2); }
+.dc-question-text { margin: 0; font-size: 15px; font-weight: 500; color: var(--text); }
+.dc-question-row { margin: 0; color: var(--text-2); font-size: 12.5px; }
+.dc-question-rec { display: inline-flex; padding: 1px 6px; border: 1px solid var(--control-border); border-radius: 999px; font-size: 11.5px; color: var(--text); }
+.dc-proposal-label { color: var(--text-2); }
+.dc-proposal-line { margin: 0; color: var(--text); }
+
+.dc-accept-files { margin: 0 0 var(--space-2); color: var(--text-2); font-size: 13px; }
+.dc-accept-h3 { margin: var(--space-2) 0 var(--space-1); font-size: 13px; font-weight: 600; }
+.dc-accept-list { margin: 0; padding-left: var(--space-4); font-size: 13px; }
+.dc-accept-effect { display: grid; grid-template-columns: 110px minmax(0, 1fr); gap: 4px var(--space-3); margin: 0; font-size: 13px; }
+.dc-accept-effect dd { margin: 0; }
+.dc-accept-change { margin: var(--space-1) 0 0; font-size: 13px; font-weight: 600; }
+.dc-accept-loading { display: flex; align-items: center; gap: 6px; margin: 0; color: var(--text-2); font-size: 13px; }
+
+.dc-log-chips { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.dc-log-code { font-family: var(--font-mono); font-size: 12px; word-break: break-word; }
+.dc-log-time { white-space: nowrap; color: var(--text-2); }
+.dc-log-more { display: flex; align-items: center; gap: var(--space-3); color: var(--text-2); font-size: 12.5px; }
+.dc-agent .ui-button-link { min-height: 24px; }

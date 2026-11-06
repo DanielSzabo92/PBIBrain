@@ -738,6 +738,12 @@ export const COPY = Object.freeze({
   "agent.question.saving": "Saving answer",
   "agent.question.open_row": "Open row",
   "agent.empty.title": "No open proposals or questions",
+  "agent.filter.all": "All",
+  "agent.select": "Select proposal for {name}",
+  "agent.select_all": "Select all ready proposals",
+  "agent.reason.show": "Show full reason",
+  "agent.accept_all.kinds": "Kinds",
+  "agent.question.answered_with": "Answer: {option}",
   "agent.empty.body": "When an agent connected through MCP proposes a change or asks a question, it shows here. Nothing changes until you accept it.",
 
   // Log (ticket 09 section 3.9)
@@ -746,6 +752,8 @@ export const COPY = Object.freeze({
   "log.filter.action": "Action",
   "log.filter.target": "Search target",
   "log.filter.proposal": "Proposal {id}",
+  "log.filter.all": "All",
+  "log.author.agent_any": "Agent",
   "log.column.time": "Time",
   "log.column.author": "Author",
   "log.column.action": "Action",

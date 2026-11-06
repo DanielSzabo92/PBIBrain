@@ -32,6 +32,7 @@ import { formatBlockingFix, formatBlockingText } from "../screens/plan/planModel
 import { useAction, useResource } from "../useDevCenter.js";
 import NameField from "./NameField.jsx";
 import ProposalCard from "./ProposalCard.jsx";
+import QuestionCard from "./QuestionCard.jsx";
 import { STATE_ICONS, normalizeState, stateWord } from "./StateCell.jsx";
 import {
   buildMergeChoiceSpec,
@@ -591,6 +592,8 @@ export default function CompareRowDetail({
   );
   const openProposal =
     (session?.proposals?.open || []).find((p) => p.target_id === row.row_key) || null;
+  const openQuestion =
+    (session?.questions?.open || []).find((q) => q.target_id === row.row_key) || null;
   const confirmedRules = Array.isArray(rulesRes.data?.rules) ? rulesRes.data.rules : [];
 
   const donorOptions = (
@@ -1045,8 +1048,17 @@ export default function CompareRowDetail({
       {/* 3. Open agent proposal card */}
       {openProposal ? (
         <ProposalCard
+          key={row.row_key}
           proposal={openProposal}
           row={row}
+          donors={donors}
+          disabled={disabled}
+          reasonId={effectiveReasonId}
+        />
+      ) : openQuestion ? (
+        <QuestionCard
+          key={openQuestion.id}
+          question={openQuestion}
           donors={donors}
           disabled={disabled}
           reasonId={effectiveReasonId}

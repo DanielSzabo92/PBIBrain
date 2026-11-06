@@ -67,6 +67,22 @@ export function choiceText(choice, donors = []) {
   return formatMergeChoiceLabel(choice, donors);
 }
 
+// The Merge Choice badge (UI design 4.3): at most one, in the priority "Confirm row first",
+// "Question", "Proposed". The proposed choice shows only in the tooltip.
+export function mergeChoiceBadge(row, session, donors = []) {
+  if ((row?.marks?.length ?? 0) > 0) {
+    return { kind: "mark", className: "dc-badge-mark", label: t("compare.badge.confirm_first"), tooltip: t("compare.badge.confirm_first") };
+  }
+  const question = (session?.questions?.open ?? []).find((item) => item.target_id === row?.row_key);
+  if (question) return { kind: "question", className: "dc-badge-question", label: t("compare.badge.question"), tooltip: question.text };
+  const proposal = (session?.proposals?.open ?? []).find((item) => item.target_id === row?.row_key);
+  if (proposal || row?.proposal_status === "proposed" || row?.proposal) {
+    const choice = proposal?.summary || choiceText(proposal?.payload?.choice ?? row?.proposal?.choice ?? row?.merge_choice, donors);
+    return { kind: "proposal", className: "dc-badge-prop", label: t("compare.badge.proposed"), tooltip: t("shared.proposed.tooltip", { choice }) };
+  }
+  return null;
+}
+
 export default function CompareGrid({
   session,
   tabState = {},
@@ -1009,8 +1025,7 @@ export default function CompareGrid({
     // Merge Choice column: colIndex === totalCols - 2
     if (colIndex === totalCols - 2) {
       const mc = choiceText(row.merge_choice, donors);
-      const isProposed = row.proposal_status === "proposed" || Boolean(row.proposal);
-      const hasMarks = row.marks && row.marks.length > 0;
+      const badge = mergeChoiceBadge(row, session, donors);
 
       return (
         <div
@@ -1025,19 +1040,10 @@ export default function CompareGrid({
           onClick={() => openPaneByClick(row.row_key)}
         >
           <span className={`dc-mc-text ${row.merge_choice ? "" : "dc-mc-none"}`}>{mc}</span>
-          {hasMarks ? (
-            <span className="dc-badge dc-badge-mark" title={t("compare.badge.confirm_first")}>
-              <Flag aria-hidden="true" />
-              <span>{t("compare.badge.confirm_first")}</span>
-            </span>
-          ) : isProposed ? (
-            <span
-              className="dc-badge dc-badge-prop"
-              title={t("shared.proposed.tooltip", {
-                choice: choiceText(row.proposal?.choice || row.merge_choice, donors),
-              })}
-            >
-              <span>{t("compare.badge.proposed")}</span>
+          {badge ? (
+            <span className={`dc-badge ${badge.className}`} title={badge.tooltip} data-badge={badge.kind}>
+              {badge.kind === "mark" ? <Flag aria-hidden="true" /> : null}
+              <span>{badge.label}</span>
             </span>
           ) : null}
         </div>
