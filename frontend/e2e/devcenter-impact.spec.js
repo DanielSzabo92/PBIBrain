@@ -302,7 +302,7 @@ test.describe("Offers", () => {
     await page.getByRole("checkbox", { name: "Top products", exact: true }).click();
     await expect(pageBox).toHaveAttribute("aria-checked", "mixed");
     const banner = page.locator('[data-banner="offer-needs"]');
-    await expect(banner).toContainText("1 fields need an action before the copy can work.");
+    await expect(banner).toContainText("1 field needs an action before the copy can work.");
     await pageBox.click();
     await expect(pageBox).toHaveAttribute("aria-checked", "true");
     await expect(page.getByRole("checkbox", { name: "Year filter", exact: true })).toHaveAttribute("aria-checked", "true");
@@ -388,7 +388,7 @@ test.describe("Removal policy dialog", () => {
     await dialog.getByRole("button", { name: "Use Cascade (remove 3 objects)" }).click();
     await expect(dialog).toHaveCount(0);
     await expect(trigger).toBeFocused();
-    await expect(page.getByText("1 item resolved. 4 blocking left.")).toBeVisible();
+    await expect(page.getByText("2 items resolved. 4 blocking left.")).toBeVisible();
     await expect(page.locator(".dc-impact-pane-facts")).toContainText("Cascade");
     await expect(row(page, "Budget Variance").locator('[data-slot="status-badge"]')).toHaveText("Warning");
   });

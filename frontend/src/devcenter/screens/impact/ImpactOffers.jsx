@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Banner } from "@/components/ui/notice";
 import { EmptyState } from "@/components/ui/result-panel";
-import { t } from "../../copy.js";
+import { t, tn } from "../../copy.js";
 import { missingFieldCount, offerLine, offerTree, pageCheckState } from "./impactModel.js";
 
 export default function ImpactOffers({ offers, disabled, reasonId, onToggle, onTogglePage, onOpenNeeds }) {
@@ -19,7 +19,7 @@ export default function ImpactOffers({ offers, disabled, reasonId, onToggle, onT
       <p className="dc-offers-help">{t("impact.offers.help")}</p>
       {missing > 0 ? (
         <Banner tone="warn" data-banner="offer-needs" actions={<Button variant="outline" size="sm" onClick={onOpenNeeds}>{t("impact.offers.fields.action")}</Button>}>
-          {t("impact.offers.fields", { n: missing })}
+          {tn("impact.offers.fields", missing)}
         </Banner>
       ) : null}
       {tree.map((donor) => (

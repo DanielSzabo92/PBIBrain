@@ -349,8 +349,11 @@ export default function ImpactTab({ session, tabState, onTabs, changeDisabled, r
     setPolicies((current) => ({ ...current, [reply.row_key]: reply.policy }));
     setUpdating(true);
     ownChange.current = true;
+    const blockingBefore = blockingSummary?.total ?? 0;
     try {
-      await finish(null, 1);
+      // One policy can resolve many items: the resolved count is the drop of the blocking count.
+      const blockingLeft = (await reloadAll()) ?? 0;
+      toast.show({ tone: "ok", text: resolvedText(Math.max(0, blockingBefore - blockingLeft), blockingLeft) });
     } finally {
       ownChange.current = false;
       setUpdating(false);
@@ -451,7 +454,7 @@ export default function ImpactTab({ session, tabState, onTabs, changeDisabled, r
         onOpenNeeds={() => setGroup("needs")}
       />
     );
-  } else if (rowsTotal === 0) {
+  } else if (rowsTotal === 0 && view !== "wireframe") {
     region = filtered ? (
       <EmptyState headingLevel={2} title={t("impact.empty.filter")} action={<Button variant="outline" onClick={clearFilters}>{t("impact.empty.filter.action")}</Button>} />
     ) : scope !== "plan" ? (
