@@ -1,0 +1,73 @@
+{
+  "imp-b01": [
+    [
+      {
+        "object_id": "table:Budget",
+        "name": "Budget",
+        "type": "table",
+        "edge_phrase_id": "contains",
+        "edge_phrase": "contains"
+      },
+      {
+        "object_id": "measure:Budget/Budget Amount",
+        "name": "Budget Amount",
+        "type": "measure",
+        "edge_phrase_id": "uses",
+        "edge_phrase": "uses"
+      },
+      {
+        "object_id": "visual:Overview/Sales by region",
+        "name": "Sales by region",
+        "type": "visual",
+        "edge_phrase_id": "uses",
+        "edge_phrase": "uses"
+      }
+    ],
+    [
+      {
+        "object_id": "table:Budget",
+        "name": "Budget",
+        "type": "table",
+        "edge_phrase_id": "contains",
+        "edge_phrase": "contains"
+      },
+      {
+        "object_id": "measure:Budget/Budget Total",
+        "name": "Budget Total",
+        "type": "measure",
+        "edge_phrase_id": "reference",
+        "edge_phrase": "reference"
+      },
+      {
+        "object_id": "visual:Overview/Sales by region",
+        "name": "Sales by region",
+        "type": "visual",
+        "edge_phrase_id": "uses",
+        "edge_phrase": "uses"
+      }
+    ],
+    [
+      {
+        "object_id": "table:Budget",
+        "name": "Budget",
+        "type": "table",
+        "edge_phrase_id": "contains",
+        "edge_phrase": "contains"
+      },
+      {
+        "object_id": "column:Budget/Amount",
+        "name": "Amount",
+        "type": "column",
+        "edge_phrase_id": "contains",
+        "edge_phrase": "contains"
+      },
+      {
+        "object_id": "visual:Overview/Sales by region",
+        "name": "Sales by region",
+        "type": "visual",
+        "edge_phrase_id": "uses",
+        "edge_phrase": "uses"
+      }
+    ]
+  ]
+}

@@ -1,42 +1,565 @@
 {
-  "completeness": {
-    "checked": 2,
-    "not_checked": 0
-  },
-  "facets": {
-    "severity": {
-      "high": 1,
-      "low": 1,
-      "not_checked": 0
-    }
-  },
+  "target": "plan",
+  "total": 11,
+  "limit": 500,
+  "offset": 0,
   "has_more": false,
-  "include_proposals": true,
+  "facets": {
+    "direction": {},
+    "blocking": {},
+    "severity": {},
+    "certainty": {},
+    "object_type": {}
+  },
   "items": [
     {
-      "blocking": false,
+      "id": "imp-b01",
+      "direction": "breaks",
+      "cause": "row-budget",
+      "impacted_object": {
+        "source_id": "src-4",
+        "object_id": "visual:Overview/Sales by region",
+        "object_type": "visual",
+        "name": "Sales by region",
+        "domain": "report"
+      },
+      "severity": "breaks",
       "certainty": "certain",
-      "direction": "downstream",
-      "id": "imp-1",
-      "object_id": "visual-sales",
-      "object_name": "Sales by region",
-      "object_type": "visual",
-      "reason_id": "impact.reason.measure_changed",
-      "severity": "high"
+      "reason_id": "deleted_object",
+      "reason_text": "Uses a deleted object",
+      "path": [
+        {
+          "object_id": "table:Budget",
+          "name": "Budget",
+          "type": "table",
+          "edge_phrase_id": "contains",
+          "edge_phrase": "contains"
+        },
+        {
+          "object_id": "measure:Budget/Budget Amount",
+          "name": "Budget Amount",
+          "type": "measure",
+          "edge_phrase_id": "uses",
+          "edge_phrase": "uses"
+        },
+        {
+          "object_id": "visual:Overview/Sales by region",
+          "name": "Sales by region",
+          "type": "visual",
+          "edge_phrase_id": "uses",
+          "edge_phrase": "uses"
+        }
+      ],
+      "other_paths_count": 2,
+      "blocking": true,
+      "allowed_actions": [
+        "set_policy_block",
+        "set_policy_cascade",
+        "set_policy_repoint",
+        "remove_field"
+      ]
     },
     {
+      "id": "imp-b02",
+      "direction": "breaks",
+      "cause": "row-budget",
+      "impacted_object": {
+        "source_id": "src-3",
+        "object_id": "measure:Budget/Budget Variance",
+        "object_type": "measure",
+        "name": "Budget Variance",
+        "domain": "model"
+      },
+      "severity": "breaks",
+      "certainty": "certain",
+      "reason_id": "deleted_object",
+      "reason_text": "Uses a deleted object",
+      "path": [
+        {
+          "object_id": "table:Budget",
+          "name": "Budget",
+          "type": "table",
+          "edge_phrase_id": "contains",
+          "edge_phrase": "contains"
+        },
+        {
+          "object_id": "measure:Budget/Budget Amount",
+          "name": "Budget Amount",
+          "type": "measure",
+          "edge_phrase_id": "uses",
+          "edge_phrase": "uses"
+        },
+        {
+          "object_id": "measure:Budget/Budget Variance",
+          "name": "Budget Variance",
+          "type": "measure",
+          "edge_phrase_id": "reference",
+          "edge_phrase": "reference"
+        }
+      ],
+      "other_paths_count": 0,
+      "blocking": true,
+      "allowed_actions": [
+        "set_policy_block",
+        "set_policy_cascade",
+        "set_policy_repoint"
+      ]
+    },
+    {
+      "id": "imp-b03",
+      "direction": "breaks",
+      "cause": "row-gross-margin",
+      "impacted_object": {
+        "source_id": "src-3",
+        "object_id": "measure:Sales/Margin %",
+        "object_type": "measure",
+        "name": "Margin %",
+        "domain": "model"
+      },
+      "severity": "breaks",
+      "certainty": "certain",
+      "reason_id": "renamed_object",
+      "reason_text": "Uses a renamed object",
+      "path": [
+        {
+          "object_id": "measure:Sales/Gross Margin",
+          "name": "Gross Margin",
+          "type": "measure",
+          "edge_phrase_id": "reference",
+          "edge_phrase": "reference"
+        },
+        {
+          "object_id": "measure:Sales/Margin %",
+          "name": "Margin %",
+          "type": "measure",
+          "edge_phrase_id": "reference",
+          "edge_phrase": "reference"
+        }
+      ],
+      "other_paths_count": 0,
+      "blocking": true,
+      "allowed_actions": [
+        "include_in_rewrite"
+      ]
+    },
+    {
+      "id": "imp-b04",
+      "direction": "breaks",
+      "cause": "row-gross-margin",
+      "impacted_object": {
+        "source_id": "src-4",
+        "object_id": "visual:Overview/Margin trend",
+        "object_type": "visual",
+        "name": "Margin trend",
+        "domain": "report"
+      },
+      "severity": "breaks",
+      "certainty": "certain",
+      "reason_id": "renamed_object",
+      "reason_text": "Uses a renamed object",
+      "path": [
+        {
+          "object_id": "measure:Sales/Gross Margin",
+          "name": "Gross Margin",
+          "type": "measure",
+          "edge_phrase_id": "reference",
+          "edge_phrase": "reference"
+        },
+        {
+          "object_id": "visual:Overview/Margin trend",
+          "name": "Margin trend",
+          "type": "visual",
+          "edge_phrase_id": "uses",
+          "edge_phrase": "uses"
+        }
+      ],
+      "other_paths_count": 0,
+      "blocking": true,
+      "allowed_actions": [
+        "include_in_rewrite",
+        "remove_field"
+      ]
+    },
+    {
+      "id": "imp-b05",
+      "direction": "breaks",
+      "cause": "row-net-sales",
+      "impacted_object": {
+        "source_id": "src-3",
+        "object_id": "measure:Sales/Sales YTD",
+        "object_type": "measure",
+        "name": "Sales YTD",
+        "domain": "model"
+      },
+      "severity": "changes_value",
+      "certainty": "certain",
+      "reason_id": "modified_object",
+      "reason_text": "Uses a changed object",
+      "path": [
+        {
+          "object_id": "measure:Sales/Net Sales",
+          "name": "Net Sales",
+          "type": "measure",
+          "edge_phrase_id": "reference",
+          "edge_phrase": "reference"
+        },
+        {
+          "object_id": "measure:Sales/Sales YTD",
+          "name": "Sales YTD",
+          "type": "measure",
+          "edge_phrase_id": "reference",
+          "edge_phrase": "reference"
+        }
+      ],
+      "other_paths_count": 0,
       "blocking": false,
+      "allowed_actions": []
+    },
+    {
+      "id": "imp-b06",
+      "direction": "breaks",
+      "cause": "row-region",
+      "impacted_object": {
+        "source_id": "src-4",
+        "object_id": "visual:Details/Region slicer",
+        "object_type": "visual",
+        "name": "Region slicer",
+        "domain": "report"
+      },
+      "severity": "needs_review",
       "certainty": "possible",
-      "direction": "downstream",
-      "id": "imp-2",
-      "object_id": "measure-margin-pct",
-      "object_name": "Margin %",
-      "object_type": "measure",
-      "reason_id": "impact.reason.reference_changed",
-      "severity": "low"
+      "reason_id": "filter_context_may_change",
+      "reason_text": "The filter context can change",
+      "path": [
+        {
+          "object_id": "column:Customer/Region",
+          "name": "Region",
+          "type": "column",
+          "edge_phrase_id": "filter",
+          "edge_phrase": "filter"
+        },
+        {
+          "object_id": "visual:Details/Region slicer",
+          "name": "Region slicer",
+          "type": "visual",
+          "edge_phrase_id": "uses",
+          "edge_phrase": "uses"
+        }
+      ],
+      "other_paths_count": 0,
+      "blocking": false,
+      "allowed_actions": []
+    },
+    {
+      "id": "imp-b07",
+      "direction": "breaks",
+      "cause": "row-budget",
+      "impacted_object": {
+        "source_id": null,
+        "object_id": "visual:Budget page/Budget card",
+        "object_type": "visual",
+        "name": "Budget card",
+        "domain": "report"
+      },
+      "severity": "not_changed_by_this_plan",
+      "certainty": "certain",
+      "reason_id": "not_changed_by_this_plan",
+      "reason_text": "Not changed by this plan",
+      "path": [
+        {
+          "object_id": "table:Budget",
+          "name": "Budget",
+          "type": "table",
+          "edge_phrase_id": "contains",
+          "edge_phrase": "contains"
+        },
+        {
+          "object_id": "visual:Budget page/Budget card",
+          "name": "Budget card",
+          "type": "visual",
+          "edge_phrase_id": "uses",
+          "edge_phrase": "uses"
+        }
+      ],
+      "other_paths_count": 0,
+      "blocking": false,
+      "allowed_actions": []
+    },
+    {
+      "id": "imp-n01",
+      "direction": "needs",
+      "cause": "row-net-sales",
+      "impacted_object": {
+        "source_id": "src-2",
+        "object_id": "column:Customer/Region Code",
+        "object_type": "column",
+        "name": "Region Code",
+        "domain": "model"
+      },
+      "severity": "missing",
+      "certainty": "certain",
+      "reason_id": "missing_in_target",
+      "reason_text": "The target does not have this object",
+      "path": [
+        {
+          "object_id": "measure:Sales/Net Sales",
+          "name": "Net Sales",
+          "type": "measure",
+          "edge_phrase_id": "reference",
+          "edge_phrase": "reference"
+        },
+        {
+          "object_id": "column:Customer/Region Code",
+          "name": "Region Code",
+          "type": "column",
+          "edge_phrase_id": "reference",
+          "edge_phrase": "reference"
+        }
+      ],
+      "other_paths_count": 0,
+      "blocking": true,
+      "allowed_actions": [
+        "add_from_donor",
+        "map_to_target",
+        "drop_added_object"
+      ]
+    },
+    {
+      "id": "imp-n02",
+      "direction": "needs",
+      "cause": "row-net-sales",
+      "impacted_object": {
+        "source_id": "src-2",
+        "object_id": "table:Currency",
+        "object_type": "table",
+        "name": "Currency",
+        "domain": "model"
+      },
+      "severity": "missing",
+      "certainty": "certain",
+      "reason_id": "missing_in_target",
+      "reason_text": "The target does not have this object",
+      "path": [
+        {
+          "object_id": "measure:Sales/Net Sales",
+          "name": "Net Sales",
+          "type": "measure",
+          "edge_phrase_id": "reference",
+          "edge_phrase": "reference"
+        },
+        {
+          "object_id": "table:Currency",
+          "name": "Currency",
+          "type": "table",
+          "edge_phrase_id": "reference",
+          "edge_phrase": "reference"
+        }
+      ],
+      "other_paths_count": 0,
+      "blocking": true,
+      "allowed_actions": [
+        "add_from_donor",
+        "map_to_target",
+        "drop_added_object"
+      ]
+    },
+    {
+      "id": "imp-n03",
+      "direction": "needs",
+      "cause": "row-gross-margin",
+      "impacted_object": {
+        "source_id": "src-2",
+        "object_id": "measure:Finance/FX Rate",
+        "object_type": "measure",
+        "name": "FX Rate",
+        "domain": "model"
+      },
+      "severity": "will_be_added",
+      "certainty": "certain",
+      "reason_id": "will_be_added",
+      "reason_text": "Will be added with the row",
+      "path": [
+        {
+          "object_id": "measure:Sales/Gross Margin",
+          "name": "Gross Margin",
+          "type": "measure",
+          "edge_phrase_id": "reference",
+          "edge_phrase": "reference"
+        },
+        {
+          "object_id": "measure:Finance/FX Rate",
+          "name": "FX Rate",
+          "type": "measure",
+          "edge_phrase_id": "reference",
+          "edge_phrase": "reference"
+        }
+      ],
+      "other_paths_count": 0,
+      "blocking": false,
+      "allowed_actions": []
+    },
+    {
+      "id": "imp-n04",
+      "direction": "needs",
+      "cause": "row-gross-margin",
+      "impacted_object": {
+        "source_id": "src-2",
+        "object_id": "column:Customer/Region",
+        "object_type": "column",
+        "name": "Region",
+        "domain": "model"
+      },
+      "severity": "mapped",
+      "certainty": "certain",
+      "reason_id": "mapped",
+      "reason_text": "Mapped to a target object",
+      "path": [
+        {
+          "object_id": "measure:Sales/Gross Margin",
+          "name": "Gross Margin",
+          "type": "measure",
+          "edge_phrase_id": "reference",
+          "edge_phrase": "reference"
+        },
+        {
+          "object_id": "column:Customer/Region",
+          "name": "Region",
+          "type": "column",
+          "edge_phrase_id": "reference",
+          "edge_phrase": "reference"
+        }
+      ],
+      "other_paths_count": 0,
+      "blocking": false,
+      "allowed_actions": []
     }
   ],
-  "offers": [],
-  "target": "plan",
-  "total": 2
+  "completeness": {
+    "status": "incomplete",
+    "not_checked_object_types": [
+      "calculation group"
+    ],
+    "unresolved_bindings": [
+      "Sales by region: field Budget[Owner]"
+    ],
+    "unreadable_reports": [],
+    "bookmarks": [
+      "Year end"
+    ],
+    "possible_only_areas": []
+  },
+  "offers": [
+    {
+      "id": "visual:Sales report/Overview/Top products",
+      "source_id": "src-1",
+      "source_name": "Sales model",
+      "kind": "visual",
+      "name": "Top products",
+      "page_name": "Overview",
+      "references": [
+        "measure:Sales/Net Sales"
+      ],
+      "missing_fields": [
+        "column:Product/Category"
+      ],
+      "information_only": false,
+      "selected": false
+    },
+    {
+      "id": "visual:Sales report/Overview/Sales map",
+      "source_id": "src-1",
+      "source_name": "Sales model",
+      "kind": "visual",
+      "name": "Sales map",
+      "page_name": "Overview",
+      "references": [
+        "measure:Sales/Net Sales"
+      ],
+      "missing_fields": [],
+      "information_only": false,
+      "selected": false
+    },
+    {
+      "id": "filter:Sales report/Overview/Year",
+      "source_id": "src-1",
+      "source_name": "Sales model",
+      "kind": "filter",
+      "name": "Year filter",
+      "page_name": "Overview",
+      "references": [
+        "column:Date/Year"
+      ],
+      "missing_fields": [],
+      "information_only": false,
+      "selected": false
+    },
+    {
+      "id": "visual:Finance report/Margin/Margin by month",
+      "source_id": "src-2",
+      "source_name": "Finance model",
+      "kind": "visual",
+      "name": "Margin by month",
+      "page_name": "Margin",
+      "references": [
+        "measure:Sales/Gross Margin"
+      ],
+      "missing_fields": [
+        "measure:Finance/FX Rate",
+        "table:Currency"
+      ],
+      "information_only": false,
+      "selected": false
+    },
+    {
+      "id": "bookmark:Finance report/Year end",
+      "source_id": "src-2",
+      "source_name": "Finance model",
+      "kind": "bookmark",
+      "name": "Year end",
+      "page_name": null,
+      "references": [
+        "measure:Sales/Gross Margin"
+      ],
+      "missing_fields": [],
+      "information_only": true,
+      "selected": false
+    }
+  ],
+  "proposal_items": [
+    {
+      "id": "imp-p01",
+      "direction": "breaks",
+      "cause": "row-net-sales",
+      "impacted_object": {
+        "source_id": "src-4",
+        "object_id": "visual:Overview/Net sales card",
+        "object_type": "visual",
+        "name": "Net sales card",
+        "domain": "report"
+      },
+      "severity": "changes_value",
+      "certainty": "certain",
+      "reason_id": "modified_object",
+      "reason_text": "Uses a changed object",
+      "path": [
+        {
+          "object_id": "measure:Sales/Net Sales",
+          "name": "Net Sales",
+          "type": "measure",
+          "edge_phrase_id": "reference",
+          "edge_phrase": "reference"
+        },
+        {
+          "object_id": "visual:Overview/Net sales card",
+          "name": "Net sales card",
+          "type": "visual",
+          "edge_phrase_id": "uses",
+          "edge_phrase": "uses"
+        }
+      ],
+      "other_paths_count": 0,
+      "blocking": false,
+      "allowed_actions": []
+    }
+  ]
 }

@@ -813,7 +813,7 @@ export default function CompareRowDetail({
                 type="button"
                 variant="outline"
                 size="xs"
-                onClick={() => onNavigateImpact?.(row.row_key)}
+                onClick={() => onNavigateImpact?.(row.row_key, row.name)}
               >
                 {t("row.removal.change")}
               </Button>
@@ -1362,7 +1362,7 @@ export default function CompareRowDetail({
         <button
           type="button"
           className="dc-link text-xs"
-          onClick={() => onNavigateImpact?.(row.row_key)}
+          onClick={() => onNavigateImpact?.(row.row_key, row.name)}
         >
           {t("row.impact_link")}
         </button>

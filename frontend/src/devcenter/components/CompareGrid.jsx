@@ -1528,8 +1528,8 @@ export default function CompareGrid({
               activeRowKeyRef.current = key;
               setActiveRowKey(key);
             }}
-            onNavigateImpact={(rowKey) => {
-              onTabs?.({ tab: "impact", impactRowKey: rowKey });
+            onNavigateImpact={(rowKey, rowName) => {
+              onTabs?.({ tab: "impact", impactRowKey: rowKey, impactRowName: rowName });
             }}
             http={http}
             changeDisabled={changeDisabled}

@@ -1,31 +1,154 @@
 {
+  "report": "target",
+  "report_filters": [],
   "pages": [
     {
-      "height": 720,
       "id": "page-overview",
       "name": "Overview",
+      "width": 1280,
+      "height": 720,
+      "hidden": false,
+      "filters": [],
       "visuals": [
         {
-          "height": 320,
           "id": "visual-sales",
-          "status": "changes",
+          "type": "clusteredColumnChart",
           "title": "Sales by region",
-          "width": 560,
           "x": 40,
-          "y": 40
+          "y": 40,
+          "z": 0,
+          "width": 560,
+          "height": 300,
+          "group": null,
+          "hidden": false,
+          "status": "breaks",
+          "cause_item_ids": [
+            "imp-b01"
+          ],
+          "filters": []
         },
         {
-          "height": 160,
-          "id": "visual-target",
-          "status": "unchanged",
-          "title": "Target card",
-          "width": 280,
+          "id": "visual-margin",
+          "type": "lineChart",
+          "title": "Margin trend",
           "x": 640,
-          "y": 40
+          "y": 40,
+          "z": 0,
+          "width": 600,
+          "height": 300,
+          "group": null,
+          "hidden": false,
+          "status": "changes",
+          "cause_item_ids": [
+            "imp-b04"
+          ],
+          "filters": []
+        },
+        {
+          "id": "visual-budget",
+          "type": "gauge",
+          "title": "Budget gauge",
+          "x": 40,
+          "y": 380,
+          "z": 0,
+          "width": 360,
+          "height": 300,
+          "group": null,
+          "hidden": false,
+          "status": "removed",
+          "cause_item_ids": [
+            "imp-b07"
+          ],
+          "filters": []
+        },
+        {
+          "id": "visual-new",
+          "type": "card",
+          "title": "Net sales card",
+          "x": 440,
+          "y": 380,
+          "z": 0,
+          "width": 360,
+          "height": 140,
+          "group": null,
+          "hidden": false,
+          "status": "new",
+          "cause_item_ids": [],
+          "filters": []
+        },
+        {
+          "id": "visual-check",
+          "type": "customVisual",
+          "title": "Custom map",
+          "x": 440,
+          "y": 540,
+          "z": 0,
+          "width": 360,
+          "height": 140,
+          "group": null,
+          "hidden": false,
+          "status": "not_checked",
+          "cause_item_ids": [],
+          "filters": []
+        },
+        {
+          "id": "visual-target",
+          "type": "card",
+          "title": "Target card",
+          "x": 840,
+          "y": 380,
+          "z": 0,
+          "width": 400,
+          "height": 300,
+          "group": null,
+          "hidden": false,
+          "status": "unchanged",
+          "cause_item_ids": [],
+          "filters": []
         }
-      ],
-      "width": 1280
+      ]
+    },
+    {
+      "id": "page-details",
+      "name": "Details",
+      "width": 1280,
+      "height": 720,
+      "hidden": false,
+      "filters": [],
+      "visuals": [
+        {
+          "id": "visual-slicer",
+          "type": "slicer",
+          "title": "Region slicer",
+          "x": 40,
+          "y": 40,
+          "z": 0,
+          "width": 300,
+          "height": 640,
+          "group": null,
+          "hidden": false,
+          "status": "changes",
+          "cause_item_ids": [
+            "imp-b06"
+          ],
+          "filters": []
+        },
+        {
+          "id": "visual-table",
+          "type": "tableEx",
+          "title": "Sales table",
+          "x": 380,
+          "y": 40,
+          "z": 0,
+          "width": 860,
+          "height": 640,
+          "group": null,
+          "hidden": false,
+          "status": "unchanged",
+          "cause_item_ids": [],
+          "filters": []
+        }
+      ]
     }
-  ],
-  "report": "Combined report"
+  ]
 }

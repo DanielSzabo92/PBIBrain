@@ -1,0 +1,63 @@
+{
+  "src-1": {
+    "report": "src-1",
+    "report_filters": [],
+    "pages": [
+      {
+        "id": "page-d-overview",
+        "name": "Overview",
+        "width": 1280,
+        "height": 720,
+        "hidden": false,
+        "filters": [],
+        "visuals": [
+          {
+            "id": "visual:Sales report/Overview/Top products",
+            "type": "clusteredColumnChart",
+            "title": "Top products",
+            "x": 40,
+            "y": 40,
+            "z": 0,
+            "width": 580,
+            "height": 320,
+            "group": null,
+            "hidden": false,
+            "status": "new",
+            "cause_item_ids": [],
+            "filters": []
+          },
+          {
+            "id": "visual:Sales report/Overview/Sales map",
+            "type": "map",
+            "title": "Sales map",
+            "x": 660,
+            "y": 40,
+            "z": 0,
+            "width": 580,
+            "height": 320,
+            "group": null,
+            "hidden": false,
+            "status": "new",
+            "cause_item_ids": [],
+            "filters": []
+          },
+          {
+            "id": "visual-d-kpi",
+            "type": "kpi",
+            "title": "Sales KPI",
+            "x": 40,
+            "y": 400,
+            "z": 0,
+            "width": 1200,
+            "height": 280,
+            "group": null,
+            "hidden": false,
+            "status": "unchanged",
+            "cause_item_ids": [],
+            "filters": []
+          }
+        ]
+      }
+    ]
+  }
+}

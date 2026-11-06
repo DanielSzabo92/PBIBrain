@@ -11,6 +11,7 @@ import { errorCopy, longCallText, t, tn } from "../copy.js";
 import { useAction, useDevCenterState, useResource } from "../useDevCenter.js";
 import SourcesTab from "./SourcesTab.jsx";
 import PlanTab from "./plan/PlanTab.jsx";
+import ImpactTab from "./impact/ImpactTab.jsx";
 import CompareGrid from "../components/CompareGrid.jsx";
 import { agentCount, banners, planStatus, targetLine } from "./sessionModel.js";
 
@@ -119,6 +120,8 @@ export default function WorkArea({ session, tabState, onTabs, onRetryLock, onClo
                 changeDisabled={changeDisabled}
                 reasonId={reasonId}
               />
+            ) : tab === "impact" ? (
+              <ImpactTab session={session} tabState={tabState} onTabs={onTabs} changeDisabled={changeDisabled} reasonId={reasonId} />
             ) : tab === "plan" ? (
               <PlanTab
                 session={session}

@@ -65,6 +65,9 @@ ERROR_STATUS = {
     "unknown": 500, "network": 503,
 }
 PROPOSAL_MIN_CONFIDENCE = 0.9
+# The Impact sort order of severities (UI design 4.5: blocking, severity, name).
+IMPACT_SEVERITY_RANK = {name: rank for rank, name in enumerate((
+    "breaks", "missing", "name_clash", "changes_value", "needs_review", "will_be_added", "mapped", "not_changed_by_this_plan"))}
 # The paths that the fake native source picker gives, in turn.
 SOURCE_PICKS = ("sources/Sales.SemanticModel", "sources/Finance.SemanticModel", "sources/Budget.SemanticModel")
 
@@ -121,16 +124,27 @@ def _generate_large(files: dict[str, Any], plan: dict[str, int]) -> None:
             "notes": [], "properties": [], "merge_choice": None, "proposal_status": None, "marks": [],
         })
     files["compare-rows"] = {"rows": rows}
-    severities = ("critical", "high", "low", "not_checked")
-    files["impact"] = {
-        **files["impact"],
-        "items": [
-            {"id": f"imp-{index:05d}", "object_id": f"visual-{index:05d}", "object_name": f"Visual {index:05d}", "object_type": "visual",
-             "direction": "downstream", "severity": severities[index % len(severities)], "certainty": "certain",
-             "reason_id": "impact.reason.measure_changed", "blocking": False}
-            for index in range(plan["impact_items"])
-        ],
-    }
+    # Step U8: S6-shaped items. Each 50th item is possible; these 100 items have 125 graph nodes (budget P5).
+    severities = ("breaks", "changes_value", "needs_review", "missing")
+    items = []
+    for index in range(plan["impact_items"]):
+        possible = index % 50 == 0
+        needs = not possible and index % 4 == 3
+        severity = "needs_review" if possible else severities[index % len(severities)]
+        measure = {"object_id": f"measure:M{index % 25:02d}", "name": f"Measure {index % 25:02d}", "type": "measure",
+                   "edge_phrase_id": "reference", "edge_phrase": "reference"}
+        visual = {"object_id": f"visual-{index:05d}", "name": f"Visual {index:05d}", "type": "visual",
+                  "edge_phrase_id": "uses", "edge_phrase": "uses"}
+        items.append({
+            "id": f"imp-{index:05d}", "direction": "needs" if needs else "breaks", "cause": f"row-{index % 25:05d}",
+            "impacted_object": {"source_id": "src-1", "object_id": visual["object_id"], "object_type": "visual",
+                                "name": visual["name"], "domain": "report"},
+            "severity": severity, "certainty": "possible" if possible else "certain",
+            "reason_id": "modified_object", "reason_text": "Uses a changed object", "path": [measure, visual],
+            "other_paths_count": 0, "blocking": severity in {"breaks", "missing"} and not possible,
+            "allowed_actions": ["add_from_donor", "map_to_target", "drop_added_object"] if needs else ["include_in_rewrite"],
+        })
+    files["impact"] = {**files["impact"], "items": items, "proposal_items": []}
     session["counts"] = {**session["counts"], "sources": len(source_ids), "donors": len(source_ids)}
 
 
@@ -289,8 +303,22 @@ class FakeDevCenter:
                 self.files.setdefault("compare-rows", {})["rows"] = copy.deepcopy(body["rows"])
             if "removal" in body and isinstance(body["removal"], dict):
                 self.files.setdefault("removal", {}).update(copy.deepcopy(body["removal"]))
+                # A test removal reply wins over the removal replies of each object.
+                self.files["removals"] = {}
             if "folders" in body and isinstance(body["folders"], dict):
                 self.files.setdefault("display-folders", {})["folders"] = copy.deepcopy(body["folders"])
+            return {"ok": True}
+
+    def set_impact(self, body: dict[str, Any]) -> dict[str, Any]:
+        """Step U8: change the impact, removal, and wireframe test fixtures in memory."""
+        with self.lock:
+            impact = self.files.setdefault("impact", {})
+            for key in ("items", "completeness", "offers", "proposal_items"):
+                if key in body:
+                    impact[key] = copy.deepcopy(body[key])
+            for key in ("removals", "wireframes", "impact-paths"):
+                if isinstance(body.get(key), dict):
+                    self.files.setdefault(key, {}).update(copy.deepcopy(body[key]))
             return {"ok": True}
 
     def before_reply(self, key: str) -> None:
@@ -518,7 +546,59 @@ class FakeDevCenter:
         if policy == "repoint" and (not isinstance(repoint_target, str) or not repoint_target.strip()):
             raise FakeError("invalid_payload", "Repoint needs a repoint_target.", {"field": "repoint_target"})
         row["removal_policy"] = {"policy": policy, "repoint_target": repoint_target if policy == "repoint" else None}
+        self._set_removal_blocking(row["row_key"], policy)
         return {"row_key": row["row_key"], "policy": policy, "repoint_target": repoint_target if policy == "repoint" else None}
+
+    def _set_removal_blocking(self, row_key: Any, policy: str) -> None:
+        """Items of a removed row block only under the Block policy (S6 blocking rule 1)."""
+        for item in self._impact_items(True):
+            if item["cause"] == row_key and "set_policy_block" in item["allowed_actions"]:
+                item["blocking"] = policy == "block"
+
+    def _call_impact_action_apply(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """Step U8: one revision step for all items (UC28). An item that does not permit the action fails."""
+        action = payload.get("action")
+        item_ids = payload.get("item_ids") or []
+        if not isinstance(item_ids, list) or not item_ids:
+            raise FakeError("invalid_payload", "No items specified.", {"reason": "item_ids_required"})
+        known = {item["id"]: item for item in self._impact_items(True)}
+        applied: list[str] = []
+        failed: list[dict[str, str]] = []
+        for item_id in item_ids:
+            item = known.get(item_id)
+            if item is None:
+                failed.append({"item_id": item_id, "reason": "item_not_found"})
+            elif action not in item["allowed_actions"]:
+                failed.append({"item_id": item_id, "reason": "action_not_allowed"})
+            else:
+                applied.append(item_id)
+        for item_id in applied:
+            item = known[item_id]
+            if action in {"set_policy_block", "set_policy_cascade", "set_policy_repoint"}:
+                self._set_removal_blocking(item["cause"], action.replace("set_policy_", ""))
+            elif action == "add_from_donor":
+                item.update(blocking=False, severity="will_be_added")
+            elif action == "map_to_target":
+                item.update(blocking=False, severity="mapped")
+            else:
+                item["blocking"] = False
+        return {"applied": applied, "failed": failed}
+
+    def _call_need_mapping_set(self, payload: dict[str, Any]) -> dict[str, Any]:
+        item = self._impact_item(payload.get("need_id"))
+        action = payload.get("action")
+        item.update(blocking=False, severity="mapped" if action == "map_to_target" else "will_be_added")
+        return {"need_id": item["id"], "action": action, "target_object": payload.get("target_object")}
+
+    def _call_offer_select(self, payload: dict[str, Any]) -> dict[str, Any]:
+        offer_id = payload.get("offer_id")
+        offer = next((offer for offer in self.files["impact"].get("offers", []) if offer["id"] == offer_id), None)
+        if offer is None:
+            raise FakeError("not_found", f"The offer {offer_id} does not exist.", {"offer_id": offer_id})
+        if offer.get("information_only"):
+            raise FakeError("action_not_allowed", "A bookmark is information only.", {"reason": "information_only"})
+        offer["selected"] = bool(payload.get("selected"))
+        return {"offer_id": offer_id, "selected": offer["selected"]}
 
     def _call_alignment_override(self, payload: dict[str, Any]) -> dict[str, Any]:
         action = payload.get("action")
@@ -851,7 +931,7 @@ class FakeDevCenter:
                 if tuple(parts) in simple:
                     value = self.files[simple[tuple(parts)]]
                     if parts == ["impact"]:
-                        value = self._page(value, "items", query)
+                        value = self._impact(query)
                     return self._reply(value)
                 if parts == ["naming-rules"]:
                     value = copy.deepcopy(self.files["naming-rules"])
@@ -863,9 +943,13 @@ class FakeDevCenter:
                 if parts == ["log"]:
                     return self._reply(self._page(self.files["log"], "entries", query))
                 if len(parts) == 3 and parts[:2] == ["impact", "removal"]:
-                    return self._reply({**self.files["removal"], "object": parts[2]})
+                    removal = (self.files.get("removals") or {}).get(parts[2]) or self.files["removal"]
+                    return self._reply({**copy.deepcopy(removal), "object": parts[2]})
+                if len(parts) == 3 and parts[0] == "impact" and parts[2] == "paths":
+                    return self._reply(self._impact_paths(parts[1], query))
                 if len(parts) == 2 and parts[0] == "wireframe":
-                    return self._reply({**self.files["wireframe"], "report": parts[1]})
+                    wireframe = (self.files.get("wireframes") or {}).get(parts[1]) or self.files["wireframe"]
+                    return self._reply({**copy.deepcopy(wireframe), "report": parts[1]})
             if method == "POST" and parts == ["name-propose"]:
                 return self._reply(self._name_propose(body))
             if method == "POST" and parts == ["plan-validate"]:
@@ -1049,6 +1133,60 @@ class FakeDevCenter:
         page = items[offset:offset + limit]
         return {**value, key: page, "total": len(items), "has_more": offset + len(page) < len(items)}
 
+    # Step U8: GET impact as S6 gives it (UC29): filters, then facets and total before paging.
+
+    def _impact_items(self, include_proposals: bool = False) -> list[dict[str, Any]]:
+        impact = self.files["impact"]
+        items = list(impact.get("items", []))
+        if include_proposals:
+            items += list(impact.get("proposal_items", []))
+        return items
+
+    def _impact(self, query: dict[str, list[str]]) -> dict[str, Any]:
+        impact = self.files["impact"]
+        items = self._impact_items(_one(query, "include_proposals") in {"true", "1"})
+        for name, read in (("direction", lambda it: it["direction"]), ("severity", lambda it: it["severity"]),
+                           ("certainty", lambda it: it["certainty"]),
+                           ("source", lambda it: it["impacted_object"].get("source_id")),
+                           ("object_type", lambda it: it["impacted_object"]["object_type"])):
+            wanted = _one(query, name)
+            if wanted:
+                items = [it for it in items if read(it) == wanted]
+        blocking = _one(query, "blocking")
+        if blocking is not None:
+            items = [it for it in items if it["blocking"] == (blocking.lower() in {"true", "1"})]
+        text = (_one(query, "q") or "").lower()
+        if text:
+            items = [it for it in items if text in it["impacted_object"]["name"].lower() or text in it.get("reason_text", "").lower()]
+        items.sort(key=lambda it: (not it["blocking"], IMPACT_SEVERITY_RANK.get(it["severity"], 99), it["impacted_object"]["name"].lower()))
+        facets: dict[str, dict[str, int]] = {"direction": {"breaks": 0, "needs": 0}, "blocking": {"true": 0, "false": 0},
+                                             "severity": {}, "certainty": {"certain": 0, "possible": 0}, "object_type": {}}
+        for it in items:
+            for facet, value in (("direction", it["direction"]), ("blocking", "true" if it["blocking"] else "false"),
+                                 ("severity", it["severity"]), ("certainty", it["certainty"]),
+                                 ("object_type", it["impacted_object"]["object_type"])):
+                facets[facet][value] = facets[facet].get(value, 0) + 1
+        limit, offset = _int(query, "limit", 50), _int(query, "offset", 0)
+        page = items[offset:offset + limit]
+        return {"target": _one(query, "target") or "plan", "total": len(items), "limit": limit, "offset": offset,
+                "has_more": offset + len(page) < len(items), "facets": facets, "items": copy.deepcopy(page),
+                "completeness": copy.deepcopy(impact.get("completeness", {"status": "complete"})),
+                "offers": copy.deepcopy(impact.get("offers", []))}
+
+    def _impact_item(self, item_id: Any) -> dict[str, Any]:
+        for item in self._impact_items(True):
+            if item["id"] == item_id:
+                return item
+        raise FakeError("not_found", f"The impact item {item_id} does not exist.", {"item_id": item_id})
+
+    def _impact_paths(self, item_id: str, query: dict[str, list[str]]) -> dict[str, Any]:
+        item = self._impact_item(item_id)
+        paths = (self.files.get("impact-paths") or {}).get(item_id) or ([item["path"]] if item["path"] else [])
+        limit, offset = _int(query, "limit", 50), _int(query, "offset", 0)
+        page = paths[offset:offset + limit]
+        return {"item_id": item_id, "total": len(paths), "limit": limit, "offset": offset,
+                "has_more": offset + len(page) < len(paths), "paths": copy.deepcopy(page)}
+
     def _compare_rows(self, query: dict[str, list[str]]) -> dict[str, Any]:
         rows = self._rows()
         state = _one(query, "state")
@@ -1183,7 +1321,7 @@ class FakeDevCenterHandler(BaseHTTPRequestHandler):
         controls = {"scenario": lambda: state.load(str(body.get("name", ""))), "fault": lambda: state.set_fault(body),
                     "delay": lambda: state.set_delay(body), "agent-proposal": lambda: state.agent_proposal(body),
                     "rules": lambda: state.set_rules(body), "plan": lambda: state.set_plan(body),
-                    "compare-rows": lambda: state.set_compare_rows(body)}
+                    "compare-rows": lambda: state.set_compare_rows(body), "impact": lambda: state.set_impact(body)}
         if method == "POST" and route in controls:
             return self._json(200, controls[route]())
         raise FakeError("not_found", f"The test route {method} /__test__/{route} does not exist.")

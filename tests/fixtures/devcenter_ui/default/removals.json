@@ -1,0 +1,63 @@
+{
+  "row-budget": {
+    "dependents": [
+      {
+        "object_id": "measure:Budget/Budget Amount",
+        "name": "Budget Amount",
+        "type": "measure",
+        "domain": "model"
+      },
+      {
+        "object_id": "measure:Budget/Budget Variance",
+        "name": "Budget Variance",
+        "type": "measure",
+        "domain": "model"
+      },
+      {
+        "object_id": "visual:Overview/Sales by region",
+        "name": "Sales by region",
+        "type": "visual",
+        "domain": "report"
+      }
+    ],
+    "cascade": {
+      "count": 3,
+      "effects": [
+        {
+          "object_id": "measure:Budget/Budget Amount",
+          "name": "Budget Amount",
+          "type": "measure",
+          "effect": "remove_object"
+        },
+        {
+          "object_id": "measure:Budget/Budget Variance",
+          "name": "Budget Variance",
+          "type": "measure",
+          "effect": "remove_object"
+        },
+        {
+          "object_id": "visual:Overview/Sales by region",
+          "name": "Sales by region",
+          "type": "visual",
+          "effect": "remove_field_from_visual"
+        }
+      ]
+    },
+    "repoint_candidates": [
+      {
+        "object_id": "table:Forecast",
+        "name": "Forecast",
+        "type": "table",
+        "data_type": null,
+        "type_warning": false
+      },
+      {
+        "object_id": "table:Targets",
+        "name": "Targets",
+        "type": "table",
+        "data_type": "string",
+        "type_warning": true
+      }
+    ]
+  }
+}
