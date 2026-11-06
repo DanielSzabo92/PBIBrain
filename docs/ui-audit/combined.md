@@ -60,6 +60,10 @@ policy to keep it that way. See `frontend/DESIGN.md` (updated for the combined r
 - Impeccable's side-stripe fixes on evidence blocks and the colour-preview node were restored
   after the merge (the detector caught the regression).
 - `VIEW_HINTS` taglines were removed (impeccable) — the desktop toolbar referenced them; fixed.
+- The policy font list now names the actual stack (Segoe UI Variable first, Inter fallback,
+  Cascadia/Consolas for code); without it every element failed `font-family`.
+- In the icon rail the review badge sits bottom-right of the icon (VS Code activity-bar style)
+  instead of covering it.
 
 ## Verification
 
@@ -68,7 +72,7 @@ policy to keep it that way. See `frontend/DESIGN.md` (updated for the combined r
 | `npm test` | 169 / 169 pass |
 | Playwright e2e (full suite) | 232 / 233 pass. The one failure, `devcenterParts.spec.js:225` (menu focus), also fails on the untouched baseline (reported by all three audit sessions). |
 | impeccable detector, static (`frontend/src`) | 0 anti-patterns (was 4 + 2 advisories before the audits) |
-| lintapple, 44 states | LINT_RESULT |
+| lintapple, 44 states (`npm run lint:ui:states`) | 37 problems / 158 occurrences on visible elements (lintapple branch alone: 19 / 110; original UI: 1654 / 8966). Remaining: 66 contrast checks lintapple could not measure (gradients/overlays), 52 graph-node label-in-name (left alone: e2e locators depend on them), and a handful of graph toolbar/tab insets. |
 
 Notes on lintapple: findings with a measured size of `0px` are controls scrolled out of the
 content pane (the desktop shell's fixed viewport makes the pane the only scroller, and lintapple
