@@ -11,6 +11,10 @@ fixed its top findings on its own branch:
 
 This branch (`claude/intelligent-knuth-miku86`) merges all three into one design.
 
+The desktop-ui-design skill was removed from `.claude/skills` after the audit: the registry copy
+is a thin Tkinter/Qt checklist, and the desktop conventions this work relies on are captured in
+[desktop.md](desktop.md) and `frontend/DESIGN.md`.
+
 ## Design direction (one sentence)
 
 A quiet, exact, dense **desktop reference instrument** that sits beside Power BI Desktop:
