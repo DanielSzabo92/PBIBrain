@@ -257,7 +257,7 @@ The Python backend computes and validates the plan and applies the report operat
 
 A session with a target and no donors can still change the target. The `edit` Merge Choice of a target model row (`{kind: "edit", new_name, set}`) renames the object and sets literal property values (`EDITABLE_PROPERTIES` in `backend/devcenter/plan/compiler.py`: format string, display folder, description, hidden, data category, summarize by, key column). It compiles to `RENAME` (or `RENAME_PAIR`) and `SET_PROPERTIES`, so impact, validation, the guard, apply, rescan, and undo do not change. The plan rewrites each target reference to an edited name (DAX, RLS filters, field parameters, report measures, and report bindings) with no "renamed" block, because the user asked for the rename. A name clash still blocks.
 
-Bulk operations make the `edit` choices for a scope (row keys, or the compare filters of section 4): rename by text or regular expression (`$1` groups), set property, move to folder, apply the confirmed Naming Rules, and delete with a Removal Policy (block or cascade). A second operation on a row adds to its `edit` choice; a rename starts from the planned name. `POST edit-preview` is a read calculation: the changed rows, the skipped rows with a reason, every rewritten reference, and the plan status with these edits. The JS API `target_edit_apply` writes the same choices in one revision (ADR 0003).
+Bulk operations make the `edit` choices for a scope (row keys, or the compare filters of section 4): rename by text or regular expression (`$1` groups), set property, move to folder, apply the confirmed Naming Rules, and delete with a Removal Policy (block or cascade). A second operation on a row adds to its `edit` choice; a rename starts from the planned name. `POST edit-preview` is a read calculation: the changed rows, the skipped rows with a reason, every rewritten reference, and the plan status with these edits. The JS API `target_edit_apply` writes the same choices in one revision (ADR 0003). It is a change-request call after the section 14.2 list, like `cloud_items_list`.
 
 ## 7. Impact data
 
@@ -440,7 +440,7 @@ Each shape has a JSON Schema file in `backend/devcenter/contracts/`. The fronten
 
 ### 14.2 State changes (pywebview JS API only)
 
-`session_create`, `session_open`, `session_close`, `source_add`, `source_remove`, `source_relink`, `target_set`, `compare_mode_set`, `alignment_override`, `merge_choice_set`, `merge_choice_bulk_set`, `target_edit_apply`, `removal_policy_set`, `need_mapping_set`, `impact_action_apply`, `offer_select`, `row_confirm` (after a source change), `sources_check`, `naming_rule_confirm`, `naming_rule_reject`, `naming_rule_edit`, `naming_rules_copy`, `proposal_accept`, `proposal_reject`, `proposal_accept_all`, `question_answer`, `format_only_apply`, `apply`, `undo_apply`, `change_report_write`, `cloud_sign_in`, `cloud_connect`, `pull_to_local`.
+`session_create`, `session_open`, `session_close`, `source_add`, `source_remove`, `source_relink`, `target_set`, `compare_mode_set`, `alignment_override`, `merge_choice_set`, `merge_choice_bulk_set`, `removal_policy_set`, `need_mapping_set`, `impact_action_apply`, `offer_select`, `row_confirm` (after a source change), `sources_check`, `naming_rule_confirm`, `naming_rule_reject`, `naming_rule_edit`, `naming_rules_copy`, `proposal_accept`, `proposal_reject`, `proposal_accept_all`, `question_answer`, `format_only_apply`, `apply`, `undo_apply`, `change_report_write`, `cloud_sign_in`, `cloud_connect`, `pull_to_local`.
 
 Each call takes the `base_revision` and returns the new `revision`, or the error shape of section 12. Browser dev mode uses a mock of this API.
 
@@ -488,6 +488,7 @@ The UI design ([DEV_CENTER_UI_DESIGN.md](DEV_CENTER_UI_DESIGN.md)) needs these a
 | UC32 | S9 | `apply`, `format_only_apply`, `undo_apply` errors | Add `details.step` (section 13 step ID) and `details.check` for the guard (`scope`, `canonical`, `tree_compare`, `pbir`, `policy`, `approval`, `write`, `rescan`). | One plain sentence for each failure; section 12 has no guard codes. | 09 |
 | UC33 | S5 | JS API `source_remove` | Keep the Merge Choices that take from the removed source. Add one blocking plan item for each (kind `choice_source_removed`). Return the count. | The remove confirm text and the block list. | 09 |
 | UC34 | S4 | JS API `naming_rule_edit` | Refuse a rule with the same object type, scope, and check kind with `action_not_allowed` and `details.existing_rule_id`. | The "Same rule exists" error. | 09 |
+| UC35 | #12 | JS API `target_edit_apply` (new, long, JS API only) and `POST edit-preview` (new, read) | Input: `operation` (`rename`, `set_property`, `move_folder`, `apply_naming_rules`, `delete`) and `scope` (`row_keys` or `filter`). The call stores `edit` Merge Choices (and Removal Policies) in one revision (section 6.9). | In-place bulk edits of the target with no donor. An HTTP write would let an agent skip the proposal step (ADR 0003). | 12 |
 
 ## 15. First-version scope
 

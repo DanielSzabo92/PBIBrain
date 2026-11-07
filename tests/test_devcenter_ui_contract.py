@@ -35,11 +35,13 @@ SECTION_14_2 = (
     "apply", "undo_apply", "change_report_write", "cloud_sign_in", "cloud_connect", "pull_to_local",
 )
 # Technical design section 14.4: the change requests that add a JS API call (UC13).
-CHANGE_REQUEST_CALLS = ("cloud_items_list",)
+# Issue #12 adds target_edit_apply (Edit target, technical design section 6.9).
+CHANGE_REQUEST_CALLS = ("cloud_items_list", "target_edit_apply")
 # UI design section 10, "Busy".
 LONG_METHODS = frozenset({
     "session_create", "session_open", "sources_check", "apply", "format_only_apply", "undo_apply",
     "pull_to_local", "cloud_connect", "cloud_sign_in", "merge_choice_bulk_set", "proposal_accept_all",
+    "target_edit_apply",
 })
 # Technical design section 12.
 SECTION_12_CODES = (
