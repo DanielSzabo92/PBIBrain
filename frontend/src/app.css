@@ -1198,3 +1198,16 @@ td:hover > .mx-mark { transform: scale(1.2); }
 @media (max-width: 720px) {
   .common-objects-row { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* ---------- Pending changes (files changed outside the app, issue #17) ---------- */
+
+.pending-banner {
+  display: flex; align-items: flex-start; gap: 10px; max-width: 1240px; margin: 0 auto 20px; padding: 10px 12px 10px 14px;
+  border: 1px solid color-mix(in srgb, var(--warn) 35%, transparent); border-radius: var(--r-md); background: var(--warn-soft); color: var(--text); font-size: var(--fs-body);
+}
+.pending-banner[data-tone="bad"] { border-color: color-mix(in srgb, var(--bad) 35%, transparent); background: var(--bad-soft); }
+.pending-banner > svg { flex: none; width: 16px; height: 16px; margin-top: 2px; color: var(--warn); }
+.pending-banner[data-tone="bad"] > svg { color: var(--bad); }
+.pending-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.pending-body ul { margin: 0; padding-left: 18px; color: var(--muted-foreground); overflow-wrap: anywhere; }
+.content-graph .pending-banner { width: 100%; max-width: none; margin-bottom: 12px; }

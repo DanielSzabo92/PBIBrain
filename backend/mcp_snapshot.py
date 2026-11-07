@@ -259,6 +259,11 @@ class SnapshotClient:
         return reply if isinstance(reply, dict) else {"items": reply}
 
     def get(self, path: str, **params: Any) -> dict[str, Any]:
+        if path == "pending-changes":
+            # Issue #17: the files are compared with this snapshot directly; no app is needed.
+            from backend.pending_changes import compute_pending_changes
+
+            return compute_pending_changes(self.config_path)
         if not any(path == route or (route.endswith("/") and path.startswith(route)) for route in SNAPSHOT_GET_ROUTES):
             raise RuntimeError("This read needs the running PBIBrain app. Open the project in PBIBrain, then retry.")
         query = urlencode({key: value for key, value in params.items() if value is not None})

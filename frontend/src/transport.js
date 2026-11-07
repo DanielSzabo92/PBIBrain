@@ -51,6 +51,10 @@ export function createBrainTransport({ baseUrl = API_ROOT, fetcher = globalThis.
       const params = new URLSearchParams({ model_id: modelId });
       return request(`/model-summary?${params}`);
     },
+    /** Project files changed outside the app since the last scan, with Breaks and Needs (issue #17). */
+    getPendingChanges() {
+      return request("/pending-changes");
+    },
     getConfig() {
       return request("/config");
     },

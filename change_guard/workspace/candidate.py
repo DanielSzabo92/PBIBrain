@@ -79,3 +79,59 @@ class DockerIsolation:
                 "candidate_source_hash": content_hash(manifest), "process_exit_code": process.returncode, "finished_at": utc_now(),
                 "network": "NONE", "writable_mounts": ["/candidate"], "command_hash": content_hash(command),
                 "stdout_hash": content_hash(process.stdout), "stderr_hash": content_hash(process.stderr)}
+
+
+LOCAL_COPY_BACKEND = "LOCAL_COPY"
+# Environment names a local agent process keeps: enough to start a program, no tokens or credentials.
+_LOCAL_ENVIRONMENT = ("PATH", "SYSTEMROOT", "WINDIR", "COMSPEC", "PATHEXT", "LANG", "LC_ALL", "TZ", "TEMP", "TMP", "TMPDIR")
+
+
+class LocalCopyIsolation:
+    """The no-container guard tier (issue #17): the agent works on the candidate copy only.
+
+    WEAKER than Docker or an AppContainer. Nothing stops the process from reading or writing
+    outside the copy; it runs with the user's rights and network. What still holds:
+
+    - the agent is pointed at a copy, never at the project sources;
+    - the guard checks that the sources still match the pinned baseline (an edit to the real
+      files makes the operation stale and blocks acceptance);
+    - the candidate gets the same integrity, credential, coverage, scope and impact checks.
+
+    The receipt says ``backend: LOCAL_COPY`` and ``isolation_strength: WEAKER_NO_CONTAINER`` so
+    every review shows which tier ran. The policy can turn the tier off (``allow_local_copy``).
+    """
+
+    backend = LOCAL_COPY_BACKEND
+
+    def __init__(self, *, timeout: int = 300) -> None:
+        self.timeout = timeout
+
+    def _receipt(self, candidate: Path, manifest: list[dict], **values) -> dict:
+        return {"isolation_version": 1, "backend": LOCAL_COPY_BACKEND, "isolation_strength": "WEAKER_NO_CONTAINER",
+                "candidate_source_hash": content_hash(manifest), "finished_at": utc_now(),
+                "network": "NOT_RESTRICTED", "writable_mounts": "NOT_ENFORCED", **values}
+
+    def record(self, candidate: str | Path) -> dict:
+        """Receipt for an edit made in the candidate copy by the agent's own tools (an MCP agent or a person)."""
+
+        candidate = Path(candidate).absolute()
+        manifest = assert_candidate_integrity(candidate)
+        return self._receipt(candidate, manifest, status="PASSED", mode="DIRECT_EDIT")
+
+    def run(self, candidate: str | Path, command: list[str]) -> dict:
+        candidate = Path(candidate).absolute()
+        assert_candidate_integrity(candidate)
+        if not command or any(not isinstance(arg, str) or "\x00" in arg for arg in command):
+            raise ValueError("Exact argument list required")
+        environment = {name: os.environ[name] for name in _LOCAL_ENVIRONMENT if name in os.environ}
+        environment["PBI_GUARD_CANDIDATE"] = str(candidate)
+        try:
+            process = subprocess.run(command, cwd=candidate, env=environment, capture_output=True, timeout=self.timeout, check=False)
+        except subprocess.TimeoutExpired as error:
+            raise IsolationUnavailable("Agent process timed out and was terminated") from error
+        except OSError as error:
+            raise IsolationUnavailable("Agent process could not start") from error
+        manifest = assert_candidate_integrity(candidate)
+        return self._receipt(candidate, manifest, status="PASSED" if process.returncode == 0 else "FAILED", mode="COMMAND",
+                             process_exit_code=process.returncode, command_hash=content_hash(command),
+                             stdout_hash=content_hash(process.stdout), stderr_hash=content_hash(process.stderr))

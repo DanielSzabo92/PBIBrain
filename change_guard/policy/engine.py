@@ -15,6 +15,8 @@ class Policy:
     retain_results: bool = False
     # "standard" is the agent profile. "merge" is the app write profile (technical design section 8).
     profile: str = "standard"
+    # The no-container tier (issue #17): a LOCAL_COPY receipt passes the security gate, marked weaker.
+    allow_local_copy: bool = True
 
     @property
     def policy_hash(self) -> str:
@@ -22,6 +24,9 @@ class Policy:
         if self.profile != "standard":
             # The standard profile keeps its old hash, so old operations stay valid.
             value["profile"] = self.profile
+        if not self.allow_local_copy:
+            # Only the non-default value enters the hash, so operations from before the tier stay valid.
+            value["allow_local_copy"] = False
         return content_hash(value)
 
 
@@ -135,6 +140,9 @@ def evaluate_candidate(contract: ChangeContract, evidence: Mapping[str, Any], po
                            and not set(item.get("target_objects", [])).issubset(permitted_targets)]
     if runtime.get("unexplained_differences") or undisclosed_changes:
         approval_reasons.append("UNEXPECTED_BEHAVIOR")
+    # Objects that stay but use a deleted or renamed object (issue #17): the user accepts that break by name.
+    if evidence.get("safety", {}).get("breaks"):
+        approval_reasons.append("BREAKS_DEPENDENTS")
     approved = set(evidence.get("valid_approval_operations", []))
     missing_approval = [item for item in approval_reasons if item not in approved]
     # Unknown gates never override an actual scope, security or invariant failure.
