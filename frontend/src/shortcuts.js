@@ -12,7 +12,7 @@ export const SHORTCUTS = [
   { id: "view:graph", keys: "Ctrl+3", label: "Graph", group: "Go" },
   { id: "view:inspector", keys: "Ctrl+4", label: "Inspector", group: "Go" },
   { id: "view:review", keys: "Ctrl+5", label: "Review queue", group: "Go" },
-  { id: "view:devcenter", keys: "Ctrl+6", label: "Development Center", group: "Go" },
+  { id: "view:devcenter", keys: "Ctrl+6", label: "Merge models", group: "Go" },
   { id: "find", keys: "Ctrl+K", label: "Find object", group: "Go" },
   { id: "back", keys: "Alt+Left", label: "Back", group: "Go" },
   { id: "view:config", keys: "Ctrl+,", label: "Settings", group: "File" },

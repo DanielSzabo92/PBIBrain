@@ -36,7 +36,7 @@ async function openDevCenter(page) {
   await page.goto("/");
   await page
     .getByRole("navigation", { name: "Main navigation" })
-    .getByRole("button", { name: "Development Center" })
+    .getByRole("button", { name: "Merge models" })
     .click();
 }
 

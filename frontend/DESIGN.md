@@ -107,6 +107,13 @@ components:
     padding: "14px 16px"
 ---
 
+> **Superseded (2026-11):** the binding visual contract is now
+> [`docs/design/visual-contract.md`](../docs/design/visual-contract.md), the result of a three-way design
+> debate (Anthropic `frontend-design`, Vercel `web-design-guidelines`, `design-taste-frontend`). Ink is the
+> only accent; hue means object type (glyph + colour, `src/objectIcons.js`) or status. Where this file and
+> the contract disagree, the contract wins.
+
+
 # Design System: Brain Inspector
 
 ## Overview

@@ -1,9 +1,9 @@
 import * as React from "react"
-import { Circle, CircleCheck, CircleHelp, CircleX, Info, Sparkles, TriangleAlert } from "lucide-react"
+import { Circle, CircleCheck, CircleHelp, CircleDashed, CircleX, Info, TriangleAlert } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { statusBadgeProps } from "./status-badge-rules.js"
 
-const ICONS = { ok: CircleCheck, warn: TriangleAlert, bad: CircleX, info: Info, plain: Circle, proposal: Sparkles }
+const ICONS = { ok: CircleCheck, warn: TriangleAlert, bad: CircleX, info: Info, plain: Circle, proposal: CircleDashed }
 
 // A status: icon plus word, never color only (A4). With "description", the badge is a
 // button that holds the description in its aria-label, for use as a tooltip trigger.

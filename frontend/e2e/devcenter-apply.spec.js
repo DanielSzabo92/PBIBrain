@@ -18,7 +18,7 @@ const delay = (request, data) => post(request, "/__test__/delay", data);
 
 async function openPlan(page) {
   await page.goto("/");
-  await page.getByRole("navigation", { name: "Main navigation" }).getByRole("button", { name: "Development Center" }).click();
+  await page.getByRole("navigation", { name: "Main navigation" }).getByRole("button", { name: "Merge models" }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Sales and finance merge" })).toBeVisible();
   await expect(page.locator(".dc-busy-line")).toHaveCount(0);
   await page.getByRole("tab", { name: /^Plan/ }).click();

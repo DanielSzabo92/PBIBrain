@@ -22,7 +22,7 @@ async function setRules(request, payload) {
 async function openDevCenter(page) {
   page.on("pageerror", (err) => console.error("PAGE ERROR:", err));
   await page.goto("/");
-  await page.getByRole("navigation", { name: "Main navigation" }).getByRole("button", { name: "Development Center" }).click();
+  await page.getByRole("navigation", { name: "Main navigation" }).getByRole("button", { name: "Merge models" }).click();
 }
 
 async function noOverflow(page) {

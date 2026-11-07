@@ -20,7 +20,7 @@ const impactPanel = (page) => page.getByRole("tabpanel", { name: "Impact" });
 
 async function openWork(page, name = "Sales and finance merge") {
   await page.goto("/");
-  await page.getByRole("navigation", { name: "Main navigation" }).getByRole("button", { name: "Development Center" }).click();
+  await page.getByRole("navigation", { name: "Main navigation" }).getByRole("button", { name: "Merge models" }).click();
   await expect(page.getByRole("heading", { level: 1, name })).toBeVisible();
   await expect(page.locator(".dc-busy-line")).toHaveCount(0);
 }
@@ -44,7 +44,7 @@ const SCREENS = [
     setup: async (page, request) => {
       await scenario(request, "default");
       await openWork(page);
-      await page.getByRole("navigation", { name: "Breadcrumb" }).getByRole("button", { name: "Development Center" }).click();
+      await page.getByRole("navigation", { name: "Breadcrumb" }).getByRole("button", { name: "Merge models" }).click();
       await expect(page.getByRole("heading", { level: 1, name: "Merge sessions" })).toBeVisible();
     },
     start: (page) => page.getByRole("heading", { level: 1, name: "Merge sessions" }),
@@ -54,7 +54,7 @@ const SCREENS = [
     setup: async (page, request) => {
       await scenario(request, "no-sessions");
       await page.goto("/");
-      await page.getByRole("navigation", { name: "Main navigation" }).getByRole("button", { name: "Development Center" }).click();
+      await page.getByRole("navigation", { name: "Main navigation" }).getByRole("button", { name: "Merge models" }).click();
       await expect(page.getByRole("heading", { name: "No merge sessions yet" })).toBeVisible();
     },
     start: (page) => page.getByRole("heading", { name: "No merge sessions yet" }),
@@ -72,7 +72,7 @@ const SCREENS = [
     setup: async (page, request) => {
       await scenario(request, "large-5000-rows");
       await page.goto("/");
-      await page.getByRole("navigation", { name: "Main navigation" }).getByRole("button", { name: "Development Center" }).click();
+      await page.getByRole("navigation", { name: "Main navigation" }).getByRole("button", { name: "Merge models" }).click();
       await expect(page.locator(".dc-cell").first()).toBeVisible();
       await expect(page.locator(".dc-busy-line")).toHaveCount(0);
     },
@@ -315,7 +315,7 @@ test.describe("U12 no action needs a drag (A22)", () => {
   test("the compare grid scrolls with the keys and with the wheel", async ({ page, request }) => {
     await scenario(request, "large-5000-rows");
     await page.goto("/");
-    await page.getByRole("navigation", { name: "Main navigation" }).getByRole("button", { name: "Development Center" }).click();
+    await page.getByRole("navigation", { name: "Main navigation" }).getByRole("button", { name: "Merge models" }).click();
     const first = page.locator('.dc-cell[data-r="0"][data-c="1"]');
     await expect(first).toBeVisible();
     await first.focus();

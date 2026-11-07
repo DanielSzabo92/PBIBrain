@@ -1,15 +1,16 @@
 import { test, expect } from "@playwright/test";
 
-test("home search returns to the same results and keyboard focus without refetching", async ({ page }) => {
+test("command search returns to the same results and keyboard focus without refetching", async ({ page }) => {
   const errors = [];
   let searches = 0;
   page.on("pageerror", (error) => errors.push(error.message));
   page.on("request", (request) => { if (request.url().includes("/api/search?")) searches += 1; });
   await page.goto("/");
-  await expect(page.getByLabel("Find an object", { exact: true })).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "Objects by type" })).toBeVisible();
   await page.screenshot({ path: "test-results/product-home.png", fullPage: true });
-  await page.getByLabel("Find an object", { exact: true }).fill("Net Sales");
-  await page.getByLabel("Find an object", { exact: true }).press("Enter");
+  await page.getByRole("button", { name: /^Find measure/ }).click();
+  await page.getByLabel("Search the brain").fill("Net Sales");
+  await page.getByLabel("Search the brain").press("Enter");
   const result = page.locator(".search-result").filter({ has: page.locator(".result-type", { hasText: "Measure" }) }).first();
   await expect(result).toBeVisible();
   const baseline = searches;
@@ -26,7 +27,8 @@ test("home search returns to the same results and keyboard focus without refetch
   await expect(page.getByRole("searchbox", { name: "Search the brain" })).toHaveValue("Net Sales");
   await expect(result).toBeFocused();
   expect(searches).toBe(baseline);
-  await page.getByRole("button", { name: "Reload Brain", exact: true }).click();
+  await page.getByRole("menuitem", { name: "View" }).click();
+  await page.getByRole("menuitem", { name: /^Reload data/ }).click();
   await expect.poll(() => searches).toBeGreaterThan(baseline);
   await expect(result).toBeVisible();
   expect(errors).toEqual([]);
@@ -95,8 +97,9 @@ test("search scopes, late responses, and retry never show another query's result
 
 test("inspector retries failed objects and does not claim empty lineage while loading", async ({ page }) => {
   await page.goto("/");
-  await page.getByLabel("Find an object", { exact: true }).fill("Net Sales");
-  await page.getByLabel("Find an object", { exact: true }).press("Enter");
+  await page.getByRole("button", { name: /^Find measure/ }).click();
+  await page.getByLabel("Search the brain").fill("Net Sales");
+  await page.getByLabel("Search the brain").press("Enter");
   await page.route("**/api/objects/**", (route) => route.fulfill({ status: 500, json: { error: "Object interrupted" } }));
   await page.locator(".search-result").filter({ has: page.locator(".result-type", { hasText: "Measure" }) }).first().click();
   await expect(page.getByRole("heading", { name: "Object unavailable", exact: true })).toBeVisible();
@@ -121,11 +124,12 @@ test("home, search, and readable formulas fit narrow screens with reduced motion
   await page.setViewportSize({ width: 390, height: 844 });
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/");
-  await expect(page.getByLabel("Find an object", { exact: true })).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "Objects by type" })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy();
   await page.screenshot({ path: "test-results/product-home-mobile.png", fullPage: true });
-  await page.getByLabel("Find an object", { exact: true }).fill("Net Sales");
-  await page.getByLabel("Find an object", { exact: true }).press("Enter");
+  await page.getByRole("button", { name: /^Find measure/ }).click();
+  await page.getByLabel("Search the brain").fill("Net Sales");
+  await page.getByLabel("Search the brain").press("Enter");
   await expect(page.locator(".search-result").first()).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy();
   await page.locator(".search-result").filter({ has: page.locator(".result-type", { hasText: "Measure" }) }).first().click();
@@ -178,8 +182,9 @@ test("every direct relationship remains reachable beyond the first ten", async (
     return route.fulfill({ json: { ...data, dependencies: targets, edges: targets.map((node, index) => ({ id: `test-dependency-${index}`, type: "REFERENCES", from_id: selected.id, to_id: node.id })) } });
   });
   await page.goto("/");
-  await page.getByLabel("Find an object", { exact: true }).fill("Net Sales");
-  await page.getByLabel("Find an object", { exact: true }).press("Enter");
+  await page.getByRole("button", { name: /^Find measure/ }).click();
+  await page.getByLabel("Search the brain").fill("Net Sales");
+  await page.getByLabel("Search the brain").press("Enter");
   await page.locator(".search-result").filter({ has: page.locator(".result-type", { hasText: "Measure" }) }).first().click();
   const dependencies = page.getByRole("region", { name: "Dependencies", exact: true });
   await expect(dependencies.locator(".relationship-row")).toHaveCount(10);

@@ -1,7 +1,7 @@
 // NameField part for Row detail Merge Choice sub-fields (UI design 4.4, 5.3, 6.2, step U6).
 // All text follows ASD-STE100 rules.
 import React, { useCallback, useEffect, useId, useRef, useState } from "react";
-import { CircleX, LoaderCircle, Sparkles, TriangleAlert } from "lucide-react";
+import { CircleDashed, CircleX, LoaderCircle, TriangleAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { t, tn } from "../copy.js";
@@ -236,7 +236,7 @@ export default function NameField({
           title={t("row.name.propose")}
           onClick={handleProposeClick}
         >
-          {proposing ? <LoaderCircle className="spin" aria-hidden="true" /> : <Sparkles aria-hidden="true" />}
+          {proposing ? <LoaderCircle className="spin" aria-hidden="true" /> : <CircleDashed aria-hidden="true" />}
         </Button>
       </div>
 

@@ -24,7 +24,8 @@ test("nested and serialized evidence becomes readable without exposing internal 
 test("palettes are diverse defaults while explicit custom colors and group inheritance survive", () => {
   assert.deepEqual(normalizeColors().types, PALETTES[0].types);
   for (const palette of PALETTES) {
-    assert.equal(new Set(Object.values(palette.types)).size, 6);
+    assert.equal(new Set(Object.values(palette.types)).size, Object.keys(palette.types).length);
+    assert.ok(Object.keys(palette.types).length >= 6);
     assert.deepEqual(normalizeColors(palette), { groups: palette.groups, types: palette.types });
   }
   assert.deepEqual(normalizeColors({ groups: { model: "#123456" }, types: {} }).types, {});

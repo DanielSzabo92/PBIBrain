@@ -1,17 +1,17 @@
 import React from "react";
-import { GitMerge, LayoutGrid, ListChecks, Search, SlidersHorizontal, SquareMousePointer, Waypoints } from "lucide-react";
+import { GitMerge, House, Inbox, PanelRight, Search, Settings, Waypoints } from "lucide-react";
 
 const ICONS = {
-  overview: LayoutGrid,
+  overview: House,
   search: Search,
   graph: Waypoints,
-  inspector: SquareMousePointer,
-  review: ListChecks,
+  inspector: PanelRight,
+  review: Inbox,
   devcenter: GitMerge,
-  config: SlidersHorizontal,
+  config: Settings,
 };
 
 export default function NavIcon({ name, size = 16 }) {
-  const Icon = ICONS[name] || LayoutGrid;
+  const Icon = ICONS[name] || House;
   return <Icon className="nav-icon" size={size} strokeWidth={1.75} aria-hidden="true" />;
 }

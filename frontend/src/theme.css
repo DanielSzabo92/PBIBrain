@@ -87,38 +87,44 @@
   --space-5: 20px;
   --space-6: 24px;
   --space-8: 32px;
+  /* Motion (visual contract §7): transform/opacity only, colour ≤ --dur-fast, no loops. */
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
-  /* Former spring curve; kept as a name so callers keep working, now a plain quint ease-out. */
-  --ease-spring: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --ease-move: cubic-bezier(0.65, 0, 0.35, 1);
+  /* Legacy name: same curve as --ease-out (no overshoot anywhere). */
+  --ease-spring: var(--ease-out);
+  --dur-press: 90ms;
   --dur-fast: 120ms;
-  --dur: 200ms;
-  --dur-slow: 320ms;
+  --dur: 180ms;
+  --dur-pane: 240ms;
+  --dur-slow: 280ms;
+  --dur-fit: 320ms;
 
   /* Canvas & surfaces */
-  --bg: #0b0c0f;
-  --bg-sidebar: #0e0f13;
-  --surface: #131519;
-  --surface-2: #181a1f;
-  --surface-3: #1f2127;
-  --surface-hover: #1c1e24;
-  --line: #1f2228;
-  --line-strong: #2b2f37;
-  --line-focus: #3a3f4a;
-  --control-border: #697185;
+  --bg: #0e0e10;
+  --bg-sidebar: #111113;
+  --surface: #151517;
+  --surface-2: #1a1a1d;
+  --surface-3: #212124;
+  --surface-hover: #1d1d20;
+  --line: #26262a;
+  --line-strong: #333338;
+  --line-focus: #45454b;
+  --control-border: #6b6b73;
 
   /* Text */
-  --text: #ededf0;
-  --text-2: #a3a7b1;
-  --text-3: #9298a5;
-  --text-inverse: #0b0c0f;
+  --text: #ececee;
+  --text-2: #b4b4bb;
+  --text-3: #8e8e97;
+  --text-inverse: #0e0e10;
 
-  /* Brand accent: calm periwinkle, distinct from every status colour */
-  --brand: #8e97ff;
-  --brand-strong: #a9b0ff;
-  --brand-ink: #0b0c1a;
-  --brand-soft: rgb(142 151 255 / 0.12);
-  --brand-line: rgb(142 151 255 / 0.35);
-  --brand-glow: rgb(142 151 255 / 0.22);
+  /* Accent: ink only (visual contract §1.2). Hue is reserved for object type and status. */
+  --brand: #ececee;
+  --brand-strong: #ffffff;
+  --brand-ink: #0e0e10;
+  --brand-soft: rgb(236 236 238 / 0.08);
+  --brand-line: var(--line-strong);
+  --brand-glow: rgb(236 236 238 / 0.16);
 
   /* Status */
   --ok: #5ccf9a;
@@ -131,13 +137,13 @@
   --info-soft: rgb(111 182 238 / 0.12);
 
   /* Opaque tints (UI design 7.1): each -soft token over --surface. New screens use -tint under text. */
-  --ok-tint: #1c2b28;
-  --warn-tint: #2d2921;
-  --bad-tint: #2e2225;
-  --info-tint: #1e2833;
-  --brand-tint: #222535;
+  --ok-tint: #1e2b27;
+  --warn-tint: #2f291f;
+  --bad-tint: #2f2223;
+  --info-tint: #202831;
+  --brand-tint: var(--surface-3);
   /* Destructive fill: text and icon on --bad, and the hover fill. */
-  --bad-ink: #0b0c0f;
+  --bad-ink: #0e0e10;
   --bad-strong: #f49a9a;
 
   /* Elevation */
@@ -147,9 +153,9 @@
   --inset-hi: inset 0 1px 0 rgb(255 255 255 / 0.04);
 
   /* Graph */
-  --grid-dot: #23262d;
-  --minimap-mask: rgb(11 12 15 / 0.78);
-  --code-bg: #0f1014;
+  --grid-dot: #1f1f23;
+  --minimap-mask: rgb(14 14 16 / 0.78);
+  --code-bg: #121214;
 
   /* shadcn primitives map onto the tokens above */
   --background: var(--bg);
@@ -183,9 +189,9 @@
   --cmp-different: var(--warn);
   --cmp-different-tint: var(--warn-tint);
   --cmp-same: var(--text-3);
-  --cmp-changed: var(--brand);
-  --proposal: var(--brand-strong);
-  --proposal-tint: var(--brand-tint);
+  --cmp-changed: var(--text);
+  --proposal: var(--text-2);
+  --proposal-tint: var(--surface-3);
   --impact-removed: var(--bad);
   --impact-removed-tint: var(--bad-tint);
   --impact-breaks: var(--bad);
@@ -199,34 +205,34 @@
   --impact-unchanged: var(--control-border);
   --row-hover: var(--surface-hover);
   --row-selected: var(--surface-3);
-  --row-active: var(--brand-tint);
+  --row-active: var(--surface-3);
 
   color-scheme: dark;
 }
 
 :root[data-theme="light"] {
-  --bg: #f6f6f4;
-  --bg-sidebar: #efefec;
+  --bg: #f7f7f5;
+  --bg-sidebar: #f0f0ed;
   --surface: #ffffff;
-  --surface-2: #f9f9f8;
-  --surface-3: #f0f0ee;
-  --surface-hover: #f1f1ef;
-  --line: #e6e5e1;
-  --line-strong: #d6d5d0;
+  --surface-2: #fafaf8;
+  --surface-3: #f1f1ee;
+  --surface-hover: #f3f3f0;
+  --line: #e5e4df;
+  --line-strong: #d4d3cd;
   --line-focus: #bdbcb6;
-  --control-border: #838994;
+  --control-border: #85858c;
 
-  --text: #16171b;
-  --text-2: #5c5f68;
-  --text-3: #656a75;
+  --text: #18181a;
+  --text-2: #4d4d55;
+  --text-3: #66666e;
   --text-inverse: #ffffff;
 
-  --brand: #4f58e0;
-  --brand-strong: #3d45c9;
+  --brand: #18181a;
+  --brand-strong: #000000;
   --brand-ink: #ffffff;
-  --brand-soft: rgb(79 88 224 / 0.09);
-  --brand-line: rgb(79 88 224 / 0.35);
-  --brand-glow: rgb(79 88 224 / 0.16);
+  --brand-soft: rgb(24 24 26 / 0.06);
+  --brand-line: var(--line-strong);
+  --brand-glow: rgb(24 24 26 / 0.12);
 
   --ok: #157347;
   --ok-soft: rgb(31 157 100 / 0.1);
@@ -237,11 +243,11 @@
   --info: #216a9f;
   --info-soft: rgb(42 127 192 / 0.1);
 
-  --ok-tint: #e9f5f0;
-  --warn-tint: #f8f1e7;
-  --bad-tint: #fbefef;
-  --info-tint: #eaf2f9;
-  --brand-tint: #eff0fc;
+  --ok-tint: #ecf4f0;
+  --warn-tint: #f6f1ec;
+  --bad-tint: #faeeee;
+  --info-tint: #edf3f7;
+  --brand-tint: var(--surface-3);
   --bad-ink: #ffffff;
   --bad-strong: #9f2626;
 
@@ -250,8 +256,8 @@
   --shadow-lg: 0 2px 4px rgb(20 20 30 / 0.05), 0 24px 56px -12px rgb(20 20 30 / 0.2);
   --inset-hi: inset 0 1px 0 rgb(255 255 255 / 0.6);
 
-  --grid-dot: #d9d8d3;
-  --minimap-mask: rgb(246 246 244 / 0.75);
+  --grid-dot: #e7e6e1;
+  --minimap-mask: rgb(247 247 245 / 0.75);
   --code-bg: #fafaf8;
 
   color-scheme: light;

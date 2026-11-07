@@ -91,7 +91,7 @@ test("project color mapping persists through reload and drives nodes, minimap, a
     await page.getByRole("tab", { name: "Graph colors", exact: true }).click();
     await page.getByText("Customize colors", { exact: true }).click();
     await page.getByRole("button", { name: "Restore defaults", exact: true }).click();
-    await expect(page.getByRole("textbox", { name: "Report artifacts hex color", exact: true })).toHaveValue("#b4a0cd");
+    await expect(page.getByRole("textbox", { name: "Report artifacts hex color", exact: true })).toHaveValue("#e68ac0");
     await page.getByRole("button", { name: "Save colors", exact: true }).click();
     await expect(page.getByRole("button", { name: "Save colors", exact: true })).toBeDisabled();
     await page.screenshot({ path: "test-results/graph-settings.png", fullPage: true });

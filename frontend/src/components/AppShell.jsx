@@ -92,7 +92,6 @@ export function StatusBar({ connection, projectName, counts, pending, onReview, 
     <footer className="app-statusbar" aria-label="Status bar">
       <span className={`statusbar-item connection connection-${connection}`} title={label}><i />{label}</span>
       {scanning ? <span className="statusbar-item topbar-scanning"><span className="statusbar-progress" aria-hidden="true" />Scanning sources…</span> : null}
-      <span className="statusbar-item statusbar-project" title={projectName}>{projectName}</span>
       <span className="statusbar-item statusbar-counts">{counts.models} {counts.models === 1 ? "model" : "models"} · {counts.reports} {counts.reports === 1 ? "report" : "reports"} · {counts.objects.toLocaleString()} objects · {counts.edges.toLocaleString()} relationships</span>
       {pending > 0 ? <button type="button" className="statusbar-item statusbar-button statusbar-review" onClick={onReview} title="Open the review queue (Ctrl+5)">{pending.toLocaleString()} to review</button> : null}
       <span className="statusbar-item statusbar-scan">{lastScan}</span>
