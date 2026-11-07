@@ -71,8 +71,8 @@ def _parser() -> argparse.ArgumentParser:
     server = commands.add_parser("serve", help="serve the local config, graph UI, and agent API")
     server.add_argument("--port", type=int, default=8000)
     server.add_argument("--ui", default=str(Path(__file__).resolve().parents[2] / "frontend" / "dist"), help="built Inspector directory")
-    mcp = commands.add_parser("mcp", help="run optional read-only MCP adapter for a running local server")
-    mcp.add_argument("--url", default="http://127.0.0.1:8000")
+    mcp = commands.add_parser("mcp", help="run the optional read-only MCP adapter: the open app, else the last scan snapshot")
+    mcp.add_argument("--url", default=None, help="read only this running local server, for example http://127.0.0.1:8000")
     return parser
 
 
@@ -82,7 +82,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     logging.basicConfig(level=logging.INFO if args.verbose else logging.WARNING, format="%(levelname)s %(message)s")
     if args.command == "mcp":
         from backend.mcp_server import run
-        run(args.url)
+        config = Path(args.config).resolve()
+        if args.url is None and not config.is_file():
+            parser.error(f"Project configuration not found: {config}. Pass --config, or --url for a running server.")
+        run(args.url, config_path=config if config.is_file() else None)
         return 0
     if args.command == "compare":
         from backend.diff import compare_snapshots

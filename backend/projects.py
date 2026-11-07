@@ -5,6 +5,7 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
+import logging
 import os
 import tempfile
 from dataclasses import dataclass
@@ -31,6 +32,7 @@ from backend.scanner.report_reader import ReportReader
 from backend.sync import preserve_review_statuses
 
 
+LOGGER = logging.getLogger(__name__)
 PROJECT_VERSION = 1
 _CONFIG_KEYS = frozenset({"version", "name", "sources", "cloud_sources", "database", "identity_map", "graph_colors"})
 
@@ -195,7 +197,16 @@ class ProjectService:
             raise ProjectConfigError("Project has no configured sources")
 
         project_paths = _project_paths(config, self.config_path.parent)
-        return self._scan_paths(repository, source_paths, project_paths, cloud_entries)
+        result = self._scan_paths(repository, source_paths, project_paths, cloud_entries)
+        # The read-only snapshot MCP answers from while the app is closed (issue #18). A scan that
+        # published its graph never fails because this extra copy could not be written.
+        try:
+            from backend.mcp_snapshot import write_agent_snapshot
+
+            write_agent_snapshot(self, repository, scanned_at=result.scanned_at)
+        except Exception:  # noqa: BLE001 - best effort, the graph itself is already published
+            LOGGER.warning("The agent snapshot could not be written", exc_info=True)
+        return result
 
     def cloud_reader(self) -> ProjectCloudReader:
         service = self.cloud() if callable(self.cloud) else self.cloud

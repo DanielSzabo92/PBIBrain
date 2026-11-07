@@ -9,8 +9,7 @@ from pathlib import Path
 from urllib.parse import quote
 
 from backend.cli.main import _parser, _write_stdout_utf8
-from backend.connection_marker import marker_connection_id
-from backend.mcp_server import BrainClient
+from backend.mcp_server import BrainClient, live_client  # noqa: F401 - live_client is part of this module's API
 
 
 def project_arguments(argv: list[str]) -> list[str]:
@@ -33,48 +32,28 @@ def project_arguments(argv: list[str]) -> list[str]:
     return remaining
 
 
-def live_client(config_path: Path) -> BrainClient | None:
-    marker = config_path.parent / "connection.json"
-    if not marker.exists():
-        return None
-    try:
-        connection = json.loads(marker.read_text(encoding="utf-8"))
-        if Path(connection["config_path"]).resolve() != config_path.resolve():
-            raise ValueError("Project connection points to another configuration")
-        client = BrainClient(connection["url"])
-        # The process may have crashed and its port may now belong to another
-        # project. A generation check prevents silently reading the wrong graph.
-        with client.opener.open(client.url + "/desktop/session", timeout=3) as response:
-            session = json.load(response)
-        # An old marker has the key "session_id". The app reads it and writes
-        # "connection_id" at the next save.
-        connection_id = marker_connection_id(connection)
-        if (not connection_id
-                or marker_connection_id(session) != connection_id
-                or Path(session["project"]["config_path"]).resolve() != config_path.resolve()):
-            raise ValueError("Project connection is stale")
-        client.session_id = connection_id
-        return client
-    except (OSError, ValueError, KeyError, TypeError) as exc:
-        raise RuntimeError("The saved app connection is unavailable. Reopen this project in PBIBrain, then retry.") from exc
-
-
 def main(argv: list[str] | None = None) -> int:
     arguments = project_arguments(list(sys.argv[1:] if argv is None else argv))
     parser = _parser()
     parser.description += "; --project FOLDER selects a desktop project (otherwise discovered from the current folder)"
     args = parser.parse_args(arguments)
     try:
+        if args.command == "mcp":
+            # The MCP server follows the project: the open app, else the last scan snapshot (issue #18).
+            if args.db or args.identity:
+                raise ValueError("Storage overrides cannot be used with the MCP server")
+            config = Path(args.config).resolve()
+            if args.url is None and not config.is_file():
+                raise ValueError(f"No PBIBrain project found: {config}. Pass --project FOLDER.")
+            from backend.mcp_server import run
+            run(args.url, config_path=config if config.is_file() else None)
+            return 0
         client = live_client(Path(args.config).resolve())
         if client is None:
             from backend.cli.main import main as cli_main
             return cli_main(arguments)
         if args.db or args.identity:
             raise ValueError("Storage overrides cannot be used while this project is open in PBIBrain")
-        if args.command == "mcp":
-            from backend.mcp_server import run
-            run(client.url, session_id=client.session_id)
-            return 0
         if args.command == "status":
             overview = client.get("overview")
             payload = {**overview["counts"], "storage": overview["storage"]}

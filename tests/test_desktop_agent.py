@@ -34,7 +34,7 @@ class AgentRoutingTests(unittest.TestCase):
             connection = {"url": "http://127.0.0.1:9999", "config_path": str(config), "session_id": "old"}
             (config.parent / "connection.json").write_text(json.dumps(connection), encoding="utf-8")
             reply = io.BytesIO(json.dumps({"session_id": "new", "project": {"config_path": str(config)}}).encode())
-            with patch.object(agent, "BrainClient") as client:
+            with patch("backend.mcp_server.BrainClient") as client:
                 client.return_value.url = connection["url"]
                 client.return_value.opener.open.return_value = reply
                 with self.assertRaisesRegex(RuntimeError, "Reopen"):

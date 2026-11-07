@@ -91,7 +91,9 @@ Removing a source from the manifest removes its objects on the next successful
 scan. A failed source leaves the previous graph available. `brain scan` remains
 the single-source synchronization command; use `project-scan` for grouped inputs.
 The server owns the open native database: use HTTP/MCP for reads while it runs,
-and stop it before running direct database CLI commands.
+and stop it before running direct database CLI commands. With the app closed, MCP
+answers from the read-only scan snapshot `.pbibrain/agent-snapshot.json` and says so
+in each reply's `freshness` block (`docs/AGENT_GUIDE.md`).
 
 `export-markdown` renders deterministic Markdown from the canonical project
 snapshot. Without `--output`, it writes to stdout. With `--output`, the target
@@ -597,10 +599,11 @@ Overview screen shows the counts by type; a count opens its groups, Compare
 shows the members side by side, and Merge opens Merge models.
 
 The MCP tool `brain_commonality(type?, scope?, bucket?, group_id?, limit=25,
-offset=0)` asks for the compact form with a **budget of 12,000 characters of
-JSON (about 3,000 tokens) per reply**: object ids are left out (ask again with
-`group_id`), and groups are dropped from the end of the page until the reply
-fits, with `has_more` and `next_offset` to page on.
+offset=0, detail="compact")` asks for the compact form with a **budget of 12,000
+characters of JSON (about 3,000 tokens) per reply**: object ids are left out (ask
+again with `group_id`), and groups are dropped from the end of the page until the
+reply fits, with `has_more` and `next_offset` to page on. This is one row of the
+shared MCP reply budgets (`backend/mcp_budget.py`, see `docs/AGENT_GUIDE.md`).
 
 ## Context compiler
 
