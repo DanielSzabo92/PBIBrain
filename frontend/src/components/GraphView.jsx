@@ -10,6 +10,7 @@ import { NativeSelect } from "./ui/native-select";
 import { Tabs, TabsList, TabsTrigger } from "./ui/tabs";
 import { Popover } from "./ui/filter";
 import GraphDetails from "./GraphDetails";
+import { LinkStyleGlyph } from "./LinkStyleGlyph";
 import { TypeGlyph } from "./TypeGlyph";
 import { ARTIFACT_GROUPS, EDGE_TYPES, artifactColor, artifactGroup, middleEllipsis, typeLabel } from "../graphPresentation";
 import { buildExplorerGraph, layoutExplorerGraph, layoutArtifactGraph, layoutGraph, NODE_WIDTH, NODE_HEIGHT, GROUP_WIDTH, GROUP_HEIGHT } from "../graphLayout";
@@ -167,9 +168,9 @@ const ToolbarTrigger = React.forwardRef(function ToolbarTrigger({ icon: Icon, la
 
 function EvidenceKey() {
   return <ul className="graph-evidence-key" aria-label="Link styles">
-    <li><svg aria-hidden="true" viewBox="0 0 24 4"><line x1="1" y1="2" x2="23" y2="2" /></svg>From source</li>
-    <li><svg aria-hidden="true" viewBox="0 0 24 4"><line x1="1" y1="2" x2="23" y2="2" strokeDasharray="6 4" /></svg>Suggested</li>
-    <li><svg aria-hidden="true" viewBox="0 0 24 4"><line x1="1.5" y1="2" x2="23" y2="2" strokeDasharray="1.5 3" strokeLinecap="round" /></svg>Observed</li>
+    <li><LinkStyleGlyph kind="source" />From source</li>
+    <li><LinkStyleGlyph kind="suggested" />Suggested</li>
+    <li><LinkStyleGlyph kind="observed" />Observed</li>
   </ul>;
 }
 

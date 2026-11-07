@@ -22,7 +22,7 @@ def reference_record():
         create_candidate(source, candidate, source_manifest(source))
         path = candidate / "Sales.SemanticModel/model.bim"
         value = json.loads(path.read_text()); value["model"]["relationships"][0]["fromColumn"] = "ShipDateKey"
-        path.write_text(json.dumps(value, indent=2) + "\n", encoding="utf-8")
+        path.write_text(json.dumps(value, indent=2) + "\n", encoding="utf-8", newline="\r\n")
         after_analysis = scan_snapshot(candidate, identities=analysis["identity_manifest"])
         after = capture_snapshot(candidate, "reference-sales", identity_manifest=after_analysis["identity_manifest"], kind="CANDIDATE", analysis=after_analysis)
         diff = compare_snapshots(baseline, after, before_root=source, after_root=candidate)

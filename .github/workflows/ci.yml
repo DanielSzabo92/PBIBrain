@@ -111,3 +111,38 @@ jobs:
           name: playwright-results
           path: frontend/test-results
           if-no-files-found: ignore
+
+  # The TOM bridge writes TMDL with the OS line ending unless the bridge fixes it to CRLF.
+  # This job runs the canonical-TMDL and merge-write tests on Linux so that stays true.
+  tom-bridge-linux:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      CI: "1"
+      PYTHONUTF8: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Install the Python package
+        run: python -m pip install -e ".[mcp]"
+
+      - name: Build the TOM bridge
+        run: dotnet build -c Release backend/adapters/tabular_metadata/dotnet/TabularMetadata.csproj
+
+      - name: TOM bridge tests on Linux
+        run: >-
+          python -m unittest
+          tests.test_s0_foundations
+          tests.test_devcenter_model_writer
+          tests.test_change_guard_merge
+          tests.test_devcenter_apply
+          tests.test_guarded_development

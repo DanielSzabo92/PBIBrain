@@ -45,7 +45,7 @@ static class CloudRead
             catch (Exception error) { throw new CloudReadError("connect_failed", error.Message); }
             var found = tom.Databases.Find(database) ?? tom.Databases.FindByName(database)
                 ?? throw new CloudReadError("not_found", "The model is not in the workspace or you cannot read it");
-            TmdlSerializer.SerializeDatabaseToFolder(found, folder);
+            CanonicalTmdl.SerializeToFolder(found, folder);
             output.WriteLine(Json.Serialize(new
             {
                 adapter_version = 1,
