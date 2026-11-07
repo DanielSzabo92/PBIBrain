@@ -8,7 +8,7 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { useToast } from "@/components/ui/toast";
 import { errorCopy, t } from "../copy.js";
 import { useAction } from "../useDevCenter.js";
-import { confidenceText, fromText } from "../screens/agent/agentModel.js";
+import { checkText, confidenceText, fromText } from "../screens/agent/agentModel.js";
 import { formatMergeChoiceLabel } from "./rowDetailModel.js";
 
 export default function ProposalCard({
@@ -84,6 +84,13 @@ export default function ProposalCard({
         <p className="dc-proposal-reason">
           <span className="dc-proposal-label">{t("agent.card.reason")}: </span>
           {proposal.reason}
+        </p>
+      ) : null}
+      {checkText(proposal) ? <p className="dc-proposal-line" data-slot="proposal-check">{checkText(proposal)}</p> : null}
+      {proposal.needs_review ? (
+        <p className="dc-proposal-blocked" data-slot="proposal-review">
+          <TriangleAlert aria-hidden="true" />
+          <span>{t("agent.card.review")}</span>
         </p>
       ) : null}
       {isMarked ? (

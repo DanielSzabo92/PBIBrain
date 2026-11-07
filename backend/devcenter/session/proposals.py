@@ -12,6 +12,19 @@ Two paths use this module:
 Each proposal kind has one ``_Kind`` record. The record tells where the
 accepted state of the kind is, whether a user choice exists on the target, and
 how to copy the payload into accepted state.
+
+Object kinds (issue #13): ``object_edit`` (``{set}``: expression, format_string,
+description, display_folder, is_hidden, ...), ``object_rename`` (``{new_name}``),
+``object_delete`` (``{}``) and ``object_create`` (``{object_type, table, name,
+properties}``). They reuse the ``edit`` and ``remove`` Merge Choices of issue #12 and
+the ``created_objects`` of the plan compiler, so the plan, the guard, apply and undo
+are unchanged. On submit each one is checked against the plan with it (DAX parse,
+reference resolution, name clash) and refused with ``proposal_not_valid`` when the
+agent can fix it; otherwise its ``check`` (plan blocking items and Breaks/Needs impact
+items of the target) is kept and sent back. A destructive proposal (a delete, a
+rename with Breaks, an expression change with Breaks) has ``needs_review``: "Accept
+all" skips it and the user accepts it one by one. A delete of a used object stays
+blocked in the plan until the user chooses a Removal Policy other than block.
 """
 
 from __future__ import annotations
@@ -145,6 +158,66 @@ def _choice_summary(document: Mapping[str, Any], payload: Mapping[str, Any]) -> 
     return text
 
 
+def _object_choice(document: Mapping[str, Any], target: str) -> Any:
+    return (document.get("merge_choices") or {}).get(target)
+
+
+def _edit_user(document: Mapping[str, Any], target: str, payload: Mapping[str, Any]) -> bool:
+    """A user choice blocks an edit unless it is an ``edit`` choice that sets none of the same properties."""
+
+    choice = _object_choice(document, target)
+    if choice is None:
+        return False
+    if not isinstance(choice, Mapping) or choice.get("kind") != "edit":
+        return True
+    return bool(set(choice.get("set") or {}) & set(payload.get("set") or {}))
+
+
+def _rename_user(document: Mapping[str, Any], target: str, payload: Mapping[str, Any]) -> bool:
+    choice = _object_choice(document, target)
+    if choice is None:
+        return False
+    return not isinstance(choice, Mapping) or choice.get("kind") != "edit" or "new_name" in choice
+
+
+def _apply_edit(document: dict[str, Any], target: str, payload: Mapping[str, Any]) -> tuple[Any, Any]:
+    choices = document.setdefault("merge_choices", {})
+    before = copy.deepcopy(choices.get(target))
+    choice = dict(before) if isinstance(before, Mapping) and before.get("kind") == "edit" else {"kind": "edit"}
+    if "set" in payload:
+        choice["set"] = {**(choice.get("set") or {}), **copy.deepcopy(dict(payload["set"]))}
+    if "new_name" in payload:
+        choice["new_name"] = str(payload["new_name"]).strip()
+    choices[target] = choice
+    return before, copy.deepcopy(choice)
+
+
+def _apply_delete(document: dict[str, Any], target: str, payload: Mapping[str, Any]) -> tuple[Any, Any]:
+    choices = document.setdefault("merge_choices", {})
+    before = copy.deepcopy(choices.get(target))
+    choices[target] = {"kind": "remove"}
+    return before, copy.deepcopy(choices[target])
+
+
+def created_key(payload: Mapping[str, Any]) -> str:
+    """The row key of a created object: ``new:<object_type>:<table>/<name>``."""
+
+    return f"new:{payload['object_type']}:{payload['table']}/{str(payload['name']).strip()}"
+
+
+def _apply_create(document: dict[str, Any], target: str, payload: Mapping[str, Any]) -> tuple[Any, Any]:
+    created = document.setdefault("created_objects", {})
+    before = copy.deepcopy(created.get(target))
+    created[target] = {"object_type": payload["object_type"], "table": payload["table"], "name": str(payload["name"]).strip(),
+                       "properties": copy.deepcopy(dict(payload.get("properties") or {}))}
+    return before, copy.deepcopy(created[target])
+
+
+def _edit_summary(document: Mapping[str, Any], payload: Mapping[str, Any]) -> str:
+    names = sorted(payload.get("set") or {})
+    return "Edit " + ", ".join(name.replace("_", " ") for name in names)
+
+
 _removal_user, _removal_apply = _keyed("removal_policies", lambda p: {"policy": p["policy"], "repoint_target": p.get("repoint_target")})
 _need_user, _need_apply = _keyed("need_mappings", lambda p: {"action": p["action"], "target_object": p.get("target_object")})
 _item_user, _item_apply = _keyed("item_actions", lambda p: {"action": p["action"]})
@@ -157,7 +230,17 @@ KINDS: dict[str, _Kind] = {
     "removal_policy": _Kind(_removal_user, _removal_apply, lambda d, p: "Removal policy " + str(p["policy"])),
     "need_mapping": _Kind(_need_user, _need_apply, lambda d, p: "Need " + str(p["action"]).replace("_", " ")),
     "impact_action": _Kind(_item_user, _item_apply, lambda d, p: "Impact action " + str(p["action"]).replace("_", " ")),
+    "object_edit": _Kind(_edit_user, _apply_edit, _edit_summary),
+    "object_rename": _Kind(_rename_user, _apply_edit, lambda d, p: "Rename to " + str(p["new_name"]).strip()),
+    "object_delete": _Kind(lambda d, t, p: t in (d.get("merge_choices") or {}), _apply_delete, lambda d, p: "Delete"),
+    "object_create": _Kind(lambda d, t, p: t in (d.get("created_objects") or {}), _apply_create,
+                           lambda d, p: f"Create {p['object_type']} {p['name']} in {p['table']}"),
 }
+OBJECT_KINDS = ("object_edit", "object_rename", "object_delete", "object_create")
+# Plan blocking items on the target that the agent must fix before the user sees the proposal.
+REFUSED_BLOCKING = ("choice_not_valid", "dax_parse", "need_missing", "name_clash", "need_clash", "udf_compatibility",
+                    "dependency_cycle", "no_target_model")
+CHECK_ITEMS_MAX = 20
 
 
 # State reads -------------------------------------------------------------------
@@ -210,10 +293,15 @@ def session_lists(document: Mapping[str, Any]) -> dict[str, Any]:
     }
 
 
-def ready_proposals(document: Mapping[str, Any]) -> list[dict[str, Any]]:
-    """UC10 and UC11: the open proposals that ``proposal_accept_all`` accepts."""
+def ready_proposals(document: Mapping[str, Any], *, reviewed: bool = False) -> list[dict[str, Any]]:
+    """UC10 and UC11: the open proposals that ``proposal_accept_all`` accepts.
 
-    return [item for item in open_proposals(document) if blocked_state(document, item) is None]
+    A ``needs_review`` proposal (issue #13) is not in "Accept all"; ``reviewed`` keeps it
+    (the plan and impact reads of ``include_proposals=ready``).
+    """
+
+    return [item for item in open_proposals(document) if blocked_state(document, item) is None
+            and (reviewed or not item.get("needs_review"))]
 
 
 def include_mode(value: Any) -> str | None:
@@ -246,7 +334,7 @@ def with_proposals(document: Mapping[str, Any], mode: str | None) -> dict[str, A
     if mode is INCLUDE_NONE:
         return view
     if mode == INCLUDE_READY:
-        selected = ready_proposals(document)
+        selected = ready_proposals(document, reviewed=True)
     else:
         selected = [item for item in open_proposals(document) if blocked_state(document, item) != BLOCKED_USER_CHOICE]
     for proposal in selected:
@@ -290,6 +378,103 @@ def _naming_breaks(devcenter: Any, document: Mapping[str, Any], payload: Mapping
     return breaks(payload["name"], payload["object_type"], context, target.stored)
 
 
+def _target_object(devcenter: Any, document: Mapping[str, Any], target: str) -> Any:
+    """The target model object of a compare row, or a ``not_found`` / ``invalid_payload`` error."""
+
+    from backend.devcenter.compare import service as compare_service
+    from backend.devcenter.compare.extract import MODEL
+
+    model, _ = compare_service.targets(document)
+    if model is None:
+        raise not_allowed("The session has no target model.", "no_target_model")
+    result = compare_service.compute(devcenter, document)
+    row = next((item for item in result.rows if item["row_key"] == target), None)
+    if row is None:
+        raise DevCenterError("not_found", "The target is not a compare row. Use compare_rows_list for the row key.", {"target": target})
+    cell = next((item for item in row["cells"] if item["source_id"] == model and item["present"]), None)
+    if row["domain"] != MODEL or cell is None:
+        raise DevCenterError("invalid_payload", "The target has no object in the target model.",
+                             {"reason": "no_target_object", "target": target})
+    return result.objects[(model, cell["source_key"])]
+
+
+def _object_check(devcenter: Any, document: Mapping[str, Any], kind: str, target: str, payload: Mapping[str, Any]) -> dict[str, Any]:
+    """Issue #13: check an object proposal against the plan with it and give its impact on the target.
+
+    Raises ``invalid_payload`` (reason ``proposal_not_valid``) with the plan blocking items
+    when the agent can fix the proposal: a DAX parse error, a missing object, a name clash,
+    or a value the target cannot take.
+    """
+
+    from backend.devcenter.plan import compiler
+    from backend.devcenter.plan import service as plan_service
+
+    if kind != "object_create":
+        item = _target_object(devcenter, document, target)
+        if kind == "object_rename" and item.kind not in compiler.RENAMABLE_KINDS:
+            raise DevCenterError("invalid_payload", "This object cannot be renamed.", {"reason": "not_renamable", "target": target})
+        if kind == "object_rename" and str(payload["new_name"]).strip() == item.name:
+            raise DevCenterError("invalid_payload", "The new name is the current name.", {"reason": "no_change", "target": target})
+        for prop, value in (payload.get("set") or {}).items():
+            problem = compiler.edit_value_error(item.kind, prop, value)
+            if problem is not None:
+                raise DevCenterError("invalid_payload", f"The {item.kind} cannot take this {prop}.",
+                                     {"reason": problem, "property": prop, "target": target})
+    draft = copy.deepcopy(dict(document))
+    KINDS[kind].apply(draft, target, payload)
+    plan = plan_service.build_plan(devcenter, draft, include_proposals=True)
+    steps = {step["step_id"] for step in plan["steps"] if step["row_key"] == target}
+    mine = [entry for entry in plan["blocking"] if entry["row_key"] == target or entry["step_id"] in steps]
+    refused = [entry for entry in mine if entry["kind"] in REFUSED_BLOCKING]
+    blocking = [{"kind": entry["kind"], "row_key": entry["row_key"], "message": entry["message"], "params": entry["params"]}
+                for entry in mine]
+    if refused:
+        raise DevCenterError("invalid_payload", "The proposal is not valid for the target. Fix it and submit again.",
+                             {"reason": "proposal_not_valid", "blocking": blocking[:CHECK_ITEMS_MAX]})
+    items = _impact_items(devcenter, draft, plan, target)
+    return {
+        "plan_status": plan["status"],
+        "blocking": blocking[:CHECK_ITEMS_MAX],
+        "breaks": sum(1 for entry in items if entry["direction"] == "breaks"),
+        "needs": sum(1 for entry in items if entry["direction"] == "needs"),
+        "items": items[:CHECK_ITEMS_MAX],
+        "items_total": len(items),
+    }
+
+
+def _impact_items(devcenter: Any, draft: Mapping[str, Any], plan: Mapping[str, Any], target: str) -> list[dict[str, Any]]:
+    """The Breaks and Needs impact items of the target row, in a short form for the agent."""
+
+    from backend.devcenter.impact import service as impact_service
+
+    if target.startswith("new:"):
+        return []  # A new object has no dependents yet; its Needs are the plan's need_missing check.
+    engine, _, _ = impact_service._get_engine(devcenter, draft, plan=plan)
+    found = []
+    for entry in engine.evaluate_all(single_row_key=target):
+        if entry.get("direction") not in {"breaks", "needs"} or entry.get("cause") not in {target, None}:
+            continue
+        impacted = entry.get("impacted_object") or {}
+        found.append({"direction": entry["direction"], "severity": entry.get("severity"), "certainty": entry.get("certainty"),
+                      "blocking": bool(entry.get("blocking")), "reason_id": entry.get("reason_id"),
+                      "object": {"object_type": impacted.get("object_type"), "name": impacted.get("name"),
+                                 "object_id": impacted.get("object_id")}})
+    return found
+
+
+def _needs_review(kind: str, payload: Mapping[str, Any], check: Mapping[str, Any]) -> bool:
+    """A delete, a rename with Breaks, or an expression change with Breaks always needs the user's review."""
+
+    if kind == "object_delete":
+        return True
+    breaks = check["breaks"] > 0 or any(entry["kind"] in {"removed", "renamed"} for entry in check["blocking"])
+    if kind == "object_rename":
+        return breaks
+    if kind == "object_edit" and "expression" in (payload.get("set") or {}):
+        return breaks
+    return False
+
+
 def _agent_entry(action: str, target: Any, client: str, reason: str, proposal_id: str | None,
                  before: Any = None, after: Any = None) -> dict[str, Any]:
     return {"author": AUTHOR_AGENT, "mcp_client": client, "action": action, "target": target, "before": before,
@@ -305,6 +490,8 @@ def proposal_submit(devcenter: Any, body: Any) -> dict[str, Any]:
                              {"confidence": body["confidence"], "threshold": CONFIDENCE_THRESHOLD})
     reason = _check_reason(body)
     kind, target, payload = body["kind"], body["target"], body["payload"]
+    if kind == "object_create":
+        target = created_key(payload)
     client = str(body.get("mcp_client") or DEFAULT_CLIENT)
     with devcenter._lock:
         _check_revision(devcenter, body)
@@ -319,6 +506,7 @@ def proposal_submit(devcenter: Any, body: Any) -> dict[str, Any]:
             if found:
                 raise DevCenterError("naming_rule_violation", "The name breaks a confirmed naming rule.",
                                      {"rule_ids": [item["rule_id"] for item in found], "rules": found})
+        check = _object_check(devcenter, document, kind, target, payload) if kind in OBJECT_KINDS else None
         proposal = {
             "id": "p-" + uuid.uuid4().hex[:12],
             "kind": kind,
@@ -333,6 +521,9 @@ def proposal_submit(devcenter: Any, body: Any) -> dict[str, Any]:
             "created_utc": utc_now(),
             "status": STATUS_PROPOSED,
         }
+        if check is not None:
+            proposal["check"] = check
+            proposal["needs_review"] = _needs_review(kind, payload, check)
         replaced: list[str] = []
 
         def mutate(draft: dict[str, Any]) -> tuple[Any, Any]:
@@ -457,6 +648,15 @@ def proposal_reject(devcenter: Any, request: Mapping[str, Any]) -> dict[str, Any
         return {"revision": saved["revision"], "rejected_ids": [request.get("proposal_id")]}
 
 
+NEEDS_REVIEW = "needs_review"
+
+
+def _skip_reason(document: Mapping[str, Any], proposal: Mapping[str, Any]) -> str | None:
+    """The blocked state, or ``needs_review`` for a destructive object proposal (issue #13)."""
+
+    return blocked_state(document, proposal) or (NEEDS_REVIEW if proposal.get("needs_review") else None)
+
+
 def proposal_accept_all(devcenter: Any, request: Mapping[str, Any]) -> dict[str, Any]:
     """UC10: accept the ready proposals in one revision. Skip the blocked proposals with a reason code."""
 
@@ -470,7 +670,7 @@ def proposal_accept_all(devcenter: Any, request: Mapping[str, Any]) -> dict[str,
             # accepts does not block a different proposal of the same call.
             start = copy.deepcopy(draft)
             for proposal in open_proposals(draft):
-                reason = blocked_state(start, proposal)
+                reason = _skip_reason(start, proposal)
                 if reason is not None:
                     skipped.append({"id": proposal["id"], "reason": reason})
                     continue
@@ -482,11 +682,11 @@ def proposal_accept_all(devcenter: Any, request: Mapping[str, Any]) -> dict[str,
             return None, {"accepted_ids": list(accepted)}
 
         current = devcenter._require_open()
-        if not any(blocked_state(current.document, item) is None for item in open_proposals(current.document)):
+        if not any(_skip_reason(current.document, item) is None for item in open_proposals(current.document)):
             # Nothing to accept: no new revision. The revision check still applies.
             if request.get("base_revision") != current.document["revision"]:
                 raise DevCenterError("stale_revision", "The session changed. Load it again.", {"revision": current.document["revision"]})
-            skipped = [{"id": item["id"], "reason": blocked_state(current.document, item)} for item in open_proposals(current.document)]
+            skipped = [{"id": item["id"], "reason": _skip_reason(current.document, item)} for item in open_proposals(current.document)]
             return {"revision": current.document["revision"], "accepted_ids": [], "skipped": skipped}
         saved = devcenter._change(request, "proposal_accept_all", None, mutate, log=lambda: entries)
         _drop_impact_cache(devcenter)

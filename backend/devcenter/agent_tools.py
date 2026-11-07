@@ -149,7 +149,11 @@ def register(server: Any, send: Send) -> AgentTools:
                         ctx: Context, target_name: str | None = None) -> dict[str, Any]:
         """Propose a change for the user to accept. The user decides. Confidence must be 0.9 or more and the reason must not be empty.
 
-        kind: merge_choice, alignment, removal_policy, impact_action, need_mapping, or name.
+        kind: merge_choice, alignment, removal_policy, impact_action, need_mapping, name, or the object kinds
+        object_edit {set: {expression, format_string, description, display_folder, is_hidden, ...}},
+        object_rename {new_name}, object_delete {}, object_create {object_type, table, name, properties}.
+        An object proposal is checked on submit: the reply's proposal.check has the plan blocking items and the
+        Breaks/Needs impact; a DAX error or a missing name is refused with details.reason proposal_not_valid.
         """
         return tools.proposal_submit(kind=kind, target=target, payload=payload, confidence=confidence, reason=reason,
                                      base_revision=base_revision, target_name=target_name, client=client_name(ctx))

@@ -246,7 +246,11 @@
         "alignment",
         "removal_policy",
         "need_mapping",
-        "impact_action"
+        "impact_action",
+        "object_edit",
+        "object_rename",
+        "object_delete",
+        "object_create"
       ]
     },
     "target": {
@@ -432,7 +436,11 @@
             "alignment",
             "removal_policy",
             "need_mapping",
-            "impact_action"
+            "impact_action",
+            "object_edit",
+            "object_rename",
+            "object_delete",
+            "object_create"
           ]
         },
         "target_id": {
@@ -499,6 +507,50 @@
         },
         "decided_utc": {
           "$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/utc_time"
+        },
+        "needs_review": {
+          "type": "boolean"
+        },
+        "check": {
+          "type": "object",
+          "properties": {
+            "plan_status": {
+              "type": "string"
+            },
+            "blocking": {
+              "type": "array",
+              "items": {
+                "type": "object"
+              }
+            },
+            "breaks": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "needs": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "object"
+              }
+            },
+            "items_total": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "required": [
+            "plan_status",
+            "blocking",
+            "breaks",
+            "needs",
+            "items",
+            "items_total"
+          ],
+          "additionalProperties": false
         }
       },
       "required": [
@@ -620,6 +672,188 @@
         "target_id",
         "target_name",
         "text"
+      ],
+      "additionalProperties": false
+    },
+    "payload_object_edit": {
+      "type": "object",
+      "properties": {
+        "set": {
+          "type": "object",
+          "properties": {
+            "expression": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100000
+            },
+            "format_string": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 1000
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "description": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 20000
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "display_folder": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 1000
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "is_hidden": {
+              "type": "boolean"
+            },
+            "data_category": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 200
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "summarize_by": {
+              "enum": [
+                "default",
+                "none",
+                "sum",
+                "min",
+                "max",
+                "count",
+                "average",
+                "distinctcount"
+              ]
+            },
+            "is_key": {
+              "type": "boolean"
+            }
+          },
+          "minProperties": 1,
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "set"
+      ],
+      "additionalProperties": false
+    },
+    "payload_object_rename": {
+      "type": "object",
+      "properties": {
+        "new_name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500,
+          "pattern": "\\S"
+        }
+      },
+      "required": [
+        "new_name"
+      ],
+      "additionalProperties": false
+    },
+    "payload_object_delete": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "payload_object_create": {
+      "type": "object",
+      "properties": {
+        "object_type": {
+          "enum": [
+            "measure",
+            "column"
+          ]
+        },
+        "table": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500,
+          "pattern": "\\S"
+        },
+        "properties": {
+          "type": "object",
+          "properties": {
+            "expression": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100000
+            },
+            "format_string": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 1000
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "description": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 20000
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "display_folder": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 1000
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "is_hidden": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "expression"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "object_type",
+        "table",
+        "name",
+        "properties"
       ],
       "additionalProperties": false
     }

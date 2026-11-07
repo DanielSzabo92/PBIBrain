@@ -24,7 +24,8 @@
           "reason": {
             "enum": [
               "source_changed",
-              "user_choice_conflict"
+              "user_choice_conflict",
+              "needs_review"
             ]
           }
         },
