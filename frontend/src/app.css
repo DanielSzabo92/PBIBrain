@@ -1178,3 +1178,23 @@ td:hover > .mx-mark { transform: scale(1.2); }
 .cloud-picker-fields { display: flex; flex-wrap: wrap; align-items: end; gap: 12px; }
 .cloud-picker-fields > div { display: grid; gap: 4px; min-width: 180px; }
 .not-checked-list { display: grid; gap: 2px; margin: 4px 0 0; padding: 0; list-style: none; }
+
+/* Across models and reports (issue #14): counts by type and bucket, then the groups of one count. */
+.common-objects { padding: 0; }
+.common-objects-head { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 4px 12px; padding: 14px 16px 6px; }
+.common-objects-table { width: calc(100% - 32px); margin: 0 16px 8px; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.common-objects-table th, .common-objects-table td { padding: 4px 8px; border-bottom: 1px solid var(--line); text-align: right; }
+.common-objects-table th[scope="row"], .common-objects-table thead th:first-child { text-align: left; font-weight: 500; }
+.common-objects-table thead th { color: var(--text-3); font-size: var(--fs-micro); font-weight: 500; }
+.common-objects-dup { margin: 0 16px 12px; }
+.common-objects-groups { border-top: 1px solid var(--line); padding: 12px 16px; }
+.common-objects-groups h3 { margin: 0 0 8px; font-size: inherit; font-weight: 600; }
+.common-objects-groups > ul { display: grid; gap: 6px; margin: 0 0 8px; padding: 0; list-style: none; }
+.common-objects-row { display: grid; grid-template-columns: minmax(0, 14rem) minmax(0, 1fr) auto; align-items: center; gap: 4px 12px; }
+.common-objects-name { overflow-wrap: anywhere; }
+.common-objects-actions { display: flex; gap: 4px; }
+.common-objects-members { display: grid; gap: 2px; margin: 4px 0 0 16px; padding: 0; list-style: none; }
+.common-objects-expression { display: block; overflow-wrap: anywhere; font-size: var(--fs-micro); }
+@media (max-width: 720px) {
+  .common-objects-row { grid-template-columns: minmax(0, 1fr); }
+}

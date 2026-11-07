@@ -7,6 +7,10 @@ from urllib.parse import quote, urlencode, urlsplit
 from urllib.request import ProxyHandler, Request, build_opener
 
 
+# The documented reply budget of brain_commonality: 12,000 characters of JSON, about 3,000 tokens.
+COMMONALITY_MAX_CHARS = 12_000
+
+
 class BrainClient:
     def __init__(self, url: str = "http://127.0.0.1:8000") -> None:
         parsed = urlsplit(url)
@@ -124,6 +128,18 @@ def create_server(url: str = "http://127.0.0.1:8000", *, session_id: str | None 
     def brain_compare(before: str, after: str) -> dict[str, Any]:
         """Compare two previously prepared immutable snapshot IDs. No paths/writes."""
         return client.post("compare", {"before": before, "after": after})
+
+    @server.tool()
+    def brain_commonality(type: str | None = None, scope: str | None = None, bucket: str | None = None,
+                          group_id: str | None = None, limit: int = 25, offset: int = 0) -> dict[str, Any]:
+        """Across all models/reports: identical, differs (which properties), renamed, unique objects, and duplicate DAX logic.
+
+        type: object type (MEASURE, COLUMN, TABLE, PAGE, VISUAL...). scope: "models", "reports" or model/report
+        ids or refs (m1,r2). bucket: identical|differs|renamed|unique. Sources are referenced by ref (m1, r1).
+        The reply stays under about 3,000 tokens; page with next_offset while has_more. group_id gives one
+        group with its object IDs."""
+        return client.get("commonality", type=type, scope=scope, bucket=bucket, group_id=group_id, limit=limit,
+                          offset=offset, compact="true", max_chars=COMMONALITY_MAX_CHARS)
 
     from backend.devcenter.agent_tools import register as register_agent_tools
 

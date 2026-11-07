@@ -1,5 +1,7 @@
 import VisualBindings from "./components/VisualBindings";
 import ImpactExplorer from "./components/ImpactExplorer";
+import CommonObjects from "./components/CommonObjects";
+import { hasComparableSources } from "./commonality";
 import React, { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight, ArrowUpRight, Boxes, Check, ChartColumn, ChevronRight, CircleCheck, Cloud, Inbox, PanelLeft, ScanSearch, Copy, Database, FileText, FolderOpen, Moon, Plus, RefreshCw, ScanLine, ShieldAlert, ShieldCheck, Sun, TriangleAlert, Waypoints, X } from "lucide-react";
 import { brainTransport, normalizeSnapshot } from "./transport";
@@ -611,7 +613,7 @@ function App({ transport = brainTransport }) {
           ) : null}
           <div className="view-frame" key={view}>
             <Suspense fallback={<div className="view-loading" role="status"><RefreshCw className="spin" aria-hidden="true" />Loading view…</div>}>
-            {view === "overview" ? <Overview onSelect={selectNode} overview={overview} config={config} counts={counts} colors={graphColors} loading={loading} projectName={projectName} onView={navigate} onBrowseType={(objectType) => { setSearchSession({ query: "", modelId: "", reportId: "", objectType, result: null }); setView("search"); }} onSources={() => { setSettingsTab("project"); setView("config"); }} onSummary={() => { setSettingsTab("summary"); setView("config"); }} onScan={applyScan} scanning={scanning} scanLabel={activeProject ? "Scan project" : "Scan sources"} onReview={() => navigate("review")} /> : null}
+            {view === "overview" ? <Overview onSelect={selectNode} overview={overview} config={config} counts={counts} colors={graphColors} loading={loading} projectName={projectName} onView={navigate} onBrowseType={(objectType) => { setSearchSession({ query: "", modelId: "", reportId: "", objectType, result: null }); setView("search"); }} onSources={() => { setSettingsTab("project"); setView("config"); }} onSummary={() => { setSettingsTab("summary"); setView("config"); }} onScan={applyScan} scanning={scanning} scanLabel={activeProject ? "Scan project" : "Scan sources"} onReview={() => navigate("review")} transport={transport} onMerge={(modelIds) => { const names = modelIds.map((id) => (overview.model_objects || []).find((item) => item.id === id)?.name || id); setNotice(`Start a merge session with ${names.join(", ")}`); navigate("devcenter"); }} /> : null}
             {view === "search" ? <div className="page page-narrow" data-ui-stack=""><SearchView session={searchSession} onSession={setSearchSession} colors={graphColors} transport={transport} overview={overview} onSelect={selectNode} /></div> : null}
             {view === "graph" ? <GraphView session={graphSession} onSession={setGraphSession} colors={graphColors} transport={transport} overview={overview} snapshot={snapshot} selectedId={selectedId} onSelect={selectNode} /> : null}
             {view === "inspector" ? <div className="page page-wide" data-ui-stack="">{selectedId ? <><Button variant="ghost" size="sm" className="inspector-back" onClick={() => { if (inspectorOrigin === "inspector") { setSelectedId(null); setInspectedObject(null); } else setView(inspectorOrigin); }}><ArrowLeft aria-hidden="true" />{inspectorOrigin === "search" ? "Back to results" : inspectorOrigin === "inspector" ? "Browse objects" : `Back to ${VIEWS.find(([key]) => key === inspectorOrigin)?.[1]?.toLowerCase() || "overview"}`}</Button><Inspector key={selectedId} transport={transport} scanning={scanning} colors={graphColors} node={selected} details={inspectedDetails} loading={Boolean(selectedId && !inspectedDetails && !inspectorError)} error={inspectorError} snapshot={snapshot} snapshotLoaded={snapshotLoaded} snapshotError={snapshotError} onEvidenceRetry={() => loadSnapshot().catch(() => {})} overview={overview} onSelect={selectNode} onRetry={() => selectNode(selectedId)} onReview={review} onGraph={() => setView("graph")} /></> : <SearchView browse session={inspectorSession} onSession={setInspectorSession} colors={graphColors} transport={transport} overview={overview} onSelect={(id) => { setInspectorOrigin("inspector"); selectNode(id); }} />}</div> : null}
@@ -754,7 +756,7 @@ function PageHeading({ kicker, title, description, action, children }) {
   );
 }
 
-function Overview({ overview, config, counts, colors, loading, projectName, onView, onBrowseType, onSources, onSummary, onScan, onReview, onSelect, scanning, scanLabel }) {
+function Overview({ overview, config, counts, colors, loading, projectName, onView, onBrowseType, onSources, onSummary, onScan, onReview, onSelect, onMerge, transport, scanning, scanLabel }) {
   const hasObjects = counts.objects > 0;
   const hasSources = Boolean(config?.sources?.length || config?.cloud_sources?.length);
   const sourceCount = config?.sources ? config.sources.length + (config.cloud_sources?.length || 0) : undefined;
@@ -821,6 +823,7 @@ function Overview({ overview, config, counts, colors, loading, projectName, onVi
           {sourcesRow}
           {notCheckedRow}
         </Card>
+        {transport && hasComparableSources(overview) && !scanning ? <CommonObjects transport={transport} colors={colors} onSelect={onSelect} onMerge={onMerge} refreshKey={overview.last_scan} /> : null}
       </>}
   </div>;
 }

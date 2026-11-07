@@ -571,6 +571,37 @@ GET|POST /api/validate-selection
 `GraphRepository.query_graph()` exists for trusted internal diagnostics. It is
 not exposed as an unrestricted downstream-agent API.
 
+### Common, drifted and unique objects across the project
+
+`GET /api/commonality` runs the Merge models alignment (lineageTag, then type +
+table + name, page and visual ids) over every model and every report of the
+project with no target, straight from the project graph (no TOM bridge, cloud
+items included). Each aligned group lands in one bucket:
+
+| Bucket | Meaning |
+| --- | --- |
+| `identical` | In two or more sources, every compared property equal (DAX compared after normalization). |
+| `differs` | In two or more sources; `differs` lists the properties that are not equal, `variants` how many versions exist. |
+| `renamed` | The same logic under another name in other sources, at most one object per source; `names` gives each source's name. |
+| `unique` | In one source only. |
+
+`duplicate_logic` groups the measures, calculated columns and calculation items
+of all models (also inside one model) that share one normalized DAX under
+different names. Sources are referenced by short refs (`m1`, `r1`) listed in
+`sources`; `incomplete` is true when a model or report was not checked.
+
+Query parameters: `type` (object type), `scope` (`models`, `reports`, or model
+and report ids or refs, comma separated), `bucket`, `group_id` (one group with
+its object ids), `limit` (≤ 200), `offset`, `compact` and `max_chars`. The
+Overview screen shows the counts by type; a count opens its groups, Compare
+shows the members side by side, and Merge opens Merge models.
+
+The MCP tool `brain_commonality(type?, scope?, bucket?, group_id?, limit=25,
+offset=0)` asks for the compact form with a **budget of 12,000 characters of
+JSON (about 3,000 tokens) per reply**: object ids are left out (ask again with
+`group_id`), and groups are dropped from the end of the page until the reply
+fits, with `has_more` and `next_offset` to page on.
+
 ## Context compiler
 
 `get_context(target, task)` returns a relevant subgraph instead of dumping the
