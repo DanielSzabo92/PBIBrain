@@ -82,7 +82,7 @@ class ConnectionMarkerTests(unittest.TestCase):
             marker = {"url": "http://127.0.0.1:9999", "config_path": str(config), "session_id": "abc"}
             (config.parent / "connection.json").write_text(json.dumps(marker), encoding="utf-8")
             reply = io.BytesIO(json.dumps({"connection_id": "abc", "project": {"config_path": str(config)}}).encode())
-            with patch.object(agent, "BrainClient") as client:
+            with patch("backend.mcp_server.BrainClient") as client:
                 client.return_value.url = marker["url"]
                 client.return_value.opener.open.return_value = reply
                 self.assertEqual("abc", agent.live_client(config).session_id)
@@ -93,7 +93,7 @@ class ConnectionMarkerTests(unittest.TestCase):
             marker = {"url": "http://127.0.0.1:9999", "config_path": str(config), "connection_id": "xyz"}
             (config.parent / "connection.json").write_text(json.dumps(marker), encoding="utf-8")
             reply = io.BytesIO(json.dumps({"connection_id": "xyz", "project": {"config_path": str(config)}}).encode())
-            with patch.object(agent, "BrainClient") as client:
+            with patch("backend.mcp_server.BrainClient") as client:
                 client.return_value.url = marker["url"]
                 client.return_value.opener.open.return_value = reply
                 self.assertEqual("xyz", agent.live_client(config).session_id)

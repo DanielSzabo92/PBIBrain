@@ -7,7 +7,9 @@ from backend.commonality import build_commonality, get_commonality
 from backend.graph.loader import build_fact_graph
 from backend.graph.repository import GraphRepository
 
-from backend.mcp_server import COMMONALITY_MAX_CHARS as MCP_BUDGET_CHARS  # 12,000 characters, about 3,000 tokens
+from backend.mcp_budget import TOOL_BUDGETS
+
+MCP_BUDGET_CHARS = TOOL_BUDGETS["brain_commonality"]["compact"]  # 12,000 characters, about 3,000 tokens
 
 
 def model(model_id, measures, *, columns=("Amount", "DateKey"), extra_tables=()):

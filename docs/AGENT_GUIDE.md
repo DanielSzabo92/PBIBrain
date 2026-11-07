@@ -23,7 +23,8 @@ Scanning and direct exports through the CLI require closing the project first.
 A stale connection after a crash is repaired by reopening the project in the app.
 
 For stdio MCP, use the absolute installed `PBIBrain-Agent.exe` path and arguments
-`["--project", "C:\\Reports\\Finance", "mcp"]` while that project is open.
+`["--project", "C:\\Reports\\Finance", "mcp"]`. The MCP server works with the app
+open or closed; see [MCP without the app](#mcp-without-the-app-and-reply-budgets).
 HTTP clients can discover the running origin in `.pbibrain/connection.json`;
 the `/api` routes below are unchanged.
 
@@ -57,24 +58,71 @@ Use stable IDs after selecting a result. Never silently select one of several
 same-named objects. Resolve ambiguity with the caller or explicit model scope.
 
 The legacy `/api/brain` snapshot and `/api/objects` list remain for compatibility;
-use the bounded `/api/search` and `/api/graph` routes for new clients. Context
-retains relevant evidence by default and is not a strict byte/token budget.
+use the bounded `/api/search` and `/api/graph` routes for new clients. HTTP context
+retains relevant evidence by default and is not a strict byte/token budget; the MCP
+tools are (see below).
 
 ## Optional MCP adapter
 
 ```powershell
 python -m pip install -e ".[mcp]"
+brain --config C:\Reports\.pbibrain\brain.json mcp
 brain mcp --url http://127.0.0.1:8000
 ```
 
 Configure any stdio MCP client with command `brain` and arguments
-`["mcp", "--url", "http://127.0.0.1:8000"]`, or use an absolute Python path with
-`["-m", "backend.cli.main", "mcp", "--url", "http://127.0.0.1:8000"]`.
+`["--config", "C:\\Reports\\.pbibrain\\brain.json", "mcp"]`, or use an absolute Python path with
+`["-m", "backend.cli.main", "--config", "...", "mcp"]`. `--url` reads only that running
+local server (the earlier behaviour).
 The adapter uses the [official MCP Python SDK v1](https://github.com/modelcontextprotocol/python-sdk/tree/v1.x).
-It exposes five read-only tools: `brain_overview`, `brain_search`, `brain_object`,
-`brain_context`, and `brain_graph`. Configuration, scanning, and review writes
-are intentionally absent from the agent tool surface. Start the local server
-first; MCP does not open another database connection.
+Its read-only tools are `brain_overview`, `brain_search`, `brain_object`, `brain_context`,
+`brain_graph`, `brain_impact`, `brain_compare` and `brain_commonality`, plus the eight
+Development Center agent tools. Configuration, scanning, and review writes are
+intentionally absent from the agent tool surface. MCP never opens the database.
+
+## MCP without the app and reply budgets
+
+Each project scan also writes `.pbibrain/agent-snapshot.json`: a compact copy of the
+graph (without the cached DAX parse trees) and a SHA-256 hash of every source file.
+For each tool call, the MCP server reads the open app when it has this project open
+(the connection in `.pbibrain/connection.json` answers for this project), and otherwise
+the snapshot. A stale connection after a crash also falls back to the snapshot. Reads
+from the snapshot are read-only: overview, search, object, context, graph, impact and
+commonality. `brain_compare` and the Development Center tools need the app; the latter
+answer with the error code `app_not_running`.
+
+Every reply has a `freshness` block:
+
+```json
+{"source": "snapshot", "snapshot_at": "2026-11-07T10:00:00+00:00", "stale": true,
+ "changed_count": 2, "changed_files": ["../Finance.SemanticModel/definition/tables/Sales.tmdl"],
+ "note": "Source files changed since the last scan. Rescan in PBIBrain for current facts."}
+```
+
+`source` is `app` or `snapshot`. `stale` compares the hashes of the last scan with the
+source files now on disk (hidden folders such as `.pbi` are ignored); `null` means no
+scan snapshot exists yet. Up to 10 changed files are listed.
+
+Every `brain_*` tool takes `detail`: `compact` (default) or `full`, and every reply has
+a `budget` block. Budgets are characters of JSON (about 4 characters per token):
+
+| Tool | compact | full |
+| --- | --- | --- |
+| `brain_overview` | 8,000 | 24,000 |
+| `brain_search` | 12,000 | 32,000 |
+| `brain_object` | 12,000 | 40,000 |
+| `brain_context`, `brain_graph`, `brain_impact`, `brain_compare` | 16,000 | 48,000 |
+| `brain_commonality` | 12,000 | 32,000 |
+
+Compact replies leave out parser detail (`dax_ast`, `dax_behaviors`, `dax_evidence`,
+`raw_source`, `raw_metadata`, `ast_location`, nested `behavior` copies), listed in
+`budget.omitted_fields`, and shorten strings over 1,500 characters. A reply still over
+budget keeps the answer field first (search `items`, graph `nodes`, context `target`)
+and keeps a leading slice of the largest lists; `budget.truncated` is then true and
+`budget.trimmed_lists` names each cut list with `kept` and `total`. A cut search page
+sets `has_more` and `next_offset` to continue after the last kept item. The budgets
+are a tested contract on a 500-measure, 50-page project (`tests/test_mcp_snapshot.py`);
+a new tool adds its row to `TOOL_BUDGETS` in `backend/mcp_budget.py`.
 
 ## Markdown export
 
