@@ -36,12 +36,14 @@ SECTION_14_2 = (
 )
 # Technical design section 14.4: the change requests that add a JS API call (UC13).
 # Issue #12 adds target_edit_apply (Edit target, technical design section 6.9).
-CHANGE_REQUEST_CALLS = ("cloud_items_list", "target_edit_apply")
+# Issue #16 adds the TMDL conversion and the merge templates (UC36 to UC39).
+CHANGE_REQUEST_CALLS = ("cloud_items_list", "target_edit_apply", "target_convert_tmdl", "merge_template_save", "merge_template_list", "merge_template_apply")
 # UI design section 10, "Busy".
 LONG_METHODS = frozenset({
     "session_create", "session_open", "sources_check", "apply", "format_only_apply", "undo_apply",
     "pull_to_local", "cloud_connect", "cloud_sign_in", "merge_choice_bulk_set", "proposal_accept_all",
     "target_edit_apply",
+    "target_convert_tmdl",
 })
 # Technical design section 12.
 SECTION_12_CODES = (

@@ -130,7 +130,13 @@ export function approvalItems(preview, plan) {
   for (const item of preview?.not_checked ?? []) {
     items.push({ id: `not_checked-${item.object_id}`, severity: "not_checked", name: item.object_name || item.object_id });
   }
-  const rank = { critical: 0, high: 1, not_checked: 2 };
+  // Issue #16: the write to a cloud target is one approval item (the service then blocks the PBIX download).
+  const cloud = preview?.cloud_target;
+  if (cloud && (preview?.approvals_needed ?? []).some((need) => need.purpose === "CLOUD_WRITE")) {
+    const name = cloud.report_name ? `${cloud.model_name} + ${cloud.report_name}` : cloud.model_name;
+    items.push({ id: "cloud-write", severity: "cloud", name: t("apply.cloud.item", { name, workspace: cloud.workspace_name }) });
+  }
+  const rank = { critical: 0, high: 1, cloud: 2, not_checked: 3 };
   return items.sort((a, b) => rank[a.severity] - rank[b.severity]);
 }
 
@@ -139,7 +145,7 @@ export function approvalPurposes(preview) {
   const purposes = new Set();
   for (const need of preview?.approvals_needed ?? []) purposes.add(need.purpose);
   if ((preview?.not_checked ?? []).length > 0) purposes.add("UNCHECKED_IMPACT");
-  return [...purposes].filter((value) => value === "HIGH_RISK_PROMOTION" || value === "UNCHECKED_IMPACT").sort();
+  return [...purposes].filter((value) => value === "HIGH_RISK_PROMOTION" || value === "UNCHECKED_IMPACT" || value === "CLOUD_WRITE").sort();
 }
 
 // The names of the objects that the plan deletes.

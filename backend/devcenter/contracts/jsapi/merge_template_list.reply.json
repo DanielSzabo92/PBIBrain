@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pbibrain.local/devcenter/contracts/jsapi/merge_template_list.reply.json",
+  "title": "JS API merge_template_list: reply (an error reply uses error.json)",
+  "type": "object",
+  "properties": {
+    "revision": {
+      "anyOf": [
+        {
+          "$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/revision"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "templates": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "saved_utc": {
+            "type": "string"
+          },
+          "choice_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "source_names": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "name",
+          "saved_utc",
+          "choice_count",
+          "source_names"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "revision",
+    "templates"
+  ],
+  "additionalProperties": false
+}

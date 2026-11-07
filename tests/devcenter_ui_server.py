@@ -47,14 +47,14 @@ JSAPI_METHODS = (
     "sources_check", "naming_rule_confirm", "naming_rule_reject", "naming_rule_edit", "naming_rules_copy",
     "proposal_accept", "proposal_reject", "proposal_accept_all", "question_answer", "format_only_apply",
     "apply", "undo_apply", "change_report_write", "cloud_sign_in", "cloud_connect", "pull_to_local",
-    "cloud_items_list", "target_edit_apply",
+    "cloud_items_list", "target_edit_apply", "target_convert_tmdl", "merge_template_save", "merge_template_list", "merge_template_apply",
 )
 # Calls that read only: they do not change the revision.
-JSAPI_READS = frozenset({"cloud_items_list"})
+JSAPI_READS = frozenset({"cloud_items_list", "merge_template_list", "merge_template_save"})
 # Calls that work with no open session.
 NO_SESSION_METHODS = frozenset({"session_create", "session_open", "cloud_sign_in", "cloud_items_list"})
 # Calls that a read-only (locked) session still permits.
-LOCKED_METHODS = frozenset({"session_close", "session_open", "cloud_items_list", "cloud_sign_in"})
+LOCKED_METHODS = frozenset({"session_close", "session_open", "cloud_items_list", "cloud_sign_in", "merge_template_list"})
 # The existing desktop host methods that frontend/src/desktop.js and App.jsx use (old reply shape).
 DESKTOP_METHODS = ("get_session", "choose_folder", "choose_sources", "open_project", "add_sources", "close_project")
 
@@ -758,6 +758,30 @@ class FakeDevCenter:
         for row in rows:
             row["merge_choice"] = {"kind": "edit"}
         return {"count": len(rows), "row_keys": [row["row_key"] for row in rows], "skipped": []}
+
+    def _call_target_convert_tmdl(self, payload: dict[str, Any]) -> dict[str, Any]:
+        source = next((item for item in self.session["sources"] if item["source_id"] == payload.get("source_id")), self.session["sources"][0])
+        source["model_format"] = "tmdl"
+        return {"source": source, "backup_path": ".pbibrain/sessions/fake/apply/tmsl-backup/model.bim"}
+
+    def _call_merge_template_save(self, payload: dict[str, Any]) -> dict[str, Any]:
+        self.templates = getattr(self, "templates", {})
+        name = str(payload.get("name") or "Template")
+        self.templates[name] = {row["row_key"]: row["merge_choice"] for row in self._rows() if row.get("merge_choice")}
+        return {"name": name, "path": f".pbibrain/templates/{name}.json", "choice_count": len(self.templates[name])}
+
+    def _call_merge_template_list(self, payload: dict[str, Any]) -> dict[str, Any]:
+        templates = getattr(self, "templates", {})
+        return {"templates": [{"name": name, "saved_utc": "2026-11-07T10:00:00Z", "choice_count": len(choices), "source_names": []}
+                              for name, choices in sorted(templates.items())]}
+
+    def _call_merge_template_apply(self, payload: dict[str, Any]) -> dict[str, Any]:
+        choices = getattr(self, "templates", {}).get(payload.get("name"))
+        if choices is None:
+            raise FakeError("not_found", "The template does not exist.", {"reason": "template_not_found"})
+        for key, choice in choices.items():
+            self._row(key)["merge_choice"] = choice
+        return {"name": str(payload.get("name")), "applied": sorted(choices), "skipped": []}
 
     def _call_row_confirm(self, payload: dict[str, Any]) -> dict[str, Any]:
         keys = payload.get("row_keys")

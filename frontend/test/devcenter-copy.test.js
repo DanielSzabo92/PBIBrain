@@ -102,7 +102,7 @@ test("each long method has a status line, and each changing method has a log lab
   }
   assert.equal(longCallText("sources_check"), "Checking sources. Changes wait until this ends.");
   assert.equal(longCallText("merge_choice_set"), null);
-  const notLogged = new Set(["cloud_sign_in", "cloud_items_list", "impact_action_apply"]);
+  const notLogged = new Set(["cloud_sign_in", "cloud_items_list", "impact_action_apply", "merge_template_save", "merge_template_list"]);
   for (const { name } of JSAPI_METHODS) {
     if (notLogged.has(name)) continue;
     const labels = Object.keys(COPY).filter((key) => key === `log.action.${name}` || key.startsWith(`log.action.${name}.`));

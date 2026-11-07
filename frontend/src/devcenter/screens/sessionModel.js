@@ -135,11 +135,12 @@ export function targetModelItems(sources = []) {
   const items = [];
   for (const source of sources) {
     if (!MODEL_KINDS.has(source.kind)) continue;
-    const cloud = source.kind === "cloud_model";
+    // Issue #16: a cloud model with Read/Write access is a target; the apply writes it through XMLA.
+    const cloud = source.kind === "cloud_model" && source.access_type !== "Read/Write";
     const tmsl = source.kind === "model_bim";
     const reason = cloud ? t("refuse.cloud_target") : tmsl ? t("refuse.tmsl_target") : null;
     items.push({ value: `existing:${source.key}`, label: source.name, help: t("create.target.existing.help", { source: source.name }), disabled: Boolean(reason), reason });
-    items.push({ value: `copy:${source.key}`, label: t("create.target.copy", { source: source.name }), help: t("create.target.copy.help", { source: source.name }), disabled: cloud, reason: cloud ? t("refuse.cloud_target") : null });
+    items.push({ value: `copy:${source.key}`, label: t("create.target.copy", { source: source.name }), help: t("create.target.copy.help", { source: source.name }) });
   }
   items.push({ value: "empty", label: t("create.target.empty"), help: t("create.target.empty.help") });
   return items;
@@ -150,7 +151,7 @@ export function targetReportItems(sources = []) {
   for (const source of sources) {
     if (!REPORT_KINDS.has(source.kind)) continue;
     const legacy = source.kind === "pbir_legacy_report";
-    const cloud = source.kind === "cloud_report";
+    const cloud = source.kind === "cloud_report" && source.access_type !== "Read/Write";
     const reason = legacy ? t("refuse.legacy_target") : cloud ? t("refuse.cloud_target") : null;
     items.push({ value: `existing:${source.key}`, label: source.name, disabled: Boolean(reason), reason });
   }

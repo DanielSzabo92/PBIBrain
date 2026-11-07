@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pbibrain.local/devcenter/contracts/jsapi/target_convert_tmdl.request.json",
+  "title": "JS API target_convert_tmdl: request",
+  "type": "object",
+  "properties": {
+    "base_revision": {
+      "$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/base_revision"
+    },
+    "source_id": {
+      "$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/source_id"
+    },
+    "consent": {
+      "const": true
+    }
+  },
+  "required": [
+    "base_revision",
+    "consent",
+    "source_id"
+  ],
+  "additionalProperties": false
+}

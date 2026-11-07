@@ -74,6 +74,11 @@ REASON_ROLE_NOT_READABLE = "role_not_readable"
 REASON_WRITE_LATER = "write_not_in_version_1"
 REASON_PBIR_LEGACY = "pbir_legacy_read_only"
 REASON_SIGN_IN_REQUIRED = "sign_in_required"
+# Write conditions of a cloud target (issue #16).
+REASON_READ_ONLY_ACCESS = "read_only_access"
+REASON_ROLE_CANNOT_WRITE = "role_cannot_write"
+REASON_WRITE_DENIED = "cloud_write_denied"
+WRITE_ROLES = frozenset({"Admin", "Member", "Contributor"})
 
 # The STE text of the "not checked" items (technical design section 10.3).
 NOT_CHECKED_TEXT = {
@@ -175,6 +180,62 @@ class BridgeCloudModelReader:
         except (OSError, ValueError, subprocess.TimeoutExpired) as exc:
             raise CloudReadFailed("read_failed", "The bridge failed or timed out") from exc
         return export_from_bridge(payload)
+
+
+@dataclass(frozen=True)
+class ModelDeploy:
+    last_schema_update_before: str
+    last_schema_update: str
+
+
+class CloudModelWriter(Protocol):
+    def deploy(self, server: str, database: str, token: AccessToken, folder: Path,
+               expected_last_schema_update: str | None) -> ModelDeploy:
+        """Write the TMDL folder to the model (delta deploy). Raise ``CloudReadFailed`` with the bridge code."""
+
+
+class BridgeCloudModelWriter:
+    """The real XMLA writer: the bridge command ``cloud-deploy`` (issue #16). The token goes on stdin only."""
+
+    def __init__(self, bridge: str | Path | None = None, *, timeout: int = 900) -> None:
+        default = Path(__file__).resolve().parents[2] / "adapters/tabular_metadata/dotnet/bin/Release/net8.0/TabularMetadata.dll"
+        self.bridge = Path(bridge) if bridge else default
+        self.timeout = timeout
+
+    def deploy(self, server: str, database: str, token: AccessToken, folder: Path,
+               expected_last_schema_update: str | None) -> ModelDeploy:
+        if not self.bridge.is_file():
+            raise CloudReadFailed("bridge_missing", "Build the trusted TOM bridge first")
+        request = {"server": server, "database": database, "access_token": token.value, "expires_on": token.expires_on,
+                   "folder": str(folder), "expected_last_schema_update": expected_last_schema_update}
+        try:
+            result = subprocess.run(["dotnet", str(self.bridge), "cloud-deploy"], input=json.dumps(request), capture_output=True,
+                                    text=True, encoding="utf-8", timeout=self.timeout, check=False)
+            payload = json.loads(result.stdout)
+        except (OSError, ValueError, subprocess.TimeoutExpired) as exc:
+            raise CloudReadFailed("write_failed", "The bridge failed or timed out") from exc
+        return deploy_from_bridge(payload)
+
+
+def deploy_from_bridge(payload: Mapping[str, Any]) -> ModelDeploy:
+    """Read the stdout object of ``cloud-deploy``, or raise ``CloudReadFailed`` with its code."""
+
+    if payload.get("adapter_version") != 1 or payload.get("command") != "cloud-deploy":
+        raise CloudReadFailed("write_failed", "The bridge reply is not a cloud-deploy reply")
+    if payload.get("status") != "PASSED":
+        raise CloudReadFailed(str(payload.get("code") or "write_failed"), str(payload.get("error") or ""))
+    return ModelDeploy(str(payload["last_schema_update_before"]), str(payload["last_schema_update"]))
+
+
+def definition_parts(folder: Path) -> list[dict[str, Any]]:
+    """The parts of a report folder for Fabric ``updateDefinition`` (the inverse of ``write_definition``)."""
+
+    parts = []
+    for path in sorted(Path(folder).rglob("*")):
+        if path.is_file() and path.name != ".platform":
+            parts.append({"path": path.relative_to(folder).as_posix(), "payload": base64.b64encode(path.read_bytes()).decode("ascii"),
+                          "payloadType": "InlineBase64"})
+    return parts
 
 
 def export_from_bridge(payload: Mapping[str, Any]) -> ModelExport:
@@ -285,10 +346,11 @@ class CloudService:
 
     def __init__(self, tokens: TokenProvider | None = None, http: CloudHttp | None = None,
                  reader: CloudModelReader | None = None, *, sleep: Callable[[float], None] = time.sleep,
-                 poll_limit: int = _POLL_LIMIT) -> None:
+                 poll_limit: int = _POLL_LIMIT, writer: CloudModelWriter | None = None) -> None:
         self._tokens = tokens
         self.http: CloudHttp = http or UrllibHttp()
         self.reader: CloudModelReader = reader or BridgeCloudModelReader()
+        self.writer: CloudModelWriter = writer or BridgeCloudModelWriter()
         self.sleep = sleep
         self.poll_limit = poll_limit
 
@@ -444,7 +506,7 @@ class CloudService:
             raise not_allowed("The report definition has no parts.", "bad_definition")
         return parts
 
-    def _poll(self, accepted: HttpReply) -> HttpReply:
+    def _poll(self, accepted: HttpReply, *, result: bool = True) -> HttpReply:
         operation = accepted.headers.get("x-ms-operation-id")
         location = accepted.headers.get("location") or (f"{FABRIC_API}/operations/{operation}" if operation else None)
         if not location:
@@ -459,10 +521,68 @@ class CloudService:
             if state.status >= 400 or status == "Failed":
                 raise not_allowed("The Power BI service could not prepare the report definition.", "cloud_error", status=state.status)
             if status == "Succeeded":
-                result = state.headers.get("location") or location.rstrip("/") + "/result"
-                return self._send("GET", result, FABRIC_SCOPES)
+                if not result:
+                    return state
+                address = state.headers.get("location") or location.rstrip("/") + "/result"
+                return self._send("GET", address, FABRIC_SCOPES)
             delay = float(state.headers.get("retry-after") or delay)
         raise not_allowed("The Power BI service did not prepare the report definition in time.", "cloud_timeout")
+
+    # Writes (issue #16) --------------------------------------------------------------
+
+    def deploy_model(self, workspace_name: str, database: str, folder: Path,
+                     expected_last_schema_update: str | None) -> ModelDeploy:
+        """Delta deploy of a TMDL ``definition`` folder to a cloud model through XMLA."""
+
+        def action(token: AccessToken) -> Any:
+            try:
+                return self.writer.deploy(xmla_server(workspace_name), database, token, folder, expected_last_schema_update)
+            except CloudReadFailed as exc:
+                return exc
+
+        result = self._with_token(POWER_BI_SCOPES, action,
+                                  lambda value: isinstance(value, CloudReadFailed) and value.code == "token_expired")
+        if isinstance(result, CloudReadFailed):
+            raise result
+        return result
+
+    def update_report(self, workspace_id: str, report_id: str, folder: Path) -> None:
+        """Replace the definition of a cloud report with the files of ``folder`` (Fabric ``updateDefinition``)."""
+
+        url = f"{FABRIC_API}/workspaces/{quote(workspace_id)}/reports/{quote(report_id)}/updateDefinition"
+        reply = self._send("POST", url, FABRIC_SCOPES, {"definition": {"parts": definition_parts(folder)}})
+        if reply.status in (401, 403):
+            raise not_allowed("You do not have permission to change this report.", REASON_WRITE_DENIED)
+        if reply.status == 202:
+            reply = self._poll(reply, result=False)
+        if reply.status not in (200, 202):
+            raise not_allowed("The Power BI service did not take the report definition.", "cloud_error", status=reply.status)
+
+    def write_checks(self, record: Mapping[str, Any]) -> list[dict[str, Any]]:
+        """The write conditions of a cloud target: access type, capacity (XMLA read/write), model type, role."""
+
+        cloud = record["cloud"]
+        checks = []
+        if record.get("access_type") != ACCESS_READ_WRITE:
+            checks.append(_check("access_type", RESULT_FAILED, REASON_READ_ONLY_ACCESS))
+            return checks
+        checks.append(_check("access_type", RESULT_OK))
+        workspace = self._workspace(cloud["workspace_id"])
+        if record["kind"] == CLOUD_MODEL:
+            if not workspace["xmla_available"]:
+                checks.append(_check("capacity", RESULT_FAILED, REASON_NOT_ON_CAPACITY, capacity_type=workspace["capacity_type"]))
+                return checks
+            checks.append(_check("capacity", RESULT_OK, None, capacity_type=workspace["capacity_type"]))
+            model = next((row for row in self.models(workspace) if row["id"].casefold() == str(cloud["item_id"]).casefold()), None)
+            if model is None:
+                checks.append(_check("model_type", RESULT_FAILED, REASON_MODEL_NOT_FOUND))
+                return checks
+            checks.append(_check("model_type", RESULT_FAILED if model["reason"] else RESULT_OK, model["reason"]))
+        role = self._role(cloud["workspace_id"])
+        if role["result"] == RESULT_OK and role["values"].get("role") not in WRITE_ROLES:
+            role = _check("role", RESULT_FAILED, REASON_ROLE_CANNOT_WRITE, **role["values"])
+        checks.append(role)
+        return checks
 
     def report_to_folder(self, workspace_id: str, report_id: str, folder: Path) -> LocalSource:
         parts = self.definition(workspace_id, report_id)

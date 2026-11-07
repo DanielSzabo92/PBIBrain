@@ -132,7 +132,8 @@
           "purpose": {
             "enum": [
               "HIGH_RISK_PROMOTION",
-              "UNCHECKED_IMPACT"
+              "UNCHECKED_IMPACT",
+              "CLOUD_WRITE"
             ]
           },
           "risk": {
@@ -176,6 +177,78 @@
         ],
         "additionalProperties": false
       }
+    },
+    "cloud_target": {
+      "description": "Issue #16: the cloud model (and report) that the apply writes through XMLA and Fabric REST. Null for a local target.",
+      "type": [
+        "object",
+        "null"
+      ],
+      "properties": {
+        "workspace_name": {
+          "type": "string"
+        },
+        "model_name": {
+          "type": "string"
+        },
+        "report_name": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "checks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "check_id": {
+                "type": "string"
+              },
+              "result": {
+                "enum": [
+                  "ok",
+                  "failed",
+                  "not_checked"
+                ]
+              },
+              "reason": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "values": {
+                "type": "object"
+              }
+            },
+            "required": [
+              "check_id",
+              "result",
+              "reason",
+              "values"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "pbix_download_blocked",
+              "report_replaced_in_service"
+            ]
+          }
+        }
+      },
+      "required": [
+        "workspace_name",
+        "model_name",
+        "report_name",
+        "checks",
+        "warnings"
+      ],
+      "additionalProperties": false
     }
   },
   "required": [

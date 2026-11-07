@@ -21,6 +21,7 @@ import uuid
 
 from backend.devcenter.apply import desktop as desktop_states
 from backend.devcenter.apply import rescan
+from backend.devcenter.apply.cloud_target import CLOUD_WRITE, NOTICE_CLOUD_WRITTEN, CloudTargets, is_cloud
 from backend.devcenter.apply.desktop import DesktopBridge
 from backend.devcenter.apply.pipeline import ApplyJob, GuardPipeline
 from backend.devcenter.apply.report import change_report
@@ -85,8 +86,9 @@ def not_checked(plan: Mapping[str, Any]) -> list[dict[str, Any]]:
     return items
 
 
-def approvals_needed(plan: Mapping[str, Any]) -> list[dict[str, Any]]:
-    """Give the approval purposes of the one Apply dialog: HIGH and CRITICAL risk, and the items that are not checked."""
+def approvals_needed(plan: Mapping[str, Any], *, cloud: bool = False) -> list[dict[str, Any]]:
+    """Give the approval purposes of the one Apply dialog: HIGH and CRITICAL risk, the items that are not checked,
+    and the write to a cloud target (issue #16: the service blocks the PBIX download of a model after an XMLA write)."""
 
     operations = list(plan.get("operations") or [])
     needed = []
@@ -97,6 +99,8 @@ def approvals_needed(plan: Mapping[str, Any]) -> list[dict[str, Any]]:
     unchecked = not_checked(plan)
     if unchecked:
         needed.append({"purpose": UNCHECKED, "risk": None, "row_keys": sorted({str(item["object_id"]) for item in unchecked})})
+    if cloud and operations:
+        needed.append({"purpose": CLOUD_WRITE, "risk": None, "row_keys": []})
     return needed
 
 
@@ -130,6 +134,7 @@ class ApplyService:
         self.plan_builder = plan_builder or plan_service.build_plan
         self._lock = threading.Lock()
         self._busy = False
+        self.cloud = CloudTargets(devcenter)
         self._progress: dict[str, Any] = {"apply_id": None, "kind": None, "step": None, "step_index": 0,
                                           "step_count": len(STEPS_BY_KIND["apply"]), "state": "done"}
 
@@ -193,11 +198,32 @@ class ApplyService:
     def _folder(self) -> Path:
         return Path(self.devcenter.session_folder())
 
-    def _target(self, document: Mapping[str, Any], step: str) -> _Target:
+    def _donors(self, document: Mapping[str, Any], *targets: Any) -> dict[str, str]:
+        donors = {}
+        for item in document["sources"]:
+            if item["source_id"] in targets or not item.get("report_path"):
+                continue
+            donors[item["source_id"]] = str(self.devcenter._absolute(item["report_path"]))
+        return donors
+
+    def _target(self, document: Mapping[str, Any], step: str, *, fresh: bool = False) -> _Target:
         model_id, report_id = compare_service.targets(document)
         if model_id is None:
             raise ApplyFailure(step, "no_target_model", "The session has no target model.")
         record = self.devcenter._source(document, model_id)
+        report_record = self.devcenter._source(document, report_id) if report_id is not None else None
+        if is_cloud(record) or is_cloud(report_record):
+            if not is_cloud(record):
+                raise ApplyFailure(step, "mixed_target", "A cloud report target needs a cloud model target. Pull the report to a local PBIP first.")
+            try:
+                self.devcenter._load_target(record)  # The Read/Write check.
+                if report_record is not None:
+                    self.devcenter._load_target(report_record)
+            except DevCenterError as exc:
+                raise ApplyFailure(step, exc.details.get("reason") or "cloud_target", exc.message) from exc
+            cloud = self.cloud.target(document, record, report_record, step, fresh=fresh)
+            return _Target(record=record, source=cloud.source, root=cloud.root, model_path=cloud.model_path, report_path=cloud.report_path,
+                           donors=self._donors(document, model_id, report_id), source_id=model_id, cloud=cloud)
         source: LocalSource = self.devcenter._load_target(record)
         # A PBIP source has the ``.pbip`` file as its root. The guard works on the folder of the project.
         root = source.root if source.root.is_dir() else source.root.parent
@@ -214,13 +240,8 @@ class ApplyService:
         if source.model_dir.resolve().parent != root.resolve():
             raise ApplyFailure(step, "target_layout_not_supported", "The target model must be in the folder of the project.")
         model_path = (source.model_dir.resolve() / "definition").relative_to(root.resolve()).as_posix()
-        donors = {}
-        for item in document["sources"]:
-            if item["source_id"] in {model_id, report_id} or not item.get("report_path"):
-                continue
-            donors[item["source_id"]] = str(self.devcenter._absolute(item["report_path"]))
         return _Target(record=record, source=source, root=root.resolve(), model_path=model_path, report_path=report_path,
-                       donors=donors, source_id=model_id)
+                       donors=self._donors(document, model_id, report_id), source_id=model_id, cloud=None)
 
     def _job(self, apply_id: str, kind: str, document: Mapping[str, Any], target: _Target, plan: Mapping[str, Any],
              approvals: Sequence[str] = ()) -> ApplyJob:
@@ -233,6 +254,8 @@ class ApplyService:
                         unchecked_items=unchecked, approvals=list(approvals))
 
     def _desktop(self, target: _Target, step: str) -> str:
+        if target.cloud is not None:
+            return desktop_states.NOT_OPEN  # Power BI Desktop does not hold a cloud model as a file.
         state = self.desktop.state(Path(target.root))
         if state not in desktop_states.STATES:
             state = desktop_states.NOT_REACHABLE
@@ -241,15 +264,15 @@ class ApplyService:
                                "Power BI Desktop has unsaved changes in the target. Save or close the file first.", desktop_state=state)
         return state
 
-    def _commit(self, action: str, target_id: str, before: Any, after: Any) -> int:
-        """Step 11: the new target fingerprint and row hashes, and one log entry."""
+    def _commit(self, action: str, target_id: str, before: Any, after: Any, also: Sequence[str] = ()) -> int:
+        """Step 11: the new target fingerprint and row hashes, and one log entry. ``also``: a cloud report target."""
 
         devcenter = self.devcenter
         with devcenter._lock:
             current = devcenter._require_open()
             draft = copy.deepcopy(current.document)
-            record = devcenter._source(draft, target_id)
-            devcenter._record_baseline(draft, target_id, devcenter._load_target(record))
+            for source_id in (target_id, *also):
+                devcenter._record_baseline(draft, source_id, devcenter._load_target(devcenter._source(draft, source_id)))
             document = devcenter._commit(current, draft, action, target_id, before, after)
             return document["revision"]
 
@@ -291,13 +314,22 @@ class ApplyService:
         failed = _failed_checks(plan)
         desktop_state = desktop_states.NOT_REACHABLE
         non_canonical: list[str] = []
+        cloud_target = None
         try:
             target = self._target(document, PLAN_STATUS)
         except (ApplyFailure, DevCenterError) as exc:
             failed.append({"check": getattr(exc, "reason", None) or "target", "object": None, "message": str(exc.message)})
             target = None
         if target is not None:
-            desktop_state = self.desktop.state(Path(target.root))
+            if target.cloud is not None:
+                desktop_state = desktop_states.NOT_OPEN
+                cloud_target = self.cloud.preview(target.cloud)
+                for item in cloud_target["checks"]:
+                    if item["result"] == "failed":
+                        failed.append({"check": "cloud_write_not_possible", "object": None,
+                                       "message": f"Cloud write check {item['check_id']} failed: {item['reason']}"})
+            else:
+                desktop_state = self.desktop.state(Path(target.root))
             if desktop_state not in desktop_states.STATES:
                 desktop_state = desktop_states.NOT_REACHABLE
             try:
@@ -318,8 +350,9 @@ class ApplyService:
             "desktop_state": desktop_state,
             "non_canonical_files": non_canonical,
             "validation": {"status": status, "failed_checks": failed},
-            "approvals_needed": approvals_needed(plan),
+            "approvals_needed": approvals_needed(plan, cloud=cloud_target is not None),
             "not_checked": not_checked(plan),
+            "cloud_target": cloud_target,
         }
 
     def last(self) -> dict[str, Any]:
@@ -333,8 +366,12 @@ class ApplyService:
             return {"revision": revision, "apply_id": None, "kind": None, "finished_utc": None, "file_count": 0,
                     "backup_present": False, "target_changed": False, "changed_files": [], "rescan_differences": [], "undone": False}
         state_root = self._folder() / GUARD_FOLDER
-        changed = self.pipeline.changed_files(state_root, record["operation_id"])
-        backup = not record.get("undone") and self.pipeline.backup_present(state_root, record["operation_id"])
+        if record.get("cloud"):
+            # The working copy is made again for each apply; the service is not read for this view.
+            changed, backup = [], not record.get("undone") and self.cloud.backup_present(record)
+        else:
+            changed = self.pipeline.changed_files(state_root, record["operation_id"])
+            backup = not record.get("undone") and self.pipeline.backup_present(state_root, record["operation_id"])
         return {"revision": revision, "apply_id": record["apply_id"], "kind": record["kind"], "finished_utc": record["finished_utc"],
                 "file_count": len(record.get("files") or []), "backup_present": bool(backup), "target_changed": bool(changed),
                 "changed_files": changed, "rescan_differences": record.get("rescan_differences") or [], "undone": bool(record.get("undone"))}
@@ -368,7 +405,9 @@ class ApplyService:
             raise ApplyFailure(PLAN_STATUS, "plan_changed", "The plan changed. Open the Apply dialog again.", plan_hash=plan.get("plan_hash"))
         if not plan.get("operations"):
             raise ApplyFailure(PLAN_STATUS, "plan_empty", "The plan has no change to apply.")
-        target = self._target(document, PLAN_STATUS)
+        target = self._target(document, PLAN_STATUS, fresh=True)
+        if target.cloud is not None:
+            self.cloud.require_writable(target.cloud, PLAN_STATUS)
 
         self._step(kind, DESKTOP_CHECK)
         desktop_state = self._desktop(target, DESKTOP_CHECK)
@@ -386,21 +425,24 @@ class ApplyService:
             raise ApplyFailure(VALIDATION, "validation_failed", "The full validation found blocking items.", failed_checks=_failed_checks(plan))
 
         self._step(kind, APPROVAL)
-        needed = sorted(item["purpose"] for item in approvals_needed(plan))
+        needed = sorted(item["purpose"] for item in approvals_needed(plan, cloud=target.cloud is not None))
         if approvals != needed:
             raise ApplyFailure(APPROVAL, "approval_missing", "Give the approvals of the Apply dialog.", check="approval", purposes=needed)
 
-        before = object_index(target.source)
+        before = self._index(target)
+        if target.cloud is not None:
+            self.cloud.backup(apply_id, target.cloud)
         self._step(kind, WRITE)
         self.pipeline.write(job)
         self._step(kind, GUARD)
         self.pipeline.guard(job)
         self._step(kind, PROMOTION)
         written = self.pipeline.promote(job)
+        deployed = self.cloud.deploy(apply_id, target.cloud, PROMOTION) if target.cloud is not None else None
 
         record = {"apply_id": apply_id, "kind": kind, "operation_id": job.operation_id, "plan_hash": plan.get("plan_hash"),
                   "target_id": target.source_id, "files": list(written), "approvals": approvals, "desktop_state": desktop_state,
-                  "before_index": before, "rescan_differences": [], "undone": False, "finished_utc": None}
+                  "before_index": before, "rescan_differences": [], "undone": False, "finished_utc": None, "cloud": deployed}
         self._save_last(record)
         return self._after_write(kind, record, target, plan, document, started)
 
@@ -408,7 +450,7 @@ class ApplyService:
                      document: Mapping[str, Any], started: float) -> dict[str, Any]:
         self._step(kind, RESCAN)
         try:
-            after = object_index(self.devcenter._load_target(target.record))
+            after = self._reread(target)
         except Exception as exc:
             raise ApplyFailure(RESCAN, "rescan_failed", "The app could not read the target again.", check="rescan") from exc
         operations = [] if kind == "format_only" else list(plan.get("operations") or [])
@@ -417,7 +459,8 @@ class ApplyService:
 
         self._step(kind, FINGERPRINT)
         revision = self._commit("format_only_apply" if kind == "format_only" else "apply", target.source_id, None,
-                                {"apply_id": record["apply_id"], "plan_hash": record["plan_hash"], "file_count": len(record["files"])})
+                                {"apply_id": record["apply_id"], "plan_hash": record["plan_hash"], "file_count": len(record["files"])},
+                                also=self._also(target))
         record["finished_utc"] = utc_now()
         if kind == "apply":
             self._step(kind, CHANGE_REPORT)
@@ -428,6 +471,8 @@ class ApplyService:
         record["seconds"] = round(time.monotonic() - started, 3)
         self._save_last(record)
         notices = [desktop_states.NOTICES[record["desktop_state"]]] if record["desktop_state"] in desktop_states.NOTICES else []
+        if record.get("cloud"):
+            notices.append(NOTICE_CLOUD_WRITTEN)
         return {"revision": revision, "apply_id": record["apply_id"], "kind": kind, "file_count": len(record["files"]),
                 "files": record["files"], "desktop_state": record["desktop_state"], "notices": notices,
                 "rescan_differences": record["rescan_differences"]}
@@ -449,7 +494,7 @@ class ApplyService:
         job = self._job(apply_id, kind, document, target, plan)
         if not self.pipeline.canonical_files(job):
             raise ApplyFailure(CANONICAL_CHECK, "already_canonical", "All model files have the canonical format.", check="canonical")
-        before = object_index(target.source)
+        before = self._index(target)
         self._step(kind, WRITE)
         self.pipeline.write(job)
         self._step(kind, GUARD)
@@ -458,9 +503,26 @@ class ApplyService:
         written = self.pipeline.promote(job)
         record = {"apply_id": apply_id, "kind": kind, "operation_id": job.operation_id, "plan_hash": None, "target_id": target.source_id,
                   "files": list(written), "approvals": [], "desktop_state": desktop_state, "before_index": before,
-                  "rescan_differences": [], "undone": False, "finished_utc": None}
+                  "rescan_differences": [], "undone": False, "finished_utc": None, "cloud": None}
         self._save_last(record)
         return self._after_write(kind, record, target, plan, document, started)
+
+    def _index(self, target: _Target) -> dict[str, Any]:
+        if target.cloud is not None:
+            return self.cloud.index(target.cloud.source, target.cloud.report_source)
+        return object_index(target.source)
+
+    def _reread(self, target: _Target) -> dict[str, Any]:
+        """The rescan index: a cloud target is read from the service again, a local target from its files."""
+
+        if target.cloud is not None:
+            return self.cloud.reread(target.cloud)
+        return object_index(self.devcenter._load_target(target.record))
+
+    @staticmethod
+    def _also(target: _Target) -> tuple[str, ...]:
+        report = target.cloud.report if target.cloud is not None else None
+        return (report["source_id"],) if report is not None else ()
 
     # Undo (section 13) -------------------------------------------------------------------------
 
@@ -478,24 +540,35 @@ class ApplyService:
         if request.get("apply_id") not in (None, record["apply_id"]):
             raise ApplyFailure(DESKTOP_CHECK, "not_last_apply", "Only the last apply can be undone.", code="not_found")
         document = self._document()
-        target = self._target(document, DESKTOP_CHECK)
+        cloud_record = record.get("cloud")
+        target = self._target(document, DESKTOP_CHECK, fresh=bool(cloud_record))
         desktop_state = self._desktop(target, DESKTOP_CHECK)
 
         self._step(kind, BACKUP_CHECK)
         state_root = self._folder() / GUARD_FOLDER
-        changed = self.pipeline.changed_files(state_root, record["operation_id"])
-        if changed:
-            raise ApplyFailure(BACKUP_CHECK, "target_changed", "The target files changed after the apply. The app cannot undo it.",
-                               check="write", files=changed)
-        if not self.pipeline.backup_present(state_root, record["operation_id"]):
-            raise ApplyFailure(BACKUP_CHECK, "backup_missing", "The backup of the apply is not available.", check="write")
+        if cloud_record:
+            if target.cloud is None or target.cloud.model["cloud"]["item_id"] != cloud_record["item_id"]:
+                raise ApplyFailure(BACKUP_CHECK, "target_changed", "The target of the session changed after the apply.", check="write")
+            if not self.cloud.backup_present(record):
+                raise ApplyFailure(BACKUP_CHECK, "backup_missing", "The backup of the apply is not available.", check="write")
+        else:
+            changed = self.pipeline.changed_files(state_root, record["operation_id"])
+            if changed:
+                raise ApplyFailure(BACKUP_CHECK, "target_changed", "The target files changed after the apply. The app cannot undo it.",
+                                   check="write", files=changed)
+            if not self.pipeline.backup_present(state_root, record["operation_id"]):
+                raise ApplyFailure(BACKUP_CHECK, "backup_missing", "The backup of the apply is not available.", check="write")
 
         self._step(kind, PROMOTION)
-        files = self.pipeline.undo(state_root, record["operation_id"])
+        if cloud_record:
+            self.cloud.undo(record, target.cloud, PROMOTION)
+            files = list(record.get("files") or [])
+        else:
+            files = self.pipeline.undo(state_root, record["operation_id"])
 
         self._step(kind, RESCAN)
         try:
-            after = object_index(self.devcenter._load_target(target.record))
+            after = self._reread(target)
         except Exception as exc:
             raise ApplyFailure(RESCAN, "rescan_failed", "The app could not read the target again.", check="rescan") from exc
         before = record.get("before_index") or {}
@@ -503,10 +576,13 @@ class ApplyService:
                        for key in sorted(set(before) | set(after)) if before.get(key) != after.get(key)]
 
         self._step(kind, FINGERPRINT)
-        revision = self._commit("undo_apply", target.source_id, {"apply_id": record["apply_id"]}, {"undo_id": apply_id})
+        revision = self._commit("undo_apply", target.source_id, {"apply_id": record["apply_id"]}, {"undo_id": apply_id},
+                                also=self._also(target))
         record.update(undone=True, undo_id=apply_id, undo_finished_utc=utc_now(), undo_differences=differences)
         self._save_last(record)
         notices = [desktop_states.NOTICES[desktop_state]] if desktop_state in desktop_states.NOTICES else []
+        if cloud_record:
+            notices.append(NOTICE_CLOUD_WRITTEN)
         return {"revision": revision, "apply_id": record["apply_id"], "undo_id": apply_id, "file_count": len(files), "files": files,
                 "desktop_state": desktop_state, "notices": notices, "rescan_differences": differences}
 

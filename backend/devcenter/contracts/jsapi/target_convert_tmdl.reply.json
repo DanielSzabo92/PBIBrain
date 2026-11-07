@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pbibrain.local/devcenter/contracts/jsapi/target_convert_tmdl.reply.json",
+  "title": "JS API target_convert_tmdl: reply (an error reply uses error.json)",
+  "type": "object",
+  "properties": {
+    "revision": {
+      "$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/revision"
+    },
+    "source": {
+      "$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/source"
+    },
+    "backup_path": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "backup_path",
+    "revision",
+    "source"
+  ],
+  "additionalProperties": false
+}

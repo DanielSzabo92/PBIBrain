@@ -16,11 +16,12 @@
       "items": {
         "enum": [
           "HIGH_RISK_PROMOTION",
-          "UNCHECKED_IMPACT"
+          "UNCHECKED_IMPACT",
+          "CLOUD_WRITE"
         ]
       },
       "uniqueItems": true,
-      "maxItems": 2
+      "maxItems": 3
     }
   },
   "required": [

@@ -77,6 +77,18 @@ to a scanned cloud model by its semantic model ID or catalog name. A model or
 report that cannot be read stays in the graph marked **Not checked**, so a
 project of thin reports only still scans.
 
+A cloud model connected with `"access_type": "Read/Write"` can be the target
+of a merge (with its cloud report as the target report). The apply reads the
+model again, keeps a TMDL backup in the session folder, runs the guard on a
+local working copy, then deploys only the changed objects through XMLA and
+replaces the report with Fabric `updateDefinition`. It stops when someone
+changed the model in the service after the read. The Apply dialog asks for one
+more approval: after an XMLA write the service no longer offers the model as a
+PBIX download. Undo deploys the backup again. A `model.bim` model becomes a
+TMDL target after you consent to the conversion, and a merge template
+(`.pbibrain/templates/<name>.json`) replays the decisions of one session in
+another one, for new donor versions or another target.
+
 ```powershell
 brain --config C:\Reports\brain.json project-scan
 brain --config C:\Reports\brain.json serve

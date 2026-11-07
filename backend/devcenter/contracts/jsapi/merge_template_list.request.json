@@ -1,0 +1,9 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pbibrain.local/devcenter/contracts/jsapi/merge_template_list.request.json",
+  "title": "JS API merge_template_list: request",
+  "type": "object",
+  "properties": {},
+  "required": [],
+  "additionalProperties": false
+}

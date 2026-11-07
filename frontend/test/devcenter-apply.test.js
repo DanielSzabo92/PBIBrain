@@ -135,3 +135,16 @@ test("format result and the change report default name", () => {
   assert.equal(changeReportName("A/B: merge", date), "A B merge change report 2026-11-06.md");
   assert.equal(changeReportName("", date), "Merge session change report 2026-11-06.md");
 });
+
+test("a cloud target adds the CLOUD_WRITE approval item and purpose (issue #16)", () => {
+  const preview = {
+    approvals_needed: [{ purpose: "CLOUD_WRITE", risk: null, row_keys: [] }],
+    not_checked: [],
+    cloud_target: { workspace_name: "Sales Analytics", model_name: "Sales Cloud", report_name: null, checks: [], warnings: ["pbix_download_blocked"] },
+  };
+  const items = approvalItems(preview, PLAN);
+  assert.equal(items.length, 1);
+  assert.equal(items[0].severity, "cloud");
+  assert.match(items[0].name, /Sales Cloud in Sales Analytics/);
+  assert.deepEqual(approvalPurposes(preview), ["CLOUD_WRITE"]);
+});

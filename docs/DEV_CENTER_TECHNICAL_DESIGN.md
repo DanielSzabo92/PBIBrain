@@ -72,14 +72,14 @@ Home tickets: functional spec section 4, ticket 14.
 | Kind | Read (donor, compare, impact) | Write target |
 |---|---|---|
 | PBIP with TMDL model | Yes | Yes |
-| PBIP with TMSL model (`model.bim`) | Yes | No. Message: "Save as TMDL in Power BI Desktop first." |
+| PBIP with TMSL model (`model.bim`) | Yes | No. Message: "Save as TMDL in Power BI Desktop first." After the TMDL conversion with consent (`target_convert_tmdl`): yes |
 | Standalone TMDL folder | Yes | Yes |
-| Standalone `model.bim` | Yes | No (same message) |
+| Standalone `model.bim` | Yes | After the TMDL conversion with consent (JS API `target_convert_tmdl`, issue #16) |
 | PBIR report (`byPath` or `byConnection`) | Yes | Yes |
 | PBIR-Legacy report | Yes | No. Message: "Convert to PBIR in Power BI Desktop first." |
 | PBIX | No. Message: "Save as PBIP in Power BI Desktop." | No |
-| Cloud model (XMLA) | Version 1: yes | Version 1.1 (section 10.4) |
-| Cloud report (Fabric REST) | Version 1: yes | Version 1.1 (section 10.4) |
+| Cloud model (XMLA) | Version 1: yes | With `Read/Write` access (section 10.4, issue #16) |
+| Cloud report (Fabric REST) | Version 1: yes | With `Read/Write` access, together with its cloud model as the target model (section 10.4) |
 
 ### 2.2 Target kinds (version 1)
 
@@ -91,7 +91,7 @@ A session has one target model and zero or one target report. With no target rep
 
 ### 2.3 Access types
 
-A cloud connection has the access type `Read` (default) or `Read/Write`. A `Read` source is never a write target. In version 1 no cloud source is a write target; the `Read/Write` type is recorded now, so that version 1.1 needs no session migration.
+A cloud connection has the access type `Read` (default) or `Read/Write`. A `Read` source is never a write target ("Copy of" only reads it, so it is allowed). A `Read/Write` cloud model can be the target model, and a `Read/Write` cloud report of that model can be the target report (section 10.4). A local model with a cloud report target, or a cloud model with a local report target, is refused (`mixed_target`).
 
 ## 3. Graph coverage
 
@@ -346,9 +346,17 @@ Home tickets: [How does the app read and write cloud models through XMLA?](../.s
 - Reports of a cloud model: Power BI "Reports In Group" in the workspace of the model only. Reports in other workspaces show as "not checked: reports in other workspaces". No admin scanner API.
 - Source Fingerprint: a hash of the definition parts.
 
-### 10.4 Cloud write (version 1.1)
+### 10.4 Cloud write (issue #16)
 
-This design is fixed now so that its build steps (S12, S13) need no new map.
+Built in `backend/devcenter/apply/cloud_target.py`, the bridge command `cloud-deploy`, and `CloudService.deploy_model`, `update_report`, `write_checks`.
+
+- The apply reads the cloud target again (a change since the last source check stops it), copies the export into the backup folder `apply/cloud/<apply ID>/backup/`, and builds a PBIP working copy in `tmp/cloud-work/<item ID>/`. The guard, the canonical check, and the journaled promotion run on the working copy as on a local target. In the working copy the report binds `byPath`, so that the guard checks it against the model; the upload sends the service's own `definition.pbir` (`byConnection`) again.
+- The deploy sends the guarded TMDL: `cloud-deploy` deserializes the folder, `Model.CopyTo` copies it onto the live model, and `SaveChanges()` sends only the delta. The request carries the `LastSchemaUpdate` of the fresh read; another value in the service stops the deploy with `target_changed` before any change. This replaces the earlier idea of a second operation replay on the live tree: the service gets exactly the files that the guard accepted.
+- The rescan reads the model (and report) from the service again. Undo deploys the backup when the `LastSchemaUpdate` in the service is still the one after the apply.
+- The Apply dialog shows `cloud_target` (workspace, names, write checks, warnings) and needs the approval `CLOUD_WRITE` on each apply to a cloud target.
+- A report write failure restores the model from the backup at once (`recovered: true`), so model and report stay one change.
+
+The original design notes follow.
 
 - Only a `Read/Write` connection can be a target. The connect step records the access type.
 - Before the first XMLA write, the app shows the warning: after an XMLA write, the service can no longer download the model as a PBIX file. The user must accept it for each model.
@@ -489,6 +497,10 @@ The UI design ([DEV_CENTER_UI_DESIGN.md](DEV_CENTER_UI_DESIGN.md)) needs these a
 | UC33 | S5 | JS API `source_remove` | Keep the Merge Choices that take from the removed source. Add one blocking plan item for each (kind `choice_source_removed`). Return the count. | The remove confirm text and the block list. | 09 |
 | UC34 | S4 | JS API `naming_rule_edit` | Refuse a rule with the same object type, scope, and check kind with `action_not_allowed` and `details.existing_rule_id`. | The "Same rule exists" error. | 09 |
 | UC35 | #12 | JS API `target_edit_apply` (new, long, JS API only) and `POST edit-preview` (new, read) | Input: `operation` (`rename`, `set_property`, `move_folder`, `apply_naming_rules`, `delete`) and `scope` (`row_keys` or `filter`). The call stores `edit` Merge Choices (and Removal Policies) in one revision (section 6.9). | In-place bulk edits of the target with no donor. An HTTP write would let an agent skip the proposal step (ADR 0003). | 12 |
+| UC36 | #16 | JS API `target_convert_tmdl` (new, long, JS API only) | Input: `source_id` of a local `model.bim` source and `consent: true`. The bridge `convert-tmdl` writes canonical TMDL and proves the TOM round trip; `model.bim` goes to `apply/tmsl-backup/`. Output: the changed source and the backup path. | A TMSL model can be a target only as TMDL; the app must not rewrite the folder without consent. | 16 |
+| UC37 | #16 | JS API `merge_template_save` (new, no revision change) | Save the Merge Choices of the session as `.pbibrain/templates/<name>.json`, each source by display name. `replace: true` overwrites a template with the same name. | Merge templates (spec section 13): the same decisions for new donor versions or another target. | 16 |
+| UC38 | #16 | JS API `merge_template_list` (new, read) | The templates of the project: name, time, choice count, source names. | The template picker. | 16 |
+| UC39 | #16 | JS API `merge_template_apply` (new) | Replay a template in one revision. Each source name maps to the session source with the same name; a choice whose source is missing is skipped with a reason. | Replay of saved decisions. | 16 |
 
 ## 15. First-version scope
 
@@ -508,7 +520,7 @@ The UI design ([DEV_CENTER_UI_DESIGN.md](DEV_CENTER_UI_DESIGN.md)) needs these a
 
 ### 15.2 Version 1.1
 
-- Cloud write: XMLA delta deploy and Fabric `updateDefinition` (section 10.4).
+- Cloud write: XMLA delta deploy and Fabric `updateDefinition` (section 10.4). Built in issue #16, with the TMDL conversion of a `model.bim` target and merge templates (UC36 to UC39).
 
 ### 15.3 Later
 
