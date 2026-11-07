@@ -60,6 +60,8 @@ def _root_summary(node: Any) -> dict[str, Any]:
                        workspace_id=properties.get("workspace_id"))
     if properties.get("check_status") == "not_checked":
         summary.update(check_status="not_checked", not_checked_reason=properties.get("not_checked_reason"))
+        if properties.get("not_checked_detail"):
+            summary["not_checked_detail"] = properties["not_checked_detail"]
     if node.type == "REPORT" and node.model_id:
         summary["model_id"] = node.model_id
     return summary
@@ -96,8 +98,10 @@ def get_overview(repository: GraphRepository, *, store: OverrideStore | None = N
         "report_objects": [_root_summary(node) for node in nodes if node.type == "REPORT"],
         "workspaces": [{"id": node.id, "name": node.name, "workspace_id": node.properties.get("workspace_id")}
                        for node in nodes if node.type == "WORKSPACE"],
-        "not_checked": [{**_root_summary(node), "type": node.type} for node in nodes
-                        if node.type in {"MODEL", "REPORT"} and node.properties.get("check_status") == "not_checked"],
+        # Models and reports that were not read, and queries whose M source was not read (issue #10).
+        "not_checked": [{**_root_summary(node), "type": node.type, **({"model_id": node.model_id} if node.model_id else {})} for node in nodes
+                        if node.type in {"MODEL", "REPORT", "PARTITION", "SHARED_EXPRESSION"} and node.properties.get("check_status") == "not_checked"],
+        "data_sources": sum(1 for node in nodes if node.type == "DATA_SOURCE"),
         "storage": repository.storage,
         "last_scan": _last_scan(repository),
         "scan_state": "ready" if nodes else "empty",

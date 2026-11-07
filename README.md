@@ -450,6 +450,22 @@ Structural edges include `CONTAINS`, `BELONGS_TO`, `USES_MODEL`, `USES`,
 and `HAS_BEHAVIOR`. Observed usage uses `OBSERVED_WITH`; conflicts use
 `CONFLICTS_WITH`.
 
+Data-source lineage: the Power Query (M) of each partition and shared
+expression is read statically, without running it. The common connectors
+(`Sql.Database`, `Lakehouse.Contents`, `PowerPlatform.Dataflows`,
+`File.Contents` with `Csv.Document`/`Excel.Workbook`, `Web.Contents`, and a
+few more) become `DATA_SOURCE` nodes, one per source object (for example
+`SalesDb.dbo.Sales`), linked from the query with `SOURCES_FROM`. Text
+literals, `let` steps that hold a literal, and model parameters are
+substituted. Direct Lake entity partitions read their table through the
+expression source. A data source has no model, so two models that read the
+same object link to the same node. M that cannot be read this way (another
+connector, a computed server name) is never guessed: the query is marked
+**Not checked** with the reason, listed on the Overview and in the impact
+completeness. Lineage shows the sources in a **Sources** lane and the queries
+in a **Queries** lane, and `brain_impact` returns the `upstream_sources` of a
+target.
+
 ## Stable identity and overrides
 
 Preferred identity order:

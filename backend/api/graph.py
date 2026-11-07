@@ -66,6 +66,9 @@ def get_graph(
         if (model_id is None or node.model_id == model_id or key == model_id)
         and (report_id is None or key in report_context or key == report_id)
     }
+    if model_id is not None:
+        # A data source has no model (issue #10): a model slice keeps the sources its queries read.
+        allowed.update(edge.to_id for edge in all_edges if edge.type == "SOURCES_FROM" and edge.from_id in allowed)
     adjacency: dict[str, set[str]] = {}
     for edge in all_edges:
         if edge.from_id not in allowed or edge.to_id not in allowed or (wanted_edges and edge.type not in wanted_edges):
@@ -166,10 +169,12 @@ def get_graph(
 # co-occurrence links are context, not lineage, and are left out of this payload.
 LINEAGE_EDGES = frozenset({
     "CONTAINS", "BELONGS_TO", "HAS_OPTION", "DEPENDS_ON", "REFERENCES", "USES", "USES_MODEL", "FILTERS",
-    "MODIFIES_FILTER", "CONTROLLED_BY", "ACTIVATES_RELATIONSHIP", "MODIFIES_RELATIONSHIP",
+    "MODIFIES_FILTER", "CONTROLLED_BY", "ACTIVATES_RELATIONSHIP", "MODIFIES_RELATIONSHIP", "SOURCES_FROM",
 })
 _LINEAGE_FIELDS = ("model_id", "report_id", "table_id", "page_id", "parent_id", "display_name", "source_id", "source_hash", "visual_type", "evidence_class",
-                  "origin", "workspace_name", "check_status", "not_checked_reason")
+                  "origin", "workspace_name", "check_status", "not_checked_reason", "not_checked_detail",
+                  # Issue #10: data source kind and location, and whether a query's M was read.
+                  "kind", "location", "source_status")
 
 
 def _definition_hash(payload: dict[str, Any]) -> str | None:
