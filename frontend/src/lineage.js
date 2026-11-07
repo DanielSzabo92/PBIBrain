@@ -1,6 +1,6 @@
 // Lineage: the project read left to right, the way data flows into a report.
 //
-//   Model › Tables › Columns › Calculations (measures, field parameters, calculation groups, UDFs)
+//   Model › Sources › Queries › Tables › Columns › Calculations (measures, field parameters, calculation groups, UDFs)
 //   › Visuals › Visual filters › Pages › Page filters › Reports › Report filters
 //
 // Every object sits in the lane of its type; lanes with nothing in them are skipped. Within a lane, objects
@@ -12,7 +12,12 @@ import { objectName } from "./presentation.js";
 
 export const LANES = [
   { key: "model", label: "Models", types: ["MODEL", "WORKSPACE"] },
-  { key: "table", label: "Tables", types: ["TABLE", "SHARED_EXPRESSION"] },
+  // Issue #10: data sources and the Power Query that reads them (partitions, shared expressions) feed the tables.
+  // They sit after Models, so "model contains shared expression" still flows left to right and a model does
+  // not pass the sources of its shared expressions on to every table.
+  { key: "source", label: "Sources", types: ["DATA_SOURCE"] },
+  { key: "query", label: "Queries", types: ["PARTITION", "SHARED_EXPRESSION"] },
+  { key: "table", label: "Tables", types: ["TABLE"] },
   { key: "column", label: "Columns", types: ["COLUMN", "RELATIONSHIP"] },
   { key: "calc", label: "Calculations", types: ["MEASURE", "FIELD_PARAMETER", "CALCULATION_GROUP", "CALCULATION_ITEM", "USER_DEFINED_FUNCTION"] },
   { key: "visual", label: "Visuals", types: ["VISUAL", "VISUAL_CALCULATION"] },
@@ -32,7 +37,7 @@ export function laneOf(node) {
 }
 
 // Edges whose canonical direction is "dependent → dependency": data flows the other way.
-const DEPENDENCY = new Set(["DEPENDS_ON", "REFERENCES", "USES", "USES_MODEL", "FILTERS", "MODIFIES_FILTER", "CONTROLLED_BY", "ACTIVATES_RELATIONSHIP", "MODIFIES_RELATIONSHIP"]);
+const DEPENDENCY = new Set(["SOURCES_FROM", "DEPENDS_ON", "REFERENCES", "USES", "USES_MODEL", "FILTERS", "MODIFIES_FILTER", "CONTROLLED_BY", "ACTIVATES_RELATIONSHIP", "MODIFIES_RELATIONSHIP"]);
 const OWNERSHIP = new Set(["CONTAINS", "BELONGS_TO", "HAS_OPTION"]);
 /** A link drawn across lanes that are switched off: it stands for a chain through hidden objects. */
 export const THROUGH = "THROUGH_HIDDEN";

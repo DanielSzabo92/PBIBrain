@@ -129,3 +129,32 @@ test("matrix filter lanes switch off what filters count", () => {
   assert.equal(buildImpactMatrix(nodes, edges).cell("c2", "v"), 1);
   assert.equal(buildImpactMatrix(nodes, edges, { pageFilters: false }).cell("c2", "v"), 0);
 });
+
+// Issue #10: data sources and queries upstream of tables.
+test("lineage traces a visual back to the data source its table's partition reads", () => {
+  const sourced = [
+    node("m", "MODEL"), node("e", "SHARED_EXPRESSION"), node("srv", "SHARED_EXPRESSION"), node("lake", "DATA_SOURCE"), node("sql", "DATA_SOURCE"),
+    node("part", "PARTITION"), node("t", "TABLE"), node("c", "COLUMN"), node("x", "MEASURE"), node("v", "VISUAL"),
+    node("t2", "TABLE"), node("part2", "PARTITION"), node("c2", "COLUMN"),
+  ];
+  const links = [
+    edge("m", "CONTAINS", "e"), edge("m", "CONTAINS", "srv"), edge("m", "CONTAINS", "t"), edge("m", "CONTAINS", "t2"),
+    edge("e", "SOURCES_FROM", "lake"), edge("part", "SOURCES_FROM", "sql"), edge("part", "REFERENCES", "srv"),
+    edge("t", "CONTAINS", "part"), edge("t", "CONTAINS", "c"), edge("x", "REFERENCES", "c"), edge("v", "USES", "x"),
+    edge("t2", "CONTAINS", "part2"), edge("part2", "REFERENCES", "e"), edge("t2", "CONTAINS", "c2"),
+  ];
+  assert.equal(LANES[laneOf({ type: "DATA_SOURCE" })].key, "source");
+  assert.equal(LANES[laneOf({ type: "PARTITION" })].key, "query");
+  const layout = layoutLineage(sourced, links);
+  const x = (id) => layout.nodes.find((item) => item.node.id === id).position.x;
+  assert.deepEqual(layout.lanes.map((lane) => lane.key), ["model", "source", "query", "table", "column", "calc", "visual"]);
+  layout.edges.forEach(({ from, to }) => assert.ok(x(from) <= x(to), `${from} → ${to}`));
+  const { upstream } = lineageOf("v", layout.edges);
+  for (const id of ["sql", "part", "srv", "t", "c", "x"]) assert.ok(upstream.has(id), id);
+  // The lakehouse feeds the other table only: the model does not pass it on to every table.
+  assert.ok(!upstream.has("lake"));
+  assert.ok(lineageOf("c2", layout.edges).upstream.has("lake"));
+  // Hiding the Queries lane bridges source → table.
+  const hidden = hideLanes(sourced, links, ["query"]);
+  assert.ok(hidden.edges.some((item) => item.type === THROUGH && [item.from_id, item.to_id].includes("sql") && [item.from_id, item.to_id].includes("t")));
+});

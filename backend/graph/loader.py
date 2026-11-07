@@ -10,6 +10,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Iterable, Mapping, Sequence
 
+from .data_sources import link_data_sources
 from .repository import GraphRepository
 from .schema import Edge, Node
 from .usage_links import report_link_edges, visual_usage_properties
@@ -173,6 +174,8 @@ class FactGraphBuilder:
 
     def _build_edges(self) -> None:
         self._edges.clear()
+        # Adds the DATA_SOURCE nodes first, so the links below can reach them.
+        source_links = link_data_sources(self.normalizer.nodes)
         nodes = list(self.normalizer.nodes.values())
         node_ids = {node.id for node in nodes}
         models = [node for node in nodes if node.type == "MODEL"]
@@ -258,6 +261,8 @@ class FactGraphBuilder:
                 self._add_edge("FILTERS", node.id, str(target_id) if target_id else None, source="report_metadata", evidence=["filter target"])
         for edge_type, from_id, to_id, evidence, edge_properties in report_link_edges(nodes):
             self._add_edge(edge_type, from_id, to_id, source="report_metadata", evidence=[evidence], properties=edge_properties)
+        for edge_type, from_id, to_id, evidence, edge_properties in source_links:
+            self._add_edge(edge_type, from_id, to_id, source="model_metadata", evidence=[evidence], properties=edge_properties)
 
 
 _M_STRING = re.compile(r'(?<!#)"(?:[^"]|"")*"')

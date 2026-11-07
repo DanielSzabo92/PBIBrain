@@ -5,6 +5,8 @@ import { LANES, laneOf } from "../lineage";
 
 // What each lane does in the Matrix when it is switched off (Models and Reports are its axes).
 const MATRIX_ROLE = {
+  source: { fixed: "Not part of the matrix" },
+  query: { fixed: "Not part of the matrix" },
   model: { fixed: "Models are the rows of the matrix" },
   table: { off: "Rows are not grouped by table" },
   column: { off: "Column rows are hidden" },
@@ -19,7 +21,7 @@ const MATRIX_ROLE = {
 };
 
 /**
- * Lane chips: the lineage lanes in dependency order (Models › Tables › … › Report filters), each a toggle.
+ * Lane chips: the lineage lanes in dependency order (Models › Sources › Queries › Tables › … › Report filters), each a toggle.
  * Shared by Lineage and Matrix, so switching off Columns hides them in both. Counts are the loaded objects.
  */
 export default function LaneChips({ nodes, hidden, matrix, colors, onChange }) {

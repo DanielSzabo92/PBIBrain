@@ -47,6 +47,8 @@ OBJECT_TYPES = frozenset(
         "SELECTOR_OPTION",
         "CONFLICT",
         "SEMANTIC_ASSERTION",
+        # Issue #10: one source object read by the M of a partition or shared expression.
+        "DATA_SOURCE",
     }
 )
 
@@ -78,6 +80,8 @@ EDGE_TYPES = frozenset(
         "INTERACTS_WITH",
         "SYNCED_WITH",
         "FORMATS_BY",
+        # Issue #10: partition or shared expression -> DATA_SOURCE.
+        "SOURCES_FROM",
     }
 )
 

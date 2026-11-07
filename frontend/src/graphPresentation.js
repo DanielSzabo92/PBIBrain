@@ -1,7 +1,7 @@
 export const ARTIFACT_GROUPS = {
   report: { label: "Report artifacts", color: "#a78bfa", types: ["REPORT", "PAGE", "VISUAL", "VISUAL_CALCULATION", "VISUAL_FILTER", "PAGE_FILTER", "REPORT_FILTER"] },
-  model: { label: "Model artifacts", color: "#60a5fa", types: ["MODEL", "TABLE", "COLUMN", "MEASURE", "RELATIONSHIP", "FIELD_PARAMETER", "SHARED_EXPRESSION", "USER_DEFINED_FUNCTION", "CALCULATION_GROUP", "CALCULATION_ITEM"] },
-  other: { label: "Other artifacts", color: "#94a3b8", types: ["WORKSPACE", "BUSINESS_CONCEPT", "SELECTOR", "SELECTOR_OPTION", "CONFLICT", "SEMANTIC_ASSERTION", "ALIAS", "ROLE", "BEHAVIOR"] },
+  model: { label: "Model artifacts", color: "#60a5fa", types: ["MODEL", "TABLE", "COLUMN", "MEASURE", "RELATIONSHIP", "FIELD_PARAMETER", "SHARED_EXPRESSION", "USER_DEFINED_FUNCTION", "CALCULATION_GROUP", "CALCULATION_ITEM", "PARTITION"] },
+  other: { label: "Other artifacts", color: "#94a3b8", types: ["DATA_SOURCE", "WORKSPACE", "BUSINESS_CONCEPT", "SELECTOR", "SELECTOR_OPTION", "CONFLICT", "SEMANTIC_ASSERTION", "ALIAS", "ROLE", "BEHAVIOR"] },
 };
 
 

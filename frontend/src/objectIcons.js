@@ -2,7 +2,7 @@
 // Merge rows all import from here, so a type looks the same everywhere and is recognisable before its label.
 import {
   Activity, Braces, Calculator, ChartColumn, Columns3, Database, FileChartColumn, FolderOpen, Funnel, Layers, Lightbulb,
-  Link2, ListFilter, OctagonAlert, PanelsTopLeft, ShieldUser, Sigma, SquareFunction, Table2, Tag, ToggleLeft, Box,
+  Link2, ListFilter, OctagonAlert, PanelsTopLeft, ShieldUser, Sigma, SquareFunction, Table2, Tag, ToggleLeft, Box, Cylinder, Rows3,
 } from "lucide-react";
 
 export const TYPE_ICONS = {
@@ -32,6 +32,9 @@ export const TYPE_ICONS = {
   CONFLICT: OctagonAlert,
   WORKSPACE: FolderOpen,
   SEMANTIC_ASSERTION: Lightbulb,
+  // Issue #10: where the data comes from, and the query (partition) that reads it.
+  DATA_SOURCE: Cylinder,
+  PARTITION: Rows3,
 };
 
 export function typeIcon(type) {

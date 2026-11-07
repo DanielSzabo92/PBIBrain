@@ -13,9 +13,13 @@ from typing import Any, Mapping
 from backend.snapshots.manifest import content_hash
 from backend.validation import graph_values, item_dict
 
+from .sources import is_not_checked_query, not_checked_query, upstream_sources
+
 CALCULATIONS = {"MEASURE", "CALCULATION_ITEM", "COLUMN", "TABLE", "SHARED_EXPRESSION", "USER_DEFINED_FUNCTION", "VISUAL_CALCULATION",
                 "REPORT_MEASURE", "ROLE_FILTER"}
-CONSUMER_EDGES = {"DEPENDS_ON", "REFERENCES", "USES", "USES_MODEL", "FILTERS", "MODIFIES_FILTER", "ACTIVATES_RELATIONSHIP", "MODIFIES_RELATIONSHIP"}
+# SOURCES_FROM (issue #10): a query consumes the data source it reads.
+CONSUMER_EDGES = {"DEPENDS_ON", "REFERENCES", "USES", "USES_MODEL", "FILTERS", "MODIFIES_FILTER", "ACTIVATES_RELATIONSHIP", "MODIFIES_RELATIONSHIP",
+                  "SOURCES_FROM"}
 RELATIONSHIP_PROPERTIES = {"from_column_id", "to_column_id", "active", "cross_filter_direction", "cardinality", "from_cardinality", "to_cardinality", "security_filter_behavior"}
 REPORT_TYPES = {"VISUAL", "PAGE", "REPORT", "VISUAL_FILTER", "PAGE_FILTER", "REPORT_FILTER", "VISUAL_CALCULATION", "REPORT_MEASURE", "BOOKMARK"}
 SECURITY_TYPES = {"ROLE", "SECURITY_ROLE", "ROLE_FILTER", "OLS_PERMISSION", "TABLE_PERMISSION", "ROW_LEVEL_SECURITY", "OBJECT_LEVEL_SECURITY"}
@@ -220,6 +224,14 @@ def analyze_impact(graph: Any, target_ids: list[str], proposed_changes: list[dic
     unknowns.extend(str(item) for item in initial_complete.get("blocking", []))
     # Each area that the scan could not examine stays visible as "not checked".
     not_checked = [dict(item) for item in initial_complete.get("not_checked", []) if isinstance(item, Mapping)]
+    # Issue #10: the data sources upstream of the targets, and the queries whose M was not read on the way.
+    upstream = upstream_sources(nodes, edges, target_ids)
+    not_checked.extend(upstream["not_checked"])
+    if any(nodes[target]["type"] == "DATA_SOURCE" for target in target_ids):
+        # Any unread query may read this source too, so the downstream closure cannot be complete.
+        unread = [node for node in nodes.values() if is_not_checked_query(node) and node["id"] not in {item["object_id"] for item in not_checked}]
+        not_checked.extend(not_checked_query(node) for node in sorted(unread, key=lambda item: item["id"]))
+        unknowns.extend("UNREAD_M_QUERY:" + node["id"] for node in unread)
     complete = initial_complete.get("status") == "COMPLETE" and not unknowns
     ordered = sorted(records.values(), key=lambda item: (item["object_id"], item["root_modified_object"], item["triggering_property"], item["analyzer_rule_id"]))
     impacted = sorted({item["object_id"] for item in ordered})
@@ -248,6 +260,8 @@ def analyze_impact(graph: Any, target_ids: list[str], proposed_changes: list[dic
               "completeness": {**initial_complete, "status": "COMPLETE" if complete else "INCOMPLETE", "analysis_truncated": False,
                                "output_truncated": truncated, "total_impact_records": len(ordered), "nodes_analyzed": len(nodes), "edges_analyzed": len(edges),
                                "missing_execution_evidence": True, "filter_analysis": "CONSERVATIVE_SUPERSET", "not_checked": not_checked}}
+    if upstream["sources"]:
+        report["upstream_sources"] = upstream["sources"]
     report["impact_report_id"] = content_hash(report) if include_impact_paths else ""
     report["metrics"] = {"traversal_seconds": perf_counter() - started, "nodes_examined": len(nodes), "edges_examined": len(edges), "impacted_objects": len(impacted), "selected_tests": len(required_tests), "llm_calls": 0}
     return report

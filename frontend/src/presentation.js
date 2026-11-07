@@ -75,6 +75,10 @@ const propertyLabels = {
   display_folder: "Display folder", displayFolder: "Display folder", is_hidden: "Hidden", isHidden: "Hidden",
   summarize_by: "Summarize by", summarizeBy: "Summarize by", visual_type: "Visual type", visualType: "Visual type",
   cardinality: "Cardinality", cross_filtering_behavior: "Filter direction", is_active: "Active",
+  // Issue #10: data sources and the queries that read them.
+  connector: "Connector", server: "Server", database: "Database", schema: "Schema", object: "Source object",
+  path: "Path", url: "URL", workspace_id: "Workspace ID", lakehouse_id: "Lakehouse ID", dataflow_id: "Dataflow ID",
+  source_parameters: "Parameters", parameter_value: "Parameter value", not_checked_detail: "Not read because",
 };
 export function publicProperties(node) {
   return Object.entries(propertyLabels).flatMap(([key, label]) => {
@@ -91,6 +95,7 @@ export function suggestionLabel(item) {
 
 const NOT_CHECKED_REASONS = {
   model_not_in_project: "the semantic model is not a source of this project",
+  m_not_read: "the Power Query (M) source was not read",
   cloud_service_not_available: "the cloud item was not read; open the project in the app and sign in",
   sign_in_required: "sign in with Microsoft to read the cloud item",
   cloud_read_failed: "the Power BI service did not give the item",
@@ -108,7 +113,8 @@ export function originNote(node) {
   const workspace = node.workspace_name || properties.workspace_name || properties.connection_workspace;
   if (status === "not_checked") {
     const reason = NOT_CHECKED_REASONS[node.not_checked_reason || properties.not_checked_reason] || "the item was not read";
-    return { kind: "not_checked", label: "Not checked", title: `Not checked: ${reason}${workspace ? ` (workspace ${workspace})` : ""}` };
+    const detail = node.not_checked_detail || properties.not_checked_detail;
+    return { kind: "not_checked", label: "Not checked", title: `Not checked: ${reason}${detail ? ` (${detail})` : ""}${workspace ? ` (workspace ${workspace})` : ""}` };
   }
   if ((node.origin || properties.origin) === "cloud") {
     return { kind: "cloud", label: workspace || "Cloud", title: `Cloud${workspace ? ` · workspace ${workspace}` : ""}` };

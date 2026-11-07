@@ -10,6 +10,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+import textwrap
 from pathlib import Path
 from typing import Any, Iterable, Mapping
 
@@ -224,7 +225,8 @@ def _parse_table(path: Path) -> dict[str, Any] | None:
         kind = match.group(2).casefold()
         header = match.group(3)
         if kind == "partition":
-            # The text reader does not read partitions. Only the TOM reader reads them.
+            # Issue #10: the partition source (M text or Direct Lake entity) feeds the data-source lineage.
+            table.setdefault("partitions", []).append(_parse_partition(header, lines[index:end]))
             continue
         if kind == "hierarchy":
             table["hierarchies"].append(_parse_hierarchy(_unquote(header.strip()), lines[index:end]))
@@ -254,6 +256,44 @@ def _parse_table(path: Path) -> dict[str, Any] | None:
     if not table["hierarchies"]:
         del table["hierarchies"]
     return table
+
+
+_SOURCE_RE = re.compile(r"^(\s*)source\s*(?:=\s*(.*?))?\s*$", re.IGNORECASE)
+
+
+def _parse_partition(header: str, block: list[str]) -> dict[str, Any]:
+    """Read one TMDL partition block into the TOM shape: name, mode and source (type, expression or entity)."""
+
+    name_part, _, source_type = header.partition("=")
+    partition: dict[str, Any] = {"name": _unquote(name_part.strip())}
+    source: dict[str, Any] = {"type": source_type.strip() or None}
+    start = next((index for index, line in enumerate(block[1:], 1) if _SOURCE_RE.match(line)), None)
+    header_lines = block[:start] if start is not None else block
+    mode = _attribute(header_lines[1:], "mode")
+    if mode:
+        partition["mode"] = mode
+    if start is not None:
+        match = _SOURCE_RE.match(block[start])
+        assert match is not None
+        indent = len(match.group(1))
+        body: list[str] = []
+        for line in block[start + 1:]:
+            if line.strip() and len(line) - len(line.lstrip()) <= indent:
+                break
+            body.append(line)
+        rhs = match.group(2)
+        if rhs is None:
+            # Direct Lake: "source" followed by entityName, schemaName and expressionSource.
+            for line in body:
+                attribute = _ATTRIBUTE_RE.match(line)
+                if attribute:
+                    source[attribute.group(1)] = _unquote(attribute.group(2))
+        elif rhs.strip():
+            source["expression"] = _formula(rhs, [block[start], *body])
+        else:
+            source["expression"] = textwrap.dedent("\n".join(body)).strip() or None
+    partition["source"] = {key: value for key, value in source.items() if value is not None}
+    return partition
 
 
 def _parse_hierarchy(name: str, block: list[str]) -> dict[str, Any]:
@@ -398,7 +438,8 @@ def _parse_expressions(path: Path) -> list[dict[str, Any]]:
         match = _EXPRESSION_RE.match(lines[index])
         assert match is not None
         expression = match.group(2).strip()
-        continuation = [line.strip() for line in lines[index + 1 : end] if line.strip() and not line.lstrip().startswith(("lineageTag:", "annotation "))]
+        continuation = [line.strip() for line in lines[index + 1 : end] if line.strip()
+                        and not line.lstrip().startswith(("lineageTag:", "annotation ", "queryGroup:", "mAttributes:", "changedProperty "))]
         if continuation:
             expression = "\n".join([expression, *continuation])
         result.append(
