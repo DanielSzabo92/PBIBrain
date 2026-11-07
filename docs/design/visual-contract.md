@@ -205,6 +205,27 @@ Periwinkle `--brand`/violet accent · uppercase · weight 650 · dot pills, side
 - For its first 350ms the pane overlays the canvas, so the second click of a double-click still reaches the node. After that the pane docks, and the view pans just enough to keep the selection visible.
 - Types hide object types in the loaded slice on the client (checkbox, or "Only"). The server-side "Objects" (artifact group) filter moved into Filters.
 
+### 11a. Lineage and Matrix (owner request, 2026-11-07)
+
+**Lineage** replaces "Full graph", and the focused Connections view uses the same layout. Every object sits in the lane of its type, read left to right the way data flows into a report:
+
+Models › Tables › Columns › Calculations (measures, field parameters, calculation groups, UDFs) › Visuals › Visual filters › Pages › Page filters › Reports › Report filters › Meaning (concepts, aliases, roles).
+
+- **Lanes:** empty lanes are skipped, and lanes are top-aligned under one row of lane headers, each showing a name and count.
+- **Order within a lane:** objects stay in their model or report block, then grouped by owner (columns by table, visuals by page). Owners are ordered to follow the previous lane, which keeps links straight.
+- **Links:** every link is drawn in flow direction, so arrows read "flows into". Inside a lane, a dependency flows from the object that is used to the object that uses it.
+- **Selecting an object** traces its whole chain: everything that feeds it and everything it feeds, up to the report. Sibling objects stay dimmed. Only real data flow counts (dependency and ownership links); "observed with", semantic and similarity links do not.
+- **Opening view:** when the lanes cannot fit at a readable zoom, the view opens at Models (top-left), not in the middle.
+
+**Matrix** shows impact analysis as a grid: model objects (columns and calculations) down the side, report visuals across the top.
+
+- **Grouping:** rows are grouped by model › table, and columns by report › page. Every group folds. A folded cell shows how many of its pairs are used, shaded by heat.
+- **Cells:** a solid mark means direct use (field well, visual filter). An outlined mark means indirect use: through a calculation, or through a page or report filter that applies to the visual. This follows the same solid-versus-outline language as provenance.
+- **Several models and reports:** they appear as blocks. Reports are ordered by their bound model, so blocks run down the diagonal. A model/report block whose report is not bound to that model is hatched, so an empty cell always means "not used" and never "cannot be used".
+- **"Used by" column:** the count of visuals plus a small bar. Unused objects are flagged in warn colour, and "Hide unused" filters them out.
+- **Scope:** the matrix loads up to 1,000 objects. Above that, a notice points to the model and report scope in Filters.
+- **Folding defaults:** tables fold when there are more than 160 rows, and pages when there are more than 48 visuals.
+
 ## 12. e2e name changes
 
 | Old | New | Update |

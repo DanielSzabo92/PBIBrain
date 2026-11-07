@@ -15,7 +15,7 @@ async function openGraph(page) {
   await page.goto("/");
   await page.getByRole("button", { name: "Graph", exact: true }).click();
   await expect(page.locator(".react-flow__node-brain").first()).toBeVisible();
-  await page.getByRole("tab", { name: "Full graph", exact: true }).click();
+  await page.getByRole("tab", { name: "Lineage", exact: true }).click();
   await openDisplay(page);
   await page.getByRole("checkbox", { name: "Include suggestions" }).check();
   await page.getByRole("checkbox", { name: "Group by ownership" }).check();
@@ -28,7 +28,7 @@ test("native graph separates ownership, keeps cross-links, and opens a right-sid
   const graph = await (await request.get("/api/graph")).json();
   const measure = graph.nodes.find((node) => node.type === "MEASURE" && node.name === "Net Sales");
   await openGraph(page);
-  await page.getByRole("tab", { name: "Full graph", exact: true }).click();
+  await page.getByRole("tab", { name: "Lineage", exact: true }).click();
   await expect(page.locator(".react-flow__node-artifactGroup")).toHaveCount(new Set(graph.nodes.map((node) => node.artifact_group)).size);
   await expect(page.locator(".react-flow__node-brain")).toHaveCount(graph.nodes.length);
   await expect(page.locator(".react-flow__edge")).toHaveCount(graph.edges.length);
@@ -55,7 +55,7 @@ test("native graph separates ownership, keeps cross-links, and opens a right-sid
 
 test("filters compose on the server, clear cleanly, and show empty states", async ({ page }) => {
   await openGraph(page);
-  await page.getByRole("tab", { name: "Full graph", exact: true }).click();
+  await page.getByRole("tab", { name: "Lineage", exact: true }).click();
   await chooseObjects(page, "report");
   await expect(page.locator(".react-flow__node-artifactGroup")).toHaveCount(2);
   await expect(page.locator(".artifact-group-title").filter({ hasText: "Report artifacts" })).toContainText("Report artifacts");
@@ -112,7 +112,7 @@ test("project color mapping persists through reload and drives nodes, minimap, a
     });
     await page.getByRole("button", { name: "Graph", exact: true }).click();
     await expect(page.locator(".react-flow__node-brain").first()).toBeVisible();
-    await page.getByRole("tab", { name: "Full graph", exact: true }).click();
+    await page.getByRole("tab", { name: "Lineage", exact: true }).click();
     const visual = page.locator('.flow-node[data-type="VISUAL"]').first();
     await expect(visual.locator(".type-glyph")).toHaveCSS("color", "rgb(52, 211, 153)");
     await expect.poll(() => page.locator(".react-flow__minimap-node:not(.minimap-artifact-group)").evaluateAll((elements) => elements.filter((element) => getComputedStyle(element).fill === "rgb(52, 211, 153)").length)).toBe(2);
@@ -162,7 +162,7 @@ test("keyboard selection opens details and narrow layouts stay within the viewpo
 
 test("failed graph and object requests expose retry without showing another scope", async ({ page }) => {
   await openGraph(page);
-  await page.getByRole("tab", { name: "Full graph", exact: true }).click();
+  await page.getByRole("tab", { name: "Lineage", exact: true }).click();
   await page.route("**/api/graph?**", async (route) => {
     if (new URL(route.request().url()).searchParams.get("artifact") === "report") return route.fulfill({ status: 500, contentType: "application/json", body: JSON.stringify({ error: "Graph unavailable for test" }) });
     return route.continue();
@@ -184,7 +184,7 @@ test("failed graph and object requests expose retry without showing another scop
 
 test("late graph and object responses cannot overwrite a newer selection", async ({ page, request }) => {
   await openGraph(page);
-  await page.getByRole("tab", { name: "Full graph", exact: true }).click();
+  await page.getByRole("tab", { name: "Lineage", exact: true }).click();
   let releaseGraph;
   let graphFinished;
   const graphDone = new Promise((resolve) => { graphFinished = resolve; });

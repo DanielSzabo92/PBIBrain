@@ -9,7 +9,7 @@ for (const theme of ["dark", "light"]) {
     await page.goto("/");
     await page.getByRole("button", { name: "Graph", exact: true }).click();
     await expect(page.locator(".react-flow__node-brain").first()).toBeVisible();
-    for (const view of ["Overview", "Full graph"]) {
+    for (const view of ["Overview", "Lineage"]) {
       await page.getByRole("tab", { name: view, exact: true }).click();
       expect(await axeViolations(page, { rules: ["aria-valid-attr-value"] })).toEqual([]);
     }
@@ -19,7 +19,7 @@ for (const theme of ["dark", "light"]) {
       await expect(page.locator(`[id="${controls}"]`)).toHaveCount(1);
     }
     // The active tab is a fill, not an underline.
-    const look = await page.getByRole("tab", { name: "Full graph", exact: true }).evaluate((node) => {
+    const look = await page.getByRole("tab", { name: "Lineage", exact: true }).evaluate((node) => {
       const style = getComputedStyle(node);
       return { fill: style.backgroundColor, track: getComputedStyle(node.parentElement).backgroundColor, bottom: style.borderBottomWidth };
     });
