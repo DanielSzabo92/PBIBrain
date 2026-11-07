@@ -1,10 +1,10 @@
 {
   "mcpServers": {
-    "graft": {
+    "trail": {
       "command": "npx",
       "args": [
         "-y",
-        "@nanonets/graft",
+        "@trailhq/trail-code",
         "mcp"
       ]
     }
