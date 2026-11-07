@@ -339,6 +339,13 @@ class BrainAPI:
     def get_lineage(self, **kwargs: Any) -> dict[str, Any]:
         return get_lineage(self.repository, store=self.overrides, **kwargs)
 
+    def get_commonality(self, **kwargs: Any) -> dict[str, Any]:
+        """Common / divergent / unique objects across the project's models and reports (issue #14)."""
+
+        from backend.commonality import get_commonality
+
+        return get_commonality(self.repository.all_nodes(), **kwargs)
+
     def get_review_queue(self, **kwargs: Any) -> list[dict[str, Any]]:
         return get_review_queue(self.repository, self.overrides, **kwargs)
 
@@ -535,6 +542,19 @@ class BrainApp:
                 return 200, self.api.validate_selection(object_ids)
             if method == "GET" and parts == ["lineage"]:
                 return 200, self.api.get_lineage(model_id=self._query_values(query, "model_id"), report_id=self._query_values(query, "report_id"))
+            if method == "GET" and parts == ["commonality"]:
+                compact = str(self._query_values(query, "compact") or "").casefold() in {"1", "true", "yes"}
+                max_chars = self._query_values(query, "max_chars")
+                return 200, self.api.get_commonality(
+                    object_type=self._query_values(query, "type") or self._query_values(query, "object_type"),
+                    scope=self._query_values(query, "scope"),
+                    bucket=self._query_values(query, "bucket"),
+                    group_id=self._query_values(query, "group_id") or self._query_values(query, "group"),
+                    limit=int(str(self._query_values(query, "limit") or "50")),
+                    offset=int(str(self._query_values(query, "offset") or "0")),
+                    compact=compact,
+                    max_chars=int(str(max_chars)) if max_chars is not None else None,
+                )
             if method == "GET" and parts and parts[0] == "graph":
                 params: dict[str, Any] = {
                     "query": str(self._query_values(query, "query") or ""),

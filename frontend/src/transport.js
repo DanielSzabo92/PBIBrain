@@ -93,6 +93,14 @@ export function createBrainTransport({ baseUrl = API_ROOT, fetcher = globalThis.
       const search = String(params);
       return request(`/lineage${search ? `?${search}` : ""}`);
     },
+    /** Common / divergent / unique objects across the project's models and reports (issue #14). */
+    getCommonality({ type = "", scope = "", bucket = "", groupId = "", limit = 50, offset = 0 } = {}) {
+      const params = new URLSearchParams({ limit: String(limit), offset: String(offset) });
+      for (const [key, value] of Object.entries({ type, scope, bucket, group_id: groupId })) {
+        if (value) params.set(key, value);
+      }
+      return request(`/commonality?${params}`);
+    },
     getObject(id) {
       return request(`/objects/${encodeURIComponent(id)}`);
     },
