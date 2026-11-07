@@ -23,6 +23,14 @@ and report bindings) without the "renamed" block: the user asked for the rename.
 ``{policy, replacement_row_key}``), ``need_mappings`` (by the row key of the
 needed object: ``{row_key}`` of the target object), and ``item_actions`` (by
 item ID: ``{action}``; ``include_in_rewrite`` selects a rename dependent).
+
+``created_objects`` (issue #13, the agent's ``object_create`` proposal) holds new target
+model objects with no donor, by a ``new:<object_type>:<table>/<name>`` row key:
+``{object_type, table, name, properties}``. Each one is a synthetic compare row with no
+cell and compiles to one CREATE. Its DAX is resolved against the target after the plan,
+so a missing or deleted object blocks it (``need_missing`` / ``removed``) and a renamed
+one is written with its new name. An ``edit`` choice that sets ``expression`` compiles to
+REWRITE_EXPRESSION with the same resolution.
 """
 
 from __future__ import annotations
@@ -51,6 +59,8 @@ SKIP = "skip"
 PROMOTE = "promote"
 COPY_TO_REPORT = "copy_to_report"
 EDIT = "edit"
+CREATE = "create"
+CREATE_KINDS = ("measure", "column")
 CHOICE_KINDS = (KEEP, TAKE, TAKE_PROPERTIES, ADD_NEW_NAME, REMOVE, SKIP, PROMOTE, COPY_TO_REPORT, EDIT)
 SOURCE_KINDS = (TAKE, TAKE_PROPERTIES, ADD_NEW_NAME, PROMOTE, COPY_TO_REPORT)
 PROPERTY_KINDS = ("measure", "column", "relationship")
@@ -60,8 +70,8 @@ PROPERTY_KINDS = ("measure", "column", "relationship")
 # model writer names; ``COMPARE_NAMES`` maps the few that the compare extract names differently.
 SUMMARIZE_BY = ("default", "none", "sum", "min", "max", "count", "average", "distinctcount")
 EDITABLE_PROPERTIES: dict[str, dict[str, Any]] = {
-    "measure": {"format_string": str, "display_folder": str, "description": str, "is_hidden": bool},
-    "column": {"format_string": str, "display_folder": str, "description": str, "is_hidden": bool,
+    "measure": {"expression": str, "format_string": str, "display_folder": str, "description": str, "is_hidden": bool},
+    "column": {"expression": str, "format_string": str, "display_folder": str, "description": str, "is_hidden": bool,
                "data_category": str, "summarize_by": SUMMARIZE_BY, "is_key": bool},
     "table": {"description": str, "is_hidden": bool, "data_category": str},
 }
@@ -76,6 +86,8 @@ def edit_value_error(object_type: str, prop: str, value: Any) -> str | None:
     if prop not in allowed:
         return "unknown_property"
     kind = allowed[prop]
+    if prop == "expression":
+        return None if isinstance(value, str) and value.strip() else "expression_required"
     if kind is bool:
         return None if isinstance(value, bool) else "invalid_value"
     if kind is str:
@@ -174,6 +186,16 @@ class PlanInput:
     item_actions: Mapping[str, Any] = field(default_factory=dict)
     compatibility_level: int | None = None
     naming_rules: Sequence[Mapping[str, Any]] = ()
+    created_objects: Mapping[str, Any] = field(default_factory=dict)
+
+
+def created_row(row_key: str, entry: Mapping[str, Any]) -> dict[str, Any]:
+    """The synthetic compare row of a created object: no cell, so no source has it yet."""
+
+    kind = str(entry.get("object_type") or "")
+    subtype = "calculated" if kind == "column" else kind
+    return {"row_key": row_key, "row_id": row_key, "domain": MODEL, "object_type": kind, "subtype": subtype,
+            "name": str(entry.get("name") or ""), "table": entry.get("table"), "cells": [], "marks": [], "created": True}
 
 
 @dataclass
@@ -203,6 +225,11 @@ class _Compiler:
         self.data = data
         self.rows: list[dict[str, Any]] = list(data.result.rows)
         self.objects = data.result.objects
+        self.authored: dict[str, Mapping[str, Any]] = {}  # created row key to its ``created_objects`` entry
+        for key, entry in sorted(data.created_objects.items()):
+            if isinstance(entry, Mapping) and key not in {row["row_key"] for row in self.rows}:
+                self.rows.append(created_row(key, entry))
+                self.authored[key] = entry
         self.by_key = {row["row_key"]: row for row in self.rows}
         self.row_of: dict[tuple[str, str], dict[str, Any]] = {}
         for row in self.rows:
@@ -318,6 +345,8 @@ class _Compiler:
         row = self.by_key.get(identity.split("#", 1)[0])
         if row is None:
             return None, identity
+        if row.get("created"):
+            return row.get("table"), row["name"]
         item = self.target_object(row)
         if item is None:
             first = next(cell for cell in row["cells"] if cell["present"])
@@ -599,6 +628,8 @@ class _Compiler:
                 reason = edit_value_error(row["object_type"], prop, value)
                 if reason is not None:
                     return reason
+            if "expression" in values and row["object_type"] == "column" and target.subtype != "calculated":
+                return "not_calculated"
         if kind == PROMOTE and self.data.target_model is None:
             return "no_target_model"
         return None
@@ -701,6 +732,47 @@ class _Compiler:
             self.created[row["row_key"]] = (source_id, donor)
             children.append((row, donor))
         self.children[step.step_id] = children
+
+    def register_authored(self) -> list[tuple[_Step, dict[str, Any], Mapping[str, Any]]]:
+        """Register each created object of ``created_objects`` (issue #13) in its target table."""
+
+        work = []
+        for key, entry in sorted(self.authored.items()):
+            row = self.by_key[key]
+            if self.data.target_model is None:
+                self.block("no_target_model", key)
+                continue
+            reason = None
+            if row["object_type"] not in CREATE_KINDS:
+                reason = "unknown_kind"
+            elif not row["name"].strip():
+                reason = "new_name_required"
+            elif not isinstance((entry.get("properties") or {}).get("expression"), str) \
+                    or not entry["properties"]["expression"].strip():
+                reason = "expression_required"
+            home = self.table_row(self.data.target_model, row.get("table"))
+            if reason is None and (home is None or not self.exists(home)):
+                reason = "no_table"
+            if reason is not None:
+                self.block("choice_not_valid", key, reason=reason, choice=CREATE)
+                continue
+            step = self.new_step(STEP_CHOICE, row, CREATE, None, MODEL)
+            self.register(key, row["object_type"], row["subtype"], MODEL, row["name"], home)
+            work.append((step, row, entry))
+        return work
+
+    def build_authored(self, step: _Step, row: Mapping[str, Any], entry: Mapping[str, Any]) -> None:
+        assert self.data.target_model is not None
+        key = row["row_key"]
+        props = {name: value for name, value in sorted((entry.get("properties") or {}).items())
+                 if edit_value_error(row["object_type"], name, value) is None and value is not None}
+        props["expression"], needs = self.translate(step, self.data.target_model, props["expression"], row.get("table"), "expression")
+        home = self.home_row.get(key)
+        if home:
+            needs.add(home)
+        needs.discard(key)
+        self.op(step, "CREATE", key, needs=needs, source_id=None, source_key=None,
+                lineage_tag=new_lineage_tag(self.data.session_id, key), properties=props)
 
     # Compile ------------------------------------------------------------------------------------
 
@@ -829,6 +901,14 @@ class _Compiler:
         key = row["row_key"]
         self.rename_op(step, key, target)
         props = {prop: value for prop, value in sorted((choice.get("set") or {}).items()) if current_value(target, prop) != value}
+        if "expression" in props and self.data.target_model is not None:
+            # A new DAX text is resolved against the target like a donor text: renamed names are written
+            # with the plan's names, and a missing or deleted object blocks.
+            old = target.props.get("expression")
+            new_text, needs = self.translate(step, self.data.target_model, props.pop("expression"), target.table, "expression")
+            needs.discard(key)
+            if new_text != old:
+                self.op(step, "REWRITE_EXPRESSION", key, needs=needs, property="expression", old_text=old, new_text=new_text)
         # The model writer skips a null value; an empty text clears the property in the model library.
         props = {prop: "" if value is None else value for prop, value in props.items()}
         if props:
@@ -1069,6 +1149,8 @@ class _Compiler:
         for dependent, source_id, prop, resolved, text in self.target_texts:
             if dependent in self.deleted:
                 continue
+            if prop == "expression" and "expression" in ((self.choices.get(dependent) or {}).get("set") or {}):
+                continue  # The edit gives the whole new text; build_edit resolves it.
             resourced = self.resourced.get(dependent, set())
             if dependent in self.resourced and (resourced is None or prop.split("/", 1)[0] in resourced):
                 continue
@@ -1173,7 +1255,7 @@ class _Compiler:
             if clash_note and choice.get("kind") in {None, SKIP}:
                 self.block("name_clash", key, name=row["name"], proposed_name=self.proposal(key, row["name"], None))
         changed = sorted(identity for identity in self.own_name
-                         if self.exists(identity) and (identity in self.created or fold(self.own_name[identity]) != fold(self.original_name(identity)[1])))
+                         if self.exists(identity) and (identity in self.created or identity in self.authored or fold(self.own_name[identity]) != fold(self.original_name(identity)[1])))
         for identity in changed:
             clash = self._clashes(identity)
             if clash is None:
@@ -1219,6 +1301,7 @@ class _Compiler:
         self._init_target()
         self.index_target()
         work = self.intents()
+        authored = self.register_authored()
         for step, row, choice in work:
             if choice["kind"] == REMOVE:
                 self.build(step, row, choice)
@@ -1229,6 +1312,8 @@ class _Compiler:
             while self.pending:
                 pending_step, pending_row, source_id, donor, new_tag, folder = self.pending.pop(0)
                 self.build_create(pending_step, pending_row, source_id, donor, new_tag, folder)
+        for step, row, entry in authored:
+            self.build_authored(step, row, entry)
         self.finish_fields()
         self.rewrite_dependents()
         self.rebind_fields()

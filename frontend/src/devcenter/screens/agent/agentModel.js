@@ -3,13 +3,25 @@
 import { t, tn } from "../../copy.js";
 import { planStatus } from "../sessionModel.js";
 
-export const PROPOSAL_STATUSES = Object.freeze(["ready", "source_changed", "user_choice_conflict"]);
-export const PROPOSAL_KINDS = Object.freeze(["merge_choice", "name", "alignment", "removal_policy", "need_mapping", "impact_action"]);
+export const PROPOSAL_STATUSES = Object.freeze(["ready", "needs_review", "source_changed", "user_choice_conflict"]);
+export const PROPOSAL_KINDS = Object.freeze([
+  "merge_choice", "name", "alignment", "removal_policy", "need_mapping", "impact_action",
+  "object_edit", "object_rename", "object_delete", "object_create",
+]);
 
-// The status of an open proposal comes from its blocked field (S10, UC9).
+// The status of an open proposal comes from its blocked field (S10, UC9). A destructive
+// object proposal (issue #13) is "needs_review": the user accepts it one by one, never in "Accept all".
 export function proposalStatus(proposal) {
   const blocked = proposal?.blocked;
-  return blocked === "source_changed" || blocked === "user_choice_conflict" ? blocked : "ready";
+  if (blocked === "source_changed" || blocked === "user_choice_conflict") return blocked;
+  return proposal?.needs_review ? "needs_review" : "ready";
+}
+
+// The safety check of an object proposal (issue #13): plan blocking items and Breaks/Needs counts.
+export function checkText(proposal) {
+  const check = proposal?.check;
+  if (!check) return null;
+  return t("agent.card.check", { breaks: check.breaks ?? 0, needs: check.needs ?? 0, blocking: check.blocking?.length ?? 0 });
 }
 
 export function statusText(status) {
@@ -95,10 +107,14 @@ function planCounts(plan) {
 // The "Accept all" summary (UI design 5.4): kinds, plan now and after, change, and skipped items.
 export function acceptAllSummary({ open, planNow, planAfter }) {
   const ready = readyProposals(open);
+  const skippedKeys = {
+    source_changed: "agent.accept_all.skipped.source_changed",
+    needs_review: "agent.accept_all.skipped.needs_review",
+  };
   const skipped = (open ?? []).filter((item) => proposalStatus(item) !== "ready").map((item) => ({
     id: item.id,
     reason: proposalStatus(item),
-    text: t(proposalStatus(item) === "source_changed" ? "agent.accept_all.skipped.source_changed" : "agent.accept_all.skipped.user_choice", {
+    text: t(skippedKeys[proposalStatus(item)] ?? "agent.accept_all.skipped.user_choice", {
       object: item.target_name || item.target_id,
     }),
   }));

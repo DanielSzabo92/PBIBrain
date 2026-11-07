@@ -89,7 +89,8 @@ class EditChoiceCompilerTests(unittest.TestCase):
                                 props={"display_name": "Page 1"}, extra={"page_id": "P1"})]
         cases = {
             "measure:Sales/Double": ({"kind": EDIT}, "no_edit"),
-            "column:Sales/Amount": ({"kind": EDIT, "set": {"expression": "1"}}, "unknown_property"),
+            # Issue #13: a column takes an expression only when it is a calculated column.
+            "column:Sales/Amount": ({"kind": EDIT, "set": {"expression": "1"}}, "not_calculated"),
             "table:Sales": ({"kind": EDIT, "set": {"is_hidden": "yes"}}, "invalid_value"),
             "page:P1": ({"kind": EDIT, "new_name": "Other"}, "model_only"),
         }

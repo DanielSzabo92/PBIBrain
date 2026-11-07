@@ -5,6 +5,7 @@ import test from "node:test";
 import {
   acceptAllSummary,
   acceptSelectedToast,
+  checkText,
   confidenceText,
   filterProposals,
   newProposalCount,
@@ -97,4 +98,20 @@ test("the log helpers give the author, the action label, None for an empty value
   assert.deepEqual(logParams({ author: "agent", action: "proposal_accept", target: " row-1 ", proposalId: "p-1", pages: 2 }), {
     limit: 100, author: "agent", action: "proposal_accept", target: "row-1", proposalId: "p-1",
   });
+});
+
+test("issue #13: a destructive object proposal needs review and stays out of Accept all", () => {
+  const review = { id: "p-1", kind: "object_delete", blocked: null, needs_review: true, target_name: "Total Sales",
+                   check: { breaks: 2, needs: 0, blocking: [{ kind: "removed" }] } };
+  const edit = { id: "p-2", kind: "object_edit", blocked: null, needs_review: false };
+  assert.equal(proposalStatus(review), "needs_review");
+  assert.equal(proposalAction(review), "accept");
+  assert.equal(statusText("needs_review"), "Review first");
+  assert.deepEqual(readyProposals([review, edit]).map((item) => item.id), ["p-2"]);
+  assert.equal(checkText(review), "Safety check: 2 breaks, 0 needs, 1 blocking items");
+  assert.equal(checkText(edit), null);
+  const summary = acceptAllSummary({ open: [review, edit] });
+  assert.equal(summary.n, 1);
+  assert.deepEqual(summary.skipped.map((item) => item.reason), ["needs_review"]);
+  assert.match(summary.skipped[0].text, /^Total Sales: this change can break/);
 });

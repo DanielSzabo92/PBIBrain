@@ -77,6 +77,7 @@ def build_plan(devcenter: Any, document: Mapping[str, Any], *, include_proposals
         target_report=report,
         sources=sources,
         merge_choices=document.get("merge_choices") or {},
+        created_objects=document.get("created_objects") or {},
         removal_policies=document.get("removal_policies") or {},
         need_mappings=document.get("need_mappings") or {},
         item_actions=document.get("item_actions") or {},

@@ -92,6 +92,33 @@ model does not have). `status` is `UNCHANGED`, `CHANGED`, `NEEDS`, `BREAKS`, `UN
 it is open. To make edits that the user reviews before they reach the project files, use
 the change guard (`docs/CHANGE_GUARD_CONTRACT.md`): its no-container tier needs no Docker.
 
+## Change objects: object proposals
+
+The agent changes model objects through the Development Center's `proposal_submit` tool
+(route `POST proposals` in `TOOL_ROUTES`), with the app open on a session whose target is
+the model. The user accepts each change in the Agent tab; only the app writes files (Apply,
+ADR 0003), through the change guard, and Undo works as for any plan.
+
+| `kind` | `target` | `payload` |
+| --- | --- | --- |
+| `object_edit` | compare row key, e.g. `measure:Sales/Margin` | `{"set": {"expression": "...", "format_string": "0.0%", "description": "...", "display_folder": "KPI", "is_hidden": true}}` (columns also `data_category`, `summarize_by`, `is_key`; tables `description`, `is_hidden`, `data_category`; `expression` only on measures and calculated columns; `null` clears a text) |
+| `object_rename` | compare row key | `{"new_name": "Gross Margin"}` (DAX and report references are rewritten) |
+| `object_delete` | compare row key | `{}` |
+| `object_create` | ignored (use `"new"`); the reply gives `new:<type>:<table>/<name>` | `{"object_type": "measure" or "column", "table": "Sales", "name": "Margin %", "properties": {"expression": "DIVIDE([Margin], [Total Sales])", "format_string": "0.0%"}}` (a column is a calculated column) |
+
+Find row keys with `compare_rows_list` (`type`, `table`, `q`). Each submit is checked against
+the plan with the proposal. A DAX syntax error, a name the model does not have, a name clash
+or a property the object cannot take is refused with `invalid_payload`, `details.reason:
+"proposal_not_valid"` and the plan `blocking` items: fix the proposal and submit again. A
+valid proposal comes back with `check`: `plan_status`, the plan `blocking` items of the target
+(for example `removed` when a delete leaves users), `breaks` and `needs` counts and the impact
+`items` (`direction`, `severity`, `certainty`, `blocking`, `object`).
+
+`needs_review` is true for a delete, a rename with Breaks and an expression change with
+Breaks, whatever the confidence: "Accept all" skips them and the user accepts each one alone.
+A delete of a used object stays blocked in the plan until the user chooses a Removal Policy
+(cascade or repoint); the agent can propose one with `removal_policy`.
+
 ## MCP without the app and reply budgets
 
 Each project scan also writes `.pbibrain/agent-snapshot.json`: a compact copy of the

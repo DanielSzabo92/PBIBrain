@@ -11,7 +11,11 @@
         "alignment",
         "removal_policy",
         "need_mapping",
-        "impact_action"
+        "impact_action",
+        "object_edit",
+        "object_rename",
+        "object_delete",
+        "object_create"
       ]
     },
     "target": {
@@ -164,6 +168,82 @@
         "properties": {
           "payload": {
             "$ref": "https://pbibrain.local/devcenter/contracts/agent.json#/$defs/payload_impact_action"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "object_edit"
+          }
+        },
+        "required": [
+          "kind"
+        ]
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "https://pbibrain.local/devcenter/contracts/agent.json#/$defs/payload_object_edit"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "object_rename"
+          }
+        },
+        "required": [
+          "kind"
+        ]
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "https://pbibrain.local/devcenter/contracts/agent.json#/$defs/payload_object_rename"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "object_delete"
+          }
+        },
+        "required": [
+          "kind"
+        ]
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "https://pbibrain.local/devcenter/contracts/agent.json#/$defs/payload_object_delete"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "object_create"
+          }
+        },
+        "required": [
+          "kind"
+        ]
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "https://pbibrain.local/devcenter/contracts/agent.json#/$defs/payload_object_create"
           }
         }
       }
