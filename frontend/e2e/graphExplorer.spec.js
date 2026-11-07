@@ -116,7 +116,7 @@ test("a dense loaded slice starts compact, keeps counts honest, and retains the 
   const readable = await page.locator(".flow-node-name").evaluateAll((labels) => labels.every((label) => label.getBoundingClientRect().height >= 12));
   expect(readable).toBe(true);
   await page.screenshot({ path: "test-results/graph-dense-overview.png", fullPage: true });
-  await page.getByRole("tab", { name: "Full graph", exact: true }).click();
+  await page.getByRole("tab", { name: "Lineage", exact: true }).click();
   await expect(page.locator(".react-flow__node-brain")).toHaveCount(nodes.length);
   await expect(page.locator(".react-flow__edge")).toHaveCount(edges.length);
   await page.getByRole("tab", { name: "Overview", exact: true }).click();

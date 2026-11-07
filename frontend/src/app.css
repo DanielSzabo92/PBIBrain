@@ -1038,3 +1038,99 @@ p.object-review { padding: 0 4px; }
 @media (max-width: 360px) {
   .graph-toolbar .ui-tabs-trigger { padding: 0 5px; gap: 5px; }
 }
+
+/* ---------- Lineage lanes ---------------------------------------------- */
+/* Lane headers sit above each column: Models › Tables › Columns › Calculations › Visuals › … › Reports. */
+.react-flow__node-lane { cursor: default; }
+.lineage-lane {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 8px; height: 28px; padding: 0 2px;
+  border-bottom: 1px solid var(--line-strong); color: var(--text-2); font-size: var(--fs-meta); font-weight: 600; white-space: nowrap;
+}
+/* Lane names keep a readable on-screen size when zoomed out, the same way node names do. */
+.is-mid .lineage-lane > span { transform: scale(var(--name-scale)); transform-origin: left bottom; }
+.is-mid .lineage-lane > .lineage-lane-count { transform-origin: right bottom; }
+.lineage-lane-count { color: var(--text-3); font-weight: 500; font-variant-numeric: tabular-nums; }
+
+/* ---------- Impact matrix ----------------------------------------------- */
+.impact-matrix-view { display: flex; flex: 1; flex-direction: column; min-height: 0; background: var(--bg); }
+.mx-bar { display: flex; align-items: center; gap: 16px; min-height: 40px; padding: 0 12px; border-bottom: 1px solid var(--line); background: var(--surface); }
+.mx-legend { display: inline-flex; align-items: center; gap: 16px; color: var(--text-2); font-size: var(--fs-meta); }
+.mx-legend > span { display: inline-flex; align-items: center; gap: 6px; }
+.mx-summary { color: var(--text-2); font-size: var(--fs-meta); font-variant-numeric: tabular-nums; }
+.mx-summary strong { color: var(--warn); font-weight: 600; }
+.mx-toggle { display: inline-flex; align-items: center; gap: 6px; color: var(--text-2); font-size: var(--fs-meta); font-weight: 500; cursor: pointer; }
+.mx-notice { margin: 0; padding: 6px 12px; border-bottom: 1px solid var(--line); background: var(--warn-tint); color: var(--warn); font-size: var(--fs-meta); }
+.mx-scroll { flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; }
+
+.impact-matrix { border-collapse: separate; border-spacing: 0; font-size: var(--fs-meta); }
+.impact-matrix th, .impact-matrix td { padding: 0; border-bottom: 1px solid var(--line); background: var(--bg); }
+.impact-matrix td { width: 26px; min-width: 26px; height: 26px; border-right: 1px solid color-mix(in srgb, var(--line) 60%, transparent); text-align: center; vertical-align: middle; }
+.impact-matrix thead th { position: sticky; z-index: 2; background: var(--surface); }
+.impact-matrix thead tr:nth-child(1) th { top: 0; height: 30px; }
+.impact-matrix thead tr:nth-child(2) th { top: 30px; height: 28px; }
+.impact-matrix thead tr:nth-child(3) th { top: 58px; }
+.impact-matrix tbody th { position: sticky; left: 0; z-index: 1; width: 248px; min-width: 248px; max-width: 248px; border-right: 1px solid var(--line-strong); background: var(--bg); text-align: left; }
+.impact-matrix .mx-corner { left: 0; z-index: 3; width: 248px; min-width: 248px; padding: 8px 12px; border-right: 1px solid var(--line-strong); color: var(--text-2); font-weight: 500; text-align: left; vertical-align: bottom; }
+.mx-corner { display: table-cell; }
+.mx-corner > span { display: block; }
+.mx-corner-x { margin-top: 4px; color: var(--text-3); font-weight: 400; }
+/* max-width: 0 keeps group headers from widening their columns; names ellipsize and keep a tooltip. */
+.mx-report, .mx-page { max-width: 0; overflow: hidden; border-left: 1px solid var(--line-strong); text-align: left; }
+.mx-col { width: 26px; min-width: 26px; height: 132px; padding: 0 0 4px !important; vertical-align: bottom; text-align: center; border-right: 1px solid color-mix(in srgb, var(--line) 60%, transparent); }
+.mx-col.is-folded { height: 132px; }
+/* Column labels read bottom-up, the way spreadsheet headers are rotated. */
+.mx-col-label {
+  display: inline-flex; align-items: center; gap: 6px; width: 26px; max-height: 124px; padding: 6px 0; overflow: hidden;
+  writing-mode: vertical-rl; transform: rotate(180deg); border: 0; border-radius: var(--r-xs); background: none;
+  color: var(--text-2); font: inherit; white-space: nowrap; cursor: pointer; text-align: left;
+  transition: background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+}
+.mx-col-label .type-glyph { transform: rotate(90deg); }
+.mx-col-label:hover { background: var(--surface-hover); }
+.mx-col-label > span:last-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.mx-col-label:hover, .mx-col.is-selected .mx-col-label { color: var(--text); }
+.mx-col-label.mx-dim { justify-content: flex-start; cursor: default; }
+.mx-total-head { min-width: 96px; padding: 0 10px; color: var(--text-2); font-weight: 500; text-align: left; vertical-align: bottom; padding-bottom: 8px; border-left: 1px solid var(--line-strong); }
+
+.mx-fold, .mx-row-label {
+  display: flex; align-items: center; gap: 6px; width: 100%; height: 26px; padding: 0 8px; overflow: hidden; border: 0; background: none;
+  color: var(--text); font: inherit; text-align: left; white-space: nowrap; cursor: pointer; border-radius: var(--r-xs);
+  transition: background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+}
+.mx-fold > span:not(.type-glyph), .mx-row-label > span:not(.type-glyph) { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.mx-fold svg:first-child { flex: none; width: 14px; height: 14px; color: var(--text-3); }
+.mx-fold:hover, .mx-row-label:hover { background: var(--surface-hover); }
+.mx-fold:focus-visible, .mx-row-label:focus-visible, .mx-col-label:focus-visible { outline: 2px solid var(--brand); outline-offset: -2px; }
+.mx-report .mx-fold { font-weight: 600; }
+.mx-page .mx-fold { color: var(--text-2); }
+.mx-dim { color: var(--text-3); font-weight: 400; font-variant-numeric: tabular-nums; }
+.mx-fold .mx-dim { margin-left: auto; }
+.mx-page-folded { padding: 0 8px !important; text-align: left; }
+
+.mx-model-row th { background: var(--surface) !important; }
+.mx-model-row th .mx-fold { font-weight: 600; }
+.mx-model-row td { background: var(--surface); }
+.mx-table-row th .mx-fold { padding-left: 16px; color: var(--text-2); font-weight: 500; }
+.mx-table-row.is-folded th .mx-fold { color: var(--text); }
+.mx-object-row th .mx-row-label { padding-left: 34px; }
+.mx-object-row:hover th, .mx-object-row:hover td, .mx-table-row:hover td, .mx-table-row:hover th { background: var(--surface-hover); }
+.mx-object-row.is-selected th .mx-row-label { background: var(--surface-3); }
+.mx-object-row.is-unused .mx-row-label > span:last-child { color: var(--text-3); }
+.mx-band { background: transparent; }
+
+/* Cell marks: solid = direct use, outline = through a calculation (same language as fact vs inferred). */
+.mx-mark { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: middle; transition: transform var(--dur-fast) var(--ease-out); }
+.mx-mark.is-direct { background: var(--text); }
+.mx-mark.is-indirect { border: 1.5px solid var(--text-2); }
+td:hover > .mx-mark { transform: scale(1.2); }
+.mx-heat {
+  display: inline-grid; place-items: center; width: 22px; height: 18px; border-radius: 3px; font-size: var(--fs-micro); font-weight: 600; font-variant-numeric: tabular-nums;
+  background: color-mix(in srgb, var(--text) calc(var(--heat) * 70%), transparent); color: var(--text);
+}
+.mx-off { background: repeating-linear-gradient(135deg, transparent 0 4px, color-mix(in srgb, var(--line-strong) 70%, transparent) 4px 5px) !important; }
+.mx-swatch-off { display: inline-block; width: 12px; height: 12px; border: 1px solid var(--line-strong); border-radius: 3px; background: repeating-linear-gradient(135deg, transparent 0 3px, var(--line-strong) 3px 4px); }
+.mx-total { min-width: 96px; padding: 0 10px !important; border-left: 1px solid var(--line-strong); text-align: left !important; white-space: nowrap; }
+.mx-total > span[data-ui-number] { color: var(--text-2); font-variant-numeric: tabular-nums; }
+.mx-total-bar { display: inline-block; width: 40px; height: 4px; margin-right: 8px; border-radius: 2px; background: var(--surface-3); vertical-align: middle; position: relative; overflow: hidden; }
+.mx-total-bar::after { content: ""; position: absolute; inset: 0; background: var(--text-2); transform: scaleX(var(--share)); transform-origin: left; }
+.mx-unused { color: var(--warn); font-size: var(--fs-meta); }

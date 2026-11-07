@@ -52,7 +52,7 @@ test("graph defaults to source objects and isolates a selected neighborhood", as
   await page.getByRole("button", { name: /^Display/ }).click();
   await expect(page.getByRole("checkbox", { name: "Include suggestions" })).not.toBeChecked();
   await page.keyboard.press("Escape");
-  await page.getByRole("tab", { name: "Full graph", exact: true }).click();
+  await page.getByRole("tab", { name: "Lineage", exact: true }).click();
   await expect(page.locator(".react-flow__node-brain")).toHaveCount(graph.nodes.length);
   const measure = graph.nodes.find((node) => node.name === "Net Sales");
   await page.locator(`.react-flow__node-brain[data-id="${measure.id}"]`).dblclick();
@@ -61,7 +61,7 @@ test("graph defaults to source objects and isolates a selected neighborhood", as
   await noInternals(page);
   await page.getByRole("button", { name: "Back to project", exact: true }).click();
   await expect(page.locator(".react-flow__node-brain")).toHaveCount(graph.nodes.length);
-  await expect(page.getByRole("tab", { name: "Full graph", exact: true })).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByRole("tab", { name: "Lineage", exact: true })).toHaveAttribute("aria-selected", "true");
   await page.screenshot({ path: "test-results/overhaul-graph.png", fullPage: true });
 });
 
@@ -158,7 +158,7 @@ test("large native scans start bounded and search finds objects beyond the first
     expect((await request.post("/api/scan", { data: {} })).ok()).toBe(true);
     await page.goto("/");
     await page.getByRole("button", { name: "Graph", exact: true }).click();
-    await page.getByRole("tab", { name: "Full graph", exact: true }).click();
+    await page.getByRole("tab", { name: "Lineage", exact: true }).click();
     await expect(page.locator(".react-flow__node-brain")).toHaveCount(80);
     await expect(page.locator(".scope-notice")).toContainText("80 of 183");
     await page.getByRole("searchbox", { name: "Filter graph objects" }).fill("Scenario 174");
@@ -216,7 +216,7 @@ test("native scan exposes full report hierarchy and matching visual bindings", a
     for (const group of groups) expect(details.visual_bindings[group]).toHaveLength(1);
     await page.goto("/");
     await page.getByRole("button", { name: "Graph", exact: true }).click();
-  await page.getByRole("tab", { name: "Full graph", exact: true }).click();
+  await page.getByRole("tab", { name: "Lineage", exact: true }).click();
     await expect(page.locator(".react-flow__node-brain")).toHaveCount(graph.nodes.length);
     const card = page.locator(".react-flow__node-brain").filter({ hasText: "Revenue trend" });
     // The node shows the type as a glyph; its accessible name carries the visual kind.
@@ -306,7 +306,7 @@ test("flat controls remain usable across navigation, graph, details, Inspector a
     await page.getByRole("navigation").getByRole("button", { name: new RegExp("^" + name) }).click();
     await check();
   }
-  await page.getByRole("tab", { name: "Full graph", exact: true }).click();
+  await page.getByRole("tab", { name: "Lineage", exact: true }).click();
   await page.locator(".react-flow__node-brain").filter({ hasText: "Net Sales" }).click();
   await expect(page.locator(".graph-detail-title")).toHaveText("Net Sales");
   await check();

@@ -14,6 +14,8 @@ import { TypeGlyph } from "./TypeGlyph";
 import { ARTIFACT_GROUPS, EDGE_TYPES, artifactColor, artifactGroup, middleEllipsis, typeLabel } from "../graphPresentation";
 import { buildExplorerGraph, layoutExplorerGraph, layoutArtifactGraph, layoutGraph, NODE_WIDTH, NODE_HEIGHT, GROUP_WIDTH, GROUP_HEIGHT } from "../graphLayout";
 import { objectName, scopeChoices, statusLabel, visualType } from "../presentation";
+import { layoutLineage, lineageOf } from "../lineage";
+import ImpactMatrix from "./ImpactMatrix";
 import { isTextEntry } from "../shortcuts";
 
 const EMPTY_FILTERS = { modelId: "", reportId: "", query: "", artifact: "", objectType: "", status: "factual", edgeType: "" };
@@ -35,7 +37,7 @@ function zoomTier(zoom) {
   return (Math.floor(zoom * 20 + 1e-6) / 20).toFixed(2);
 }
 const nameScale = (tier) => tier === "full" || tier === "far" ? 1 : 11 / (13 * Number(tier));
-// Full graph fits no further out than the smallest zoom that still shows names (see GLYPH_ZOOM).
+// Lineage fits no further out than the smallest zoom that still shows names (see GLYPH_ZOOM).
 const FULL_GRAPH_MIN_ZOOM = 0.55;
 const DETAIL_PANE_WIDTH = 360;
 // The pane overlays the canvas for one double-click window before it docks, so the second click of a
@@ -103,7 +105,7 @@ function normalizeGraphSession(value, selectedId) {
     revision: typeof incoming.revision === "number" ? incoming.revision : defaults.revision,
     result: incoming.result || null,
     grouped: typeof incoming.grouped === "boolean" ? incoming.grouped : defaults.grouped,
-    viewMode: incoming.viewMode === "full" ? "full" : "overview",
+    viewMode: ["full", "matrix"].includes(incoming.viewMode) ? incoming.viewMode : "overview",
     expandedIds: Array.isArray(incoming.expandedIds) ? incoming.expandedIds.filter((id) => typeof id === "string") : null,
     hiddenTypes: Array.isArray(incoming.hiddenTypes) ? incoming.hiddenTypes.filter((type) => typeof type === "string") : [],
     viewports: incoming.viewports && typeof incoming.viewports === "object" ? incoming.viewports : {},
@@ -414,7 +416,8 @@ export default function GraphView({ transport, overview, snapshot, selectedId, c
         <TabsList aria-label="Graph view">
           <TabsTrigger value="overview" title="Owners first: expand a group to see what is inside">Overview</TabsTrigger>
           <TabsTrigger value="connections" disabled={!centerId && !focusedNode} title="One object and what it connects to (double-click an object)">Connections</TabsTrigger>
-          <TabsTrigger value="full" title="Every loaded object and relationship">Full graph</TabsTrigger>
+          <TabsTrigger value="full" title="Every loaded object in lineage lanes: model › tables › columns › calculations › visuals › pages › reports">Lineage</TabsTrigger>
+          <TabsTrigger value="matrix" title="Which model objects each visual uses, directly or through other calculations">Matrix</TabsTrigger>
         </TabsList>
       </Tabs>
       <span className="toolbar-divider" aria-hidden="true" />
@@ -431,7 +434,8 @@ export default function GraphView({ transport, overview, snapshot, selectedId, c
     </div>
     <div className="graph-body">
       <div id="graph-canvas" className="graph-canvas-card" data-slot="card" aria-busy={loading} style={docked ? { marginRight: DETAIL_PANE_WIDTH + 8 } : undefined}>
-        {error ? <div className="graph-empty" role="alert"><span className="empty-icon tone-bad" aria-hidden="true"><TriangleAlert /></span><h3>Graph unavailable</h3><p>{error}</p><Button variant="outline" onClick={loadGraph}>Retry graph</Button></div>
+        {viewMode === "matrix" ? <ImpactMatrix transport={transport} filters={filters} query={query} colors={colors} selectedId={focusedNode?.id} onSelect={setFocusedNode} />
+          : error ? <div className="graph-empty" role="alert"><span className="empty-icon tone-bad" aria-hidden="true"><TriangleAlert /></span><h3>Graph unavailable</h3><p>{error}</p><Button variant="outline" onClick={loadGraph}>Retry graph</Button></div>
           : !graph ? <div className="graph-empty graph-loading" role="status"><p>Loading graph…</p></div>
           : canvasNodes.length ? <GraphCanvas key={canvasKey} apiRef={canvasApi} overview={overviewMode} full={viewMode === "full"} grouped={!overviewMode && grouped} onCenter={center} onInspect={inspect} nodes={canvasNodes} edges={canvasEdges} selectedId={focusedNode?.id || centerId} docked={docked} warningIds={warningIds} direction={direction} showLabels={showLabels} colors={colors} onSelect={setFocusedNode} onToggleGroup={toggleGroup} viewport={graphSession.viewports[canvasKey]} onViewportChange={saveViewport} placements={graphSession.placements[canvasKey]} onPlacementsChange={savePlacements} />
           : <div className="graph-empty"><span className="empty-icon" aria-hidden="true"><Search /></span><h3>No matching objects</h3><p>{hasFilters ? "Try another filter or clear the filters." : "Scan project sources to see their relationships."}</p>{hasFilters ? <Button variant="outline" onClick={reset}>Clear filters</Button> : null}</div>}
@@ -444,9 +448,9 @@ export default function GraphView({ transport, overview, snapshot, selectedId, c
               <Button variant="ghost" size="xs" onClick={() => { updateSession({ centerId: "" }); setFocusedNode(null); }}>Back to project</Button>
             </span>
           </div> : overviewMode && graphSession.expandedIds != null && explorer.collapsedCount < explorer.nodes.filter((node) => node.explorerChildCount > 0).length ? <Button variant="outline" size="xs" className="graph-overlay-button" onClick={() => updateSession({ expandedIds: null })}><ChevronsDownUp />Collapse all</Button> : null}
-          {graph?.truncated ? <div className="scope-notice">Showing {nodes.length} of {graph.total_nodes} objects{limit < 1000 ? <> · <Button variant="link" size="xs" onClick={() => updateSession({ limit: Math.min(limit * 2, 1000) })}>Show more</Button></> : null}</div> : null}
+          {graph?.truncated && viewMode !== "matrix" ? <div className="scope-notice">Showing {nodes.length} of {graph.total_nodes} objects{limit < 1000 ? <> · <Button variant="link" size="xs" onClick={() => updateSession({ limit: Math.min(limit * 2, 1000) })}>Show more</Button></> : null}</div> : null}
         </div>
-        {evidenceShown ? <div className="graph-overlay graph-overlay-key"><EvidenceKey /></div> : null}
+        {evidenceShown && viewMode !== "matrix" ? <div className="graph-overlay graph-overlay-key"><EvidenceKey /></div> : null}
       </div>
       <GraphDetails node={focusedNode} settled={paneSettled} colors={colors} transport={transport} onClose={closeDetails} onSelect={setFocusedNode} onCenter={center} onInspect={inspect} />
     </div>
@@ -530,12 +534,15 @@ function GraphCanvas({ apiRef, overview, full, grouped, onCenter, onInspect, nod
   const initialViewport = useRef(viewport);
   const previousPositions = useRef(new Map(Object.entries(placements || {})));
   const sizeOf = useCallback((node) => overview && node.explorerChildCount > 0 ? { width: GROUP_WIDTH, height: GROUP_HEIGHT } : { width: NODE_WIDTH, height: NODE_HEIGHT }, [overview]);
+  // Lineage lanes (Model › Tables › Columns › Calculations › Visuals › … › Reports) for every view except Overview.
+  const lineage = !overview && !grouped;
   const layout = useMemo(() => {
+    if (lineage) return { ...layoutLineage(nodes, edges, direction), groups: [] };
     if (!overview) return grouped ? layoutArtifactGraph(nodes, edges, direction, sizeOf) : { ...layoutGraph(nodes, edges, direction, sizeOf), groups: [] };
     const next = layoutExplorerGraph(nodes, edges, direction, previousPositions.current, sizeOf);
     previousPositions.current = new Map(next.nodes.map(({ node, position }) => [node.id, position]));
     return { ...next, groups: [] };
-  }, [nodes, edges, direction, grouped, overview, sizeOf]);
+  }, [nodes, edges, direction, grouped, overview, sizeOf, lineage]);
   useEffect(() => {
     if (overview) onPlacementsChange(Object.fromEntries(previousPositions.current));
   }, [layout, overview, onPlacementsChange]);
@@ -569,6 +576,18 @@ function GraphCanvas({ apiRef, overview, full, grouped, onCenter, onInspect, nod
     return () => clearTimeout(timer);
   }, [docked, selectedId, reveal]);
 
+  // Lineage reads from the left: when the lanes cannot fit at a readable zoom, open at Models (top-left)
+  // instead of the middle of the picture. Estimated from the window, since the canvas is not measured yet.
+  const leftAnchor = useMemo(() => {
+    if (!lineage || initialViewport.current || !layout.nodes.length || typeof window === "undefined") return null;
+    const xs = layout.nodes.map(({ position }) => position.x), ys = layout.nodes.map(({ position }) => position.y);
+    const minX = Math.min(...xs), minY = Math.min(...ys) - 48;
+    const spanX = Math.max(...xs) + NODE_WIDTH - minX, spanY = Math.max(...ys) + NODE_HEIGHT - minY;
+    const fitZoom = Math.min(1, (window.innerWidth - 300) / spanX, (window.innerHeight - 260) / spanY);
+    return fitZoom < minFitZoom ? { x: 24 - minX * minFitZoom, y: 24 - minY * minFitZoom, zoom: minFitZoom } : null;
+    // Only for the first paint of this canvas.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const fit = useCallback(() => flow?.fitView({ ...fitOptions, ...travel(fitDuration) }), [flow, fitOptions, fitDuration]);
   useEffect(() => {
     if (!apiRef) return undefined;
@@ -581,16 +600,20 @@ function GraphCanvas({ apiRef, overview, full, grouped, onCenter, onInspect, nod
     return () => { apiRef.current = null; };
   }, [apiRef, fit, flow, stepDuration]);
 
+  // In lineage lanes a selection lights its whole chain: what feeds it and everything it feeds, to the report.
+  const trace = useMemo(() => lineage && selectedId ? lineageOf(selectedId, layout.edges) : null, [lineage, selectedId, layout]);
   const connected = useMemo(() => {
+    if (trace) return trace.ids;
     const ids = new Set([selectedId]);
     edges.forEach((edge) => {
       if (edge.from_id === selectedId || edge.to_id === selectedId) { ids.add(edge.from_id); ids.add(edge.to_id); }
     });
     return ids;
-  }, [edges, selectedId]);
+  }, [edges, selectedId, trace]);
   const focusing = Boolean(selectedId) && rects.has(selectedId);
 
   const flowNodes = useMemo(() => [
+    ...(layout.lanes || []).map((lane) => ({ id: `lane:${lane.key}`, type: "lane", position: { x: lane.x, y: lane.y }, width: lane.width, height: 28, measured: { width: lane.width, height: 28 }, selectable: false, focusable: false, draggable: false, style: { width: lane.width, pointerEvents: "none" }, data: lane })),
     ...layout.groups.map((group) => ({ id: group.id, type: "artifactGroup", position: group.position, width: group.width, height: group.height, measured: { width: group.width, height: group.height }, zIndex: -1, selectable: false, focusable: false, draggable: false, style: { width: group.width, height: group.height, pointerEvents: "none" }, data: { ...group, color: colors.groups[group.key] } })),
     ...layout.nodes.map(({ node }) => {
       const rect = rects.get(node.id);
@@ -608,23 +631,25 @@ function GraphCanvas({ apiRef, overview, full, grouped, onCenter, onInspect, nod
       };
     }),
   ], [layout, rects, warningIds, overview, selectedId, focusing, connected, direction, onToggleGroup, colors, fontsReady, scale]);
+  const laneCount = layout.lanes?.length || 0;
 
   const flowEdges = useMemo(() => {
     const pairCount = new Map();
-    return layout.edges.map(({ edge }) => {
+    return layout.edges.map(({ edge, from = edge.from_id, to = edge.to_id }) => {
       const pair = [edge.from_id, edge.to_id].sort().join("\u0000");
       const index = pairCount.get(pair) || 0;
       pairCount.set(pair, index + 1);
       const evidenceClass = String(edge.evidence_class || "FACT").toUpperCase();
-      const onPath = Boolean(selectedId) && (edge.from_id === selectedId || edge.to_id === selectedId);
+      const onPath = trace ? trace.edgeIds.has(edge.id) : Boolean(selectedId) && (edge.from_id === selectedId || edge.to_id === selectedId);
       const warning = edge.type === "CONFLICTS_WITH";
       const structure = STRUCTURE_EDGES.has(edge.type);
       const source = byId.get(edge.from_id);
       const target = byId.get(edge.to_id);
-      const geometry = edgeGeometry(rects.get(edge.from_id), rects.get(edge.to_id), direction, index * 10);
+      // Lineage draws every link in flow direction (left → right), so arrows read "flows into".
+      const geometry = edgeGeometry(rects.get(from), rects.get(to), direction, index * 10);
       const tone = onPath ? "var(--brand)" : warning ? "var(--warn)" : "var(--graph-edge)";
       return {
-        id: edge.id, source: edge.from_id, target: edge.to_id, type: "routed",
+        id: edge.id, source: from, target: to, type: "routed",
         label: typeLabel(edge.type),
         ariaLabel: `${objectName(source)} ${typeLabel(edge.type)} ${objectName(target)}`,
         className: ["flow-edge", evidenceClass.toLowerCase(), structure ? "is-structure" : "", warning ? "warning" : "", onPath ? "on-path" : "", focusing && !onPath ? "is-dimmed" : "", showLabels || onPath && !structure ? "show-label" : ""].filter(Boolean).join(" "),
@@ -633,7 +658,7 @@ function GraphCanvas({ apiRef, overview, full, grouped, onCenter, onInspect, nod
         data: geometry,
       };
     });
-  }, [layout, rects, byId, direction, selectedId, focusing, showLabels]);
+  }, [layout, rects, byId, direction, selectedId, focusing, showLabels, trace]);
 
   // Arrow keys move to the connected object that lies in that direction (else the nearest object there).
   const step = useCallback((fromId, key) => {
@@ -680,17 +705,20 @@ function GraphCanvas({ apiRef, overview, full, grouped, onCenter, onInspect, nod
   const onMove = useCallback((_, next) => { setTier(zoomTier(next.zoom)); setLabelsReadable(next.zoom >= LABEL_ZOOM); }, []);
   const [hoverId, setHoverId] = useState(null);
   const farLabels = far ? [...new Set([selectedId, hoverId])].filter((id) => id && rects.has(id)).map((id) => ({ id, rect: rects.get(id), node: byId.get(id) })) : [];
-  const showMinimap = flowNodes.length > MINIMAP_ABOVE;
+  const showMinimap = flowNodes.length - laneCount > MINIMAP_ABOVE;
   return <div ref={wrapper} className={`flow-wrap artifact-flow ${overview ? "explorer-flow" : ""} ${far ? "is-far" : scale !== 1 ? "is-mid" : ""} ${labelsReadable ? "" : "labels-off"} ${focusing ? "is-focusing" : ""}`} style={{ "--name-scale": scale }} role="region" aria-label="Directed project graph" aria-roledescription="graph" onKeyDown={onKeyDown}>
-    <ReactFlow onInit={(instance) => { setFlow(instance); const current = instance.getZoom(); setZoom(current); setTier(zoomTier(current)); setLabelsReadable(current >= LABEL_ZOOM); }} nodes={flowNodes} edges={flowEdges} nodeTypes={NODE_RENDERERS} edgeTypes={EDGE_RENDERERS}
+    <ReactFlow onInit={(instance) => {
+      setFlow(instance);
+      const current = instance.getZoom(); setZoom(current); setTier(zoomTier(current)); setLabelsReadable(current >= LABEL_ZOOM);
+    }} nodes={flowNodes} edges={flowEdges} nodeTypes={NODE_RENDERERS} edgeTypes={EDGE_RENDERERS}
       onNodeDoubleClick={(_, node) => { if (node.type === "brain") onCenter(node.data.node); }} onNodeClick={(_, node) => { if (node.type === "brain") onSelect(node.data.node); }} onPaneClick={() => onSelect(null)}
       onNodeMouseEnter={(_, node) => setHoverId(node.id)} onNodeMouseLeave={() => setHoverId(null)}
       onMove={onMove} onMoveEnd={(_, nextViewport) => { setZoom(nextViewport.zoom); onViewportChange(nextViewport); }}
-      defaultViewport={initialViewport.current} zoomOnDoubleClick={false} fitView={!initialViewport.current} fitViewOptions={fitOptions} minZoom={0.08} maxZoom={2}
+      defaultViewport={initialViewport.current || leftAnchor || undefined} zoomOnDoubleClick={false} fitView={!initialViewport.current && !leftAnchor} fitViewOptions={fitOptions} minZoom={0.08} maxZoom={2}
       nodesDraggable={false} nodesConnectable={false} edgesFocusable={false} disableKeyboardA11y deleteKeyCode={null} selectionKeyCode={null} multiSelectionKeyCode={null} proOptions={{ hideAttribution: true }}>
       <Background gap={20} size={1.2} color="var(--grid-dot)" />
       {farLabels.length ? <FarLabels items={farLabels} /> : null}
-      {showMinimap ? <MiniMap pannable zoomable bgColor="var(--surface)" nodeColor={(node) => node.data?.color || "#94a3b8"} nodeStrokeColor={(node) => node.data?.color || "#94a3b8"} nodeBorderRadius={4} nodeClassName={(node) => node.type === "artifactGroup" ? "minimap-artifact-group" : ""} maskColor="var(--minimap-mask)" style={{ width: 168, height: 112 }} /> : null}
+      {showMinimap ? <MiniMap pannable zoomable bgColor="var(--surface)" nodeColor={(node) => node.type === "lane" ? "transparent" : node.data?.color || "#94a3b8"} nodeStrokeColor={(node) => node.type === "lane" ? "transparent" : node.data?.color || "#94a3b8"} nodeBorderRadius={4} nodeClassName={(node) => node.type === "artifactGroup" ? "minimap-artifact-group" : ""} maskColor="var(--minimap-mask)" style={{ width: 168, height: 112 }} /> : null}
     </ReactFlow>
     <div className="graph-zoom-controls" data-ui-actions="">
       <Button variant="ghost" size="icon-sm" aria-label="Zoom out" tooltip="Zoom out (−)" onClick={() => flow?.zoomOut(travel(stepDuration))}><Minus /></Button>
@@ -739,5 +767,9 @@ function RoutedEdge({ id, data, markerEnd, style, label, interactionWidth }) {
   return <BaseEdge id={id} path={data.path} markerEnd={markerEnd} style={style} label={label} labelX={data.labelX} labelY={data.labelY} labelBgPadding={[6, 3]} labelBgBorderRadius={4} interactionWidth={interactionWidth ?? 16} />;
 }
 
-const NODE_RENDERERS = { brain: BrainFlowNode, artifactGroup: ArtifactGroup };
+function LaneHeader({ data }) {
+  return <div className="lineage-lane"><span>{data.label}</span><span className="lineage-lane-count" data-ui-number="">{data.count}</span></div>;
+}
+
+const NODE_RENDERERS = { brain: BrainFlowNode, artifactGroup: ArtifactGroup, lane: LaneHeader };
 const EDGE_RENDERERS = { routed: RoutedEdge };
