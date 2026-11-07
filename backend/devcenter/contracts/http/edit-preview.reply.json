@@ -1,0 +1,155 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pbibrain.local/devcenter/contracts/http/edit-preview.reply.json",
+  "title": "POST /api/devcenter/edit-preview: reply (issue #12)",
+  "type": "object",
+  "properties": {
+    "revision": {
+      "$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/revision"
+    },
+    "operation": {
+      "type": "object"
+    },
+    "changes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "row_key": {
+            "$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/row_key"
+          },
+          "object_type": {
+            "type": "string"
+          },
+          "table": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "policy": {
+            "enum": [
+              "block",
+              "cascade"
+            ]
+          },
+          "change": {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          }
+        },
+        "required": [
+          "row_key",
+          "object_type",
+          "table",
+          "name",
+          "change"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "skipped": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "row_key": {
+            "$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/row_key"
+          },
+          "reason": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "row_key",
+          "reason"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "references": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "enum": [
+              "expression",
+              "binding"
+            ]
+          }
+        },
+        "required": [
+          "kind",
+          "row_key"
+        ]
+      }
+    },
+    "references_total": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "plan": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "enum": [
+            "valid",
+            "valid_with_warnings",
+            "invalid"
+          ]
+        },
+        "summary": {
+          "type": "object"
+        },
+        "blocking": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "blocking_total": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "warnings_total": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "plan_hash": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        }
+      },
+      "required": [
+        "status",
+        "summary",
+        "blocking",
+        "blocking_total",
+        "warnings_total",
+        "plan_hash"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "revision",
+    "operation",
+    "changes",
+    "skipped",
+    "references",
+    "references_total",
+    "plan"
+  ],
+  "additionalProperties": false
+}

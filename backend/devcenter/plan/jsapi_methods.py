@@ -15,3 +15,10 @@ def merge_choice_set(devcenter: Any, request: Mapping[str, Any]) -> Mapping[str,
 @register("merge_choice_bulk_set", long=True)
 def merge_choice_bulk_set(devcenter: Any, request: Mapping[str, Any]) -> Mapping[str, Any]:
     return devcenter.merge_choice_bulk_set(request)
+
+
+@register("target_edit_apply", long=True)
+def target_edit_apply(devcenter: Any, request: Mapping[str, Any]) -> Mapping[str, Any]:
+    from backend.devcenter.plan import edits
+
+    return edits.apply_edits(devcenter, request)

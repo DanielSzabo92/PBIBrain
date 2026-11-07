@@ -23,6 +23,8 @@ import { t, tn } from "../copy.js";
 import { createDevCenterHttp } from "../httpClient.js";
 import { slashGoesToSearch } from "../preferences.js";
 import { useAction, useDevCenterState, useDevCenterStore } from "../useDevCenter.js";
+import BulkEditDialog from "./BulkEditDialog.jsx";
+import { editScope } from "./bulkEditModel.js";
 import BulkBar from "./BulkBar.jsx";
 import CodeDiff from "./CodeDiff.jsx";
 import CompareRowDetail from "./CompareRowDetail.jsx";
@@ -99,6 +101,7 @@ export default function CompareGrid({
   const setModeAction = useAction("compare_mode_set");
   const bulkSetAction = useAction("merge_choice_bulk_set");
   const confirmAction = useAction("row_confirm");
+  const [editOpen, setEditOpen] = useState(false);
 
   // Sources identification.
   const sources = session?.sources || [];
@@ -1126,6 +1129,7 @@ export default function CompareGrid({
           marksFilterActive={marksFilter}
           donors={donors}
           onApplyChoice={handleApplyBulkChoice}
+          onEditTarget={targetSource ? () => setEditOpen(true) : undefined}
           onConfirmRows={handleConfirmRows}
           onClearSelection={clearSelection}
           onSelectAllMatching={() => {
@@ -1558,6 +1562,22 @@ export default function CompareGrid({
           triggerElement={diffTarget.triggerElement}
         />
       ) : null}
+
+      {/* Edit target: in-place bulk edits with no donor (issue #12) */}
+      <BulkEditDialog
+        open={editOpen}
+        onOpenChange={setEditOpen}
+        http={http}
+        scope={editScope({ allMatching, queryParams, selectedKeys })}
+        count={allMatching ? totalRows : selectedKeys.size}
+        allMatching={allMatching}
+        onSaved={(reply) => {
+          clearSelection();
+          toast.show({ tone: "ok", text: tn("edit.toast", reply.count) });
+          reloadLoadedPages();
+          store.load("compareRows", queryParams);
+        }}
+      />
     </div>
   );
 }

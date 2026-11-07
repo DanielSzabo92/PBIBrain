@@ -31,5 +31,6 @@
   { "name": "cloud_sign_in", "kind": "long" },
   { "name": "cloud_connect", "kind": "long" },
   { "name": "pull_to_local", "kind": "long" },
-  { "name": "cloud_items_list", "kind": "short" }
+  { "name": "cloud_items_list", "kind": "short" },
+  { "name": "target_edit_apply", "kind": "long" }
 ]

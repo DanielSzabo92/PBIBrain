@@ -332,7 +332,7 @@ class ReadAndShimTest(FakeServerCase):
         section = design[design.index("### 14.2"):design.index("### 14.3")]
         listed = section.split("\n\n")[1]
         names = [part.strip().strip("`").split("`")[0] for part in listed.split(",")]
-        self.assertEqual(list(fake.JSAPI_METHODS), names + ["cloud_items_list"])
+        self.assertEqual(list(fake.JSAPI_METHODS), names + ["cloud_items_list", "target_edit_apply"])
 
 
 if __name__ == "__main__":

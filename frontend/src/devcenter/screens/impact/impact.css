@@ -153,3 +153,11 @@
 .dc-impact-filters .ui-switch { height: 24px; width: 40px; margin-top: 0; }
 .dc-impact-filters .ui-switch-thumb { width: 18px; height: 18px; }
 .dc-impact-filters .ui-switch[data-state="checked"] .ui-switch-thumb { transform: translateX(18px); }
+
+/* Edit target dialog (issue #12) */
+.dc-edit-dialog { max-width: min(860px, 100%); }
+.dc-edit-fields { display: grid; gap: var(--space-2); }
+.dc-edit-field { display: grid; gap: 4px; }
+.dc-edit-check { display: flex; align-items: center; gap: var(--space-2); }
+.dc-edit-preview { display: grid; gap: var(--space-2); max-height: 50vh; overflow: auto; }
+.dc-edit-preview code { white-space: pre-wrap; word-break: break-word; font-size: var(--fs-meta); }

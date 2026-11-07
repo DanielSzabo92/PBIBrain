@@ -253,6 +253,12 @@ The user sets a policy for each removed object. Default: Block.
 
 The Python backend computes and validates the plan and applies the report operations to the PBIR JSON. The .NET bridge applies the model operations to TOM. One guard contract covers the model files and the report files.
 
+### 6.9 Edit target: in-place bulk edits (issue #12)
+
+A session with a target and no donors can still change the target. The `edit` Merge Choice of a target model row (`{kind: "edit", new_name, set}`) renames the object and sets literal property values (`EDITABLE_PROPERTIES` in `backend/devcenter/plan/compiler.py`: format string, display folder, description, hidden, data category, summarize by, key column). It compiles to `RENAME` (or `RENAME_PAIR`) and `SET_PROPERTIES`, so impact, validation, the guard, apply, rescan, and undo do not change. The plan rewrites each target reference to an edited name (DAX, RLS filters, field parameters, report measures, and report bindings) with no "renamed" block, because the user asked for the rename. A name clash still blocks.
+
+Bulk operations make the `edit` choices for a scope (row keys, or the compare filters of section 4): rename by text or regular expression (`$1` groups), set property, move to folder, apply the confirmed Naming Rules, and delete with a Removal Policy (block or cascade). A second operation on a row adds to its `edit` choice; a rename starts from the planned name. `POST edit-preview` is a read calculation: the changed rows, the skipped rows with a reason, every rewritten reference, and the plan status with these edits. The JS API `target_edit_apply` writes the same choices in one revision (ADR 0003). It is a change-request call after the section 14.2 list, like `cloud_items_list`.
+
 ## 7. Impact data
 
 Home ticket: [Which impact data does the backend give to the UI?](../.scratch/dev-center/issues/10-impact-data.md).
@@ -428,6 +434,7 @@ Each shape has a JSON Schema file in `backend/devcenter/contracts/`. The fronten
 | `GET naming-rules` | Rules with status, origin, support, break counts. |
 | `POST name-propose` | Proposed name and rule IDs (read-only calculation). |
 | `POST plan-validate` (`mode`) | Validation result. |
+| `POST edit-preview` (`operation`, `scope`) | Bulk edit preview: changed and skipped rows, rewritten references, plan status (read-only calculation, section 6.9). |
 | `GET apply/preview` | Apply dialog data: summary, approvals needed, not-checked items, Desktop status. |
 | `GET log` (paging) | Log entries. |
 
@@ -481,6 +488,7 @@ The UI design ([DEV_CENTER_UI_DESIGN.md](DEV_CENTER_UI_DESIGN.md)) needs these a
 | UC32 | S9 | `apply`, `format_only_apply`, `undo_apply` errors | Add `details.step` (section 13 step ID) and `details.check` for the guard (`scope`, `canonical`, `tree_compare`, `pbir`, `policy`, `approval`, `write`, `rescan`). | One plain sentence for each failure; section 12 has no guard codes. | 09 |
 | UC33 | S5 | JS API `source_remove` | Keep the Merge Choices that take from the removed source. Add one blocking plan item for each (kind `choice_source_removed`). Return the count. | The remove confirm text and the block list. | 09 |
 | UC34 | S4 | JS API `naming_rule_edit` | Refuse a rule with the same object type, scope, and check kind with `action_not_allowed` and `details.existing_rule_id`. | The "Same rule exists" error. | 09 |
+| UC35 | #12 | JS API `target_edit_apply` (new, long, JS API only) and `POST edit-preview` (new, read) | Input: `operation` (`rename`, `set_property`, `move_folder`, `apply_naming_rules`, `delete`) and `scope` (`row_keys` or `filter`). The call stores `edit` Merge Choices (and Removal Policies) in one revision (section 6.9). | In-place bulk edits of the target with no donor. An HTTP write would let an agent skip the proposal step (ADR 0003). | 12 |
 
 ## 15. First-version scope
 

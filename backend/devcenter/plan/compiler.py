@@ -15,7 +15,11 @@ the name of an identity after the plan.
 
 The Merge Choice shape (``merge_choices`` of the session, by row key):
 ``{kind, source_id, properties, new_name, display_folder}``. The kinds are in
-``CHOICE_KINDS``. The plan also reads ``removal_policies`` (by row key:
+``CHOICE_KINDS``. The ``edit`` kind (issue #12, "Edit target") needs no donor:
+``{kind: "edit", new_name, set}`` renames a target model object and sets the
+properties in ``set`` (``EDITABLE_PROPERTIES``) to literal values. The plan
+rewrites each target reference to an edited name (DAX, RLS, field parameters
+and report bindings) without the "renamed" block: the user asked for the rename. The plan also reads ``removal_policies`` (by row key:
 ``{policy, replacement_row_key}``), ``need_mappings`` (by the row key of the
 needed object: ``{row_key}`` of the target object), and ``item_actions`` (by
 item ID: ``{action}``; ``include_in_rewrite`` selects a rename dependent).
@@ -46,9 +50,44 @@ REMOVE = "remove"
 SKIP = "skip"
 PROMOTE = "promote"
 COPY_TO_REPORT = "copy_to_report"
-CHOICE_KINDS = (KEEP, TAKE, TAKE_PROPERTIES, ADD_NEW_NAME, REMOVE, SKIP, PROMOTE, COPY_TO_REPORT)
+EDIT = "edit"
+CHOICE_KINDS = (KEEP, TAKE, TAKE_PROPERTIES, ADD_NEW_NAME, REMOVE, SKIP, PROMOTE, COPY_TO_REPORT, EDIT)
 SOURCE_KINDS = (TAKE, TAKE_PROPERTIES, ADD_NEW_NAME, PROMOTE, COPY_TO_REPORT)
 PROPERTY_KINDS = ("measure", "column", "relationship")
+
+# The properties that an ``edit`` choice can set, by object type, with the value type
+# (``str``: text or null, ``bool``, or a tuple of allowed text values). The names are the
+# model writer names; ``COMPARE_NAMES`` maps the few that the compare extract names differently.
+SUMMARIZE_BY = ("default", "none", "sum", "min", "max", "count", "average", "distinctcount")
+EDITABLE_PROPERTIES: dict[str, dict[str, Any]] = {
+    "measure": {"format_string": str, "display_folder": str, "description": str, "is_hidden": bool},
+    "column": {"format_string": str, "display_folder": str, "description": str, "is_hidden": bool,
+               "data_category": str, "summarize_by": SUMMARIZE_BY, "is_key": bool},
+    "table": {"description": str, "is_hidden": bool, "data_category": str},
+}
+COMPARE_NAMES = {"is_hidden": "hidden", "is_key": "key"}
+RENAMABLE_KINDS = ("measure", "column", "table", "hierarchy", "calculation_item", "role", "expression", "function")
+
+
+def edit_value_error(object_type: str, prop: str, value: Any) -> str | None:
+    """Give a reason code when an ``edit`` choice cannot set this property to this value, else None."""
+
+    allowed = EDITABLE_PROPERTIES.get(object_type, {})
+    if prop not in allowed:
+        return "unknown_property"
+    kind = allowed[prop]
+    if kind is bool:
+        return None if isinstance(value, bool) else "invalid_value"
+    if kind is str:
+        return None if value is None or isinstance(value, str) else "invalid_value"
+    return None if value in kind else "invalid_value"
+
+
+def current_value(item: CompareObject, prop: str) -> Any:
+    value = item.props.get(COMPARE_NAMES.get(prop, prop))
+    if prop == "summarize_by" and value is None:
+        return "default"
+    return value
 
 BLOCK = "block"
 CASCADE = "cascade"
@@ -541,6 +580,25 @@ class _Compiler:
             return "new_name_required"
         if kind in {PROMOTE, COPY_TO_REPORT} and row["object_type"] != "report_measure":
             return "report_measure_only"
+        if kind == EDIT:
+            if target is None:
+                return "no_target_object"
+            if row["domain"] != MODEL:
+                return "model_only"
+            new_name = choice.get("new_name")
+            values = choice.get("set") or {}
+            if new_name is not None and (not isinstance(new_name, str) or not new_name.strip()):
+                return "new_name_required"
+            if new_name is not None and row["object_type"] not in RENAMABLE_KINDS:
+                return "not_renamable"
+            if not isinstance(values, Mapping):
+                return "invalid_value"
+            if new_name is None and not values:
+                return "no_edit"
+            for prop, value in values.items():
+                reason = edit_value_error(row["object_type"], prop, value)
+                if reason is not None:
+                    return reason
         if kind == PROMOTE and self.data.target_model is None:
             return "no_target_model"
         return None
@@ -586,6 +644,10 @@ class _Compiler:
         new_name = str(choice.get("new_name") or "").strip() or None
         if kind == REMOVE:
             self.deleted.add(key)
+            return
+        if kind == EDIT:
+            if new_name is not None:
+                self.own_name[key] = new_name
             return
         if kind == TAKE and target is not None:
             assert donor is not None
@@ -651,6 +713,10 @@ class _Compiler:
         folder = choice.get("display_folder")
         if kind == REMOVE:
             self.build_remove(step, row, target)
+            return
+        if kind == EDIT:
+            assert target is not None
+            self.build_edit(step, row, target, choice)
             return
         if kind in {TAKE, ADD_NEW_NAME} and (target is None or kind == ADD_NEW_NAME):
             assert donor is not None
@@ -737,13 +803,7 @@ class _Compiler:
             self.copy_visual(step, row, source_id, donor, page_identity=self.by_key[key]["row_key"] if False else
                              (self.row_of.get((self.data.target_report, f"page:{target.table}")) or {}).get("row_key", key))
             return
-        final = self.own_name[key]
-        if fold(final) != fold(target.name) or final != target.name:
-            name = "RENAME" if target.kind in TAGGED_KINDS else "RENAME_PAIR"
-            values: dict[str, Any] = {"old_name": target.name, "new_name": final}
-            if name == "RENAME_PAIR":
-                values["pair_id"] = "pair-" + _digest(step.step_id, key)[:12]
-            self.op(step, name, key, **values)
+        self.rename_op(step, key, target)
         cell = self.cell(row, source_id) or {}
         changed = bool(cell.get("phrases")) or (folder is not None and folder != target.display_folder)
         if changed:
@@ -753,6 +813,26 @@ class _Compiler:
             props.pop("ends", None)
             self.op(step, "REPLACE", key, needs=needs, source_id=source_id, source_key=donor.source_key,
                     lineage_tag=target.lineage_tag, properties=props)
+
+    def rename_op(self, step: _Step, key: str, target: CompareObject) -> None:
+        final = self.own_name[key]
+        if final != target.name:
+            name = "RENAME" if target.kind in TAGGED_KINDS else "RENAME_PAIR"
+            values: dict[str, Any] = {"old_name": target.name, "new_name": final}
+            if name == "RENAME_PAIR":
+                values["pair_id"] = "pair-" + _digest(step.step_id, key)[:12]
+            self.op(step, name, key, **values)
+
+    def build_edit(self, step: _Step, row: Mapping[str, Any], target: CompareObject, choice: Mapping[str, Any]) -> None:
+        """An ``edit`` choice: a rename of the target object and literal property values. A value equal to the target value gives no operation."""
+
+        key = row["row_key"]
+        self.rename_op(step, key, target)
+        props = {prop: value for prop, value in sorted((choice.get("set") or {}).items()) if current_value(target, prop) != value}
+        # The model writer skips a null value; an empty text clears the property in the model library.
+        props = {prop: "" if value is None else value for prop, value in props.items()}
+        if props:
+            self.op(step, "SET_PROPERTIES", key, properties=props)
 
     def build_promote(self, step: _Step, row: Mapping[str, Any], source_id: str, donor: CompareObject,
                       target: CompareObject | None, folder: str | None) -> None:
@@ -1037,6 +1117,8 @@ class _Compiler:
             self.op(step, "REWRITE_EXPRESSION", identity, domain=row["domain"], property=prop, old_text=text, new_text=new_text)
 
     def included(self, dependent: str, cause: str) -> bool:
+        if (self.choices.get(cause) or {}).get("kind") == EDIT:
+            return True
         action = self.data.item_actions.get(f"renamed:{dependent}:{cause}")
         return isinstance(action, Mapping) and action.get("action") == INCLUDE_IN_REWRITE
 

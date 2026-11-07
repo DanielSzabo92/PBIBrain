@@ -47,7 +47,7 @@ JSAPI_METHODS = (
     "sources_check", "naming_rule_confirm", "naming_rule_reject", "naming_rule_edit", "naming_rules_copy",
     "proposal_accept", "proposal_reject", "proposal_accept_all", "question_answer", "format_only_apply",
     "apply", "undo_apply", "change_report_write", "cloud_sign_in", "cloud_connect", "pull_to_local",
-    "cloud_items_list",
+    "cloud_items_list", "target_edit_apply",
 )
 # Calls that read only: they do not change the revision.
 JSAPI_READS = frozenset({"cloud_items_list"})
@@ -750,6 +750,14 @@ class FakeDevCenter:
         for row in rows:
             row["merge_choice"] = payload.get("choice")
         return {"changed": len(rows)}
+
+    def _call_target_edit_apply(self, payload: dict[str, Any]) -> dict[str, Any]:
+        scope = payload.get("scope") or {}
+        keys = scope.get("row_keys") or [row["row_key"] for row in self._rows()]
+        rows = [self._row(key) for key in keys]
+        for row in rows:
+            row["merge_choice"] = {"kind": "edit"}
+        return {"count": len(rows), "row_keys": [row["row_key"] for row in rows], "skipped": []}
 
     def _call_row_confirm(self, payload: dict[str, Any]) -> dict[str, Any]:
         keys = payload.get("row_keys")

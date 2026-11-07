@@ -114,6 +114,7 @@ export function createDevCenterHttp({ baseUrl = "/api/devcenter", fetcher = glob
     getNamingRules: ({ signal } = {}) => get("/naming-rules", signal),
     proposeName: (body = {}, { signal } = {}) => post("/name-propose", body, signal),
     validatePlan: (mode = "quick", { signal } = {}) => post("/plan-validate", { mode }, signal),
+    previewEdit: (body = {}, { signal } = {}) => post("/edit-preview", body, signal),
     getApplyPreview: ({ signal } = {}) => get("/apply/preview", signal),
     getApplyProgress: ({ signal } = {}) => get("/apply/progress", signal),
     getApplyLast: ({ signal } = {}) => get("/apply/last", signal),

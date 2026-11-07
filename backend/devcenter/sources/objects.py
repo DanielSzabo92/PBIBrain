@@ -115,6 +115,9 @@ def _tmdl_file(text: str, index: dict[str, str]) -> None:
             if child is None:
                 continue
             if child[0] in _TABLE_CHILDREN:
+                # The ``///`` description lines just above a child belong to that child, not to the table.
+                while child_start > 0 and child_start - 1 not in skip and body[child_start - 1].strip().startswith("///"):
+                    child_start -= 1
                 index[f"{_TABLE_CHILDREN[child[0]]}:{name}/{child[1]}"] = _hash_lines(body[child_start:child_end])
                 skip.update(range(child_start, child_end))
             elif child[0] == "calculationGroup":

@@ -22,7 +22,8 @@
             "remove",
             "skip",
             "promote",
-            "copy_to_report"
+            "copy_to_report",
+            "edit"
           ]
         },
         {
@@ -40,7 +41,8 @@
                 "remove",
                 "skip",
                 "promote",
-                "copy_to_report"
+                "copy_to_report",
+                "edit"
               ]
             },
             "source_id": {
@@ -64,6 +66,22 @@
                   "type": "null"
                 }
               ]
+            },
+            "set": {
+              "type": "object",
+              "additionalProperties": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
             }
           },
           "required": [
