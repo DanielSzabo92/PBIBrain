@@ -315,6 +315,213 @@ def _collect_semantic_bindings(raw: Mapping[str, Any]) -> tuple[list[tuple[str, 
     return unique, query_refs, entities
 
 
+_SLICER_VISUAL_TYPES = frozenset({"slicer", "advancedslicervisual", "listslicer", "textslicer", "buttonslicer", "chicletslicer", "timeline"})
+_ROLE_KINDS = {
+    "category": "category", "axis": "category", "shared": "category",
+    "y": "value", "y2": "value", "values": "value", "value": "value", "columnvalues": "value", "data": "value",
+    "indicator": "value", "fields": "value", "x": "value",
+    "series": "legend", "legend": "legend", "columnsseries": "legend",
+    "tooltips": "tooltip", "tooltip": "tooltip",
+    "rows": "rows", "columns": "columns",
+    "smallmultiple": "small_multiples", "smallmultiples": "small_multiples",
+    "details": "details", "size": "size", "playaxis": "play_axis",
+    "goal": "target", "targetvalue": "target", "target": "target", "trendline": "trend",
+    "minvalue": "range", "maxvalue": "range", "min": "range", "max": "range",
+    "location": "location", "latitude": "location", "longitude": "location",
+}
+# The QueryAggregateFunction numbers of the Power BI semantic query.
+_AGGREGATIONS = {0: "Sum", 1: "Avg", 2: "Count", 3: "Min", 4: "Max", 5: "CountNonNull", 6: "Median",
+                 7: "StandardDeviation", 8: "Variance"}
+
+
+def _role_kind(role: Any, visual_type: Any) -> str:
+    """Map a projection role name (Y, Category, Values...) to a stable usage role."""
+
+    key = _norm(role)
+    if key in {"values", "field", "fields"} and _norm(visual_type) in _SLICER_VISUAL_TYPES:
+        return "slicer_field"
+    if key in _ROLE_KINDS:
+        return _ROLE_KINDS[key]
+    return re.sub(r"[^a-z0-9]+", "_", str(role).casefold()).strip("_") or "field"
+
+
+def _aggregation_name(value: Any) -> str | None:
+    """Return the aggregation function of an ``Aggregation`` field, if any."""
+
+    if not isinstance(value, Mapping):
+        return None
+    aggregation = pick(value, "aggregation")
+    if not isinstance(aggregation, Mapping):
+        field_value = pick(value, "field", "expression")
+        return _aggregation_name(field_value) if isinstance(field_value, Mapping) else None
+    function = pick(aggregation, "function")
+    if isinstance(function, bool):
+        return None
+    if isinstance(function, int):
+        return _AGGREGATIONS.get(function, str(function))
+    return str(function) if function is not None else None
+
+
+def _sort_direction(value: Any) -> str | None:
+    if isinstance(value, bool) or value is None:
+        return None
+    if isinstance(value, int):
+        # The legacy prototypeQuery uses 1 = ascending and 2 = descending.
+        return {1: "Ascending", 2: "Descending"}.get(value)
+    return str(value)
+
+
+def _object_properties(raw: Mapping[str, Any], name: str) -> list[Mapping[str, Any]]:
+    """Return the ``properties`` of one formatting object of the visual container."""
+
+    result: list[Mapping[str, Any]] = []
+    for key in ("visualContainerObjects", "vcObjects"):
+        objects = pick(raw, key)
+        entries = pick(objects, name) if isinstance(objects, Mapping) else None
+        for entry in entries if isinstance(entries, list) else [entries]:
+            properties = pick(entry, "properties") if isinstance(entry, Mapping) else None
+            if isinstance(properties, Mapping):
+                result.append(properties)
+    return result
+
+
+def _visual_links(raw: Mapping[str, Any]) -> dict[str, Any]:
+    """Read the explicit tooltip page, drillthrough page, sync group and other report links of a visual."""
+
+    result: dict[str, Any] = {}
+    for properties in _object_properties(raw, "visualTooltip"):
+        kind = _literal_text(pick(properties, "type"))
+        section = _literal_text(pick(properties, "section"))
+        if section and (kind is None or _norm(kind) == "reportpage"):
+            result["tooltip_page_ref"] = section
+    for properties in _object_properties(raw, "visualLink"):
+        kind = _literal_text(pick(properties, "type"))
+        if _norm(kind) == "drillthrough":
+            section = _literal_text(pick(properties, "drillthroughSection"))
+            if section:
+                result["drillthrough_page_ref"] = section
+        elif _norm(kind) == "pagenavigation":
+            section = _literal_text(pick(properties, "navigationSection"))
+            if section:
+                result["navigation_page_ref"] = section
+    sync = pick(raw, "syncGroup")
+    if isinstance(sync, Mapping) and _present(pick(sync, "groupName")):
+        result["sync_group"] = {
+            "group_name": str(pick(sync, "groupName")),
+            "field_changes": pick(sync, "fieldChanges"),
+            "filter_changes": pick(sync, "filterChanges"),
+        }
+    return result
+
+
+def _usage_bindings(
+    raw: Mapping[str, Any], query_refs: Mapping[str, tuple[str, Any]], entities: Mapping[str, str]
+) -> list[dict[str, Any]]:
+    """Collect each bound field with its usage role: projection well, sort or conditional formatting.
+
+    The result keeps the source spelling of the role (``Y``, ``Category``) and a
+    stable ``role`` (``value``, ``category``) for the graph.
+    """
+
+    visual_type = _visual_type(raw)
+    found: list[dict[str, Any]] = []
+    query = pick(raw, "query")
+    query = query if isinstance(query, Mapping) else {}
+    query_state = pick(query, "queryState")
+    if isinstance(query_state, Mapping):
+        for role, state in query_state.items():
+            if not isinstance(state, Mapping):
+                continue
+            for projection in collection(state, "projections"):
+                binding = _semantic_binding(projection, entities) if isinstance(projection, Mapping) else None
+                if not binding:
+                    continue
+                found.append({
+                    "binding": binding, "usage": "projection", "projection": str(role),
+                    "role": _role_kind(role, visual_type), "aggregation": _aggregation_name(projection),
+                    "active": pick(projection, "active"), "hidden": pick(projection, "hidden"),
+                    "display_name": pick(projection, "displayName"),
+                })
+            for parameter in collection(state, "fieldParameters"):
+                expr = pick(parameter, "parameterExpr") if isinstance(parameter, Mapping) else None
+                binding = _semantic_binding(expr, entities) if isinstance(expr, Mapping) else None
+                if binding:
+                    found.append({"binding": binding, "usage": "projection", "projection": str(role),
+                                  "role": _role_kind(role, visual_type), "field_parameter": True})
+    legacy = pick(raw, "projections")
+    if isinstance(legacy, Mapping):
+        # Legacy report.json: projections name the queryRef of a prototypeQuery select.
+        aggregations: dict[str, str | None] = {}
+        prototype = pick(raw, "prototypeQuery")
+        for entry in collection(prototype, "select") if isinstance(prototype, Mapping) else []:
+            if isinstance(entry, Mapping) and pick(entry, "name") is not None:
+                aggregations[_norm(pick(entry, "name"))] = _aggregation_name({"field": entry})
+        for role, items in legacy.items():
+            for item in items if isinstance(items, list) else [items]:
+                reference = pick(item, "queryRef") if isinstance(item, Mapping) else item
+                binding = query_refs.get(_norm(reference)) if reference is not None else None
+                if binding:
+                    found.append({"binding": binding, "usage": "projection", "projection": str(role),
+                                  "role": _role_kind(role, visual_type),
+                                  "aggregation": aggregations.get(_norm(reference)),
+                                  "active": pick(item, "active") if isinstance(item, Mapping) else None})
+    sort_definition = pick(query, "sortDefinition")
+    sorts = collection(sort_definition, "sort") if isinstance(sort_definition, Mapping) else []
+    prototype = pick(raw, "prototypeQuery")
+    sorts = [*sorts, *(collection(prototype, "orderBy") if isinstance(prototype, Mapping) else [])]
+    for sort in sorts:
+        if not isinstance(sort, Mapping):
+            continue
+        binding = _semantic_binding(pick(sort, "field", "expression"), entities)
+        if binding:
+            found.append({"binding": binding, "usage": "sort", "role": "sort",
+                          "sort_direction": _sort_direction(pick(sort, "direction"))})
+
+    def formatting(value: Any) -> None:
+        if isinstance(value, Mapping):
+            binding = _semantic_binding(value, entities)
+            if binding:
+                found.append({"binding": binding, "usage": "conditional_formatting", "role": "conditional_formatting"})
+                return
+            for child in value.values():
+                formatting(child)
+        elif isinstance(value, list):
+            for child in value:
+                formatting(child)
+
+    for key in ("objects", "visualContainerObjects", "vcObjects"):
+        formatting(pick(raw, key))
+    for item in found:
+        for key in [key for key, value in item.items() if value is None]:
+            del item[key]
+    return found
+
+
+def _page_binding(raw: Mapping[str, Any]) -> dict[str, Any]:
+    """Read the drillthrough or tooltip binding of a page and its visibility."""
+
+    binding = pick(raw, "pageBinding")
+    binding = binding if isinstance(binding, Mapping) else {}
+    page_type = pick(raw, "type") if not isinstance(pick(raw, "type"), Mapping) else None
+    page_type = page_type or pick(binding, "type")
+    if _norm(page_type) not in {"drillthrough", "tooltip"}:
+        page_type = None
+    visibility = pick(raw, "visibility")
+    fields: list[tuple[str, Any]] = []
+    for parameter in collection(binding, "parameters"):
+        expr = pick(parameter, "fieldExpr") if isinstance(parameter, Mapping) else None
+        found = _semantic_binding(expr, {}) if isinstance(expr, Mapping) else None
+        if found:
+            fields.append(found)
+    return {
+        "page_type": "Drillthrough" if _norm(page_type) == "drillthrough" else "Tooltip" if page_type else None,
+        "hidden": True if _norm(visibility) == "hiddeninviewmode" or visibility == 1 else None,
+        "binding_name": pick(binding, "name"),
+        "binding_scope": pick(binding, "referenceScope"),
+        "binding_fields": fields,
+    }
+
+
 class StableIdentity:
     """Canonical IDs backed by source IDs and a persisted generated map."""
 
@@ -1125,10 +1332,15 @@ class Normalizer:
                 source="report_metadata",
             )
             self._add(page, aliases=(page_source, page_name))
+            visuals_by_name: dict[str, str] = {}
             for visual_index, visual_raw in enumerate(collection(page_raw, "visuals", "visualContainers")):
                 if not isinstance(visual_raw, Mapping):
                     continue
-                self._normalize_visual(visual_raw, visual_index, page, model_id)
+                visual = self._normalize_visual(visual_raw, visual_index, page, model_id)
+                for alias in (visual.properties.get("visual_name"), visual.source_id):
+                    if _present(alias):
+                        visuals_by_name.setdefault(str(alias), visual.id)
+            self._normalize_page_usage(page_raw, page, model_id, visuals_by_name)
             self._normalize_filters(_report_filters(page_raw, "filters", "page_filters", "pageFilters"), "PAGE_FILTER", page, model_id)
 
         self._normalize_filters(_report_filters(raw, "filters", "report_filters", "reportFilters"), "REPORT_FILTER", report, model_id)
@@ -1136,6 +1348,34 @@ class Normalizer:
         self._current_report = None
         self.identity.save()
         return NormalizationResult(list(self.nodes.values()), self.model_ids, self.report_ids)
+
+    def _normalize_page_usage(
+        self, page_raw: Mapping[str, Any], page: Node, model_id: str | None, visuals_by_name: Mapping[str, str]
+    ) -> None:
+        """Record the drillthrough/tooltip binding, visibility and visual interactions of one page."""
+
+        binding = _page_binding(page_raw)
+        field_ids: list[str] = []
+        for kind, ref in binding.pop("binding_fields"):
+            resolved = self._resolve_ref(ref, [kind], model_id)
+            if resolved and resolved not in field_ids:
+                field_ids.append(resolved)
+        interactions: list[dict[str, Any]] = []
+        for item in collection(page_raw, "visualInteractions"):
+            if not isinstance(item, Mapping):
+                continue
+            source_visual = visuals_by_name.get(str(pick(item, "source")))
+            target_visual = visuals_by_name.get(str(pick(item, "target")))
+            if source_visual and target_visual and source_visual != target_visual:
+                raw_type = pick(item, "type")
+                interactions.append({
+                    "source_id": source_visual,
+                    "target_id": target_visual,
+                    "type": str(raw_type) if raw_type is not None else "Default",
+                    "interaction": {"datafilter": "filter", "highlightfilter": "highlight", "nofilter": "none"}.get(_norm(raw_type), "default"),
+                })
+        values = {**binding, "binding_field_ids": field_ids or None, "visual_interactions": interactions or None}
+        page.properties.update({key: _safe_value(value) for key, value in values.items() if value is not None})
 
     def _normalize_report_measures(self, raw: Mapping[str, Any], report: Node, model_id: str | None) -> None:
         """Read the report-level measures of reportExtensions.json."""
@@ -1304,7 +1544,28 @@ class Normalizer:
                 measure_ids.append(resolved)
             if resolved_node and resolved_node.type == "COLUMN" and resolved not in column_ids:
                 column_ids.append(resolved)
+        field_roles: list[dict[str, Any]] = []
+        role_markers: set[str] = set()
+        for entry in _usage_bindings(raw, query_refs, source_entities):
+            kind, ref = entry.pop("binding")
+            resolved = self._resolve_ref(ref, [kind] if kind else None, model_id)
+            if not resolved:
+                continue
+            record = {"object_id": resolved, **entry}
+            marker = json.dumps(record, sort_keys=True, default=str)
+            if marker in role_markers:
+                continue
+            role_markers.add(marker)
+            field_roles.append(record)
+            if resolved not in field_ids:
+                field_ids.append(resolved)
+                resolved_type = self.nodes[resolved].type
+                if resolved_type == "MEASURE":
+                    measure_ids.append(resolved)
+                elif resolved_type == "COLUMN":
+                    column_ids.append(resolved)
         hierarchy_ids = [item for item in field_ids if self.nodes[item].type == "HIERARCHY"]
+        links = _visual_links(raw)
         visual = Node(
             id=visual_id,
             type="VISUAL",
@@ -1324,6 +1585,10 @@ class Normalizer:
                 hierarchy_ids=hierarchy_ids,
                 **_visual_position(source_raw),
                 field_refs=[_safe_value(ref) for _, ref in fields],
+                field_roles=field_roles,
+                visual_name=_safe_value(raw_name),
+                hidden_visual=True if pick(source_raw, "isHidden") is True else None,
+                **links,
                 unresolved_field_refs=unresolved_bindings,
                 binding_evidence=[
                     {"kind": kind, "reference": _safe_value(ref)} for kind, ref in fields

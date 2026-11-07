@@ -12,6 +12,7 @@ from typing import Any, Iterable, Mapping, Sequence
 
 from .repository import GraphRepository
 from .schema import Edge, Node
+from .usage_links import report_link_edges, visual_usage_properties
 from backend.scanner.metadata_reader import pick
 from backend.scanner.model_reader import ModelReader
 from backend.scanner.normalization import Normalizer, StableIdentity
@@ -142,6 +143,7 @@ class FactGraphBuilder:
         *,
         source: str,
         evidence: Iterable[Any],
+        properties: Mapping[str, Any] | None = None,
     ) -> None:
         if not from_id or not to_id or from_id not in self.normalizer.nodes or to_id not in self.normalizer.nodes:
             return
@@ -160,8 +162,11 @@ class FactGraphBuilder:
                 status="factual",
                 evidence=evidence_values,
                 evidence_class="FACT",
+                properties=dict(properties or {}),
             )
             return
+        if properties:
+            current.properties.update(properties)
         values = {json.dumps(item, sort_keys=True, default=str): item for item in current.evidence}
         values.update({json.dumps(item, sort_keys=True, default=str): item for item in evidence_values})
         current.evidence = [values[key] for key in sorted(values)]
@@ -222,8 +227,23 @@ class FactGraphBuilder:
             if node.type == "REPORT" and node.model_id in node_ids:
                 self._add_edge("USES_MODEL", node.id, node.model_id, source="report_metadata", evidence=["report model reference"])
             if node.type == "VISUAL":
+                usage = visual_usage_properties(node)
                 for object_id in properties.get("field_ids", []):
-                    self._add_edge("USES", node.id, str(object_id), source="report_metadata", evidence=["visual field binding"])
+                    self._add_edge("USES", node.id, str(object_id), source="report_metadata", evidence=["visual field binding"],
+                                   properties=usage.get(str(object_id), {"visual_type": properties.get("visual_type")}))
+                for object_id in sorted({item["object_id"] for item in properties.get("field_roles", [])
+                                         if item.get("usage") == "conditional_formatting"}):
+                    self._add_edge("FORMATS_BY", node.id, object_id, source="report_metadata",
+                                   evidence=["visual formatting field reference"], properties={"visual_type": properties.get("visual_type")})
+            if node.type == "PAGE":
+                role = {"Drillthrough": "drillthrough_field", "Tooltip": "tooltip_page_field"}.get(properties.get("page_type"), "page_field")
+                for object_id in properties.get("binding_field_ids", []):
+                    self._add_edge("USES", node.id, str(object_id), source="report_metadata", evidence=["page binding field"],
+                                   properties={"role": role, "roles": [{"role": role, "usage": "page_binding"}]})
+                for item in properties.get("visual_interactions", []):
+                    self._add_edge("INTERACTS_WITH", item.get("source_id"), item.get("target_id"), source="report_metadata",
+                                   evidence=["page visual interaction"],
+                                   properties={"interaction": item.get("interaction"), "type": item.get("type"), "page_id": node.id})
             if node.type == "BOOKMARK":
                 for object_id in [properties.get("page_id"), *properties.get("visual_ids", []), *properties.get("field_ids", [])]:
                     self._add_edge("REFERENCES", node.id, str(object_id) if object_id else None, source="report_metadata", evidence=["bookmark state"])
@@ -236,6 +256,8 @@ class FactGraphBuilder:
             if node.type in {"VISUAL_FILTER", "PAGE_FILTER", "REPORT_FILTER"}:
                 target_id = properties.get("target_id")
                 self._add_edge("FILTERS", node.id, str(target_id) if target_id else None, source="report_metadata", evidence=["filter target"])
+        for edge_type, from_id, to_id, evidence, edge_properties in report_link_edges(nodes):
+            self._add_edge(edge_type, from_id, to_id, source="report_metadata", evidence=[evidence], properties=edge_properties)
 
 
 _M_STRING = re.compile(r'(?<!#)"(?:[^"]|"")*"')

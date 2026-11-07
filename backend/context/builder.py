@@ -23,6 +23,7 @@ _SEMANTIC_EDGES = frozenset(
         "CONFLICTS_WITH",
     }
 )
+_REPORT_LINK_EDGES = frozenset({"DRILLS_THROUGH_TO", "TOOLTIP_PAGE", "INTERACTS_WITH", "SYNCED_WITH", "FORMATS_BY"})
 _STRUCTURAL_EDGES = frozenset({"CONTAINS", "BELONGS_TO", "RELATES_TO", "USES_MODEL"})
 _CONSTRAINT_EDGES = frozenset(
     {"FILTERS", "MODIFIES_FILTER", "MODIFIES_RELATIONSHIP", "ACTIVATES_RELATIONSHIP"}
@@ -279,6 +280,12 @@ class ContextBuilder:
                     ):
                         add(edge, "usage")
                     continue
+                if edge_type in _REPORT_LINK_EDGES:
+                    # Report links (drillthrough, tooltip page, interactions, sync, formatting)
+                    # describe the target itself; they are listed but not walked further.
+                    if current_id == target_id and (include_usage or target_node.type in {"VISUAL", "PAGE"}):
+                        selected["usage"][edge.id] = edge
+                    continue
                 if edge_type == "OBSERVED_WITH":
                     if include_usage and (edge.from_id == current_id or edge.to_id == current_id):
                         add(edge, "usage")
@@ -457,6 +464,13 @@ class ContextBuilder:
                 warnings.append(issue)
         context["warnings"] = warnings
         result = prune_context(context, task)
+        if include_usage or target_node.type in {"VISUAL", "PAGE"}:
+            from backend.inference.usage_roles import usage_profile
+
+            profile = usage_profile(nodes, edges, target_id)
+            if profile is not None:
+                # INFERRED summary of the USES roles, so an agent need not read PBIR JSON.
+                result["usage_roles"] = profile
         task_name = task if isinstance(task, str) else task.get("task", task.get("type", "")) if isinstance(task, Mapping) else ""
         if task_name in {"impact", "change_preflight", "regression_planning", "post_change_review"}:
             from backend.impact import analyze_impact

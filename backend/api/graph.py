@@ -215,7 +215,9 @@ def get_lineage(
         if tag:
             compact["lineage_tag"] = tag
         nodes.append(compact)
-    edges = [{"id": edge["id"], "type": edge["type"], "from_id": edge["from_id"], "to_id": edge["to_id"], "status": edge.get("status")}
+    edges = [{"id": edge["id"], "type": edge["type"], "from_id": edge["from_id"], "to_id": edge["to_id"], "status": edge.get("status"),
+              # The usage role (value, category, slicer_field...) of a report binding.
+              **({"role": edge["properties"]["role"]} if isinstance(edge.get("properties"), dict) and edge["properties"].get("role") else {})}
              for edge in scoped["edges"] if edge.get("status", "factual") == "factual"]
     return {"nodes": nodes, "edges": edges, "total_nodes": len(nodes), "truncated": False,
             "scope": {"model_id": model_id, "report_id": report_id}}
