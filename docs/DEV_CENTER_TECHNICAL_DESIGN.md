@@ -253,6 +253,12 @@ The user sets a policy for each removed object. Default: Block.
 
 The Python backend computes and validates the plan and applies the report operations to the PBIR JSON. The .NET bridge applies the model operations to TOM. One guard contract covers the model files and the report files.
 
+### 6.9 Edit target: in-place bulk edits (issue #12)
+
+A session with a target and no donors can still change the target. The `edit` Merge Choice of a target model row (`{kind: "edit", new_name, set}`) renames the object and sets literal property values (`EDITABLE_PROPERTIES` in `backend/devcenter/plan/compiler.py`: format string, display folder, description, hidden, data category, summarize by, key column). It compiles to `RENAME` (or `RENAME_PAIR`) and `SET_PROPERTIES`, so impact, validation, the guard, apply, rescan, and undo do not change. The plan rewrites each target reference to an edited name (DAX, RLS filters, field parameters, report measures, and report bindings) with no "renamed" block, because the user asked for the rename. A name clash still blocks.
+
+Bulk operations make the `edit` choices for a scope (row keys, or the compare filters of section 4): rename by text or regular expression (`$1` groups), set property, move to folder, apply the confirmed Naming Rules, and delete with a Removal Policy (block or cascade). A second operation on a row adds to its `edit` choice; a rename starts from the planned name. `POST edit-preview` is a read calculation: the changed rows, the skipped rows with a reason, every rewritten reference, and the plan status with these edits. The JS API `target_edit_apply` writes the same choices in one revision (ADR 0003).
+
 ## 7. Impact data
 
 Home ticket: [Which impact data does the backend give to the UI?](../.scratch/dev-center/issues/10-impact-data.md).
@@ -428,12 +434,13 @@ Each shape has a JSON Schema file in `backend/devcenter/contracts/`. The fronten
 | `GET naming-rules` | Rules with status, origin, support, break counts. |
 | `POST name-propose` | Proposed name and rule IDs (read-only calculation). |
 | `POST plan-validate` (`mode`) | Validation result. |
+| `POST edit-preview` (`operation`, `scope`) | Bulk edit preview: changed and skipped rows, rewritten references, plan status (read-only calculation, section 6.9). |
 | `GET apply/preview` | Apply dialog data: summary, approvals needed, not-checked items, Desktop status. |
 | `GET log` (paging) | Log entries. |
 
 ### 14.2 State changes (pywebview JS API only)
 
-`session_create`, `session_open`, `session_close`, `source_add`, `source_remove`, `source_relink`, `target_set`, `compare_mode_set`, `alignment_override`, `merge_choice_set`, `merge_choice_bulk_set`, `removal_policy_set`, `need_mapping_set`, `impact_action_apply`, `offer_select`, `row_confirm` (after a source change), `sources_check`, `naming_rule_confirm`, `naming_rule_reject`, `naming_rule_edit`, `naming_rules_copy`, `proposal_accept`, `proposal_reject`, `proposal_accept_all`, `question_answer`, `format_only_apply`, `apply`, `undo_apply`, `change_report_write`, `cloud_sign_in`, `cloud_connect`, `pull_to_local`.
+`session_create`, `session_open`, `session_close`, `source_add`, `source_remove`, `source_relink`, `target_set`, `compare_mode_set`, `alignment_override`, `merge_choice_set`, `merge_choice_bulk_set`, `target_edit_apply`, `removal_policy_set`, `need_mapping_set`, `impact_action_apply`, `offer_select`, `row_confirm` (after a source change), `sources_check`, `naming_rule_confirm`, `naming_rule_reject`, `naming_rule_edit`, `naming_rules_copy`, `proposal_accept`, `proposal_reject`, `proposal_accept_all`, `question_answer`, `format_only_apply`, `apply`, `undo_apply`, `change_report_write`, `cloud_sign_in`, `cloud_connect`, `pull_to_local`.
 
 Each call takes the `base_revision` and returns the new `revision`, or the error shape of section 12. Browser dev mode uses a mock of this API.
 

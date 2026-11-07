@@ -1,0 +1,118 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pbibrain.local/devcenter/contracts/http/edit-preview.request.json",
+  "title": "POST /api/devcenter/edit-preview: request (issue #12, a read calculation)",
+  "type": "object",
+  "properties": {
+    "operation": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "enum": [
+            "rename",
+            "set_property",
+            "move_folder",
+            "apply_naming_rules",
+            "delete"
+          ]
+        },
+        "find": {
+          "type": "string"
+        },
+        "replace": {
+          "type": "string"
+        },
+        "regex": {
+          "type": "boolean"
+        },
+        "match_case": {
+          "type": "boolean"
+        },
+        "property": {
+          "enum": [
+            "format_string",
+            "display_folder",
+            "description",
+            "is_hidden",
+            "data_category",
+            "summarize_by",
+            "is_key"
+          ]
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "folder": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "rule_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "policy": {
+          "enum": [
+            "block",
+            "cascade"
+          ]
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "additionalProperties": false
+    },
+    "scope": {
+      "type": "object",
+      "properties": {
+        "row_keys": {
+          "type": "array",
+          "items": {
+            "$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/row_key"
+          },
+          "minItems": 1
+        },
+        "filter": {
+          "type": "object",
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            ]
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "operation",
+    "scope"
+  ],
+  "additionalProperties": false
+}

@@ -33,3 +33,10 @@ def get_plan(devcenter: Any, query: Mapping[str, Sequence[str]], body: Any) -> M
 @route("POST", "plan-validate", kind=READ, contract="http/plan-validate.reply.json")
 def post_plan_validate(devcenter: Any, query: Mapping[str, Sequence[str]], body: Any) -> Mapping[str, Any]:
     return service.validate_plan(devcenter, _json(body))
+
+
+@route("POST", "edit-preview", kind=READ, contract="http/edit-preview.reply.json")
+def post_edit_preview(devcenter: Any, query: Mapping[str, Sequence[str]], body: Any) -> Mapping[str, Any]:
+    from backend.devcenter.plan import edits
+
+    return edits.preview(devcenter, _json(body))

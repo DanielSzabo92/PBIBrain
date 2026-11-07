@@ -1,7 +1,7 @@
 // Bulk actions toolbar for selected rows in Compare grid (UI design 4.3).
 // All text follows ASD-STE100 rules.
 import React, { useState } from "react";
-import { Check, ChevronDown, X } from "lucide-react";
+import { Check, ChevronDown, PencilLine, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Menu } from "@/components/ui/menu";
 import {
@@ -35,6 +35,7 @@ export default function BulkBar({
   marksFilterActive,
   donors = [],
   onApplyChoice,
+  onEditTarget,
   onConfirmRows,
   onClearSelection,
   onSelectAllMatching,
@@ -167,6 +168,20 @@ export default function BulkBar({
           }
           groups={menuGroups}
         />
+
+        {onEditTarget ? (
+          <Button
+            id="edittarget"
+            variant="outline"
+            size="sm"
+            onClick={onEditTarget}
+            disabled={disabled}
+            aria-describedby={reasonId}
+          >
+            <PencilLine className="dc-search-icon" aria-hidden="true" />
+            {t("edit.open")}
+          </Button>
+        ) : null}
 
         {marksFilterActive ? (
           <Button

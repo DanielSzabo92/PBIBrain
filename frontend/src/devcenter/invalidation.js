@@ -40,6 +40,7 @@ export const INVALIDATES = Object.freeze({
   alignment_override: change("rowDiff", ...CHOICE),
   merge_choice_set: change(...CHOICE),
   merge_choice_bulk_set: change(...CHOICE),
+  target_edit_apply: change(...CHOICE),
   removal_policy_set: change(...CHOICE),
   need_mapping_set: change("compareRows", "plan", "impact", "impactPaths", "wireframe", "applyPreview"),
   impact_action_apply: change("compareRows", "plan", "impact", "impactPaths", "removal", "wireframe", "applyPreview"),

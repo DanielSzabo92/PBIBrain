@@ -620,6 +620,11 @@ static class ModelWriter
                             c.DisplayFolder = (props["display_folder"] ?? props["displayFolder"])?.GetValue<string>();
                         if (props["summarize_by"] != null || props["summarizeBy"] != null)
                             c.SummarizeBy = ParseSummarizeBy((props["summarize_by"] ?? props["summarizeBy"])?.GetValue<string>());
+                        if (props["description"] != null) c.Description = props["description"]?.GetValue<string>();
+                        if (props["data_category"] != null || props["dataCategory"] != null)
+                            c.DataCategory = (props["data_category"] ?? props["dataCategory"])?.GetValue<string>();
+                        if (props["is_key"] != null || props["isKey"] != null)
+                            c.IsKey = (props["is_key"] ?? props["isKey"])!.GetValue<bool>();
                         if (props["expression"] != null && c is CalculatedColumn calc)
                             calc.Expression = props["expression"]!.GetValue<string>();
                         if (props["sort_by_column"] != null)

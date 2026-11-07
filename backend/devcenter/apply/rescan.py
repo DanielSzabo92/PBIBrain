@@ -39,9 +39,22 @@ def _table_renames(operations: Sequence[Mapping[str, Any]]) -> dict[str, str]:
             if item.get("op") in _RENAMES and item.get("object_type") == "table" and item.get("old_name") and item.get("new_name")}
 
 
-def _moved(key: str, tables: Mapping[str, str]) -> str:
-    """Give the key after the table renames of the plan."""
+def _object_renames(operations: Sequence[Mapping[str, Any]]) -> dict[str, str]:
+    """The row key of each renamed object that is not a table, to its key after the rename (in its old table)."""
 
+    found = {}
+    for item in operations:
+        if item.get("op") in _RENAMES and item.get("object_type") != "table" and item.get("old_name") and item.get("new_name"):
+            key = _row_key(item)
+            if key:
+                found[key] = _key(str(item.get("object_type") or ""), str(item["new_name"]), item.get("table"))
+    return found
+
+
+def _moved(key: str, tables: Mapping[str, str], objects: Mapping[str, str] | None = None) -> str:
+    """Give the key after the object renames and the table renames of the plan."""
+
+    key = (objects or {}).get(key, key)
     kind, _, rest = key.partition(":")
     if kind == "table" and rest in tables:
         return f"table:{tables[rest]}"
@@ -56,6 +69,7 @@ def differences(operations: Sequence[Mapping[str, Any]], before: Mapping[str, st
 
     found: dict[tuple[str, str], dict[str, str]] = {}
     tables = _table_renames(operations)
+    objects = _object_renames(operations)
     touched: set[str] = set()
 
     def expect(key: str, expected: str) -> None:
@@ -93,9 +107,9 @@ def differences(operations: Sequence[Mapping[str, Any]], before: Mapping[str, st
         elif op in _COPIES:
             copies[object_type] = copies.get(object_type, 0) + 1
         elif op == "REWRITE_EXPRESSION" and operation.get("domain") == "model" and key and object_type != "table":
-            expect(_moved(key, tables), CHANGED)
+            expect(_moved(key, tables, objects), CHANGED)
         elif key:
-            expect(_moved(key, tables), PRESENT)
+            expect(_moved(key, tables, objects), PRESENT)
     for object_type, count in sorted(copies.items()):
         added = [key for key in after if _kind(key) == object_type and key not in before]
         if len(added) < count:

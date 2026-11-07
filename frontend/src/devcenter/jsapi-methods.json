@@ -10,6 +10,7 @@
   { "name": "alignment_override", "kind": "short" },
   { "name": "merge_choice_set", "kind": "short" },
   { "name": "merge_choice_bulk_set", "kind": "long" },
+  { "name": "target_edit_apply", "kind": "long" },
   { "name": "removal_policy_set", "kind": "short" },
   { "name": "need_mapping_set", "kind": "short" },
   { "name": "impact_action_apply", "kind": "short" },

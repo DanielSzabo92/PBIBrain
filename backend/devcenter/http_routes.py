@@ -19,7 +19,7 @@ from backend.devcenter.errors import DevCenterError, error_reply
 READ = "read"
 PROPOSAL = "proposal"
 # Section 14.1: the read-only calculations with a request body. They are POST reads.
-READ_POSTS = ("name-propose", "plan-validate")
+READ_POSTS = ("name-propose", "plan-validate", "edit-preview")
 
 Handler = Callable[[Any, Mapping[str, Sequence[str]], Any], Mapping[str, Any]]
 

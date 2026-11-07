@@ -1,0 +1,122 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pbibrain.local/devcenter/contracts/jsapi/target_edit_apply.request.json",
+  "title": "JS API target_edit_apply: request (issue #12)",
+  "type": "object",
+  "properties": {
+    "base_revision": {
+      "$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/base_revision"
+    },
+    "operation": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "enum": [
+            "rename",
+            "set_property",
+            "move_folder",
+            "apply_naming_rules",
+            "delete"
+          ]
+        },
+        "find": {
+          "type": "string"
+        },
+        "replace": {
+          "type": "string"
+        },
+        "regex": {
+          "type": "boolean"
+        },
+        "match_case": {
+          "type": "boolean"
+        },
+        "property": {
+          "enum": [
+            "format_string",
+            "display_folder",
+            "description",
+            "is_hidden",
+            "data_category",
+            "summarize_by",
+            "is_key"
+          ]
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "folder": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "rule_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "policy": {
+          "enum": [
+            "block",
+            "cascade"
+          ]
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "additionalProperties": false
+    },
+    "scope": {
+      "type": "object",
+      "properties": {
+        "row_keys": {
+          "type": "array",
+          "items": {
+            "$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/row_key"
+          },
+          "minItems": 1
+        },
+        "filter": {
+          "type": "object",
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            ]
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "base_revision",
+    "operation",
+    "scope"
+  ],
+  "additionalProperties": false
+}
