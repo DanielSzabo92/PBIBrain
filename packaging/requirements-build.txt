@@ -3,4 +3,5 @@ ladybug==0.20.0
 antlr4-python3-runtime==4.13.2
 mcp==1.30.0
 pywebview==6.2.1
+anthropic==2.6.0
 pyinstaller==6.22.2

@@ -677,6 +677,32 @@ The local React Inspector has four views:
 
 React Flow is only a view. Node positions and UI state are not graph facts.
 
+### Chat panel
+
+**Ctrl+J** (or **Chat** in the title bar) opens a docked chat on every view. It is
+off until you turn it on in **Settings → AI provider**:
+
+- **Provider:** Anthropic (default model `claude-opus-5-5`; needs
+  `python -m pip install -e ".[chat]"` when running from source), an
+  OpenAI-compatible endpoint, or a local endpoint such as Ollama
+  (`http://localhost:11434/v1`). With a local endpoint the chat works offline.
+- **API key:** stored in Windows Credential Manager (elsewhere the system keyring,
+  else memory until the app closes), never in `brain.json` or `settings.json`. A key
+  belongs to its provider and exact base URL; change the URL and you enter the key
+  again, so a stored key can never be redirected to another server.
+- **Test connection** checks the key and that the model exists.
+
+Removable context chips show what the chat sees: the current view, the selected
+object, and the open Merge models session. Answers stream in, can be stopped, and
+can be copied as Markdown; object names link to the Inspector (click) or the graph.
+
+The chat calls the same tools as the MCP server, from one registry
+(`backend/tool_registry.py`), in process. Provider calls run in the backend, so the
+key never reaches the page. The chat can propose (a rename, a merge choice, an
+object edit, a question); proposals appear as normal proposal cards in Merge models.
+It can never accept or apply anything (ADR 0003), and it treats retrieved
+descriptions and DAX as data, never instructions.
+
 ## Desktop Bridge companion
 
 Install Microsoft’s local Desktop Bridge CLI when Desktop verification is

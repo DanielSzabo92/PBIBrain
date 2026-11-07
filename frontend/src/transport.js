@@ -63,6 +63,37 @@ export function createBrainTransport({ baseUrl = API_ROOT, fetcher = globalThis.
     getPendingChanges() {
       return request("/pending-changes");
     },
+    /** In-app chat (issue #7). Provider calls run in the backend; the page never sees the API key. */
+    getChatSettings() {
+      return request("/chat/settings");
+    },
+    saveChatSettings(settings) {
+      return request("/chat/settings", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(settings) });
+    },
+    testChatConnection() {
+      return request("/chat/test", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
+    },
+    startChat({ text, conversationId = null, context = {} }) {
+      return request("/chat/start", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text, conversation_id: conversationId, context }),
+      });
+    },
+    chatEvents(runId, after = 0) {
+      return request(`/chat/runs/${encodeURIComponent(runId)}?after=${Number(after) || 0}`);
+    },
+    stopChat(runId) {
+      return request(`/chat/runs/${encodeURIComponent(runId)}/stop`, { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
+    },
+    /** The open Merge models session, or null when none is open (the context chip of the chat). */
+    async getMergeSession() {
+      try {
+        return await request("/devcenter/session");
+      } catch {
+        return null;
+      }
+    },
     getConfig() {
       return request("/config");
     },

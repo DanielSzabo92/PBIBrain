@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import mimetypes
+import threading
 from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
@@ -418,6 +419,23 @@ class BrainApp:
         self.api = api
         self.project = project
         self.static_dir = Path(static_dir).resolve() if static_dir else None
+        # One request at a time: the chat worker (issue #7) calls handle() from its own thread.
+        self.request_lock = threading.RLock()
+        self._chat: Any = None
+
+    @property
+    def chat(self) -> Any:
+        """The in-app chat (issue #7); created on first use, tests may set their own."""
+
+        if self._chat is None:
+            from backend.chat import ChatService
+
+            self._chat = ChatService(self, lock=self.request_lock)
+        return self._chat
+
+    @chat.setter
+    def chat(self, value: Any) -> None:
+        self._chat = value
 
     @staticmethod
     def _json_body(body: bytes | str | Mapping[str, Any] | None) -> dict[str, Any]:
@@ -460,6 +478,8 @@ class BrainApp:
                 return 204, None
             if parts and parts[0] == "devcenter":
                 return devcenter_dispatch(self, method, parts[1:], query, body)
+            if parts and parts[0] == "chat":
+                return self.chat.handle(method, parts[1:], query, self._json_body(body) if method == "POST" else {})
             if method == "POST" and parts == ["impact"]:
                 payload = self._json_body(body)
                 if set(payload) - {"target_id", "proposed_changes", "include_report_usage"} or not isinstance(payload.get("target_id"), str):
@@ -692,7 +712,8 @@ class BrainApp:
                         mime = mimetypes.guess_type(asset.name)[0] or "application/octet-stream"
                         start_response("200 OK", [("Content-Type", mime), ("Content-Length", str(len(raw))), ("X-Content-Type-Options", "nosniff")])
                         return [raw]
-                status, payload = self.handle(method, f"{path}?{query}" if query else path, body)
+                with self.request_lock:
+                    status, payload = self.handle(method, f"{path}?{query}" if query else path, body)
         except PermissionError as exc:
             status, payload = 403, {"error": str(exc)}
         except (ValueError, OSError) as exc:

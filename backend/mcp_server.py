@@ -10,11 +10,10 @@ import json
 from pathlib import Path
 from typing import Any
 from urllib.error import HTTPError, URLError
-from urllib.parse import quote, urlencode, urlsplit
+from urllib.parse import urlencode, urlsplit
 from urllib.request import ProxyHandler, Request, build_opener
 
 from backend.connection_marker import marker_connection_id
-from backend.mcp_budget import META_RESERVE, budget_for, fit_reply, size
 
 
 class BrainClient:
@@ -214,88 +213,13 @@ def create_server(url: str | None = "http://127.0.0.1:8000", *, session_id: str 
             return app_freshness(Path(config_path))
         return client.freshness()
 
-    def reply(tool: str, detail: str, call: Any) -> dict[str, Any]:
-        budget_for(tool, detail)  # refuse an unknown detail before any work
-        payload = call()
-        return fit_reply(payload, tool=tool, detail=detail, meta={"freshness": current_freshness()})
+    from backend.devcenter.agent_tools import client_name
+    from backend.tool_registry import build_tools
 
-    @server.tool()
-    def brain_overview(detail: str = "compact") -> dict[str, Any]:
-        """List project model/report IDs, object counts, and known scan status. detail: compact|full."""
-        return reply("brain_overview", detail, lambda: client.get("overview"))
-
-    @server.tool()
-    def brain_search(query: str, model_id: str | None = None, report_id: str | None = None,
-                     object_type: str | None = None, limit: int = 20, offset: int = 0,
-                     detail: str = "compact") -> dict[str, Any]:
-        """Rank objects with exact matching evidence. Page all results (next_offset) before claiming completeness."""
-        return reply("brain_search", detail, lambda: client.get(
-            "search", q=query, model_id=model_id, report_id=report_id, object_type=object_type, limit=limit, offset=offset))
-
-    @server.tool()
-    def brain_object(object_id: str, detail: str = "compact") -> dict[str, Any]:
-        """Inspect an exact stable ID, its expression, dependencies, usage, and evidence."""
-        return reply("brain_object", detail, lambda: client.get("objects/" + quote(object_id, safe="")))
-
-    @server.tool()
-    def brain_context(target: str, task: str | None = None, detail: str = "compact") -> dict[str, Any]:
-        """Retrieve a task-scoped evidence package for an exact object ID."""
-        return reply("brain_context", detail, lambda: client.get("context", target=target, task=task))
-
-    @server.tool()
-    def brain_graph(center_id: str, depth: int = 1, limit: int = 100,
-                    model_id: str | None = None, report_id: str | None = None,
-                    detail: str = "compact") -> dict[str, Any]:
-        """Read a bounded neighborhood. Truncation means this is not the whole graph."""
-        return reply("brain_graph", detail, lambda: client.get(
-            "graph", center_id=center_id, depth=depth, limit=limit, model_id=model_id, report_id=report_id))
-
-    @server.tool()
-    def brain_impact(target_id: str, proposed_changes: list[dict[str, Any]] | None = None, include_report_usage: bool = True,
-                     detail: str = "compact") -> dict[str, Any]:
-        """Read conservative impact; unknown coverage never proves no effects."""
-        return reply("brain_impact", detail, lambda: client.post(
-            "impact", {"target_id": target_id, "proposed_changes": proposed_changes or [], "include_report_usage": include_report_usage}))
-
-    @server.tool()
-    def brain_compare(before: str, after: str, detail: str = "compact") -> dict[str, Any]:
-        """Compare two previously prepared immutable snapshot IDs (app only). No paths/writes."""
-        return reply("brain_compare", detail, lambda: client.post("compare", {"before": before, "after": after}))
-
-    @server.tool()
-    def brain_commonality(type: str | None = None, scope: str | None = None, bucket: str | None = None,
-                          group_id: str | None = None, limit: int = 25, offset: int = 0,
-                          detail: str = "compact") -> dict[str, Any]:
-        """Across all models/reports: identical, differs (which properties), renamed, unique objects, and duplicate DAX logic.
-
-        type: object type (MEASURE, COLUMN, TABLE, PAGE, VISUAL...). scope: "models", "reports" or model/report
-        ids or refs (m1,r2). bucket: identical|differs|renamed|unique. Sources are referenced by ref (m1, r1).
-        Compact replies stay under about 3,000 tokens; page with next_offset while has_more. group_id gives one
-        group with its object IDs."""
-        # The commonality route pages to fit by itself; it gets the room the reply budget leaves.
-        room = budget_for("brain_commonality", detail) - META_RESERVE
-        return reply("brain_commonality", detail, lambda: client.get(
-            "commonality", type=type, scope=scope, bucket=bucket, group_id=group_id, limit=limit, offset=offset,
-            compact="true" if detail == "compact" else "false", max_chars=room))
-
-    @server.tool()
-    def brain_pending_changes(detail: str = "compact") -> dict[str, Any]:
-        """Project files changed outside PBIBrain since the last scan (by an agent, a person or another tool).
-
-        Lists the changed files and the objects created, deleted, renamed or changed, with
-        Breaks (objects that still use a deleted or renamed object) and Needs (DAX that names a
-        missing measure, column or table). Check it after editing project files. Read-only;
-        status UNCHANGED means the files match the last scan."""
-        return reply("brain_pending_changes", detail, lambda: client.get("pending-changes"))
-
-    def send(method: str, path: str, query: dict[str, Any] | None, body: dict[str, Any] | None) -> dict[str, Any]:
-        payload = client.devcenter(method, path, query, body)
-        # The agent tool replies have fixed schemas; only an oversized reply gets the budget block.
-        return payload if size(payload) <= budget_for("devcenter") else fit_reply(payload, tool="devcenter")
-
-    from backend.devcenter.agent_tools import register as register_agent_tools
-
-    register_agent_tools(server, send)  # Build step S10: the eight Development Center agent tools.
+    # One shared registry (issue #7): the in-app chat calls these same functions in process.
+    for tool in build_tools(client, freshness=current_freshness,
+                            client_label=lambda: client_name(server.get_context())).values():
+        server.add_tool(tool)
     return server
 
 

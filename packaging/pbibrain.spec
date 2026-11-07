@@ -22,6 +22,8 @@ a = Analysis(
         "pythonnet",
         "ladybug._lbug_capi",
         "backend.mcp_server",
+        "backend.chat.service",
+        "anthropic",
         "backend.devcenter.session.jsapi_methods",
     ],
     hookspath=[],
