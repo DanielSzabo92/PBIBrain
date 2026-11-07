@@ -1211,3 +1211,15 @@ td:hover > .mx-mark { transform: scale(1.2); }
 .pending-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
 .pending-body ul { margin: 0; padding-left: 18px; color: var(--muted-foreground); overflow-wrap: anywhere; }
 .content-graph .pending-banner { width: 100%; max-width: none; margin-bottom: 12px; }
+.doc-export-panel { gap: 0; padding: 0; }
+.doc-export-panel > :not(.settings-panel-head) { margin-left: 22px; margin-right: 22px; }
+.doc-export-panel > :last-child { margin-bottom: 22px; }
+.doc-export-format { display: flex; align-items: center; gap: 12px; margin-top: 18px; }
+.doc-export-format [data-slot="label"] { color: var(--text-2); font-size: var(--fs-meta); }
+.doc-export-scope { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-top: 16px; margin-bottom: 10px; }
+.doc-export-group { display: flex; flex-direction: column; gap: 8px; min-width: 0; border: 1px solid var(--border); border-radius: var(--radius-md, 8px); padding: 10px 12px 12px; }
+.doc-export-group legend { padding: 0 4px; color: var(--text-2); font-size: var(--fs-meta); font-weight: 600; }
+.doc-export-all { align-self: flex-start; }
+.doc-export-check { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.doc-export-check label { overflow-wrap: anywhere; }
+.doc-export-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 8px; }

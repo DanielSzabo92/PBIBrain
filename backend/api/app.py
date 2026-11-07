@@ -513,6 +513,26 @@ class BrainApp:
                 if not isinstance(model_id, str) or not model_id.strip():
                     raise ValueError("model-summary requires one exact model_id")
                 return 200, build_model_summary(self.api.repository, model_id, store=self.api.overrides)
+            if method == "POST" and parts == ["documentation-export"]:
+                # Issue #15: PDF or Markdown documentation of the loaded snapshot, built while the app is open.
+                import base64
+
+                from backend.documentation_pdf import export_documentation
+                payload = self._json_body(body)
+                if set(payload) - {"format", "model_ids", "report_ids", "sections"}:
+                    raise ValueError("documentation-export accepts format, model_ids, report_ids and sections only")
+                for key in ("model_ids", "report_ids", "sections"):
+                    value = payload.get(key)
+                    if value is not None and (not isinstance(value, list) or any(not isinstance(item, str) for item in value)):
+                        raise ValueError(f"{key} must be a list of strings")
+                project_name = self.project.get_config().get("name") if self.project is not None else None
+                result = export_documentation(
+                    self.api.repository, fmt=str(payload.get("format") or "pdf"), project_name=project_name or "PBIBrain",
+                    model_ids=payload.get("model_ids"), report_ids=payload.get("report_ids"), sections=payload.get("sections"),
+                    store=self.api.overrides,
+                )
+                data = result.pop("data")
+                return 200, {**result, "bytes": len(data), "content_base64": base64.b64encode(data).decode("ascii")}
             if method == "GET" and parts == ["brain"]:
                 return 200, self.api.get_snapshot()
             if method == "GET" and parts == ["objects"]:

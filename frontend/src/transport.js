@@ -51,6 +51,14 @@ export function createBrainTransport({ baseUrl = API_ROOT, fetcher = globalThis.
       const params = new URLSearchParams({ model_id: modelId });
       return request(`/model-summary?${params}`);
     },
+    /** PDF or Markdown documentation of the loaded scan, built by the running server (issue #15). */
+    exportDocumentation({ format = "pdf", modelIds = null, reportIds = null, sections = null } = {}) {
+      return request("/documentation-export", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ format, model_ids: modelIds, report_ids: reportIds, sections }),
+      });
+    },
     /** Project files changed outside the app since the last scan, with Breaks and Needs (issue #17). */
     getPendingChanges() {
       return request("/pending-changes");

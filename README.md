@@ -96,6 +96,7 @@ brain --config C:\Reports\brain.json retrieve Revenue --limit 20
 brain --config C:\Reports\brain.json context "<exact object ID>"
 brain --config C:\Reports\brain.json export-markdown
 brain --config C:\Reports\brain.json export-markdown --output C:\Reports\finance-doc.md
+brain --config C:\Reports\brain.json export-docs --format pdf --output C:\Reports\finance-doc.pdf
 ```
 
 `project-scan` stages all configured sources and publishes them together.
@@ -115,6 +116,23 @@ versus inference and observation classes, source evidence, unresolved
 bindings, unknown scan metadata, and a deterministic snapshot identity without
 inventing a scan ID. Stop `brain serve` before running this direct database
 command. The export is canonical-snapshot only; review overrides are excluded.
+
+**Documentation as PDF or Markdown, from the app.** File › Export documentation…
+(or Settings › Documentation) builds a document from the last scan while the app
+stays open: choose PDF or Markdown, the models and reports, and the sections. It
+has a linked table of contents and bookmarks, a model diagram with the
+relationships, tables, a measure catalogue with DAX and descriptions, each report
+page's visuals and the fields they use, a lineage summary (data sources › models
+› reports, with a diagram), the not-checked and unresolved list, and FACT /
+INFERRED / OBSERVED markers. Reviewed meanings show their review status.
+Repeating an export of the same scan gives the same file except the generation
+time. The PDF is written by a small built-in writer with the standard PDF fonts,
+so the Windows package needs nothing extra; letters outside Western European
+fonts show as their nearest letter (the Markdown keeps the exact text). The
+same export is `brain export-docs` on the command line (`--format`, `--output`,
+and repeatable `--model-id`, `--report-id`, `--section`), which reads the
+database directly, so stop `brain serve` first. The app route is
+`POST /api/documentation-export`.
 
 Agent integration and response contracts: [Agent guide](docs/AGENT_GUIDE.md).
 Review and future documentation/visualization plan: [Product review](docs/PRODUCT_REVIEW.md).
