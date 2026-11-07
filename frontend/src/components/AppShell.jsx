@@ -124,6 +124,19 @@ export function ShortcutsDialog({ open, onOpenChange }) {
               <div className="shortcuts-row"><dt>Close panel or dialog</dt><dd><kbd>Esc</kbd></dd></div>
             </dl>
           </section>
+          <section aria-label="Graph">
+            <h3>Graph</h3>
+            <dl>
+              <div className="shortcuts-row"><dt>Move to a connected object</dt><dd><kbd>←</kbd> <kbd>↑</kbd> <kbd>→</kbd> <kbd>↓</kbd></dd></div>
+              <div className="shortcuts-row"><dt>Select, then open in Inspector</dt><dd><kbd>Enter</kbd></dd></div>
+              <div className="shortcuts-row"><dt>Expand or collapse a group</dt><dd><kbd>Space</kbd></dd></div>
+              <div className="shortcuts-row"><dt>Zoom in / out / 100%</dt><dd><kbd>+</kbd> <kbd>−</kbd> <kbd>0</kbd></dd></div>
+              <div className="shortcuts-row"><dt>Fit the graph</dt><dd><kbd>F</kbd></dd></div>
+              <div className="shortcuts-row"><dt>Clear the selection</dt><dd><kbd>Esc</kbd></dd></div>
+              <div className="shortcuts-row"><dt>Show an object’s connections</dt><dd>Double-click</dd></div>
+              <div className="shortcuts-row"><dt>Pan / zoom</dt><dd>Drag / scroll</dd></div>
+            </dl>
+          </section>
         </div>
       </DialogContent>
     </Dialog>

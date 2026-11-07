@@ -726,145 +726,179 @@ p.object-review { padding: 0 4px; }
 .model-summary-preview:focus-visible { outline: 2px solid var(--brand); outline-offset: -2px; }
 .model-summary-panel > p.success-text { margin-top: 10px; }
 
-/* ---------- Graph ------------------------------------------------------- */
+/* ---------- Graph (visual contract §11) ---------------------------------- */
 
-.graph-page { display: flex; flex: 1; flex-direction: column; gap: 8px; min-height: 560px; }
-.graph-filter-card { gap: 0; padding: 10px; border-radius: var(--r-md); }
-.graph-filter-top { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
-.graph-search { position: relative; flex: 1 1 220px; max-width: 360px; }
+.graph-page { display: flex; flex: 1; flex-direction: column; gap: 6px; min-height: 480px; }
+
+/* One 44px toolbar: find, view, types, display, filters, count, fit. */
+.graph-toolbar { display: flex; flex: none; align-items: center; gap: 6px; min-width: 0; height: 44px; padding: 0 2px; }
+.graph-search { position: relative; flex: 0 1 240px; min-width: 150px; }
 .graph-search > svg { position: absolute; top: 50%; left: 10px; width: 16px; height: 16px; color: var(--text-3); transform: translateY(-50%); pointer-events: none; }
-.graph-search .ui-input { padding-left: 32px; }
-.graph-filter-top [data-slot="tabs"] { gap: 0; }
-.graph-filter-actions { display: flex; align-items: center; gap: var(--space-2); margin-left: auto; }
-.graph-filter-details { margin-top: 8px; }
-.graph-filter-details > summary {
-  display: inline-flex; align-items: center; gap: 7px; height: 26px; padding: 0 8px; border-radius: var(--r-sm); cursor: pointer; list-style: none;
-  color: var(--text-2); font-size: var(--fs-meta); font-weight: 500; user-select: none; transition: background-color var(--dur-fast), color var(--dur-fast);
+.graph-search .ui-input { height: 32px; padding-left: 32px; }
+.graph-toolbar [data-slot="tabs"] { flex: none; gap: 0; }
+.toolbar-divider { flex: none; width: 1px; height: 20px; margin: 0 2px; background: var(--line-strong); }
+.graph-toolbar-spacer { flex: 1; min-width: 8px; }
+.graph-tool-trigger {
+  display: inline-flex; flex: none; align-items: center; gap: 6px; height: 32px; padding: 0 8px; border: 0; border-radius: var(--r-xs);
+  background: transparent; color: var(--text-2); font: inherit; font-size: var(--fs-body); font-weight: 500; cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
 }
-.graph-filter-details > summary::-webkit-details-marker { display: none; }
-.graph-filter-details > summary svg { width: 14px; height: 14px; }
-.graph-filter-details > summary:hover { background: var(--surface-hover); color: var(--text); }
-.graph-filter-details[open] > summary { color: var(--text); }
-.graph-filters { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; margin-top: 8px; padding: 12px 4px 4px; border-top: 1px solid var(--line); animation: rise-in var(--dur) var(--ease-out); }
+.graph-tool-trigger svg { width: 16px; height: 16px; }
+.graph-tool-trigger .graph-tool-chevron { width: 14px; height: 14px; color: var(--text-3); transition: transform var(--dur) var(--ease-out); }
+.graph-tool-trigger[data-state="open"] .graph-tool-chevron { transform: rotate(180deg); }
+.graph-tool-trigger:hover, .graph-tool-trigger[data-state="open"] { background: var(--surface-hover); color: var(--text); }
+.graph-tool-trigger[data-active] { background: var(--surface-3); color: var(--text); }
+.graph-tool-trigger:active { transform: scale(0.985); transition-duration: var(--dur-press); }
+.graph-tool-trigger:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+.graph-tool-count { min-width: 18px; height: 18px; padding: 0 5px; border-radius: 99px; background: var(--brand); color: var(--brand-ink); font-size: var(--fs-micro); font-weight: 600; line-height: 18px; text-align: center; font-variant-numeric: tabular-nums; }
+.graph-summary { flex: none; color: var(--text-3); font-size: var(--fs-meta); font-variant-numeric: tabular-nums; white-space: nowrap; cursor: default; }
+
+/* Toolbar popovers: Types (legend + visibility), Display, Filters. */
+.graph-popover { padding: 6px; }
+.graph-popover[data-state="open"] { animation: graph-pop-in var(--dur) var(--ease-out); }
+@keyframes graph-pop-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+.graph-types-popover { width: 280px; }
+.graph-type-list { display: flex; flex-direction: column; max-height: min(420px, 60vh); margin: 0; padding: 0; overflow-y: auto; overscroll-behavior: contain; list-style: none; }
+.graph-type-row { display: grid; grid-template-columns: 24px 20px minmax(0, 1fr) auto 40px; align-items: center; gap: 8px; min-height: 32px; padding: 0 4px; border-radius: var(--r-xs); }
+.graph-type-row:hover { background: var(--surface-hover); }
+.graph-type-row label { overflow: hidden; color: var(--text); font-size: var(--fs-body); text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
+.graph-type-count { color: var(--text-3); font-size: var(--fs-meta); font-variant-numeric: tabular-nums; text-align: right; }
+.graph-type-only { height: 24px; padding: 0 6px; border: 0; border-radius: var(--r-xs); background: transparent; color: var(--text-2); font: inherit; font-size: var(--fs-meta); cursor: pointer; opacity: 0; transition: opacity var(--dur-fast) var(--ease-out), background-color var(--dur-fast) var(--ease-out); }
+.graph-type-row:hover .graph-type-only, .graph-type-only:focus-visible { opacity: 1; }
+.graph-type-only:hover { background: var(--surface-3); color: var(--text); }
+.graph-type-only:focus-visible { outline: 2px solid var(--brand); outline-offset: -2px; }
+.graph-popover-reset { margin: 4px 0 0; }
+.graph-popover-section { margin-top: 6px; padding: 10px 4px 4px; border-top: 1px solid var(--line); }
+.graph-popover-heading { display: block; margin-bottom: 6px; color: var(--text-3); font-size: var(--fs-meta); font-weight: 500; }
+.graph-popover-stack { display: flex; flex-direction: column; gap: 12px; min-width: 240px; padding: 6px; }
+.graph-popover-stack .graph-filter-field { flex-direction: row; align-items: center; justify-content: space-between; gap: 12px; }
+.graph-popover-stack .graph-filter-field [data-slot="native-select-wrapper"] { width: auto; }
+.graph-popover-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; width: 440px; max-width: calc(100vw - 32px); padding: 6px; }
 .graph-filter-field { display: flex; flex-direction: column; align-items: stretch; gap: 5px; min-width: 0; }
-.graph-filter-field > span { color: var(--text-3); font-size: var(--fs-meta); font-weight: 500; }
+.graph-filter-field > span { color: var(--text-2); font-size: var(--fs-meta); font-weight: 500; }
 .graph-filter-field [data-slot="native-select-wrapper"] { width: 100%; }
 .graph-filter-field select { text-overflow: ellipsis; }
+.graph-label-control { display: inline-flex; align-items: center; gap: 8px; color: var(--text); font-size: var(--fs-body); font-weight: 400; cursor: pointer; }
+.graph-evidence-key { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 0; padding: 0; color: var(--text-2); font-size: var(--fs-meta); list-style: none; }
+.graph-evidence-key li { display: inline-flex; align-items: center; gap: 6px; }
+.graph-evidence-key svg { width: 24px; height: 4px; overflow: visible; }
+.graph-evidence-key line { stroke: var(--graph-edge); stroke-width: 1.5; }
 
-.graph-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; min-height: 24px; padding: 0 4px; }
-.graph-summary { color: var(--text-3); font-size: var(--fs-meta); font-variant-numeric: tabular-nums; }
-.graph-center { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: var(--fs-meta); }
-.graph-center > span:not([data-slot]) { overflow: hidden; max-width: 320px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
-.graph-center small { color: var(--text-3); }
-.scope-notice { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 99px; background: var(--warn-soft); color: var(--warn); font-size: var(--fs-meta); }
-.scope-notice .ui-button-link { min-height: 24px; color: var(--warn); font-size: var(--fs-meta); text-decoration: underline; }
-
-.graph-canvas-card { position: relative; display: flex; flex: 1; flex-direction: column; min-height: 0; gap: 0; padding: 0; overflow: hidden; border-radius: var(--r-md); }
-.graph-view-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding: 12px; border-bottom: 1px solid var(--line); background: var(--surface); }
-.graph-view-toolbar [data-slot="tabs"] { gap: 0; }
-.graph-view-toolbar p { flex: 1; color: var(--text-2); font-size: var(--fs-meta); }
-.graph-view-toolbar > .ui-button { margin-left: auto; }
-.graph-canvas-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
-.graph-zoom-value { color: var(--text-2); font-size: var(--fs-micro); font-variant-numeric: tabular-nums; }
-.explorer-group-node .flow-node-type { padding-right: 80px; }
-.explorer-flow .flow-node-name { font-size: var(--fs-emphasis); }
-.graph-group-toggle { position: absolute; top: 8px; right: 8px; display: inline-flex; align-items: center; justify-content: center; gap: 3px; min-height: 28px; padding: 3px 6px; border: 1px solid var(--line-strong); border-radius: var(--r-sm); background: var(--surface-2); color: var(--text-2); font-size: var(--fs-micro); font-variant-numeric: tabular-nums; cursor: pointer; }
-.graph-group-toggle svg { width: 14px; height: 14px; }
-.graph-group-toggle:hover { color: var(--text); background: var(--surface-hover); border-color: var(--line-focus); }
-.graph-group-toggle:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
-.explorer-group-node.has-warning .flow-node-status { top: auto; right: 8px; bottom: 5px; }
-.graph-canvas-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; padding: 8px 12px; border-bottom: 1px solid var(--line); background: var(--surface); }
-.graph-canvas-toolbar .graph-filter-field { flex-direction: row; align-items: center; gap: 8px; }
-.graph-canvas-toolbar .graph-filter-field [data-slot="native-select-wrapper"] { width: auto; }
-.graph-canvas-toolbar .ui-select { height: 28px; font-size: var(--fs-body); }
-.toolbar-divider { width: 1px; height: 18px; background: var(--line-strong); }
-.graph-label-control { display: inline-flex; align-items: center; gap: 8px; color: var(--text-2); font-size: var(--fs-meta); font-weight: 500; cursor: pointer; }
-.graph-label-control:hover { color: var(--text); }
-.graph-hint { margin-left: auto; color: var(--text-3); font-size: var(--fs-meta); }
-
+/* Canvas and the docked details pane. */
+.graph-body { position: relative; display: flex; flex: 1; min-height: 0; }
+.graph-canvas-card { position: relative; display: flex; flex: 1; flex-direction: column; min-width: 0; min-height: 0; overflow: hidden; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--bg); }
 .artifact-flow { position: relative; flex: 1; min-height: 300px; background: var(--bg); }
 .graph-empty { display: flex; flex: 1; flex-direction: column; align-items: center; justify-content: center; gap: 6px; min-height: 300px; padding: 24px; background: var(--bg); text-align: center; }
 .graph-empty h3 { font-size: var(--fs-emphasis); font-weight: 600; }
 .graph-empty p { max-width: 360px; color: var(--text-2); font-size: var(--fs-body); }
 .graph-empty > .ui-button { margin-top: 10px; }
-.graph-loader { display: flex; gap: 6px; margin-bottom: 6px; }
-.graph-loader i, .connecting-indicator i { width: 7px; height: 7px; border-radius: 50%; background: var(--brand); opacity: .7; }
-.graph-loader i:nth-child(2), .connecting-indicator i:nth-child(2) { animation-delay: .15s; }
-.graph-loader i:nth-child(3), .connecting-indicator i:nth-child(3) { animation-delay: .3s; }
+.graph-loading p { color: var(--text-3); }
 
-.artifact-legend { display: flex; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; white-space: nowrap; align-items: center; gap: 6px 16px; padding: 9px 14px; border-top: 1px solid var(--line); background: var(--surface); color: var(--text-2); font-size: var(--fs-meta); }
-.artifact-legend > span { display: inline-flex; align-items: center; gap: 6px; }
-.artifact-legend .artifact-dot { box-shadow: none; }
-.legend-spacer { flex: 1; }
-.artifact-legend .legend-line { width: 20px; border-top: 1.5px solid var(--text-2); }
-.artifact-legend .legend-line.inferred { border-top-style: dashed; }
-.artifact-legend .legend-line.observed { border-top-style: dotted; border-top-width: 2px; }
+.graph-overlay { position: absolute; z-index: 5; pointer-events: none; }
+.graph-overlay > * { pointer-events: auto; }
+.graph-overlay-top { top: 10px; left: 10px; right: 10px; display: flex; flex-wrap: wrap; align-items: flex-start; gap: 8px; }
+.graph-overlay-button { background: var(--surface); }
+.graph-center { display: inline-flex; align-items: center; gap: 8px; max-width: 100%; height: 32px; padding: 0 4px 0 10px; border: 1px solid var(--line-strong); border-radius: var(--r-sm); background: var(--surface); font-size: var(--fs-meta); }
+.graph-center > svg { flex: none; width: 14px; height: 14px; color: var(--text-2); }
+.graph-center-label { flex: none; color: var(--text-2); }
+.graph-center-name { overflow: hidden; max-width: 280px; color: var(--text); font-size: var(--fs-body); font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.graph-center-actions { display: inline-flex; flex: none; gap: 2px; padding-left: 4px; border-left: 1px solid var(--line); }
+.scope-notice { display: inline-flex; align-items: center; gap: 4px; height: 32px; padding: 0 10px; border: 1px solid var(--line-strong); border-radius: var(--r-sm); background: var(--surface); color: var(--text-2); font-size: var(--fs-meta); font-variant-numeric: tabular-nums; }
+.scope-notice .ui-button-link { min-height: 24px; padding: 0 2px; color: var(--text); font-size: var(--fs-meta); text-decoration: underline; }
+.graph-overlay-key { left: 136px; bottom: 10px; display: flex; align-items: center; height: 34px; padding: 0 10px; border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--surface); }
+.graph-zoom-controls { position: absolute; left: 10px; bottom: 10px; z-index: 5; display: flex; align-items: center; gap: 2px; padding: 2px; border: 1px solid var(--line-strong); border-radius: var(--r-sm); background: var(--surface); }
+.graph-zoom-value { min-width: 46px; height: 28px; padding: 0 4px; border: 0; border-radius: var(--r-xs); background: transparent; color: var(--text-2); font: inherit; font-size: var(--fs-meta); font-variant-numeric: tabular-nums; cursor: pointer; transition: background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out); }
+.graph-zoom-value:hover { background: var(--surface-hover); color: var(--text); }
+.graph-zoom-value:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
 
 /* React Flow */
 .react-flow { --xy-edge-label-color-default: var(--text); }
 .react-flow__pane { cursor: grab; }
 .react-flow__pane.dragging { cursor: grabbing; }
-.react-flow__panel { margin: 12px; }
 .react-flow__node { transition: opacity var(--dur) var(--ease-out); }
-.react-flow__node.is-dimmed { opacity: .32; }
+.react-flow__node-brain { animation: fade-in var(--dur) var(--ease-out); }
+.react-flow__node.is-dimmed { opacity: .25; }
 .react-flow__node-brain:focus-visible { outline: none; }
-.react-flow__node-brain:focus-visible .flow-node { box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--brand); }
-.react-flow__edge-path { transition: opacity var(--dur) var(--ease-out), stroke-width var(--dur-fast); }
-.react-flow__edge-textbg { stroke: var(--line-strong); stroke-width: 1px; }
-/* Pastel palettes are tuned for dark canvases; deepen them on light ones. */
-:root[data-theme="light"] .react-flow__edges, :root[data-theme="light"] .react-flow__marker { filter: saturate(1.6) brightness(0.72); }
-.react-flow__minimap {
-  overflow: hidden; border: 1px solid var(--line-strong); border-radius: var(--r-md); background: var(--surface); box-shadow: var(--shadow-md);
-}
+.react-flow__node-brain:focus-visible .flow-node { box-shadow: 0 0 0 4px var(--bg), 0 0 0 6px var(--brand); }
+.react-flow__minimap { overflow: hidden; margin: 10px; border: 1px solid var(--line-strong); border-radius: var(--r-sm); background: var(--surface); }
 .minimap-artifact-group { fill-opacity: .06; stroke-width: 2px; }
 
+/* Edges: one neutral, opaque ink; provenance by dash pattern; never coloured by type. */
+.react-flow__edge { transition: opacity var(--dur) var(--ease-out); }
+.react-flow__edge .react-flow__edge-path { stroke: var(--graph-edge); stroke-width: 1.25; fill: none; }
+.react-flow__edge.inferred .react-flow__edge-path { stroke-dasharray: 6 4; }
+.react-flow__edge.observed .react-flow__edge-path { stroke-dasharray: 1.5 3; stroke-linecap: round; }
+.react-flow__edge.is-structure .react-flow__edge-path { stroke: var(--graph-structure); stroke-width: 1; }
+.react-flow__edge.warning .react-flow__edge-path { stroke: var(--warn); }
+.react-flow__edge:hover .react-flow__edge-path { stroke: var(--text-2); }
+.react-flow__edge.on-path .react-flow__edge-path { stroke: var(--brand); stroke-width: 2; }
+.react-flow__edge.is-dimmed { opacity: .12; }
+.react-flow__edge-textwrapper { opacity: 0; pointer-events: none; transition: opacity var(--dur-fast) var(--ease-out); }
+.react-flow__edge.show-label .react-flow__edge-textwrapper, .react-flow__edge:hover .react-flow__edge-textwrapper { opacity: 1; }
+.react-flow__edge-text { fill: var(--text); font-size: var(--fs-meta); font-weight: 500; }
+.react-flow__edge-textbg { fill: var(--surface-2); stroke: var(--line-strong); stroke-width: 1px; }
+
+/* Nodes: a type chip and one line of name. Hue lives only in the chip. */
 .flow-node {
-  position: relative; display: flex; flex-direction: column; justify-content: center; gap: 6px; width: 224px; height: 88px; padding: 12px 14px 12px 18px;
-  border: 1px solid var(--line-strong); border-radius: var(--r-md); background: var(--surface); color: var(--text); cursor: pointer;
-  box-shadow: var(--shadow-sm), var(--inset-hi);
-  transition: border-color var(--dur-fast) var(--ease-out), box-shadow var(--dur) var(--ease-out), transform var(--dur) var(--ease-out);
+  position: relative; display: flex; align-items: center; gap: 8px; width: 100%; height: 100%; padding: 0 10px 0 3px;
+  border: 1px solid var(--line-strong); border-radius: var(--r-sm); background: var(--surface); color: var(--text); cursor: pointer;
+  transition: border-color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
 }
-.flow-node::before { content: ""; position: absolute; top: 12px; bottom: 12px; left: 7px; width: 3px; border-radius: var(--r-xs); background: var(--artifact-color); opacity: .9; }
-.flow-node:hover { border-color: color-mix(in srgb, var(--artifact-color) 55%, var(--line-strong)); box-shadow: var(--shadow-md); transform: translateY(-1px); }
-.flow-node.selected {
-  border-color: var(--artifact-color);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--artifact-color) 28%, transparent), var(--shadow-md);
-  background: color-mix(in srgb, var(--artifact-color) 9%, var(--surface));
+.flow-node:hover { border-color: var(--line-focus); }
+.flow-node.selected { box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--brand); }
+.flow-node.is-suggested { border-style: dashed; border-color: var(--text-3); }
+.flow-node.has-warning { border-color: color-mix(in srgb, var(--warn) 60%, var(--line-strong)); }
+.flow-node-text { display: flex; flex: 1; flex-direction: column; gap: 1px; min-width: 0; }
+.flow-node-name { overflow: hidden; font-size: var(--fs-body); font-weight: 500; line-height: 16px; text-overflow: ellipsis; white-space: nowrap; }
+.flow-node-meta { color: var(--text-3); font-size: var(--fs-meta); line-height: 15px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.flow-node-status { display: inline-grid; flex: none; place-items: center; width: 16px; height: 16px; color: var(--text-2); }
+.flow-node-status svg { width: 14px; height: 14px; }
+.flow-node-status.warning { color: var(--warn); }
+.flow-node-status.approved { color: var(--ok); }
+.flow-node-status.rejected { color: var(--bad); }
+.flow-node .flow-handle { width: 1px; height: 1px; min-width: 0; min-height: 0; border: 0; background: transparent; opacity: 0; pointer-events: none; }
+.explorer-group-node { padding: 0 8px 0 11px; }
+.graph-group-toggle {
+  display: inline-grid; flex: none; place-items: center; width: 24px; height: 24px; padding: 0; border: 1px solid var(--line-strong); border-radius: var(--r-xs);
+  background: var(--surface-2); color: var(--text-2); cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out);
 }
-.flow-node.has-warning { border-color: color-mix(in srgb, var(--warn) 55%, var(--line-strong)); }
-.flow-node-type { display: flex; align-items: center; gap: 7px; overflow: hidden; color: var(--text-2); font-size: var(--fs-meta); font-weight: 500; white-space: nowrap; }
-.flow-node-type .artifact-dot { width: 7px; height: 7px; flex-basis: 7px; box-shadow: none; }
-.flow-node-name { display: -webkit-box; overflow: hidden; font-size: var(--fs-body); font-weight: 600; line-height: 1.3; letter-spacing: -0.005em; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow-wrap: anywhere; }
-.flow-node-status { position: absolute; top: 10px; right: 10px; padding: 1px 7px; border-radius: 99px; background: var(--info-soft); color: var(--info); font-size: var(--fs-micro); font-weight: 500; }
-.flow-node-status.warning { background: var(--warn-soft); color: var(--warn); }
-.flow-node .flow-handle { width: 6px; height: 6px; min-width: 0; min-height: 0; border: 0; background: var(--artifact-color); opacity: 0; }
-.flow-node:hover .flow-handle, .flow-node.selected .flow-handle { opacity: .8; }
+.graph-group-toggle svg { width: 14px; height: 14px; transition: transform var(--dur) var(--ease-out); }
+.graph-group-toggle[aria-expanded="true"] svg { transform: rotate(90deg); }
+.graph-group-toggle:hover { border-color: var(--line-focus); background: var(--surface-hover); color: var(--text); }
+.graph-group-toggle:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+/* Semantic zoom: below a readable zoom the name would fall under 11px, so a node shows only its glyph. */
+.is-mid .flow-node-text { overflow: visible; }
+.is-mid .flow-node-name { width: calc(100% / var(--name-scale)); transform: scale(var(--name-scale)); transform-origin: left center; }
+.is-mid .flow-node-meta { display: none; }
+.labels-off .react-flow__edge .react-flow__edge-textwrapper { opacity: 0; }
+.is-far .flow-node { justify-content: center; padding: 0; }
+.is-far .flow-node-text, .is-far .flow-node-status, .is-far .graph-group-toggle { display: none; }
+.is-far .flow-node .type-glyph { transform: scale(1.25); }
+.graph-far-label { position: absolute; z-index: 6; max-width: 240px; padding: 2px 8px; overflow: hidden; border: 1px solid var(--line-strong); border-radius: var(--r-xs); background: var(--surface-2); color: var(--text); font-size: var(--fs-meta); font-weight: 500; text-overflow: ellipsis; white-space: nowrap; transform: translate(-50%, calc(-100% - 6px)); pointer-events: none; animation: fade-in var(--dur-fast) var(--ease-out); }
 
-.artifact-group { width: 100%; height: 100%; border: 1px dashed color-mix(in srgb, var(--artifact-color) 45%, transparent); border-radius: var(--r-md); background: color-mix(in srgb, var(--artifact-color) 4%, transparent); }
-.artifact-group-title {
-  display: inline-flex; align-items: center; gap: 9px; margin: 12px; padding: 5px 12px 5px 10px; border: 1px solid color-mix(in srgb, var(--artifact-color) 35%, transparent);
-  border-radius: 99px; background: var(--surface); color: var(--text); font-size: var(--fs-meta); font-weight: 600;
-}
-.artifact-group-title > span:last-child { color: var(--text-3); font-size: var(--fs-meta); font-weight: 500; font-variant-numeric: tabular-nums; }
+/* Ownership frames ("Group by ownership" in Full graph and Connections). */
+.artifact-group { width: 100%; height: 100%; border: 1px solid var(--line); border-radius: var(--r-md); background: color-mix(in srgb, var(--surface) 50%, transparent); }
+.artifact-group-title { display: inline-flex; align-items: center; gap: 8px; margin: 10px 12px; color: var(--text-2); font-size: var(--fs-meta); font-weight: 600; }
+.artifact-group-title > span { color: var(--text-3); font-weight: 500; font-variant-numeric: tabular-nums; }
 
-.graph-zoom-controls { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 3px; border: 1px solid var(--line-strong); border-radius: var(--r-md); background: var(--surface); box-shadow: var(--shadow-md); }
-.zoom-divider { width: 16px; height: 1px; margin: 2px 0; background: var(--line-strong); }
-.canvas-button { box-shadow: var(--shadow-md); }
-
-/* Graph detail sheet */
-.ui-sheet {
-  top: 64px; right: 14px; bottom: 14px; width: min(420px, calc(100vw - 28px)); overflow: hidden;
-  border: 1px solid var(--line-strong); border-radius: var(--r-md); background: var(--surface); box-shadow: var(--shadow-lg);
+/* Docked details pane: overlays during the double-click window, then the canvas makes room for it. */
+.graph-detail-pane {
+  position: absolute; top: 0; right: 0; bottom: 0; z-index: 10; display: flex; flex-direction: column; width: 360px; overflow: hidden;
+  border: 1px solid var(--line-strong); border-radius: var(--r-md); background: var(--surface); overscroll-behavior: contain;
+  animation: sheet-in var(--dur-pane) var(--ease-out);
 }
-.ui-sheet[data-state="open"] { animation: sheet-in var(--dur-slow) var(--ease-out); }
-.ui-sheet[data-state="closed"] { animation: sheet-out var(--dur) ease-in forwards; }
-.ui-sheet::before { content: ""; position: absolute; inset: 0 0 auto; height: 3px; background: var(--artifact-color, var(--brand)); opacity: .85; }
-.ui-sheet.is-entering { pointer-events: none; }
-.ui-sheet-close { position: absolute; top: 14px; right: 14px; }
-.graph-detail-header { gap: 8px; padding: 22px 22px 16px; border-bottom: 1px solid var(--line); }
-.graph-detail-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding-right: 36px; }
-.graph-detail-title { font-size: var(--fs-heading); font-weight: 600; line-height: 1.3; letter-spacing: -0.018em; overflow-wrap: anywhere; }
-.graph-detail-body { flex: 1; min-height: 0; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; padding: 16px 22px 22px; }
+.graph-detail-pane.is-entering { pointer-events: none; }
+.graph-detail-header { position: relative; display: flex; flex: none; flex-direction: column; gap: 4px; padding: 14px 16px; border-bottom: 1px solid var(--line); }
+.graph-detail-kicker { display: flex; align-items: center; gap: 8px; min-height: 24px; padding-right: 36px; color: var(--text-2); font-size: var(--fs-meta); font-weight: 500; }
+.graph-provenance { display: inline-flex; align-items: center; gap: 4px; margin-left: 4px; color: var(--text-3); font-weight: 400; }
+.graph-provenance svg { width: 12px; height: 12px; }
+.graph-detail-title { margin-top: 4px; font-size: var(--fs-title); font-weight: 600; line-height: 1.3; overflow-wrap: anywhere; }
+.graph-detail-scope { color: var(--text-3); font-size: var(--fs-meta); }
+.graph-detail-close { position: absolute; top: 10px; right: 10px; }
+.graph-detail-actions { display: flex; gap: 8px; margin-top: 10px; }
+.graph-detail-actions .ui-button { flex: 1; }
+.graph-detail-body { flex: 1; min-height: 0; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; padding: 12px 16px 16px; }
 .graph-detail-body [data-slot="tabs-list"] { width: 100%; }
 .detail-loading { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; color: var(--text-3); font-size: var(--fs-meta); }
 .detail-error { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; margin-bottom: 14px; padding: 12px; border: 1px solid color-mix(in srgb, var(--bad) 35%, transparent); border-radius: var(--r-md); background: var(--bad-soft); color: var(--text); font-size: var(--fs-body); }
@@ -889,8 +923,18 @@ p.object-review { padding: 0 4px; }
 .detail-edge > div { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-weight: 500; }
 .detail-edge small { color: var(--text-3); overflow-wrap: anywhere; }
 .detail-evidence { margin-top: 6px; padding: 8px 10px; border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--surface-2); color: var(--text-2); font-size: var(--fs-meta); white-space: pre-wrap; overflow-wrap: anywhere; }
-.graph-detail-actions { display: flex; gap: 8px; padding: 14px 22px; border-top: 1px solid var(--line); background: var(--surface-2); }
-.graph-detail-actions .ui-button { flex: 1; }
+
+/* Sheet (side pane fallback) */
+.ui-sheet {
+  top: 64px; right: 14px; bottom: 14px; width: min(420px, calc(100vw - 28px)); overflow: hidden;
+  border: 1px solid var(--line-strong); border-radius: var(--r-md); background: var(--surface); box-shadow: var(--shadow-lg);
+}
+.ui-sheet[data-state="open"] { animation: sheet-in var(--dur-slow) var(--ease-out); }
+.ui-sheet[data-state="closed"] { animation: sheet-out var(--dur) ease-in forwards; }
+.ui-sheet::before { content: ""; position: absolute; inset: 0 0 auto; height: 3px; background: var(--artifact-color, var(--brand)); opacity: .85; }
+.ui-sheet.is-entering { pointer-events: none; }
+.ui-sheet-close { position: absolute; top: 14px; right: 14px; }
+.connecting-indicator i { width: 7px; height: 7px; border-radius: 50%; background: var(--brand); opacity: .7; }
 
 /* ---------- Onboarding -------------------------------------------------- */
 
@@ -923,7 +967,6 @@ p.object-review { padding: 0 4px; }
   .review-score { flex-direction: row; align-items: center; gap: 10px; }
   .review-score .meter { flex: 0 0 80px; }
   .review-actions { justify-content: flex-start; }
-  .graph-filters { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .palette-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   /* The desktop window's minimum (1024px outer, ~1008px inner) lands here: keep two columns. */
   :root { --sidebar-w: 188px; }
@@ -931,8 +974,7 @@ p.object-review { padding: 0 4px; }
   .react-flow__minimap svg { width: 132px; height: 88px; }
   .overview-grid { grid-template-columns: minmax(0, 1fr) minmax(280px, 0.8fr); }
   .object-workspace { grid-template-columns: minmax(0, 1fr) minmax(280px, 320px); }
-  .graph-search { flex-basis: 140px; }
-  .graph-hint { display: none; }
+  .graph-search { flex-basis: 180px; }
 }
 
 @media (max-width: 900px) {
@@ -969,14 +1011,13 @@ p.object-review { padding: 0 4px; }
   .review-item { grid-template-columns: minmax(0, 1fr); gap: 12px; }
   .page-heading { flex-direction: column; align-items: flex-start; }
   .graph-page { min-height: 0; }
-  .graph-search { flex-basis: 100%; max-width: none; }
-  .graph-filter-top > [data-slot="tabs"], .graph-filter-top [data-slot="tabs-list"] { width: 100%; }
-  .graph-filter-actions { width: 100%; margin: 0; justify-content: flex-end; }
-  .graph-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .graph-hint, .toolbar-divider { display: none; }
+  .graph-toolbar { flex-wrap: wrap; row-gap: 6px; height: auto; }
+  .graph-search { flex: 1 1 100%; max-width: none; }
+  .graph-toolbar-spacer, .toolbar-divider { display: none; }
   .graph-canvas-card { flex: none; min-height: 0; }
-  .graph-view-toolbar p { flex-basis: 100%; order: 3; }
   .artifact-flow, .graph-empty { flex: none; height: 460px; min-height: 0; }
+  .graph-detail-pane { left: 0; width: 100%; border-width: 0; border-radius: 0; animation-name: sheet-up; }
+  .graph-overlay-key { display: none; }
   .react-flow__minimap { display: none; }
   .ui-sheet { top: 0; right: 0; bottom: 0; width: 100%; border-width: 0; border-radius: 0; }
   .ui-sheet[data-state="open"] { animation-name: sheet-up; }
@@ -995,5 +1036,5 @@ p.object-review { padding: 0 4px; }
 }
 
 @media (max-width: 360px) {
-  .graph-filter-top .ui-tabs-trigger { padding: 0 5px; gap: 5px; }
+  .graph-toolbar .ui-tabs-trigger { padding: 0 5px; gap: 5px; }
 }

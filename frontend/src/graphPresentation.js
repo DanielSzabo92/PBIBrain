@@ -75,3 +75,25 @@ export function artifactColor(node, colors) {
 export function typeLabel(type) {
   return String(type || "Object").toLowerCase().replaceAll("_", " ").replace(/^./, (letter) => letter.toUpperCase());
 }
+
+/**
+ * Shorten a name in the middle so both its start and its end stay readable ("Sales amount … (LY)").
+ * `measure(text)` returns a width in the same unit as `maxWidth`; without it the name is returned unchanged.
+ */
+export function middleEllipsis(text, maxWidth, measure) {
+  const value = String(text ?? "");
+  if (typeof measure !== "function" || measure(value) <= maxWidth) return value;
+  const build = (kept) => {
+    if (kept <= 0) return "…";
+    const head = value.slice(0, Math.ceil(kept / 2)).trimEnd();
+    const tail = value.slice(value.length - Math.floor(kept / 2)).trimStart();
+    return `${head}…${tail}`;
+  };
+  let low = 0;
+  let high = value.length - 1;
+  while (low < high) {
+    const middle = (low + high + 1) >> 1;
+    if (measure(build(middle)) <= maxWidth) low = middle; else high = middle - 1;
+  }
+  return build(low);
+}

@@ -197,6 +197,14 @@ Periwinkle `--brand`/violet accent · uppercase · weight 650 · dot pills, side
 9. **Semantic zoom:** ≥0.8 full; 0.45–0.8 glyph + name; <0.45 10px type dot, no labels. Never text <11px.
 10. **Keys:** arrows → connected node, Enter → Inspector, Space expand, + − 0 zoom, F fit, Esc clears then closes. Every gesture has a key/button.
 
+**As built (2026-11-07):**
+- Fit stops at zoom .85, not .75, so 13px names never render under 11px. Full graph fits down to .55.
+- Semantic zoom: at .85 and above, names are full size. From .55 to .85, names are counter-scaled to 11px on screen and shortened in the middle. Below .55, a node shows only its glyph, and the hovered or selected node gets a 12px label. Edge labels hide below .92.
+- Containment is shown as quiet tree lines (`--graph-structure`, 1px, no arrowhead) rather than nested frames. Nested frames would move nodes when a group expands, which breaks the overview's stable positions.
+- Enter on an unselected node selects it, and Enter on the selected node opens the Inspector. Space expands a group, or selects a leaf.
+- For its first 350ms the pane overlays the canvas, so the second click of a double-click still reaches the node. After that the pane docks, and the view pans just enough to keep the selection visible.
+- Types hide object types in the loaded slice on the client (checkbox, or "Only"). The server-side "Objects" (artifact group) filter moved into Filters.
+
 ## 12. e2e name changes
 
 | Old | New | Update |

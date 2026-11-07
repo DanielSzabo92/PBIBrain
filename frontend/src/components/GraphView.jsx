@@ -1,26 +1,61 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Background, BaseEdge, Handle, MarkerType, MiniMap, Panel, Position, ReactFlow } from "@xyflow/react";
-import { ChevronDown, ChevronRight, Crosshair, FilterX, LocateFixed, Maximize2, Minus, Plus, RefreshCw, Search, SlidersHorizontal, TriangleAlert } from "lucide-react";
+import { Background, BaseEdge, Handle, MarkerType, MiniMap, Position, ReactFlow, getSmoothStepPath, useViewport } from "@xyflow/react";
+import { BadgeCheck, ChevronDown, ChevronRight, ChevronsDownUp, CircleX, Crosshair, FilterX, ListFilter, Maximize, Minus, PenLine, Plus, Search, Shapes, SlidersHorizontal, TriangleAlert } from "lucide-react";
 import "@xyflow/react/dist/style.css";
-import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
-import { Card } from "./ui/card";
 import { Checkbox } from "./ui/checkbox";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { NativeSelect } from "./ui/native-select";
 import { Tabs, TabsList, TabsTrigger } from "./ui/tabs";
+import { Popover } from "./ui/filter";
 import GraphDetails from "./GraphDetails";
-import { ARTIFACT_GROUPS, EDGE_TYPES, OBJECT_TYPES, artifactColor, artifactGroup, typeLabel } from "../graphPresentation";
-import { buildExplorerGraph, layoutExplorerGraph, layoutArtifactGraph, layoutGraph, routePath, NODE_WIDTH, NODE_HEIGHT } from "../graphLayout";
+import { TypeGlyph } from "./TypeGlyph";
+import { ARTIFACT_GROUPS, EDGE_TYPES, artifactColor, artifactGroup, middleEllipsis, typeLabel } from "../graphPresentation";
+import { buildExplorerGraph, layoutExplorerGraph, layoutArtifactGraph, layoutGraph, NODE_WIDTH, NODE_HEIGHT, GROUP_WIDTH, GROUP_HEIGHT } from "../graphLayout";
+import { objectName, scopeChoices, statusLabel, visualType } from "../presentation";
+import { isTextEntry } from "../shortcuts";
 
 const EMPTY_FILTERS = { modelId: "", reportId: "", query: "", artifact: "", objectType: "", status: "factual", edgeType: "" };
-import { objectName, scopeChoices, statusLabel, visualType } from "../presentation";
 const scopeOptions = scopeChoices;
 const DEFAULT_LIMIT = 80;
+// Density rules (visual contract §11.8).
+const AUTO_COLLAPSE_ABOVE = 40;
+const MINIMAP_ABOVE = 30;
+// Semantic zoom (visual contract §11.9). Names are 13px, so below READABLE_ZOOM they would render under
+// 11px: from there down to GLYPH_ZOOM a name is counter-scaled to stay 11px on screen (and shortened to fit);
+// below GLYPH_ZOOM a node shows only its type glyph. Edge labels (12px) hide below LABEL_ZOOM.
+const READABLE_ZOOM = 0.85;
+const GLYPH_ZOOM = 0.55;
+const LABEL_ZOOM = 0.92;
+/** Zoom tier as a stable key: "full", a 0.05-wide band ("0.6"), or "far". Bands round down, so text never drops under 11px. */
+function zoomTier(zoom) {
+  if (zoom >= READABLE_ZOOM - 0.001) return "full";
+  if (zoom < GLYPH_ZOOM) return "far";
+  return (Math.floor(zoom * 20 + 1e-6) / 20).toFixed(2);
+}
+const nameScale = (tier) => tier === "full" || tier === "far" ? 1 : 11 / (13 * Number(tier));
+// Full graph fits no further out than the smallest zoom that still shows names (see GLYPH_ZOOM).
+const FULL_GRAPH_MIN_ZOOM = 0.55;
+const DETAIL_PANE_WIDTH = 360;
+// The pane overlays the canvas for one double-click window before it docks, so the second click of a
+// double-click still lands on the node that the first click selected.
+const DOCK_DELAY = 350;
+const DEPENDENCY_EDGES = new Set(["DEPENDS_ON", "REFERENCES", "USES", "USES_MODEL"]);
+const STRUCTURE_EDGES = new Set(["CONTAINS", "BELONGS_TO"]);
+const STATUS_GLYPHS = { approved: BadgeCheck, rejected: CircleX, overridden: PenLine };
 
 function defaultDirection() {
   return globalThis.matchMedia?.("(max-width: 760px)").matches ? "TB" : "LR";
+}
+
+// Viewport travel (motion tokens: --ease-move). Linear interpolation pans and zooms directly instead of
+// d3's default "fly" curve, which zooms out mid-way.
+const easeMove = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+const travel = (duration) => ({ duration, ease: easeMove, interpolate: "linear" });
+
+function prefersReducedMotion() {
+  return Boolean(globalThis.matchMedia?.("(prefers-reduced-motion: reduce)").matches);
 }
 
 export function createGraphSession(selectedId = "") {
@@ -36,6 +71,7 @@ export function createGraphSession(selectedId = "") {
     grouped: false,
     viewMode: "overview",
     expandedIds: null,
+    hiddenTypes: [],
     viewports: {},
     placements: {},
     showLabels: false,
@@ -69,6 +105,7 @@ function normalizeGraphSession(value, selectedId) {
     grouped: typeof incoming.grouped === "boolean" ? incoming.grouped : defaults.grouped,
     viewMode: incoming.viewMode === "full" ? "full" : "overview",
     expandedIds: Array.isArray(incoming.expandedIds) ? incoming.expandedIds.filter((id) => typeof id === "string") : null,
+    hiddenTypes: Array.isArray(incoming.hiddenTypes) ? incoming.hiddenTypes.filter((type) => typeof type === "string") : [],
     viewports: incoming.viewports && typeof incoming.viewports === "object" ? incoming.viewports : {},
     placements: incoming.placements && typeof incoming.placements === "object" ? incoming.placements : {},
     showLabels: typeof incoming.showLabels === "boolean" ? incoming.showLabels : defaults.showLabels,
@@ -81,8 +118,101 @@ function graphRequestKey(session) {
   return JSON.stringify([session.revision || 0, session.filters, session.centerId, session.depth, session.limit]);
 }
 
+/** The type a person reads first: the visual kind for visuals, else the object type. */
+function kindLabel(node) {
+  return node?.type === "VISUAL" ? visualType(node) : typeLabel(node?.type);
+}
+
+/** Accessible name of a graph node, e.g. "Measure Net Sales" or "Table Sales, needs review". */
+function nodeLabel(node, warning) {
+  const state = warning ? ", needs review" : node.status && node.status !== "factual" ? `, ${statusLabel(node.status).toLowerCase()}` : "";
+  return `${kindLabel(node)} ${objectName(node)}${state}`;
+}
+
 function SelectField({ label, value, onChange, children, disabled }) {
   return <Label className="graph-filter-field"><span>{label}</span><NativeSelect aria-label={label} value={value} onChange={(event) => onChange(event.target.value)} disabled={disabled}>{children}</NativeSelect></Label>;
+}
+
+// Popover triggers need the DOM node (Radix measures it to place the popover).
+const ToolbarTrigger = React.forwardRef(function ToolbarTrigger({ icon: Icon, label, count, countLabel, active, ...props }, ref) {
+  return <button ref={ref} type="button" className="graph-tool-trigger" data-active={active || undefined} {...props}>
+    <Icon aria-hidden="true" /><span>{label}</span>
+    {count ? <span className="graph-tool-count" data-ui-number="" aria-label={countLabel}>{count}</span> : null}
+    <ChevronDown aria-hidden="true" className="graph-tool-chevron" />
+  </button>;
+});
+
+function EvidenceKey() {
+  return <ul className="graph-evidence-key" aria-label="Link styles">
+    <li><svg aria-hidden="true" viewBox="0 0 24 4"><line x1="1" y1="2" x2="23" y2="2" /></svg>From source</li>
+    <li><svg aria-hidden="true" viewBox="0 0 24 4"><line x1="1" y1="2" x2="23" y2="2" strokeDasharray="6 4" /></svg>Suggested</li>
+    <li><svg aria-hidden="true" viewBox="0 0 24 4"><line x1="1.5" y1="2" x2="23" y2="2" strokeDasharray="1.5 3" strokeLinecap="round" /></svg>Observed</li>
+  </ul>;
+}
+
+function TypesPopover({ nodes, hiddenTypes, colors, onChange }) {
+  const hidden = new Set(hiddenTypes);
+  const rows = useMemo(() => {
+    const byType = new Map();
+    for (const node of nodes) {
+      const row = byType.get(node.type) || { type: node.type, node, count: 0 };
+      row.count += 1;
+      byType.set(node.type, row);
+    }
+    // A hidden type stays listed even when the current slice has none of it, so it can be shown again.
+    for (const type of hiddenTypes) if (!byType.has(type)) byType.set(type, { type, node: { type }, count: 0 });
+    const groupOrder = ["model", "report", "other"];
+    return [...byType.values()].sort((left, right) => groupOrder.indexOf(artifactGroup(left.node)) - groupOrder.indexOf(artifactGroup(right.node)) || typeLabel(left.type).localeCompare(typeLabel(right.type)));
+  }, [nodes, hiddenTypes]);
+  const hiddenHere = rows.filter((row) => hidden.has(row.type)).length;
+  const toggle = (type, visible) => onChange(visible ? hiddenTypes.filter((item) => item !== type) : [...new Set([...hiddenTypes, type])]);
+  return <Popover label="Object types" className="graph-popover graph-types-popover"
+    trigger={<ToolbarTrigger icon={Shapes} label="Types" active={hiddenHere > 0} count={hiddenHere ? `${rows.length - hiddenHere}/${rows.length}` : ""} countLabel={`${rows.length - hiddenHere} of ${rows.length} types shown`} title="Object types: colour key and visibility" />}>
+    <div role="group" aria-label="Graph color legend">
+      <ul className="graph-type-list">
+        {rows.map((row) => {
+          const label = typeLabel(row.type);
+          const id = `graph-type-${row.type}`;
+          return <li key={row.type} className="graph-type-row">
+            <Checkbox id={id} aria-label={label} checked={!hidden.has(row.type)} onCheckedChange={(checked) => toggle(row.type, checked === true)} />
+            <TypeGlyph type={row.type} node={row.node} colors={colors} size="sm" />
+            <label htmlFor={id} translate="no">{label}</label>
+            <span className="graph-type-count" data-ui-number="">{row.count}</span>
+            <button type="button" className="graph-type-only" aria-label={`Show only ${label}`} onClick={() => onChange(rows.map((item) => item.type).filter((type) => type !== row.type))}>Only</button>
+          </li>;
+        })}
+      </ul>
+    </div>
+    {hiddenHere ? <Button variant="ghost" size="sm" className="graph-popover-reset" onClick={() => onChange([])}>Show all types</Button> : null}
+    <div className="graph-popover-section"><span className="graph-popover-heading">Links</span><EvidenceKey /></div>
+  </Popover>;
+}
+
+function DisplayPopover({ direction, showLabels, includeSuggestions, grouped, canGroup, onChange }) {
+  return <Popover label="Display options" className="graph-popover graph-display-popover"
+    trigger={<ToolbarTrigger icon={SlidersHorizontal} label="Display" title="Layout direction and labels" />}>
+    <div className="graph-popover-stack">
+      <SelectField label="Layout" value={direction} onChange={(value) => onChange({ direction: value })}><option value="LR">Left to right</option><option value="TB">Top to bottom</option></SelectField>
+      <Label className="graph-label-control"><Checkbox checked={showLabels} onCheckedChange={(checked) => onChange({ showLabels: checked === true })} />Relationship labels</Label>
+      <Label className="graph-label-control"><Checkbox checked={includeSuggestions} onCheckedChange={(checked) => onChange({ includeSuggestions: checked === true })} />Include suggestions</Label>
+      {canGroup ? <Label className="graph-label-control"><Checkbox checked={grouped} onCheckedChange={(checked) => onChange({ grouped: checked === true })} />Group by ownership</Label> : null}
+    </div>
+  </Popover>;
+}
+
+function FiltersPopover({ filters, depth, centerId, overview, edgeTypes, activeCount, hasFilters, onFilters, onScope, onDepth, onReset }) {
+  return <Popover label="Graph filters" className="graph-popover graph-filters-popover"
+    trigger={<ToolbarTrigger icon={ListFilter} label="Filters" active={activeCount > 0} count={activeCount || ""} countLabel={`${activeCount} active`} title="Filter by model, report, status or relationship" />}>
+    <div className="graph-popover-grid">
+      <SelectField label="Objects" value={filters.artifact} onChange={(artifact) => onFilters({ artifact })}><option value="">All objects</option>{Object.entries(ARTIFACT_GROUPS).map(([key, group]) => <option key={key} value={key}>{group.label.replace(" artifacts", " objects")}</option>)}</SelectField>
+      <SelectField label="Model" value={filters.modelId} onChange={(modelId) => onScope({ modelId, reportId: "" })}><option value="">All models</option>{scopeOptions(overview, "model").map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</SelectField>
+      <SelectField label="Report" value={filters.reportId} onChange={(reportId) => onScope({ reportId, modelId: "" })}><option value="">All reports</option>{scopeOptions(overview, "report").map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</SelectField>
+      <SelectField label="Status" value={filters.status} onChange={(status) => onFilters({ status })}><option value="">All statuses</option>{["factual", "candidate", "approved", "rejected", "overridden"].map((status) => <option key={status} value={status}>{statusLabel(status)}</option>)}</SelectField>
+      <SelectField label="Relationship" value={filters.edgeType} onChange={(edgeType) => onFilters({ edgeType })}><option value="">All relationships</option>{edgeTypes.map((type) => <option key={type} value={type}>{typeLabel(type)}</option>)}</SelectField>
+      <SelectField label="Distance" value={depth} disabled={!centerId} onChange={(value) => onDepth(Number(value))}>{[1, 2, 3, 4].map((value) => <option key={value} value={value}>{value} {value === 1 ? "connection away" : "connections away"}</option>)}</SelectField>
+    </div>
+    <Button variant="ghost" size="sm" className="graph-popover-reset" disabled={!hasFilters} onClick={onReset}><FilterX />Clear filters</Button>
+  </Popover>;
 }
 
 export default function GraphView({ transport, overview, snapshot, selectedId, colors, onSelect, session = null, onSession }) {
@@ -90,6 +220,8 @@ export default function GraphView({ transport, overview, snapshot, selectedId, c
   const [graphError, setGraphError] = useState(null);
   const [loading, setLoading] = useState(false);
   const [focusedNode, setFocusedNode] = useState(null);
+  const [paneSettled, setPaneSettled] = useState(false);
+  const canvasApi = useRef(null);
   const request = useRef(0);
   const controlled = typeof onSession === "function";
   const rawSession = controlled ? session : uncontrolledSession;
@@ -105,14 +237,16 @@ export default function GraphView({ transport, overview, snapshot, selectedId, c
         result: null,
       }
     : normalizedSession, [normalizedSession, selectedId, selectionNeedsRecenter]);
-  const { filters, query, centerId, depth, limit, grouped, showLabels, direction } = graphSession;
+  const { filters, query, centerId, depth, limit, grouped, showLabels, direction, hiddenTypes } = graphSession;
   const graphKey = graphRequestKey(graphSession);
   const requestedKey = useRef(graphKey);
   requestedKey.current = graphKey;
   const updateSession = useCallback((change) => {
     const apply = (current) => {
       const base = normalizeGraphSession(current, selectedId);
-      return typeof change === "function" ? change(base) : { ...base, ...change };
+      const next = typeof change === "function" ? change(base) : { ...base, ...change };
+      // A no-op update keeps the stored object, so the parent does not re-render for nothing.
+      return next === base && current ? current : next;
     };
     if (controlled) onSession?.(apply);
     else setUncontrolledSession((current) => apply(current));
@@ -166,11 +300,25 @@ export default function GraphView({ transport, overview, snapshot, selectedId, c
   const nodes = graph?.nodes || [];
   const edges = graph?.edges || [];
   const viewMode = centerId ? "connections" : graphSession.viewMode;
-  const expandedIds = graphSession.expandedIds ?? nodes.filter((node) => node.type === "MODEL").map((node) => node.id);
-  const explorer = useMemo(() => buildExplorerGraph(nodes, edges, expandedIds), [nodes, edges, graphSession.expandedIds]);
-  const canvasNodes = viewMode === "overview" ? explorer.nodes : nodes;
-  const canvasEdges = viewMode === "overview" ? explorer.edges.filter((edge) => filters.edgeType || edge.type === "CONTAINS" || edge.type === "USES_MODEL" || edge.from_id === focusedNode?.id || edge.to_id === focusedNode?.id) : edges;
-  const canvasKey = JSON.stringify([graphKey, viewMode, direction, viewMode !== "overview" && grouped]);
+  const overviewMode = viewMode === "overview";
+  // Type visibility is a view choice on the loaded slice. The focused object always stays for context.
+  const hiddenSet = useMemo(() => new Set(hiddenTypes), [hiddenTypes]);
+  const shownNodes = useMemo(() => hiddenSet.size ? nodes.filter((node) => !hiddenSet.has(node.type) || node.id === centerId) : nodes, [nodes, hiddenSet, centerId]);
+  const shownIds = useMemo(() => new Set(shownNodes.map((node) => node.id)), [shownNodes]);
+  const shownEdges = useMemo(() => hiddenSet.size ? edges.filter((edge) => shownIds.has(edge.from_id) && shownIds.has(edge.to_id)) : edges, [edges, hiddenSet, shownIds]);
+  // Default expansion opens each model, unless that would show more than the readable budget.
+  const defaultExpanded = useMemo(() => {
+    const models = shownNodes.filter((node) => node.type === "MODEL").map((node) => node.id);
+    return buildExplorerGraph(shownNodes, shownEdges, models).nodes.length > AUTO_COLLAPSE_ABOVE ? [] : models;
+  }, [shownNodes, shownEdges]);
+  const expandedIds = graphSession.expandedIds ?? defaultExpanded;
+  const explorer = useMemo(() => buildExplorerGraph(shownNodes, shownEdges, expandedIds), [shownNodes, shownEdges, expandedIds]);
+  const canvasNodes = overviewMode ? explorer.nodes : shownNodes;
+  const focusedId = focusedNode?.id;
+  const canvasEdges = useMemo(() => overviewMode
+    ? explorer.edges.filter((edge) => filters.edgeType || edge.type === "CONTAINS" || DEPENDENCY_EDGES.has(edge.type) || edge.from_id === focusedId || edge.to_id === focusedId)
+    : shownEdges, [overviewMode, explorer, filters.edgeType, focusedId, shownEdges]);
+  const canvasKey = JSON.stringify([graphKey, viewMode, direction, !overviewMode && grouped]);
   const saveViewport = useCallback((viewport) => updateSession((current) => {
     const previous = current.viewports?.[canvasKey];
     if (previous && previous.x === viewport.x && previous.y === viewport.y && previous.zoom === viewport.zoom) return current;
@@ -185,168 +333,410 @@ export default function GraphView({ transport, overview, snapshot, selectedId, c
     const recent = Object.entries(current.placements || {}).filter(([key]) => key !== canvasKey).slice(-11);
     return { ...current, placements: { ...Object.fromEntries(recent), [canvasKey]: positions } };
   }), [canvasKey, updateSession]);
-  const toggleGroup = (id) => updateSession((current) => {
-    const expanded = new Set(current.expandedIds ?? nodes.filter((node) => node.type === "MODEL").map((node) => node.id));
+  const toggleGroup = useCallback((id) => updateSession((current) => {
+    const expanded = new Set(current.expandedIds ?? defaultExpanded);
     if (expanded.has(id)) expanded.delete(id); else expanded.add(id);
     return { ...current, expandedIds: [...expanded] };
-  });
+  }), [defaultExpanded, updateSession]);
   const error = graphError?.key === graphKey ? graphError.message : "";
-  const objectTypes = [...new Set([...OBJECT_TYPES, ...Object.keys(overview?.object_counts || {})])].sort();
   const edgeTypes = [...new Set([...EDGE_TYPES, ...edges.map((edge) => edge.type)])].sort();
   const warningIds = useMemo(() => new Set((snapshot.conflicts || []).flatMap((item) => [item.target?.id || item.target || item.target_id || item.object_id, item.id, item.conflict_id].filter(Boolean))), [snapshot.conflicts]);
-  const legendNodes = [...new Map(nodes.map((node) => [`${artifactGroup(node)}:${node.type}`, node])).values()].sort((a, b) => a.type.localeCompare(b.type));
-  const hasFilters = Object.entries(filters).some(([key, value]) => value !== EMPTY_FILTERS[key]) || Boolean(query) || Boolean(centerId);
-  const activeFilters = Object.entries(filters).filter(([key, value]) => value !== EMPTY_FILTERS[key]).length;
-  const reset = () => { updateSession((current) => ({ ...current, filters: { ...EMPTY_FILTERS }, query: "", centerId: "", depth: 1, limit: DEFAULT_LIMIT, result: null, expandedIds: null })); setFocusedNode(null); };
-  const center = (node) => { updateSession((current) => ({ ...current, filters: { ...EMPTY_FILTERS, status: node.status === "factual" ? "factual" : "" }, query: "", centerId: node.id })); setFocusedNode(node); };
+  const activeFilters = ["artifact", "modelId", "reportId", "edgeType", "objectType"].filter((key) => filters[key]).length + (filters.status && filters.status !== "factual" ? 1 : 0);
+  const hasFilters = Object.entries(filters).some(([key, value]) => value !== EMPTY_FILTERS[key]) || Boolean(query) || Boolean(centerId) || hiddenTypes.length > 0;
+  const reset = () => { updateSession((current) => ({ ...current, filters: { ...EMPTY_FILTERS }, query: "", centerId: "", depth: 1, limit: DEFAULT_LIMIT, result: null, expandedIds: null, hiddenTypes: [] })); setFocusedNode(null); };
+  const center = useCallback((node) => {
+    if (!node) return;
+    updateSession((current) => ({ ...current, filters: { ...EMPTY_FILTERS, status: node.status === "factual" ? "factual" : "" }, query: "", centerId: node.id }));
+    setFocusedNode(node);
+  }, [updateSession]);
   const changeView = (mode) => {
     if (mode === "connections") { if (focusedNode) center(focusedNode); return; }
     updateSession({ viewMode: mode, centerId: "" });
     setFocusedNode(null);
   };
+  const inspect = useCallback((id) => { updateSession({ selectionId: id }); onSelect(id, "inspector"); }, [onSelect, updateSession]);
+  const changeDisplay = (change) => {
+    if ("includeSuggestions" in change) { updateFilters({ status: change.includeSuggestions ? "" : "factual" }); return; }
+    updateSession(change);
+  };
+
+  // The pane docks next to the canvas once the double-click window has passed (see DOCK_DELAY).
+  const paneOpen = Boolean(focusedNode);
+  useEffect(() => {
+    if (!paneOpen) { setPaneSettled(false); return undefined; }
+    const timer = setTimeout(() => setPaneSettled(true), DOCK_DELAY);
+    return () => clearTimeout(timer);
+  }, [paneOpen]);
+  // Narrow windows show the pane over the canvas instead of beside it.
+  const docked = paneSettled && !globalThis.matchMedia?.("(max-width: 760px)").matches;
+  const closeDetails = useCallback(() => {
+    const id = focusedNode?.id;
+    const returnToNode = document.activeElement?.closest?.(".graph-detail-pane") || document.activeElement === document.body;
+    setFocusedNode(null);
+    if (id && returnToNode) requestAnimationFrame(() => document.querySelector(`.react-flow__node[data-id="${globalThis.CSS?.escape ? CSS.escape(id) : id}"]`)?.focus());
+  }, [focusedNode]);
+
+  // Canvas keys (visual contract §11.10): + − 0 zoom, F fits, Esc clears the selection and closes the pane.
+  useEffect(() => {
+    const onKey = (event) => {
+      if (event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey) return;
+      const target = event.target;
+      if (target?.closest?.("[role=dialog], [role=alertdialog], [role=menu], [role=listbox]")) return;
+      if (isTextEntry(target)) return;
+      const api = canvasApi.current;
+      if (event.key === "Escape") {
+        if (paneOpen) { event.preventDefault(); closeDetails(); }
+        return;
+      }
+      if (!api) return;
+      const action = { "+": api.zoomIn, "=": api.zoomIn, "-": api.zoomOut, "_": api.zoomOut, "0": api.zoomReset, f: api.fit, F: api.fit }[event.key];
+      if (!action) return;
+      event.preventDefault();
+      action();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [paneOpen, closeDetails]);
+
+  const centerNode = centerId ? nodes.find((node) => node.id === centerId) : null;
+  const summary = loading && !graph ? "Loading graph…" : `${canvasNodes.length} ${canvasNodes.length === 1 ? "object" : "objects"} · ${canvasEdges.length} ${canvasEdges.length === 1 ? "link" : "links"}`;
+  const summaryDetail = [
+    overviewMode && explorer.hiddenCount ? `${explorer.hiddenCount} in collapsed groups` : "",
+    hiddenTypes.length && nodes.length !== shownNodes.length ? `${nodes.length - shownNodes.length} hidden by type` : "",
+    `${nodes.length} of ${graph?.total_nodes ?? 0} matching objects loaded`,
+  ].filter(Boolean).join(" · ");
+  const evidenceShown = canvasEdges.some((edge) => String(edge.evidence_class || "FACT").toUpperCase() !== "FACT");
 
   return <div className="graph-page">
-    <Card className="graph-filter-card">
-      <div className="graph-filter-top">
-        <div className="graph-search"><Search aria-hidden="true" /><Input type="search" aria-label="Filter graph objects" value={query} onChange={(event) => { updateSession({ query: event.target.value }); setFocusedNode(null); }} placeholder="Find an object…" /></div>
-        <Tabs controls="graph-canvas" value={filters.artifact || "all"} onValueChange={(value) => updateFilters({ artifact: value === "all" ? "" : value })}>
-          <TabsList aria-label="Artifact groups"><TabsTrigger value="all">All objects</TabsTrigger>{Object.entries(ARTIFACT_GROUPS).map(([key, group]) => <TabsTrigger value={key} key={key}><span className="artifact-dot" style={{ backgroundColor: colors.groups[key] }} />{group.label.replace(" artifacts", "")}</TabsTrigger>)}</TabsList>
-        </Tabs>
-        <div className="graph-filter-actions" data-ui-actions="">
-          <Button variant="ghost" size="sm" disabled={!hasFilters} onClick={reset}><FilterX />Clear filters</Button>
-          <Button variant="outline" size="sm" onClick={loadGraph} disabled={loading}><RefreshCw className={loading ? "spin" : ""} />Refresh</Button>
-        </div>
-      </div>
-      <details className="graph-filter-details"><summary><SlidersHorizontal aria-hidden="true" />More filters{activeFilters ? <span className="count-pill">{activeFilters} active</span> : ""}</summary><div className="graph-filters">
-        <SelectField label="Model" value={filters.modelId} onChange={(modelId) => { updateSession((current) => ({ ...current, centerId: "", filters: { ...current.filters, modelId, reportId: "" } })); setFocusedNode(null); }}><option value="">All models</option>{scopeOptions(overview, "model").map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</SelectField>
-        <SelectField label="Report" value={filters.reportId} onChange={(reportId) => { updateSession((current) => ({ ...current, centerId: "", filters: { ...current.filters, reportId, modelId: "" } })); setFocusedNode(null); }}><option value="">All reports</option>{scopeOptions(overview, "report").map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</SelectField>
-        <SelectField label="Object type" value={filters.objectType} onChange={(objectType) => updateFilters({ objectType })}><option value="">All types</option>{objectTypes.map((type) => <option key={type} value={type}>{typeLabel(type)}</option>)}</SelectField>
-        <SelectField label="Status" value={filters.status} onChange={(status) => updateFilters({ status })}><option value="">All statuses</option>{["factual", "candidate", "approved", "rejected", "overridden"].map((status) => <option key={status} value={status}>{statusLabel(status)}</option>)}</SelectField>
-        <SelectField label="Relationship" value={filters.edgeType} onChange={(edgeType) => updateFilters({ edgeType })}><option value="">All relationships</option>{edgeTypes.map((type) => <option key={type} value={type}>{typeLabel(type)}</option>)}</SelectField>
-        <SelectField label="Distance" value={depth} disabled={!centerId} onChange={(value) => { updateSession({ depth: Number(value) }); setFocusedNode(null); }}>{[1, 2, 3, 4].map((value) => <option key={value} value={value}>{value} {value === 1 ? "connection away" : "connections away"}</option>)}</SelectField>
-      </div>
-      </details>
-    </Card>
-    <div className="graph-meta">
-      <div className="graph-summary" role="status" aria-live="polite"><span>{loading ? "Loading graph…" : viewMode === "overview" ? `${canvasNodes.length} visible · ${explorer.hiddenCount} in collapsed groups · ${nodes.length} of ${graph?.total_nodes ?? 0} matching objects loaded` : `${nodes.length} of ${graph?.total_nodes ?? 0} matching objects · ${edges.length} relationships`}</span></div>
-      {centerId ? <div className="graph-center"><Badge variant="default"><Crosshair />Focused view</Badge><span>{objectName(nodes.find((node) => node.id === centerId))}</span><Button variant="ghost" size="xs" onClick={() => { updateSession({ centerId: "" }); setFocusedNode(null); }}>Back to project</Button>{filters.objectType ? <small>The center stays visible for context.</small> : null}</div> : null}
-      {graph?.truncated ? <div className="scope-notice">Showing {nodes.length} of {graph.total_nodes} objects. Filter by name or double-click an object to explore its connections{limit < 1000 ? <> or <Button variant="link" size="xs" onClick={() => updateSession({ limit: Math.min(limit * 2, 1000) })}>Show more</Button></> : "."}</div> : null}
+    <div className="graph-toolbar" data-ui-actions="">
+      <div className="graph-search"><Search aria-hidden="true" /><Input type="search" aria-label="Filter graph objects" value={query} onChange={(event) => { updateSession({ query: event.target.value }); setFocusedNode(null); }} placeholder="Find an object…" spellCheck={false} autoComplete="off" /></div>
+      <Tabs controls="graph-canvas" value={viewMode} onValueChange={changeView}>
+        <TabsList aria-label="Graph view">
+          <TabsTrigger value="overview" title="Owners first: expand a group to see what is inside">Overview</TabsTrigger>
+          <TabsTrigger value="connections" disabled={!centerId && !focusedNode} title="One object and what it connects to (double-click an object)">Connections</TabsTrigger>
+          <TabsTrigger value="full" title="Every loaded object and relationship">Full graph</TabsTrigger>
+        </TabsList>
+      </Tabs>
+      <span className="toolbar-divider" aria-hidden="true" />
+      <TypesPopover nodes={nodes} hiddenTypes={hiddenTypes} colors={colors} onChange={(next) => { updateSession({ hiddenTypes: next }); }} />
+      <DisplayPopover direction={direction} showLabels={showLabels} includeSuggestions={filters.status !== "factual"} grouped={grouped} canGroup={!overviewMode} onChange={changeDisplay} />
+      <FiltersPopover filters={filters} depth={depth} centerId={centerId} overview={overview} edgeTypes={edgeTypes} activeCount={activeFilters} hasFilters={hasFilters}
+        onFilters={updateFilters}
+        onScope={(change) => { updateSession((current) => ({ ...current, centerId: "", filters: { ...current.filters, ...change } })); setFocusedNode(null); }}
+        onDepth={(value) => { updateSession({ depth: value }); setFocusedNode(null); }}
+        onReset={reset} />
+      <span className="graph-toolbar-spacer" />
+      <span className="graph-summary" role="status" aria-live="polite" data-ui-number="" title={summaryDetail}>{summary}<span className="sr-only">{summaryDetail ? `. ${summaryDetail}` : ""}</span></span>
+      <Button variant="ghost" size="sm" aria-label="Fit view" tooltip="Fit view (F)" disabled={!canvasNodes.length} onClick={() => canvasApi.current?.fit()}><Maximize />Fit</Button>
     </div>
-    <Card id="graph-canvas" className="graph-canvas-card" aria-busy={loading}>
-      <div className="graph-view-toolbar" data-ui-actions="">
-        <Tabs controls="graph-canvas" value={viewMode} onValueChange={changeView}><TabsList aria-label="Graph view"><TabsTrigger value="overview">Overview</TabsTrigger><TabsTrigger value="connections" disabled={!centerId && !focusedNode}>Connections</TabsTrigger><TabsTrigger value="full">Full graph</TabsTrigger></TabsList></Tabs>
-        <p>{viewMode === "overview" ? "Expand a group. Select an object to see its connections." : viewMode === "connections" ? "Follow an object’s connections, one step at a time." : "All loaded objects and relationships."}</p>
-        {viewMode === "overview" ? <Button variant="ghost" size="sm" disabled={graphSession.expandedIds == null} onClick={() => updateSession({ expandedIds: null })}>Collapse groups</Button> : centerId ? <Button variant="outline" size="sm" disabled={loading || depth >= 4} onClick={() => updateSession({ depth: Math.min(depth + 1, 4) })}><Plus />Expand connections</Button> : null}
+    <div className="graph-body">
+      <div id="graph-canvas" className="graph-canvas-card" data-slot="card" aria-busy={loading} style={docked ? { marginRight: DETAIL_PANE_WIDTH + 8 } : undefined}>
+        {error ? <div className="graph-empty" role="alert"><span className="empty-icon tone-bad" aria-hidden="true"><TriangleAlert /></span><h3>Graph unavailable</h3><p>{error}</p><Button variant="outline" onClick={loadGraph}>Retry graph</Button></div>
+          : !graph ? <div className="graph-empty graph-loading" role="status"><p>Loading graph…</p></div>
+          : canvasNodes.length ? <GraphCanvas key={canvasKey} apiRef={canvasApi} overview={overviewMode} full={viewMode === "full"} grouped={!overviewMode && grouped} onCenter={center} onInspect={inspect} nodes={canvasNodes} edges={canvasEdges} selectedId={focusedNode?.id || centerId} docked={docked} warningIds={warningIds} direction={direction} showLabels={showLabels} colors={colors} onSelect={setFocusedNode} onToggleGroup={toggleGroup} viewport={graphSession.viewports[canvasKey]} onViewportChange={saveViewport} placements={graphSession.placements[canvasKey]} onPlacementsChange={savePlacements} />
+          : <div className="graph-empty"><span className="empty-icon" aria-hidden="true"><Search /></span><h3>No matching objects</h3><p>{hasFilters ? "Try another filter or clear the filters." : "Scan project sources to see their relationships."}</p>{hasFilters ? <Button variant="outline" onClick={reset}>Clear filters</Button> : null}</div>}
+        <div className="graph-overlay graph-overlay-top" data-ui-actions="">
+          {centerId ? <div className="graph-center">
+            <Crosshair aria-hidden="true" /><span className="graph-center-label">Focused view</span>
+            <span className="graph-center-name" translate="no" title={objectName(centerNode)}>{objectName(centerNode)}</span>
+            <span className="graph-center-actions">
+              <Button variant="ghost" size="xs" disabled={loading || depth >= 4} onClick={() => updateSession({ depth: Math.min(depth + 1, 4) })} title={`Showing ${depth} ${depth === 1 ? "step" : "steps"} away`}><Plus />Expand connections</Button>
+              <Button variant="ghost" size="xs" onClick={() => { updateSession({ centerId: "" }); setFocusedNode(null); }}>Back to project</Button>
+            </span>
+          </div> : overviewMode && graphSession.expandedIds != null && explorer.collapsedCount < explorer.nodes.filter((node) => node.explorerChildCount > 0).length ? <Button variant="outline" size="xs" className="graph-overlay-button" onClick={() => updateSession({ expandedIds: null })}><ChevronsDownUp />Collapse all</Button> : null}
+          {graph?.truncated ? <div className="scope-notice">Showing {nodes.length} of {graph.total_nodes} objects{limit < 1000 ? <> · <Button variant="link" size="xs" onClick={() => updateSession({ limit: Math.min(limit * 2, 1000) })}>Show more</Button></> : null}</div> : null}
+        </div>
+        {evidenceShown ? <div className="graph-overlay graph-overlay-key"><EvidenceKey /></div> : null}
       </div>
-      <div className="graph-canvas-toolbar" data-ui-actions=""><SelectField label="Layout" value={direction} onChange={(value) => updateSession({ direction: value })}><option value="LR">Left to right</option><option value="TB">Top to bottom</option></SelectField><span className="toolbar-divider" aria-hidden="true" /><Label className="graph-label-control"><Checkbox checked={showLabels} onCheckedChange={(checked) => updateSession({ showLabels: checked === true })} />Relationship labels</Label><Label className="graph-label-control"><Checkbox checked={filters.status !== "factual"} onCheckedChange={(checked) => updateFilters({ status: checked ? "" : "factual" })} />Include suggestions</Label>{viewMode !== "overview" ? <Label className="graph-label-control"><Checkbox checked={grouped} onCheckedChange={(checked) => updateSession({ grouped: checked === true })} />Group by ownership</Label> : null}<span className="graph-hint">Scroll to zoom · Drag to pan · Double-click to focus</span></div>
-      {error ? <div className="graph-empty" role="alert"><span className="empty-icon tone-bad" aria-hidden="true"><TriangleAlert /></span><h3>Graph unavailable</h3><p>{error}</p><Button variant="outline" onClick={loadGraph}>Retry graph</Button></div> : !graph ? <div className="graph-empty graph-loading" role="status"><span className="graph-loader" aria-hidden="true"><i /><i /><i /></span><p>Loading graph…</p></div> : nodes.length ? <GraphCanvas key={canvasKey} overview={viewMode === "overview"} grouped={viewMode !== "overview" && grouped} onCenter={center} nodes={canvasNodes} edges={canvasEdges} selectedId={focusedNode?.id || centerId} detailsOpen={Boolean(focusedNode)} warningIds={warningIds} direction={direction} showLabels={showLabels} colors={colors} onSelect={setFocusedNode} onToggleGroup={toggleGroup} viewport={graphSession.viewports[canvasKey]} onViewportChange={saveViewport} placements={graphSession.placements[canvasKey]} onPlacementsChange={savePlacements} /> : <div className="graph-empty"><span className="empty-icon" aria-hidden="true"><Search /></span><h3>No matching objects</h3><p>{hasFilters ? "Try another filter or clear the filters." : "Scan project sources to see their relationships."}</p>{hasFilters ? <Button variant="outline" onClick={reset}>Clear filters</Button> : null}</div>}
-      <div className="artifact-legend" role="group" aria-label="Graph color legend">{legendNodes.map((node) => <span key={`${artifactGroup(node)}:${node.type}`}><span className="artifact-dot" style={{ backgroundColor: artifactColor(node, colors) }} />{typeLabel(node.type)}{legendNodes.filter((item) => item.type === node.type).length > 1 ? ` · ${typeLabel(artifactGroup(node))}` : ""}</span>)}<span className="legend-spacer" aria-hidden="true" /><span className="legend-evidence"><i className="legend-line fact" />Fact</span><span className="legend-evidence"><i className="legend-line inferred" />Inferred</span><span className="legend-evidence"><i className="legend-line observed" />Observed</span></div>
-    </Card>
-    <GraphDetails node={focusedNode} colors={colors} transport={transport} onClose={() => setFocusedNode(null)} onSelect={setFocusedNode} onCenter={center} onInspect={(id) => { updateSession({ selectionId: id }); onSelect(id, "inspector"); }} />
+      <GraphDetails node={focusedNode} settled={paneSettled} colors={colors} transport={transport} onClose={closeDetails} onSelect={setFocusedNode} onCenter={center} onInspect={inspect} />
+    </div>
   </div>;
 }
 
-function GraphCanvas({ overview, grouped, onCenter, nodes, edges, selectedId, detailsOpen, warningIds, direction, showLabels, colors, onSelect, onToggleGroup, viewport, onViewportChange, placements, onPlacementsChange }) {
+// ---------- Canvas -----------------------------------------------------------
+
+let measureContext = null;
+let measureFamily = "";
+function measureName(text) {
+  if (typeof document === "undefined") return String(text).length * 7;
+  if (!measureContext) {
+    measureContext = document.createElement("canvas").getContext("2d");
+    measureFamily = getComputedStyle(document.body).fontFamily || "sans-serif";
+  }
+  if (!measureContext) return String(text).length * 7;
+  measureContext.font = `500 13px ${measureFamily}`;
+  return measureContext.measureText(text).width;
+}
+
+// Room for the name inside a node (app.css .flow-node): border, padding, the 24px type chip and its gap,
+// plus the 24px group toggle or the 16px status glyph with their gaps.
+function nameRoom(width, isGroup, hasStatus) {
+  const chrome = isGroup ? 2 + 11 + 24 + 8 + 8 + 24 + 8 : 2 + 3 + 24 + 8 + 10;
+  return width - chrome - (hasStatus ? 24 : 0);
+}
+
+const SIDES = {
+  LR: { forward: [Position.Right, Position.Left], backward: [Position.Left, Position.Right], same: [Position.Right, Position.Right] },
+  TB: { forward: [Position.Bottom, Position.Top], backward: [Position.Top, Position.Bottom], same: [Position.Bottom, Position.Bottom] },
+};
+
+function anchor(rect, side) {
+  if (side === Position.Right) return { x: rect.x + rect.width, y: rect.y + rect.height / 2 };
+  if (side === Position.Left) return { x: rect.x, y: rect.y + rect.height / 2 };
+  if (side === Position.Bottom) return { x: rect.x + rect.width / 2, y: rect.y + rect.height };
+  return { x: rect.x + rect.width / 2, y: rect.y };
+}
+
+// Orthogonal, rounded routing between two boxes. Forward links leave the trailing side, links that point
+// back leave the leading side, and links within one rank loop outward instead of crossing their neighbours.
+function edgeGeometry(source, target, direction, offset) {
+  const horizontal = direction !== "TB";
+  const sides = SIDES[horizontal ? "LR" : "TB"];
+  if (source === target) {
+    const out = anchor(source, sides.same[0]);
+    const lift = horizontal ? { x: 0, y: source.height * 0.3 } : { x: source.width * 0.3, y: 0 };
+    const reach = 28 + offset;
+    const path = horizontal
+      ? `M ${out.x} ${out.y - lift.y} h ${reach - 6} q 6 0 6 6 v ${2 * lift.y - 12} q 0 6 -6 6 h ${-(reach - 6)}`
+      : `M ${out.x - lift.x} ${out.y} v ${reach - 6} q 0 6 6 6 h ${2 * lift.x - 12} q 6 0 6 -6 v ${-(reach - 6)}`;
+    return { path, labelX: horizontal ? out.x + reach : out.x, labelY: horizontal ? out.y : out.y + reach };
+  }
+  const gap = 8;
+  const ahead = horizontal ? target.x >= source.x + source.width + gap : target.y >= source.y + source.height + gap;
+  const behind = horizontal ? target.x + target.width <= source.x - gap : target.y + target.height <= source.y - gap;
+  const [sourcePosition, targetPosition] = ahead ? sides.forward : behind ? sides.backward : sides.same;
+  const start = anchor(source, sourcePosition);
+  const end = anchor(target, targetPosition);
+  const [path, labelX, labelY] = getSmoothStepPath({ sourceX: start.x, sourceY: start.y, sourcePosition, targetX: end.x, targetY: end.y, targetPosition, borderRadius: 8, offset: 20 + offset });
+  return { path, labelX, labelY };
+}
+
+function GraphCanvas({ apiRef, overview, full, grouped, onCenter, onInspect, nodes, edges, selectedId, docked, warningIds, direction, showLabels, colors, onSelect, onToggleGroup, viewport, onViewportChange, placements, onPlacementsChange }) {
   const [flow, setFlow] = useState(null);
   const [zoom, setZoom] = useState(viewport?.zoom || 1);
+  const [tier, setTier] = useState(() => zoomTier(viewport?.zoom || 1));
+  const [labelsReadable, setLabelsReadable] = useState(() => (viewport?.zoom || 1) >= LABEL_ZOOM);
+  const far = tier === "far";
+  const scale = nameScale(tier);
+  // Names are shortened by measured width, so measure again once the UI font has loaded.
+  const [fontsReady, setFontsReady] = useState(() => typeof document === "undefined" || document.fonts?.status !== "loading");
+  useEffect(() => {
+    if (fontsReady || !document.fonts?.ready) return undefined;
+    let active = true;
+    document.fonts.ready.then(() => { if (active) setFontsReady(true); });
+    return () => { active = false; };
+  }, [fontsReady]);
   const wrapper = useRef(null);
   const initialViewport = useRef(viewport);
   const previousPositions = useRef(new Map(Object.entries(placements || {})));
+  const sizeOf = useCallback((node) => overview && node.explorerChildCount > 0 ? { width: GROUP_WIDTH, height: GROUP_HEIGHT } : { width: NODE_WIDTH, height: NODE_HEIGHT }, [overview]);
   const layout = useMemo(() => {
-    if (!overview) return grouped ? layoutArtifactGraph(nodes, edges, direction) : { ...layoutGraph(nodes, edges, direction), groups: [] };
-    const next = layoutExplorerGraph(nodes, edges, direction, previousPositions.current);
+    if (!overview) return grouped ? layoutArtifactGraph(nodes, edges, direction, sizeOf) : { ...layoutGraph(nodes, edges, direction, sizeOf), groups: [] };
+    const next = layoutExplorerGraph(nodes, edges, direction, previousPositions.current, sizeOf);
     previousPositions.current = new Map(next.nodes.map(({ node, position }) => [node.id, position]));
     return { ...next, groups: [] };
-  }, [nodes, edges, direction, grouped, overview]);
+  }, [nodes, edges, direction, grouped, overview, sizeOf]);
   useEffect(() => {
     if (overview) onPlacementsChange(Object.fromEntries(previousPositions.current));
   }, [layout, overview, onPlacementsChange]);
-  const duration = globalThis.matchMedia?.("(prefers-reduced-motion: reduce)").matches ? 0 : 180;
-  // Keep a newly selected node clear of the floating details sheet.
+  const rects = useMemo(() => new Map(layout.nodes.map(({ node, position, width, height }) => [node.id, { x: position.x, y: position.y, width: width || NODE_WIDTH, height: height || NODE_HEIGHT }])), [layout]);
+  const byId = useMemo(() => new Map(nodes.map((node) => [node.id, node])), [nodes]);
+  const reduced = prefersReducedMotion();
+  const fitDuration = reduced ? 0 : 320;
+  const stepDuration = reduced ? 0 : 180;
+  const minFitZoom = full ? FULL_GRAPH_MIN_ZOOM : READABLE_ZOOM;
+  const fitOptions = useMemo(() => ({ padding: 0.12, minZoom: minFitZoom, maxZoom: 1 }), [minFitZoom]);
+
+  // Pan just enough to bring a node into the visible canvas; zoom never changes.
+  const reveal = useCallback((id, duration = fitDuration) => {
+    const rect = rects.get(id);
+    if (!flow || !rect || !wrapper.current) return;
+    const bounds = wrapper.current.getBoundingClientRect();
+    const { x, y, zoom: scale } = flow.getViewport();
+    const left = rect.x * scale + x, top = rect.y * scale + y;
+    const right = left + rect.width * scale, bottom = top + rect.height * scale;
+    const margin = 48;
+    // The smallest pan that brings the node inside the margin, so the rest of the picture moves as little as possible.
+    const shift = (start, end, size) => start < margin ? margin - start : end > size - margin ? Math.max(size - margin - end, margin - start) : 0;
+    const dx = shift(left, right, bounds.width);
+    const dy = shift(top, bottom, bounds.height);
+    if (!dx && !dy) return;
+    flow.setViewport({ x: x + dx, y: y + dy, zoom: scale }, travel(duration));
+  }, [flow, rects, fitDuration]);
   useEffect(() => {
-    const placed = layout.nodes.find(({ node }) => node.id === selectedId);
-    if (!detailsOpen || !flow || !placed || !wrapper.current || window.innerWidth <= 760) return undefined;
-    // Wait out the double-click window so panning never moves a node mid-gesture.
-    const timer = setTimeout(() => {
-      if (!wrapper.current) return;
-      const bounds = wrapper.current.getBoundingClientRect();
-      const sheetLeft = window.innerWidth - 14 - Math.min(420, window.innerWidth - 28) - 16;
-      const { x, y, zoom } = flow.getViewport();
-      if ((placed.position.x + NODE_WIDTH) * zoom + x + bounds.left < sheetLeft) return;
-      const visibleMiddle = (bounds.left + Math.min(bounds.right, sheetLeft)) / 2;
-      flow.setViewport({ x: visibleMiddle - bounds.left - (placed.position.x + NODE_WIDTH / 2) * zoom, y, zoom }, { duration });
-    }, 450);
+    if (!docked || !selectedId) return undefined;
+    const timer = setTimeout(() => reveal(selectedId), 30);
     return () => clearTimeout(timer);
-  }, [flow, layout, selectedId, detailsOpen, duration]);
-  const connected = new Set([selectedId]);
-  edges.forEach((edge) => {
-    if (edge.from_id === selectedId || edge.to_id === selectedId) { connected.add(edge.from_id); connected.add(edge.to_id); }
-  });
-  const flowNodes = [
-    ...layout.groups.map((group) => ({ id: group.id, type: "artifactGroup", position: group.position, width: group.width, height: group.height, measured: { width: group.width, height: group.height }, zIndex: -1, selectable: false, focusable: false, draggable: false, style: { width: group.width, height: group.height, pointerEvents: "none" }, data: { ...group, color: colors.groups[group.key] } })),
-    ...layout.nodes.map(({ node, position }) => ({
-      id: node.id, type: "brain", position, selected: node.id === selectedId,
-      width: NODE_WIDTH, height: NODE_HEIGHT, ariaRole: "button", ariaLabel: `Select ${objectName(node)}`,
-      // Cards have fixed dimensions. Preserve React Flow's measured/handle
-      // state when controlled nodes are replaced after saving the session.
-      measured: { width: NODE_WIDTH, height: NODE_HEIGHT },
-      className: !overview && selectedId && !connected.has(node.id) ? "is-dimmed" : "",
-      data: { node, direction, overview, onToggleGroup, warning: warningIds.has(node.id) || node.type === "CONFLICT", color: artifactColor(node, colors) },
-    })),
-  ];
-  const flowEdges = layout.edges.map(({ edge, points }) => {
-    const evidenceClass = String(edge.evidence_class || "FACT").toUpperCase();
-    const highlighted = edge.from_id === selectedId || edge.to_id === selectedId;
-    const warning = edge.type === "CONFLICTS_WITH" || warningIds.has(edge.from_id) || warningIds.has(edge.to_id);
-    const source = nodes.find((node) => node.id === edge.from_id);
-    const color = artifactColor(source, colors);
-    return {
-      id: edge.id, source: edge.from_id, target: edge.to_id, type: "routed",
-      label: showLabels || highlighted || warning || overview && edge.type === "USES_MODEL" ? `${warning ? "Warning · " : ""}${typeLabel(edge.type)}` : undefined,
-      ariaLabel: `${objectName(source)} ${typeLabel(edge.type)} ${objectName(nodes.find((node) => node.id === edge.to_id))}`,
-      className: `flow-edge ${evidenceClass.toLowerCase()} ${warning ? "warning" : ""} ${highlighted ? "highlighted" : ""}`,
-      markerEnd: { type: MarkerType.ArrowClosed, color, width: 16, height: 16 },
-      style: { stroke: color, opacity: overview ? highlighted ? 1 : 0.7 : selectedId && !highlighted ? 0.1 : highlighted ? 1 : 0.55, strokeWidth: highlighted || warning ? 2.2 : 1.4, strokeDasharray: evidenceClass === "INFERRED" ? "6 4" : evidenceClass === "OBSERVED" ? "2 5" : undefined },
-      labelStyle: { fill: "var(--text)", fontSize: 11, fontWeight: 500 }, labelBgStyle: { fill: "var(--surface-2)", fillOpacity: 0.98 }, labelBgPadding: [6, 3], labelBgBorderRadius: 4, data: { points },
+  }, [docked, selectedId, reveal]);
+
+  const fit = useCallback(() => flow?.fitView({ ...fitOptions, ...travel(fitDuration) }), [flow, fitOptions, fitDuration]);
+  useEffect(() => {
+    if (!apiRef) return undefined;
+    apiRef.current = {
+      fit,
+      zoomIn: () => flow?.zoomIn(travel(stepDuration)),
+      zoomOut: () => flow?.zoomOut(travel(stepDuration)),
+      zoomReset: () => flow?.zoomTo(1, travel(stepDuration)),
     };
-  });
-  const fit = () => flow?.fitView({ padding: 0.16, minZoom: overview ? 0.8 : 0.08, maxZoom: 1, duration });
-  return <div ref={wrapper} className={`flow-wrap artifact-flow ${overview ? "explorer-flow" : ""}`} role="region" aria-label="Directed project graph">
-    <ReactFlow onInit={(instance) => { setFlow(instance); setZoom(instance.getZoom()); }} nodes={flowNodes} edges={flowEdges} nodeTypes={NODE_RENDERERS} edgeTypes={EDGE_RENDERERS}
+    return () => { apiRef.current = null; };
+  }, [apiRef, fit, flow, stepDuration]);
+
+  const connected = useMemo(() => {
+    const ids = new Set([selectedId]);
+    edges.forEach((edge) => {
+      if (edge.from_id === selectedId || edge.to_id === selectedId) { ids.add(edge.from_id); ids.add(edge.to_id); }
+    });
+    return ids;
+  }, [edges, selectedId]);
+  const focusing = Boolean(selectedId) && rects.has(selectedId);
+
+  const flowNodes = useMemo(() => [
+    ...layout.groups.map((group) => ({ id: group.id, type: "artifactGroup", position: group.position, width: group.width, height: group.height, measured: { width: group.width, height: group.height }, zIndex: -1, selectable: false, focusable: false, draggable: false, style: { width: group.width, height: group.height, pointerEvents: "none" }, data: { ...group, color: colors.groups[group.key] } })),
+    ...layout.nodes.map(({ node }) => {
+      const rect = rects.get(node.id);
+      const warning = warningIds.has(node.id) || node.type === "CONFLICT";
+      const isGroup = overview && node.explorerChildCount > 0;
+      const statusGlyph = warning || Boolean(STATUS_GLYPHS[node.status]);
+      return {
+        id: node.id, type: "brain", position: { x: rect.x, y: rect.y }, selected: node.id === selectedId,
+        width: rect.width, height: rect.height, ariaRole: "button", ariaLabel: nodeLabel(node, warning),
+        // Cards have fixed dimensions. Preserve React Flow's measured/handle
+        // state when controlled nodes are replaced after saving the session.
+        measured: { width: rect.width, height: rect.height },
+        className: focusing && !connected.has(node.id) ? "is-dimmed" : "",
+        data: { node, direction, isGroup, onToggleGroup, warning, color: artifactColor(node, colors), colors, displayName: middleEllipsis(objectName(node), nameRoom(rect.width, isGroup, statusGlyph) / scale, measureName) },
+      };
+    }),
+  ], [layout, rects, warningIds, overview, selectedId, focusing, connected, direction, onToggleGroup, colors, fontsReady, scale]);
+
+  const flowEdges = useMemo(() => {
+    const pairCount = new Map();
+    return layout.edges.map(({ edge }) => {
+      const pair = [edge.from_id, edge.to_id].sort().join("\u0000");
+      const index = pairCount.get(pair) || 0;
+      pairCount.set(pair, index + 1);
+      const evidenceClass = String(edge.evidence_class || "FACT").toUpperCase();
+      const onPath = Boolean(selectedId) && (edge.from_id === selectedId || edge.to_id === selectedId);
+      const warning = edge.type === "CONFLICTS_WITH";
+      const structure = STRUCTURE_EDGES.has(edge.type);
+      const source = byId.get(edge.from_id);
+      const target = byId.get(edge.to_id);
+      const geometry = edgeGeometry(rects.get(edge.from_id), rects.get(edge.to_id), direction, index * 10);
+      const tone = onPath ? "var(--brand)" : warning ? "var(--warn)" : "var(--graph-edge)";
+      return {
+        id: edge.id, source: edge.from_id, target: edge.to_id, type: "routed",
+        label: typeLabel(edge.type),
+        ariaLabel: `${objectName(source)} ${typeLabel(edge.type)} ${objectName(target)}`,
+        className: ["flow-edge", evidenceClass.toLowerCase(), structure ? "is-structure" : "", warning ? "warning" : "", onPath ? "on-path" : "", focusing && !onPath ? "is-dimmed" : "", showLabels || onPath && !structure ? "show-label" : ""].filter(Boolean).join(" "),
+        markerEnd: structure && !onPath ? undefined : { type: MarkerType.ArrowClosed, color: tone, width: onPath ? 4 : 5.5, height: onPath ? 4 : 5.5 },
+        zIndex: onPath ? 1 : 0,
+        data: geometry,
+      };
+    });
+  }, [layout, rects, byId, direction, selectedId, focusing, showLabels]);
+
+  // Arrow keys move to the connected object that lies in that direction (else the nearest object there).
+  const step = useCallback((fromId, key) => {
+    const from = rects.get(fromId);
+    if (!from) return null;
+    const vector = { ArrowRight: [1, 0], ArrowLeft: [-1, 0], ArrowDown: [0, 1], ArrowUp: [0, -1] }[key];
+    const origin = { x: from.x + from.width / 2, y: from.y + from.height / 2 };
+    const score = (id) => {
+      const rect = rects.get(id);
+      if (!rect || id === fromId) return Infinity;
+      const dx = rect.x + rect.width / 2 - origin.x;
+      const dy = rect.y + rect.height / 2 - origin.y;
+      const along = dx * vector[0] + dy * vector[1];
+      if (along <= 1) return Infinity;
+      return along + 2 * Math.abs(dx * vector[1] - dy * vector[0]);
+    };
+    const best = (ids) => ids.reduce((winner, id) => { const value = score(id); return value < winner.value ? { id, value } : winner; }, { id: null, value: Infinity }).id;
+    const neighbours = [...new Set(edges.flatMap((edge) => edge.from_id === fromId ? [edge.to_id] : edge.to_id === fromId ? [edge.from_id] : []))];
+    return best(neighbours) || best([...rects.keys()]);
+  }, [rects, edges]);
+  const focusNode = (id) => wrapper.current?.querySelector(`.react-flow__node[data-id="${globalThis.CSS?.escape ? CSS.escape(id) : id}"]`)?.focus({ preventScroll: true });
+  const onKeyDown = (event) => {
+    if (event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey) return;
+    const element = event.target?.closest?.(".react-flow__node-brain");
+    if (!element || event.target.closest(".graph-group-toggle")) return;
+    const node = byId.get(element.dataset.id);
+    if (!node) return;
+    if (event.key.startsWith("Arrow")) {
+      const next = step(node.id, event.key);
+      event.preventDefault();
+      if (!next) return;
+      onSelect(byId.get(next));
+      focusNode(next);
+      reveal(next, stepDuration);
+    } else if (event.key === "Enter") {
+      event.preventDefault();
+      if (node.id === selectedId) onInspect(node.id); else onSelect(node);
+    } else if (event.key === " ") {
+      event.preventDefault();
+      if (overview && node.explorerChildCount > 0) onToggleGroup(node.id); else onSelect(node);
+    }
+  };
+
+  const onMove = useCallback((_, next) => { setTier(zoomTier(next.zoom)); setLabelsReadable(next.zoom >= LABEL_ZOOM); }, []);
+  const [hoverId, setHoverId] = useState(null);
+  const farLabels = far ? [...new Set([selectedId, hoverId])].filter((id) => id && rects.has(id)).map((id) => ({ id, rect: rects.get(id), node: byId.get(id) })) : [];
+  const showMinimap = flowNodes.length > MINIMAP_ABOVE;
+  return <div ref={wrapper} className={`flow-wrap artifact-flow ${overview ? "explorer-flow" : ""} ${far ? "is-far" : scale !== 1 ? "is-mid" : ""} ${labelsReadable ? "" : "labels-off"} ${focusing ? "is-focusing" : ""}`} style={{ "--name-scale": scale }} role="region" aria-label="Directed project graph" aria-roledescription="graph" onKeyDown={onKeyDown}>
+    <ReactFlow onInit={(instance) => { setFlow(instance); const current = instance.getZoom(); setZoom(current); setTier(zoomTier(current)); setLabelsReadable(current >= LABEL_ZOOM); }} nodes={flowNodes} edges={flowEdges} nodeTypes={NODE_RENDERERS} edgeTypes={EDGE_RENDERERS}
       onNodeDoubleClick={(_, node) => { if (node.type === "brain") onCenter(node.data.node); }} onNodeClick={(_, node) => { if (node.type === "brain") onSelect(node.data.node); }} onPaneClick={() => onSelect(null)}
-      onNodesChange={(changes) => { const selection = changes.find((change) => change.type === "select" && change.selected); if (selection) { const node = nodes.find((item) => item.id === selection.id); if (node) onSelect(node); } }}
-      onMoveEnd={(_, nextViewport) => { setZoom(nextViewport.zoom); onViewportChange(nextViewport); }}
-      defaultViewport={initialViewport.current} zoomOnDoubleClick={false} fitView={!initialViewport.current} fitViewOptions={{ padding: 0.16, minZoom: overview ? 0.8 : 0.08, maxZoom: 1 }} minZoom={0.08} maxZoom={2}
-      nodesDraggable={false} nodesConnectable={false} edgesFocusable={false} proOptions={{ hideAttribution: true }}>
-      <Panel position="top-left" className="graph-canvas-actions" data-ui-actions="">{nodes.some((node) => node.id === selectedId) ? <><Button variant="outline" size="sm" className="canvas-button" onClick={() => flow?.fitView({ nodes: [{ id: selectedId }], padding: 0.6, minZoom: 0.8, maxZoom: 1, duration })}><LocateFixed />Focus selected</Button>{overview ? <Button variant="outline" size="sm" className="canvas-button" onClick={() => onCenter(nodes.find((node) => node.id === selectedId))}><Crosshair />Explore connections</Button> : null}</> : null}</Panel>
-      <Background gap={22} size={1.2} color="var(--grid-dot)" />
-      <Panel position="bottom-left" className="graph-zoom-controls"><Button variant="ghost" size="icon-sm" aria-label="Zoom in" onClick={() => flow?.zoomIn({ duration })}><Plus /></Button><span className="graph-zoom-value" data-ui-number="" role="status" aria-label={`Zoom ${Math.round(zoom * 100)} percent`}>{Math.round(zoom * 100)}%</span><Button variant="ghost" size="icon-sm" aria-label="Zoom out" onClick={() => flow?.zoomOut({ duration })}><Minus /></Button><span className="zoom-divider" aria-hidden="true" /><Button variant="ghost" size="icon-sm" aria-label="Fit view" title={overview ? "Fit visible groups at readable size" : "Fit view"} onClick={fit}><Maximize2 /></Button></Panel>
-      <MiniMap pannable zoomable bgColor="var(--surface)" nodeColor={(node) => node.data?.color || "#94a3b8"} nodeStrokeColor={(node) => node.data?.color || "#94a3b8"} nodeBorderRadius={4} nodeClassName={(node) => node.type === "artifactGroup" ? "minimap-artifact-group" : ""} maskColor="var(--minimap-mask)" style={{ width: 176, height: 116 }} />
+      onNodeMouseEnter={(_, node) => setHoverId(node.id)} onNodeMouseLeave={() => setHoverId(null)}
+      onMove={onMove} onMoveEnd={(_, nextViewport) => { setZoom(nextViewport.zoom); onViewportChange(nextViewport); }}
+      defaultViewport={initialViewport.current} zoomOnDoubleClick={false} fitView={!initialViewport.current} fitViewOptions={fitOptions} minZoom={0.08} maxZoom={2}
+      nodesDraggable={false} nodesConnectable={false} edgesFocusable={false} disableKeyboardA11y deleteKeyCode={null} selectionKeyCode={null} multiSelectionKeyCode={null} proOptions={{ hideAttribution: true }}>
+      <Background gap={20} size={1.2} color="var(--grid-dot)" />
+      {farLabels.length ? <FarLabels items={farLabels} /> : null}
+      {showMinimap ? <MiniMap pannable zoomable bgColor="var(--surface)" nodeColor={(node) => node.data?.color || "#94a3b8"} nodeStrokeColor={(node) => node.data?.color || "#94a3b8"} nodeBorderRadius={4} nodeClassName={(node) => node.type === "artifactGroup" ? "minimap-artifact-group" : ""} maskColor="var(--minimap-mask)" style={{ width: 168, height: 112 }} /> : null}
     </ReactFlow>
+    <div className="graph-zoom-controls" data-ui-actions="">
+      <Button variant="ghost" size="icon-sm" aria-label="Zoom out" tooltip="Zoom out (−)" onClick={() => flow?.zoomOut(travel(stepDuration))}><Minus /></Button>
+      <button type="button" className="graph-zoom-value" data-ui-number="" aria-label={`Zoom ${Math.round(zoom * 100)} percent. Reset to 100 percent`} title="Reset zoom (0)" onClick={() => flow?.zoomTo(1, travel(stepDuration))}>{Math.round(zoom * 100)}%</button>
+      <Button variant="ghost" size="icon-sm" aria-label="Zoom in" tooltip="Zoom in (+)" onClick={() => flow?.zoomIn(travel(stepDuration))}><Plus /></Button>
+    </div>
   </div>;
 }
 
+// At glyph-only zoom, the hovered and the selected object still get a readable 12px name, in screen space.
+function FarLabels({ items }) {
+  const { x, y, zoom } = useViewport();
+  return items.map(({ id, rect, node }) => <span key={id} className="graph-far-label" aria-hidden="true" translate="no"
+    style={{ left: (rect.x + rect.width / 2) * zoom + x, top: rect.y * zoom + y }}>{objectName(node)}</span>);
+}
+
 function ArtifactGroup({ data }) {
-  return <div className="artifact-group" style={{ "--artifact-color": data.color }}><span className="artifact-group-title"><span className="artifact-dot" />{ARTIFACT_GROUPS[data.key].label}<span>{data.count}</span></span></div>;
+  return <div className="artifact-group"><span className="artifact-group-title">{ARTIFACT_GROUPS[data.key].label}<span data-ui-number="">{data.count}</span></span></div>;
 }
 
 function BrainFlowNode({ data, selected }) {
   const node = data.node;
-  const flagged = node.status && node.status !== "factual" || data.warning;
-  const isGroup = data.overview && node.explorerChildCount > 0;
-  return <div className={`flow-node artifact-node ${isGroup ? "explorer-group-node" : ""} ${selected ? "selected" : ""} ${data.warning ? "has-warning" : ""}`} style={{ "--artifact-color": data.color }} title={objectName(node)}>
-    <Handle type="target" position={data.direction === "TB" ? Position.Top : Position.Left} className="flow-handle" />
-    <span className="flow-node-type"><span className="artifact-dot" />{node.type === "VISUAL" ? visualType(node) : typeLabel(node.type)}</span>
-    <span className="flow-node-name">{objectName(node)}</span>
-    {isGroup ? <button type="button" className="graph-group-toggle nodrag nopan" aria-label={`${node.explorerExpanded ? "Collapse" : "Expand"} ${objectName(node)}`} aria-expanded={node.explorerExpanded} title={`${node.explorerDescendantCount} loaded objects inside`} onMouseDown={(event) => event.stopPropagation()} onDoubleClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()} onClick={(event) => { event.stopPropagation(); data.onToggleGroup(node.id); }}>{node.explorerExpanded ? <ChevronDown /> : <ChevronRight />}<span>{node.explorerDescendantCount} inside</span></button> : null}
-    {flagged ? <span className={`flow-node-status ${data.warning ? "warning" : ""}`}>{data.warning ? "Needs review" : statusLabel(node.status)}</span> : null}
-    <Handle type="source" position={data.direction === "TB" ? Position.Bottom : Position.Right} className="flow-handle" />
+  const name = objectName(node);
+  const suggested = node.status === "candidate" || String(node.evidence_class || "").toUpperCase() === "INFERRED";
+  const StatusIcon = data.warning ? TriangleAlert : STATUS_GLYPHS[node.status];
+  const vertical = data.direction === "TB";
+  const count = node.explorerDescendantCount || 0;
+  return <div className={`flow-node artifact-node ${data.isGroup ? "explorer-group-node" : ""} ${selected ? "selected" : ""} ${suggested ? "is-suggested" : ""} ${data.warning ? "has-warning" : ""}`} style={{ "--artifact-color": data.color }} title={`${kindLabel(node)} · ${name}${data.isGroup ? ` · ${count} inside` : ""}`} data-type={node.type}>
+    <Handle type="target" position={vertical ? Position.Top : Position.Left} className="flow-handle" isConnectable={false} />
+    <TypeGlyph node={node} colors={data.colors} />
+    <span className="flow-node-text">
+      <span className="flow-node-name" translate="no" aria-hidden={data.displayName !== name || undefined}>{data.displayName}</span>
+      {/* The shortened name is for the eye; the full name stays in the text for find-in-page and tests. */}
+      {data.displayName !== name ? <span className="sr-only" translate="no">{name}</span> : null}
+      {data.isGroup ? <span className="flow-node-meta" data-ui-number="">{count} inside</span> : null}
+    </span>
+    {StatusIcon ? <span className={`flow-node-status ${data.warning ? "warning" : node.status}`} aria-hidden="true"><StatusIcon /></span> : null}
+    {data.isGroup ? <button type="button" className="graph-group-toggle nodrag nopan" aria-label={`${node.explorerExpanded ? "Collapse" : "Expand"} ${name}`} aria-expanded={node.explorerExpanded} title={`${count} loaded objects inside`} onMouseDown={(event) => event.stopPropagation()} onDoubleClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()} onClick={(event) => { event.stopPropagation(); data.onToggleGroup(node.id); }}>
+      <ChevronRight aria-hidden="true" />
+    </button> : null}
+    <Handle type="source" position={vertical ? Position.Bottom : Position.Right} className="flow-handle" isConnectable={false} />
   </div>;
 }
 
-function RoutedEdge({ id, data, markerEnd, style, label, labelStyle, labelBgStyle, labelBgPadding, labelBgBorderRadius }) {
-  const middle = data.points[Math.floor(data.points.length / 2)];
-  return <BaseEdge id={id} path={routePath(data.points)} markerEnd={markerEnd} style={style} label={label} labelX={middle.x} labelY={middle.y} labelStyle={labelStyle} labelBgStyle={labelBgStyle} labelBgPadding={labelBgPadding} labelBgBorderRadius={labelBgBorderRadius} />;
+function RoutedEdge({ id, data, markerEnd, style, label, interactionWidth }) {
+  return <BaseEdge id={id} path={data.path} markerEnd={markerEnd} style={style} label={label} labelX={data.labelX} labelY={data.labelY} labelBgPadding={[6, 3]} labelBgBorderRadius={4} interactionWidth={interactionWidth ?? 16} />;
 }
 
 const NODE_RENDERERS = { brain: BrainFlowNode, artifactGroup: ArtifactGroup };
