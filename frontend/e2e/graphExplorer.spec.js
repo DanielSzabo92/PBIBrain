@@ -10,6 +10,8 @@ async function openOverview(page) {
   await expect(page.locator(".graph-zoom-value")).toHaveText("100%");
 }
 
+// The details pane is docked beside the canvas (a complementary region, not a dialog).
+const detailsPane = (page) => page.locator(".graph-detail-pane");
 const nodePositions = (page) => page.locator(".react-flow__node-brain").evaluateAll((nodes) => Object.fromEntries(nodes.map((node) => [node.dataset.id, node.style.transform])));
 const viewportTransform = (page) => page.locator(".react-flow__viewport").evaluate((node) => node.style.transform);
 
@@ -26,13 +28,13 @@ test("native overview unfolds one owner without moving existing objects or chang
   const viewport = await viewportTransform(page);
   await page.getByRole("button", { name: "Expand Sales", exact: true }).click();
   await expect(page.getByRole("button", { name: "Collapse Sales", exact: true })).toHaveAttribute("aria-expanded", "true");
-  await expect(page.getByRole("button", { name: "Select Net Sales", exact: true })).toBeVisible();
-  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Measure Net Sales", exact: true })).toBeVisible();
+  await expect(detailsPane(page)).toHaveCount(0);
   expect(await viewportTransform(page)).toBe(viewport);
   const unfolded = await nodePositions(page);
   for (const [id, position] of Object.entries(positions)) expect(unfolded[id]).toBe(position);
   await page.getByRole("button", { name: "Collapse Sales", exact: true }).click();
-  await expect(page.getByRole("button", { name: "Select Net Sales", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Measure Net Sales", exact: true })).toHaveCount(0);
   expect(await viewportTransform(page)).toBe(viewport);
 });
 
@@ -42,19 +44,19 @@ test("nested report groups expand by keyboard and overview survives an Inspector
   await report.focus();
   await page.keyboard.press("Enter");
   await expect(page.getByRole("button", { name: "Expand Overview page", exact: true })).toBeVisible();
-  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(detailsPane(page)).toHaveCount(0);
   await page.getByRole("button", { name: "Expand Overview page", exact: true }).click();
-  await expect(page.getByRole("button", { name: "Select Sales by region", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Column Chart Sales by region", exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Expand Sales", exact: true }).click();
   const positions = await nodePositions(page);
-  await page.getByRole("button", { name: "Select Net Sales", exact: true }).click();
-  await page.getByRole("button", { name: /Full inspector/ }).click();
+  await page.getByRole("button", { name: "Measure Net Sales", exact: true }).click();
+  await page.getByRole("button", { name: "Open in Inspector", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Net Sales", exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Back to graph", exact: true }).click();
   await expect(page.getByRole("tab", { name: "Overview", exact: true })).toHaveAttribute("aria-selected", "true");
   await expect(page.getByRole("button", { name: "Collapse Sales report", exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Collapse Overview page", exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Select Sales by region", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Column Chart Sales by region", exact: true })).toBeVisible();
   expect(await nodePositions(page)).toEqual(positions);
 });
 
@@ -63,7 +65,7 @@ test("connections follow native edges and can expand a neighborhood", async ({ p
   const measure = graph.nodes.find((node) => node.name === "Net Sales" && node.type === "MEASURE");
   await openOverview(page);
   await page.getByRole("button", { name: "Expand Sales", exact: true }).click();
-  await page.getByRole("button", { name: "Select Net Sales", exact: true }).dblclick();
+  await page.getByRole("button", { name: "Measure Net Sales", exact: true }).dblclick();
   await expect(page.getByRole("tab", { name: "Connections", exact: true })).toHaveAttribute("aria-selected", "true");
   await expect(page.getByText("Focused view", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Close", exact: true }).click();
@@ -132,22 +134,67 @@ test("small screens retain readable group controls without page overflow", async
   await group.focus();
   await page.keyboard.press("Space");
   await expect(page.getByRole("button", { name: "Collapse Sales", exact: true })).toBeVisible();
-  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(detailsPane(page)).toHaveCount(0);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   await page.screenshot({ path: "test-results/graph-explorer-mobile.png", fullPage: true });
 });
 
 test("an explicit relationship filter stays visible in overview", async ({ page }) => {
   await openOverview(page);
-  await page.locator(".graph-filter-details > summary").click();
+  await page.getByRole("button", { name: /^Filters/ }).click();
   await page.getByLabel("Relationship", { exact: true }).selectOption("REFERENCES");
+  await page.keyboard.press("Escape");
   await expect(page.locator(".react-flow__edge")).toHaveCount(1);
   const relationship = page.getByRole("img", { name: "Net Sales References Amount", exact: true });
   await expect(relationship).toBeAttached();
   // A straight vertical SVG path has zero-width bounds but still draws a line.
   await expect.poll(() => relationship.locator(".react-flow__edge-path").evaluate((path) => path.getTotalLength())).toBeGreaterThan(0);
+  // Relationship labels live in the Display popover; by default a label shows only on hover or for the selection.
+  await page.getByRole("button", { name: /^Display/ }).click();
   await page.getByRole("checkbox", { name: "Relationship labels", exact: true }).check();
   await expect(relationship).toBeVisible();
   await expect(relationship.locator(".react-flow__edge-text")).toHaveText("References");
   await expect(page.getByRole("tab", { name: "Overview", exact: true })).toHaveAttribute("aria-selected", "true");
+});
+
+test("the graph works without a mouse: arrows follow links, Space expands, Enter opens, keys zoom and fit", async ({ page }) => {
+  await openOverview(page);
+  const model = page.getByRole("button", { name: "Model Finance model", exact: true });
+  await model.focus();
+  // Space on a group expands it; the details pane stays closed.
+  await page.keyboard.press("Space");
+  await expect(page.getByRole("button", { name: "Collapse Finance model", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Expand Finance model", exact: true })).toBeVisible();
+  await page.keyboard.press("Space");
+  await expect(page.getByRole("button", { name: "Collapse Finance model", exact: true })).toBeVisible();
+  // Enter selects the focused object; its direct neighbours stay bright, the rest dims.
+  await page.keyboard.press("Enter");
+  await expect(detailsPane(page).getByRole("heading", { name: "Finance model", exact: true })).toBeVisible();
+  await expect(page.locator(".react-flow__node.is-dimmed")).toHaveCount(0);
+  // An arrow moves to a connected object and selects it.
+  await page.keyboard.press("ArrowRight");
+  const moved = await page.evaluate(() => document.activeElement?.getAttribute("aria-label"));
+  expect(moved).not.toBe("Model Finance model");
+  await expect(detailsPane(page).getByRole("heading")).not.toHaveText("Finance model");
+  // + − 0 zoom, F fits.
+  await page.keyboard.press("+");
+  await expect(page.locator(".graph-zoom-value")).not.toHaveText("100%");
+  await page.keyboard.press("0");
+  await expect(page.locator(".graph-zoom-value")).toHaveText("100%");
+  await page.keyboard.press("-");
+  await expect(page.locator(".graph-zoom-value")).not.toHaveText("100%");
+  await page.keyboard.press("f");
+  await expect(page.locator(".graph-zoom-value")).toHaveText("100%");
+  // Esc clears the selection and closes the pane; a second Enter on a selected object opens the Inspector.
+  await page.keyboard.press("Escape");
+  await expect(detailsPane(page)).toHaveCount(0);
+  await expect(page.locator(".react-flow__node.is-dimmed")).toHaveCount(0);
+  await page.getByRole("button", { name: "Expand Sales", exact: true }).click();
+  await page.getByRole("button", { name: "Measure Net Sales", exact: true }).focus();
+  await page.keyboard.press("Enter");
+  await expect(detailsPane(page).getByRole("heading", { name: "Net Sales", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Measure Net Sales", exact: true }).focus();
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("heading", { name: "Net Sales", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Back to graph", exact: true })).toBeVisible();
 });

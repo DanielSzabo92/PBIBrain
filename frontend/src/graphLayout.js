@@ -2,8 +2,24 @@ import dagre from "@dagrejs/dagre";
 import { ARTIFACT_GROUPS, artifactGroup } from "./graphPresentation.js";
 import { objectName } from "./presentation.js";
 
-export const NODE_WIDTH = 224;
-export const NODE_HEIGHT = 88;
+// Node footprint (visual contract §11.3): one-line leaves, slightly taller groups.
+export const NODE_WIDTH = 168;
+export const NODE_HEIGHT = 32;
+export const GROUP_WIDTH = 200;
+export const GROUP_HEIGHT = 48;
+// Spacing (visual contract §11.8): rank gap 96, node gap 24.
+export const RANK_GAP = 96;
+export const NODE_GAP = 24;
+
+const LEAF_SIZE = Object.freeze({ width: NODE_WIDTH, height: NODE_HEIGHT });
+/** Default sizer: every object is a leaf. Callers pass their own to give groups a larger footprint. */
+export function leafSize() {
+  return LEAF_SIZE;
+}
+function sized(sizeOf, node) {
+  const size = typeof sizeOf === "function" ? sizeOf(node) : null;
+  return size && Number.isFinite(size.width) && Number.isFinite(size.height) ? size : LEAF_SIZE;
+}
 
 function idKey(value) {
   return value == null ? "" : String(value);
@@ -160,20 +176,20 @@ function edgePoints(graph, edge) {
 
 // Stable ordering keeps refreshes predictable. Canonical edge direction is preserved,
 // including cycles and parallel relationships; Dagre only chooses visual positions.
-export function layoutGraph(nodes, edges, direction = "LR") {
+export function layoutGraph(nodes, edges, direction = "LR", sizeOf = leafSize) {
   const graph = new dagre.graphlib.Graph({ multigraph: true });
-  graph.setGraph({ rankdir: direction, ranksep: 56, nodesep: 24, edgesep: 16, marginx: 32, marginy: 32 });
+  graph.setGraph({ rankdir: direction, ranksep: RANK_GAP, nodesep: NODE_GAP, edgesep: 16, marginx: 32, marginy: 32 });
   graph.setDefaultEdgeLabel(() => ({}));
   const ordered = [...nodes].sort((a, b) => a.id.localeCompare(b.id));
   const ids = new Set(ordered.map((node) => node.id));
-  ordered.forEach((node) => graph.setNode(node.id, { width: NODE_WIDTH, height: NODE_HEIGHT }));
+  ordered.forEach((node) => graph.setNode(node.id, { ...sized(sizeOf, node) }));
   const validEdges = edges.filter((edge) => ids.has(edge.from_id) && ids.has(edge.to_id)).sort((a, b) => a.id.localeCompare(b.id));
   validEdges.forEach((edge) => graph.setEdge(layoutEndpoints(edge), { weight: edge.type === "CONTAINS" ? 4 : 1 }));
   if (ordered.length) dagre.layout(graph);
   return {
     nodes: ordered.map((node) => {
-      const { x, y } = graph.node(node.id);
-      return { node, position: { x: x - NODE_WIDTH / 2, y: y - NODE_HEIGHT / 2 } };
+      const { x, y, width, height } = graph.node(node.id);
+      return { node, position: { x: x - width / 2, y: y - height / 2 }, width, height };
     }),
     edges: validEdges.map((edge) => ({ edge, points: edgePoints(graph, edge) })),
   };
@@ -199,10 +215,10 @@ export function routePath(points) {
 
 // Compound Dagre groups reserve separate regions while routing the original
 // cross-group relationships around objects. Presentation groups are not facts.
-export function layoutArtifactGraph(nodes, edges, direction = "LR") {
+export function layoutArtifactGraph(nodes, edges, direction = "LR", sizeOf = leafSize) {
   if (!nodes.length) return { nodes: [], edges: [], groups: [] };
   const graph = new dagre.graphlib.Graph({ multigraph: true, compound: true });
-  graph.setGraph({ rankdir: direction, ranksep: 64, nodesep: 60, edgesep: 16, marginx: 40, marginy: 60 });
+  graph.setGraph({ rankdir: direction, ranksep: RANK_GAP, nodesep: 40, edgesep: 16, marginx: 40, marginy: 60 });
   graph.setDefaultEdgeLabel(() => ({}));
   const ordered = [...nodes].sort((a, b) => a.id.localeCompare(b.id));
   const ids = new Set(ordered.map((node) => node.id));
@@ -215,7 +231,7 @@ export function layoutArtifactGraph(nodes, edges, direction = "LR") {
     graph.setNode(id, {});
   });
   ordered.forEach((node) => {
-    graph.setNode(node.id, { width: NODE_WIDTH, height: NODE_HEIGHT });
+    graph.setNode(node.id, { ...sized(sizeOf, node) });
     graph.setParent(node.id, groupIds.get(artifactGroup(node)));
   });
   const validEdges = edges.filter((edge) => ids.has(edge.from_id) && ids.has(edge.to_id)).sort((a, b) => a.id.localeCompare(b.id));
@@ -223,8 +239,8 @@ export function layoutArtifactGraph(nodes, edges, direction = "LR") {
   dagre.layout(graph);
   return {
     nodes: ordered.map((node) => {
-      const { x, y } = graph.node(node.id);
-      return { node, position: { x: x - NODE_WIDTH / 2, y: y - NODE_HEIGHT / 2 } };
+      const { x, y, width, height } = graph.node(node.id);
+      return { node, position: { x: x - width / 2, y: y - height / 2 }, width, height };
     }),
     edges: validEdges.map((edge) => ({ edge, points: edgePoints(graph, edge) })),
     groups: groups.map((key) => {
@@ -235,22 +251,23 @@ export function layoutArtifactGraph(nodes, edges, direction = "LR") {
 }
 
 function endpointOnRect(rect, other, horizontalPreferred) {
+  const { width, height } = rect;
   const dx = other.x - rect.x;
   const dy = other.y - rect.y;
   if (horizontalPreferred && Math.abs(dx) >= 1) {
     const side = dx >= 0 ? 1 : -1;
-    return { x: rect.x + side * NODE_WIDTH / 2, y: rect.y };
+    return { x: rect.x + side * width / 2, y: rect.y };
   }
   if (!horizontalPreferred && Math.abs(dy) >= 1) {
     const side = dy >= 0 ? 1 : -1;
-    return { x: rect.x, y: rect.y + side * NODE_HEIGHT / 2 };
+    return { x: rect.x, y: rect.y + side * height / 2 };
   }
   if (Math.abs(dx) >= Math.abs(dy)) {
     const side = dx >= 0 ? 1 : -1;
-    return { x: rect.x + side * NODE_WIDTH / 2, y: rect.y };
+    return { x: rect.x + side * width / 2, y: rect.y };
   }
   const side = dy >= 0 ? 1 : -1;
-  return { x: rect.x, y: rect.y + side * NODE_HEIGHT / 2 };
+  return { x: rect.x, y: rect.y + side * height / 2 };
 }
 
 function routeExplorerEdge(edge, positions, direction, offset = 0) {
@@ -258,25 +275,26 @@ function routeExplorerEdge(edge, positions, direction, offset = 0) {
   const target = positions.get(idKey(edge.to_id));
   if (!source || !target) return [];
   if (source.id === target.id) {
+    const { width, height } = source;
     const horizontal = direction === "LR" || direction === "RL";
     const outward = direction === "RL" || direction === "BT" ? -1 : 1;
     if (horizontal) {
-      const x = source.x + outward * NODE_WIDTH / 2;
+      const x = source.x + outward * width / 2;
       const outer = x + outward * (48 + Math.abs(offset));
       return [
-        { x, y: source.y - NODE_HEIGHT * 0.2 },
-        { x: outer, y: source.y - NODE_HEIGHT * 0.35 + offset },
-        { x: outer, y: source.y + NODE_HEIGHT * 0.35 + offset },
-        { x, y: source.y + NODE_HEIGHT * 0.2 },
+        { x, y: source.y - height * 0.2 },
+        { x: outer, y: source.y - height * 0.35 + offset },
+        { x: outer, y: source.y + height * 0.35 + offset },
+        { x, y: source.y + height * 0.2 },
       ];
     }
-    const y = source.y + outward * NODE_HEIGHT / 2;
+    const y = source.y + outward * height / 2;
     const outer = y + outward * (48 + Math.abs(offset));
     return [
-      { x: source.x - NODE_WIDTH * 0.2, y },
-      { x: source.x - NODE_WIDTH * 0.35 + offset, y: outer },
-      { x: source.x + NODE_WIDTH * 0.35 + offset, y: outer },
-      { x: source.x + NODE_WIDTH * 0.2, y },
+      { x: source.x - width * 0.2, y },
+      { x: source.x - width * 0.35 + offset, y: outer },
+      { x: source.x + width * 0.35 + offset, y: outer },
+      { x: source.x + width * 0.2, y },
     ];
   }
   const dx = target.x - source.x;
@@ -307,11 +325,13 @@ function previousPositionMap(previousPositions) {
     .map(([id, position]) => [id, { x: position.x, y: position.y }]));
 }
 
-function positionOverlap(left, right) {
-  return Math.abs(left.x - right.x) < NODE_WIDTH && Math.abs(left.y - right.y) < NODE_HEIGHT;
+// Positions are top-left corners; boxes overlap unless one clears the other on an axis.
+function boxOverlap(left, leftSize, right, rightSize) {
+  return left.x < right.x + rightSize.width && right.x < left.x + leftSize.width
+    && left.y < right.y + rightSize.height && right.y < left.y + leftSize.height;
 }
 
-function anchoredExplorerPositions(ordered, forest, rawPositions, previousPositions, direction) {
+function anchoredExplorerPositions(ordered, forest, rawPositions, previousPositions, direction, sizeById = new Map()) {
   const previous = previousPositionMap(previousPositions);
   const anchored = new Map(ordered
     .filter((node) => previous.has(idKey(node.id)))
@@ -321,7 +341,8 @@ function anchoredExplorerPositions(ordered, forest, rawPositions, previousPositi
   const horizontal = direction === "LR" || direction === "RL";
   const rankKey = horizontal ? "x" : "y";
   const laneKey = horizontal ? "y" : "x";
-  const laneStep = horizontal ? NODE_HEIGHT + 36 : NODE_WIDTH + 36;
+  const sizeOfId = (id) => sizeById.get(id) || LEAF_SIZE;
+  const laneStep = horizontal ? NODE_HEIGHT + NODE_GAP : NODE_WIDTH + NODE_GAP;
   const depthMemo = new Map();
   const depthOf = (id, path = new Set()) => {
     if (depthMemo.has(id)) return depthMemo.get(id);
@@ -354,7 +375,9 @@ function anchoredExplorerPositions(ordered, forest, rawPositions, previousPositi
     }
     let candidate = { x: horizontal ? rank : lane, y: horizontal ? lane : rank };
     let laneOffset = 0;
-    while ([...anchored.values()].some((placed) => positionOverlap(candidate, placed))) {
+    const size = sizeOfId(id);
+    const clear = (spot) => [...anchored.entries()].every(([placedId, placed]) => !boxOverlap(spot, size, placed, sizeOfId(placedId)));
+    while (!clear(candidate)) {
       laneOffset += laneStep;
       const nextLane = lane + laneOffset;
       candidate = { x: horizontal ? rank : nextLane, y: horizontal ? nextLane : rank };
@@ -368,7 +391,7 @@ function anchoredExplorerPositions(ordered, forest, rawPositions, previousPositi
  * Lay out only the visible ownership forest. Dependency and evidence links
  * are routed after placement, so they cannot force ownership ranks apart.
  */
-export function layoutExplorerGraph(nodes, edges, direction = "LR", previousPositions = null) {
+export function layoutExplorerGraph(nodes, edges, direction = "LR", previousPositions = null, sizeOf = leafSize) {
   const ordered = orderedNodes(nodes);
   if (!ordered.length) return { nodes: [], edges: [] };
   const ids = new Set(ordered.map((node) => idKey(node.id)));
@@ -376,9 +399,10 @@ export function layoutExplorerGraph(nodes, edges, direction = "LR", previousPosi
   const forest = presentationForest(ordered, valid);
   const byId = new Map(ordered.map((node) => [idKey(node.id), node]));
   const graph = new dagre.graphlib.Graph({ multigraph: true });
-  graph.setGraph({ rankdir: direction, ranksep: 72, nodesep: 36, edgesep: 24, marginx: 40, marginy: 40 });
+  graph.setGraph({ rankdir: direction, ranksep: RANK_GAP, nodesep: NODE_GAP, edgesep: 24, marginx: 40, marginy: 40 });
   graph.setDefaultEdgeLabel(() => ({}));
-  ordered.forEach((node) => graph.setNode(idKey(node.id), { width: NODE_WIDTH, height: NODE_HEIGHT }));
+  const sizeById = new Map(ordered.map((node) => [idKey(node.id), sized(sizeOf, node)]));
+  ordered.forEach((node) => graph.setNode(idKey(node.id), { ...sizeById.get(idKey(node.id)) }));
   for (const [child, parent] of forest.parentOf) {
     graph.setEdge({ v: parent, w: child, name: `explorer:${child}` }, { weight: 4, minlen: 1 });
   }
@@ -397,16 +421,18 @@ export function layoutExplorerGraph(nodes, edges, direction = "LR", previousPosi
     const placed = graph.node(idKey(node.id));
     return {
       node,
-      position: { x: placed.x - NODE_WIDTH / 2, y: placed.y - NODE_HEIGHT / 2 },
+      position: { x: placed.x - placed.width / 2, y: placed.y - placed.height / 2 },
     };
   });
   const rawPositions = new Map(rawLaidOut.map(({ node, position }) => [idKey(node.id), position]));
-  const finalPositions = anchoredExplorerPositions(ordered, forest, rawPositions, previousPositions, direction);
-  const laidOut = ordered.map((node) => ({ node, position: finalPositions.get(idKey(node.id)) }));
-  const positions = new Map(laidOut.map(({ node, position }) => [idKey(node.id), {
+  const finalPositions = anchoredExplorerPositions(ordered, forest, rawPositions, previousPositions, direction, sizeById);
+  const laidOut = ordered.map((node) => ({ node, position: finalPositions.get(idKey(node.id)), ...sizeById.get(idKey(node.id)) }));
+  const positions = new Map(laidOut.map(({ node, position, width, height }) => [idKey(node.id), {
     id: idKey(node.id),
-    x: position.x + NODE_WIDTH / 2,
-    y: position.y + NODE_HEIGHT / 2,
+    x: position.x + width / 2,
+    y: position.y + height / 2,
+    width,
+    height,
   }]));
   const parallelOffsets = new Map();
   const byEndpoints = new Map();

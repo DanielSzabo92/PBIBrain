@@ -49,7 +49,9 @@ test("graph defaults to source objects and isolates a selected neighborhood", as
   await page.getByRole("button", { name: "Graph", exact: true }).click();
   await expect.poll(() => page.locator(".react-flow__node-brain").count()).toBeLessThan(graph.nodes.length);
   await expect(page.locator(".flow-node-name").filter({ hasText: "Sales" }).first()).toBeVisible();
+  await page.getByRole("button", { name: /^Display/ }).click();
   await expect(page.getByRole("checkbox", { name: "Include suggestions" })).not.toBeChecked();
+  await page.keyboard.press("Escape");
   await page.getByRole("tab", { name: "Full graph", exact: true }).click();
   await expect(page.locator(".react-flow__node-brain")).toHaveCount(graph.nodes.length);
   const measure = graph.nodes.find((node) => node.name === "Net Sales");
@@ -217,8 +219,11 @@ test("native scan exposes full report hierarchy and matching visual bindings", a
   await page.getByRole("tab", { name: "Full graph", exact: true }).click();
     await expect(page.locator(".react-flow__node-brain")).toHaveCount(graph.nodes.length);
     const card = page.locator(".react-flow__node-brain").filter({ hasText: "Revenue trend" });
-    await expect(card).toContainText("Line Chart");
-    await page.getByRole("tab", { name: "Report", exact: true }).click();
+    // The node shows the type as a glyph; its accessible name carries the visual kind.
+    await expect(card).toHaveAttribute("aria-label", /^Line Chart Revenue trend/);
+    await page.getByRole("button", { name: /^Filters/ }).click();
+    await page.getByLabel("Objects", { exact: true }).selectOption("report");
+    await page.keyboard.press("Escape");
     await expect(page.locator(".flow-node-name").filter({ hasText: /^Unused/ })).toHaveCount(0);
     await card.click();
     await expect(page.locator(".react-flow__edge-textbg").first()).toHaveCSS("fill", "rgb(26, 26, 29)");
@@ -231,7 +236,7 @@ test("native scan exposes full report hierarchy and matching visual bindings", a
     await expect(sheet.locator(".graph-detail-title")).toHaveText("Revenue");
     await sheet.getByRole("button", { name: "Close", exact: true }).click();
     await card.click();
-    await sheet.getByRole("button", { name: /Full inspector/ }).click();
+    await sheet.getByRole("button", { name: "Open in Inspector", exact: true }).click();
     await expect(page.locator(".object-workspace .visual-bindings .detail-section")).toHaveCount(6);
     await page.locator(".object-workspace .visual-bindings").getByRole("button", { name: "Running revenue", exact: true }).click();
     await expect(page.getByRole("heading", { name: "Running revenue", exact: true })).toBeVisible();

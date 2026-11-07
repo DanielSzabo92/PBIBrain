@@ -154,6 +154,9 @@
 
   /* Graph */
   --grid-dot: #1f1f23;
+  /* Graph links (visual contract §11.5): one neutral, opaque ink (3.6:1 on the canvas). Ownership lines are quieter. */
+  --graph-edge: #6b6f7a;
+  --graph-structure: #4a4d55;
   --minimap-mask: rgb(14 14 16 / 0.78);
   --code-bg: #121214;
 
@@ -257,6 +260,8 @@
   --inset-hi: inset 0 1px 0 rgb(255 255 255 / 0.6);
 
   --grid-dot: #e7e6e1;
+  --graph-edge: #8a8f99;
+  --graph-structure: #c2c3c6;
   --minimap-mask: rgb(247 247 245 / 0.75);
   --code-bg: #fafaf8;
 

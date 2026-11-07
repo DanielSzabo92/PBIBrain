@@ -78,3 +78,14 @@ test("grouped layout preserves cycles, parallel edges, self-loops, unknown nodes
   assert.deepEqual(layoutArtifactGraph([], []), { nodes: [], edges: [], groups: [] });
   assert.equal(layoutArtifactGraph([{ id: "only", type: "MEASURE" }], []).nodes.length, 1);
 });
+
+test("middle ellipsis keeps both ends of a long name within the width", async () => {
+  const { middleEllipsis } = await import("../src/graphPresentation.js");
+  const measure = (text) => text.length * 7;
+  assert.equal(middleEllipsis("Net Sales", 120, measure), "Net Sales");
+  const short = middleEllipsis("Sales amount year over year growth (LY)", 120, measure);
+  assert.ok(measure(short) <= 120);
+  assert.ok(short.startsWith("Sales") && short.endsWith("(LY)") && short.includes("…"));
+  assert.equal(middleEllipsis("Anything", 0, measure), "…");
+  assert.equal(middleEllipsis("No measurer", 1), "No measurer");
+});
