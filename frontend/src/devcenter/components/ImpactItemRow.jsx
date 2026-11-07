@@ -2,7 +2,7 @@
 // Line 1: status chip, type, name button, place, severity, tags. Line 2: reason phrase, shortest path, "<n> other paths".
 // One primary button; the other allowed actions are in the row menu.
 import React from "react";
-import { Bot, MoreHorizontal } from "lucide-react";
+import { MoreHorizontal, Terminal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Menu } from "@/components/ui/menu";
@@ -63,7 +63,7 @@ export default function ImpactItemRow({
           {item.severity === "not_changed_by_this_plan" ? <span className="dc-impact-tag">{t("impact.tag.not_changed")}</span> : null}
           {proposed ? (
             <span className="dc-impact-tag" data-tag="proposed">
-              <Bot aria-hidden="true" />
+              <Terminal aria-hidden="true" />
               {t("impact.tag.proposed")}
             </span>
           ) : null}

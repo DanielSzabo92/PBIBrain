@@ -18,7 +18,7 @@ async function fault(request, method, code, extra = {}) {
 // Open the app and the Development Center sidebar item.
 async function openDevCenter(page) {
   await page.goto("/");
-  await page.getByRole("navigation", { name: "Main navigation" }).getByRole("button", { name: "Development Center" }).click();
+  await page.getByRole("navigation", { name: "Main navigation" }).getByRole("button", { name: "Merge models" }).click();
 }
 
 async function noOverflow(page) {
@@ -46,7 +46,7 @@ test.describe("screens and banners of sections 4.1 and 4.2", () => {
     await page.goto("/");
     await expect(page.getByRole("navigation", { name: "Main navigation" })).toBeVisible();
     await scenario(request, "no-project");
-    await page.getByRole("navigation", { name: "Main navigation" }).getByRole("button", { name: "Development Center" }).click();
+    await page.getByRole("navigation", { name: "Main navigation" }).getByRole("button", { name: "Merge models" }).click();
     await expect(page.getByRole("heading", { name: "Open a project to start a merge session" })).toBeVisible();
     await expect(page.getByText("Merge sessions are saved in the project folder. Open a PBIP project first.")).toBeVisible();
     await expect(page.getByRole("button", { name: "Open project" })).toBeVisible();
@@ -72,11 +72,11 @@ test.describe("screens and banners of sections 4.1 and 4.2", () => {
       await expect(tab(page, "Compare")).toHaveAttribute("aria-selected", "true");
       await expect(tab(page, "Agent")).toContainText("1");
       for (const name of ["Compare", "Impact", "Plan", "Agent", "Sources", "Log"]) await expect(tab(page, name)).toBeVisible();
-      await expect(page.getByRole("navigation", { name: "Breadcrumb" })).toContainText("Development Center");
+      await expect(page.getByRole("navigation", { name: "Breadcrumb" })).toContainText("Merge models");
       await checkPage(page);
 
       // The first part of the breadcrumb shows the list. The session stays open.
-      await page.getByRole("navigation", { name: "Breadcrumb" }).getByRole("button", { name: "Development Center" }).click();
+      await page.getByRole("navigation", { name: "Breadcrumb" }).getByRole("button", { name: "Merge models" }).click();
       await expect(page.getByRole("heading", { level: 1, name: "Merge sessions" })).toBeVisible();
       const table = page.getByRole("table", { name: /Merge sessions of this project/ });
       for (const header of ["Name", "Target", "Sources", "Plan", "Last change", "Status"]) await expect(table.getByRole("columnheader", { name: header })).toBeVisible();
@@ -333,7 +333,7 @@ test.describe("keyboard, focus, live region, and motion", () => {
     await expect(control).toBeChecked();
     await control.click();
     await expect(control).not.toBeChecked();
-    await nav.getByRole("button", { name: "Development Center" }).click();
+    await nav.getByRole("button", { name: "Merge models" }).click();
     await workReady(page);
     await page.locator("body").click({ position: { x: 5, y: 5 } });
     await page.keyboard.press("/");
@@ -342,7 +342,7 @@ test.describe("keyboard, focus, live region, and motion", () => {
     await nav.getByRole("button", { name: "Settings" }).click();
     await control.click();
     await expect(control).toBeChecked();
-    await nav.getByRole("button", { name: "Development Center" }).click();
+    await nav.getByRole("button", { name: "Merge models" }).click();
     await workReady(page);
     await page.locator("body").click({ position: { x: 5, y: 5 } });
     await page.keyboard.press("/");

@@ -16,7 +16,7 @@
 .dc-page { display: flex; flex-direction: column; gap: var(--space-4); min-width: 0; }
 .dc-page > * { min-width: 0; }
 .dc-page-head, .dc-work-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: var(--space-4); }
-.dc-title { margin: 0; color: var(--text); font-size: var(--fs-page); font-weight: 650; line-height: 1.25; letter-spacing: -0.01em; overflow-wrap: anywhere; }
+.dc-title { margin: 0; color: var(--text); font-size: var(--fs-page); font-weight: 600; line-height: 1.25; letter-spacing: -0.01em; overflow-wrap: anywhere; }
 .dc-subtitle { margin: var(--space-1) 0 0; color: var(--text-2); font-size: var(--fs-body); }
 .dc-section { display: flex; flex-direction: column; gap: var(--space-3); min-width: 0; }
 .dc-section-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-3); }
@@ -108,7 +108,7 @@
 .dc-copy-rules-body { display: flex; flex-direction: column; gap: var(--space-3); }
 .dc-radio-group { border: 0; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); }
 .dc-radio-list { display: flex; flex-direction: column; gap: var(--space-2); margin-top: var(--space-2); }
-.dc-radio-card { display: flex; align-items: flex-start; gap: var(--space-3); padding: var(--space-3); border: 1px solid var(--line); border-radius: var(--radius); cursor: pointer; transition: background 0.15s; }
+.dc-radio-card { display: flex; align-items: flex-start; gap: var(--space-3); padding: var(--space-3); border: 1px solid var(--line); border-radius: var(--radius); cursor: pointer; transition: background-color var(--dur-fast) var(--ease-out); }
 .dc-radio-card.selected { border-color: var(--brand); background: var(--surface-2); }
 .dc-radio-card.disabled { opacity: 0.6; cursor: not-allowed; }
 .dc-radio-input { margin-top: 3px; accent-color: var(--brand); }
@@ -166,7 +166,7 @@
 .dc-plan-step-btn { display: grid; grid-template-columns: 16px 110px minmax(0, 1fr) auto; align-items: center; gap: var(--space-2); width: 100%; min-height: 34px; padding: 6px var(--space-4); border: 0; background: transparent; color: var(--text); text-align: left; font: inherit; font-size: var(--fs-body); cursor: pointer; }
 .dc-plan-step-btn:hover { background: var(--surface-3); }
 .dc-plan-step-btn:focus-visible { outline: 2px solid var(--brand); outline-offset: -2px; }
-.dc-plan-chev { width: 14px; height: 14px; color: var(--text-2); transition: transform 120ms ease; }
+.dc-plan-chev { width: 14px; height: 14px; color: var(--text-2); transition: transform var(--dur) var(--ease-move); }
 .dc-plan-chev-open { transform: rotate(90deg); }
 .dc-plan-step-type { color: var(--text-2); font-size: var(--fs-meta); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .dc-plan-step-name { color: var(--text); font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

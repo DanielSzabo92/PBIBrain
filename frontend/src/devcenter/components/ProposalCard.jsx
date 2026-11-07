@@ -1,7 +1,7 @@
 // ProposalCard part for Row detail and Agent tab (UI design 4.4, 4.7, 6.2, steps U6 and U9).
 // All text follows ASD-STE100 rules.
 import React, { useRef } from "react";
-import { Sparkles, TriangleAlert } from "lucide-react";
+import { CircleDashed, TriangleAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Notice } from "@/components/ui/notice";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -66,7 +66,7 @@ export default function ProposalCard({
       <div className="dc-proposal-head">
         <StatusBadge
           tone="proposal"
-          icon={Sparkles}
+          icon={CircleDashed}
           label={t("agent.card.title")}
         />
         <span className="dc-proposal-meta">{fromText(proposal)}</span>

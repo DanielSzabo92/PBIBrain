@@ -19,7 +19,7 @@ async function fault(request, method, code, extra = {}) {
 
 async function openTab(page, name) {
   await page.goto("/");
-  await page.getByRole("navigation", { name: "Main navigation" }).getByRole("button", { name: "Development Center" }).click();
+  await page.getByRole("navigation", { name: "Main navigation" }).getByRole("button", { name: "Merge models" }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Sales and finance merge" })).toBeVisible();
   await expect(page.locator(".dc-busy-line")).toHaveCount(0);
   await page.getByRole("tab", { name: new RegExp(`^${name}`) }).click();

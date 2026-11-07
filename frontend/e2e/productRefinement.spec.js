@@ -92,7 +92,7 @@ test("review filters and sort survive an inspector visit and restore target focu
   await expect.poll(() => page.locator(".review-target").evaluateAll((nodes, id) => nodes.some((node) => node.dataset.reviewId === id && document.activeElement === node), reviewId)).toBe(true);
 });
 
-test("canonical pending count drives the review badge and Reload Brain refreshes its snapshot", async ({ page, request }) => {
+test("canonical pending count drives the review badge and View › Reload data refreshes its snapshot", async ({ page, request }) => {
   const overviewResponse = await request.get("/api/overview");
   expect(overviewResponse.ok()).toBeTruthy();
   const overview = await overviewResponse.json();
@@ -111,7 +111,8 @@ test("canonical pending count drives the review badge and Reload Brain refreshes
   await expect(page.locator(".queue-panel")).toBeVisible();
   const loadedRequests = snapshotRequests;
 
-  await page.getByRole("button", { name: "Reload Brain", exact: true }).click();
+  await page.getByRole("menuitem", { name: "View" }).click();
+  await page.getByRole("menuitem", { name: /^Reload data/ }).click();
   await expect.poll(() => snapshotRequests).toBeGreaterThan(loadedRequests);
   await expect(page.locator(".queue-panel")).toBeVisible();
 });

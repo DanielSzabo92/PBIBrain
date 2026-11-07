@@ -97,7 +97,7 @@ export const COPY = Object.freeze({
   "list.plan.valid": "Valid",
   "list.plan.valid_with_warnings": "Valid with warnings",
   "list.plan.invalid": "Not valid",
-  "list.breadcrumb": "Development Center",
+  "list.breadcrumb": "Merge models",
   "list.caption": "Merge sessions of this project, newest first",
   "list.loading": "Loading merge sessions",
   "list.error.title": "Cannot load the merge sessions",

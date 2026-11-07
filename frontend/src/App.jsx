@@ -1,11 +1,12 @@
 import VisualBindings from "./components/VisualBindings";
 import ImpactExplorer from "./components/ImpactExplorer";
 import React, { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, ArrowRight, ArrowUpRight, Boxes, Check, ChartColumn, ChevronRight, CircleCheck, PanelLeft, ScanSearch, Copy, Database, FileText, FolderOpen, Moon, Plus, RefreshCw, ScanLine, ShieldAlert, ShieldCheck, Sparkles, Sun, TriangleAlert, Waypoints, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, ArrowUpRight, Boxes, Check, ChartColumn, ChevronRight, CircleCheck, Inbox, PanelLeft, ScanSearch, Copy, Database, FileText, FolderOpen, Moon, Plus, RefreshCw, ScanLine, ShieldAlert, ShieldCheck, Sun, TriangleAlert, Waypoints, X } from "lucide-react";
 import { brainTransport, normalizeSnapshot } from "./transport";
 import { desktopRequest, subscribeToDesktopBridge } from "./desktop";
 import NavIcon from "./NavIcon";
 import BrandMark from "./components/BrandMark";
+import { TypeGlyph, TypeIcon } from "./components/TypeGlyph";
 import { highlightDax } from "./dax";
 import { objectName, objectScope, readableText, publicProperties, scopeChoices, statusLabel, suggestionLabel } from "./presentation";
 import { Button } from "./components/ui/button";
@@ -22,7 +23,7 @@ const DevCenter = lazy(() => import("./devcenter/screens/DevCenter.jsx"));
 import { Switch } from "./components/ui/switch";
 import { setSlashSearchEnabled, slashGoesToSearch, slashSearchEnabled } from "./devcenter/preferences.js";
 import { t as devCopy } from "./devcenter/copy.js";
-import { artifactColor, normalizeColors, typeLabel } from "./graphPresentation";
+import { artifactColor, artifactStyle, normalizeColors, typeLabel } from "./graphPresentation";
 import { AppMenuBar, ShortcutsDialog, StatusBar } from "./components/AppShell";
 import { commandFor, displayKeys, shortcutKeys } from "./shortcuts";
 
@@ -32,7 +33,7 @@ const VIEWS = [
   ["graph", "Graph"],
   ["inspector", "Inspector"],
   ["review", "Review queue"],
-  ["devcenter", "Development Center"],
+  ["devcenter", "Merge models"],
   ["config", "Settings"],
 ];
 
@@ -579,7 +580,7 @@ function App({ transport = brainTransport }) {
                 <Button variant="ghost" key={key} aria-current={view === key ? "page" : undefined} className={`nav-button ${view === key ? "active" : ""} ${key === "config" ? "nav-settings" : ""}`} tooltip={compactNav || sidebarCollapsed ? `${label} (${keys})` : undefined} onClick={() => navigate(key)} title={compactNav || sidebarCollapsed ? undefined : `${label} (${keys})`}>
                   <NavIcon name={key} />
                   <span className="nav-label">{label}</span>
-                  {key === "review" && pending > 0 ? <span className="nav-count" data-ui-number="">{pending > 99 ? "99+" : pending}</span> : <kbd className="nav-kbd" aria-hidden="true">{keys}</kbd>}
+                  {key === "review" && pending > 0 ? <span className="nav-count" data-ui-number="">{pending > 99 ? "99+" : pending}</span> : null}
                 </Button>
               );
             })}
@@ -595,9 +596,7 @@ function App({ transport = brainTransport }) {
           </div>
           <div className="topbar-actions" role="toolbar" aria-label={`${viewLabel} toolbar`} data-ui-actions="">
             {activeProject ? <Button variant="ghost" size="sm" className="project-switch" onClick={closeDesktopProject} disabled={scanning}><FolderOpen />Change project</Button> : null}
-            <Button variant="ghost" size="sm" onClick={runScan} disabled={scanning || !hasSources} title={hasSources ? `Re-read every source and rebuild the brain (${displayKeys("Ctrl+F5")})` : "Add sources in Settings first"}><ScanLine aria-hidden="true" />{scanning ? "Scanning…" : "Rescan"}</Button>
-            <span className="toolbar-sep" aria-hidden="true" />
-            <Button variant="ghost" size="icon-sm" onClick={reloadBrain} disabled={loading || scanning} title={`Reload data (${displayKeys("F5")})`} aria-label="Reload Brain"><RefreshCw className={loading ? "spin" : ""} /></Button>
+            {counts.objects > 0 ? <Button variant="ghost" size="sm" onClick={runScan} disabled={scanning || !hasSources} title={hasSources ? `Re-read every source and rebuild the brain (${displayKeys("Ctrl+F5")})` : "Add sources in Settings first"}><ScanLine aria-hidden="true" />{scanning ? "Scanning…" : "Scan sources"}</Button> : null}
           </div>
         </header>
 
@@ -611,11 +610,11 @@ function App({ transport = brainTransport }) {
           ) : null}
           <div className="view-frame" key={view}>
             <Suspense fallback={<div className="view-loading" role="status"><RefreshCw className="spin" aria-hidden="true" />Loading view…</div>}>
-            {view === "overview" ? <Overview onSelect={selectNode} overview={overview} config={config} counts={counts} loading={loading} projectName={projectName} onView={navigate} onSearch={(query) => { setSearchSession({ query, modelId: "", reportId: "", result: null }); setView("search"); }} onSources={() => { setSettingsTab("project"); setView("config"); }} onSummary={() => { setSettingsTab("summary"); setView("config"); }} onScan={applyScan} scanning={scanning} scanLabel={activeProject ? "Scan project" : "Scan sources"} onReview={() => navigate("review")} /> : null}
+            {view === "overview" ? <Overview onSelect={selectNode} overview={overview} config={config} counts={counts} colors={graphColors} loading={loading} projectName={projectName} onView={navigate} onBrowseType={(objectType) => { setSearchSession({ query: "", modelId: "", reportId: "", objectType, result: null }); setView("search"); }} onSources={() => { setSettingsTab("project"); setView("config"); }} onSummary={() => { setSettingsTab("summary"); setView("config"); }} onScan={applyScan} scanning={scanning} scanLabel={activeProject ? "Scan project" : "Scan sources"} onReview={() => navigate("review")} /> : null}
             {view === "search" ? <div className="page page-narrow" data-ui-stack=""><SearchView session={searchSession} onSession={setSearchSession} colors={graphColors} transport={transport} overview={overview} onSelect={selectNode} /></div> : null}
             {view === "graph" ? <GraphView session={graphSession} onSession={setGraphSession} colors={graphColors} transport={transport} overview={overview} snapshot={snapshot} selectedId={selectedId} onSelect={selectNode} /> : null}
             {view === "inspector" ? <div className="page page-wide" data-ui-stack="">{selectedId ? <><Button variant="ghost" size="sm" className="inspector-back" onClick={() => { if (inspectorOrigin === "inspector") { setSelectedId(null); setInspectedObject(null); } else setView(inspectorOrigin); }}><ArrowLeft aria-hidden="true" />{inspectorOrigin === "search" ? "Back to results" : inspectorOrigin === "inspector" ? "Browse objects" : `Back to ${VIEWS.find(([key]) => key === inspectorOrigin)?.[1]?.toLowerCase() || "overview"}`}</Button><Inspector key={selectedId} transport={transport} scanning={scanning} colors={graphColors} node={selected} details={inspectedDetails} loading={Boolean(selectedId && !inspectedDetails && !inspectorError)} error={inspectorError} snapshot={snapshot} snapshotLoaded={snapshotLoaded} snapshotError={snapshotError} onEvidenceRetry={() => loadSnapshot().catch(() => {})} overview={overview} onSelect={selectNode} onRetry={() => selectNode(selectedId)} onReview={review} onGraph={() => setView("graph")} /></> : <SearchView browse session={inspectorSession} onSession={setInspectorSession} colors={graphColors} transport={transport} overview={overview} onSelect={(id) => { setInspectorOrigin("inspector"); selectNode(id); }} />}</div> : null}
-            {view === "review" ? <div className="page page-wide" data-ui-stack=""><ReviewQueue scanning={scanning} session={reviewSession} onSession={setReviewSession} snapshot={snapshot} loaded={snapshotLoaded} loading={!snapshotLoaded && (snapshotLoading || !snapshotError)} error={snapshotError} onRetry={() => loadSnapshot().catch(() => {})} overview={overview} onSelect={selectNode} onReview={review} /></div> : null}
+            {view === "review" ? <div className="page page-wide" data-ui-stack=""><ReviewQueue colors={graphColors} scanning={scanning} session={reviewSession} onSession={setReviewSession} snapshot={snapshot} loaded={snapshotLoaded} loading={!snapshotLoaded && (snapshotLoading || !snapshotError)} error={snapshotError} onRetry={() => loadSnapshot().catch(() => {})} overview={overview} onSelect={selectNode} onReview={review} /></div> : null}
             {view === "devcenter" ? <DevCenter onOpenProject={closeDesktopProject} /> : null}
             {view === "config" ? <div className="page page-narrow" data-ui-stack=""><PageHeading title="Settings" description="Manage project sources, graph appearance, and model context." /><KeyboardSettings />{configError && !config ? <Card className="panel"><EmptyState icon={<TriangleAlert />} tone="bad" title="Project settings unavailable" detail="Retry to load your saved sources and appearance." action={<Button variant="outline" onClick={load}>Retry settings</Button>} /></Card> : <Tabs value={settingsTab} onValueChange={setSettingsTab} className="settings-tabs">
               <TabsList aria-label="Settings sections"><TabsTrigger value="project">Project</TabsTrigger><TabsTrigger value="colors">Graph colors</TabsTrigger><TabsTrigger value="summary">Model summary</TabsTrigger></TabsList>
@@ -740,8 +739,7 @@ function PageHeading({ kicker, title, description, action, children }) {
   );
 }
 
-function Overview({ overview, config, counts, loading, projectName, onView, onSearch, onSources, onSummary, onScan, onReview, onSelect, scanning, scanLabel }) {
-  const [query, setQuery] = useState("");
+function Overview({ overview, config, counts, colors, loading, projectName, onView, onBrowseType, onSources, onSummary, onScan, onReview, onSelect, scanning, scanLabel }) {
   const hasObjects = counts.objects > 0;
   const hasSources = Boolean(config?.sources?.length);
   const sourceCount = config?.sources?.length;
@@ -766,36 +764,29 @@ function Overview({ overview, config, counts, loading, projectName, onView, onSe
       <h2>{scanning ? "Scanning sources…" : hasObjects ? "Sources indexed" : "Sources"}</h2>
       <p className="scan-meta">{sourceCount === undefined ? "Source settings unavailable" : `${sourceCount} ${sourceCount === 1 ? "source" : "sources"}`}{hasObjects ? ` · ${lastScan ? `Last scan ${formatDate(lastScan)}` : "Last scan time unavailable"}` : ""}</p>
     </div>
-    <div className="status-actions" data-ui-actions=""><Button variant="ghost" size="sm" onClick={onSources}>Manage sources</Button>{hasObjects ? <Button variant="ghost" size="sm" onClick={onSummary}>Export agent context</Button> : null}{hasObjects ? <Button variant="outline" size="sm" onClick={onScan} disabled={scanning || !hasSources}><RefreshCw className={scanning ? "spin" : ""} />{scanning ? "Scanning…" : scanLabel}</Button> : null}</div>
+    <div className="status-actions" data-ui-actions=""><Button variant="ghost" size="sm" onClick={onSources}>Manage sources</Button></div>
   </div>;
-  const facts = [["model", "models", counts.models], ["report", "reports", counts.reports], ["object", "objects", counts.objects], ["relationship", "relationships", counts.edges]];
+  const PRIMARY = ["MODEL", "TABLE", "COLUMN", "MEASURE", "REPORT", "PAGE", "VISUAL"];
+  const typeCounts = Object.entries(overview.object_counts || {}).filter(([, count]) => count > 0).sort(([a], [b]) => { const ia = PRIMARY.indexOf(a), ib = PRIMARY.indexOf(b); return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || a.localeCompare(b); });
+  const facts = [["object", "objects", counts.objects], ["relationship", "relationships", counts.edges]];
   return <div className="page page-overview" data-ui-stack="">
     <header className="overview-hero">
       <h1>{projectName}</h1>
       {hasObjects ? <dl className="project-counts" aria-label="Project counts">{facts.map(([one, many, count]) => <div key={many}><dd>{count.toLocaleString()}</dd><dt>{count === 1 ? one : many}</dt></div>)}{lastScan ? <div><dt>last scan</dt><dd className="fact-date">{formatDate(lastScan)}</dd></div> : null}</dl> : <p className="hero-meta">Connect your Power BI sources to build the project brain.</p>}
     </header>
+    {hasObjects && typeCounts.length ? <nav className="type-strip" aria-label="Objects by type">{typeCounts.map(([type, count]) => <button type="button" key={type} className="type-strip-item" onClick={() => onBrowseType(type)} title={`Browse ${count.toLocaleString()} ${typeLabel(type).toLowerCase()} objects`}><TypeGlyph type={type} colors={colors} size="sm" /><span className="type-strip-count" data-ui-number="">{count.toLocaleString()}</span><span className="type-strip-label">{typeLabel(type)}</span></button>)}</nav> : null}
     {loading && !hasObjects ? <div className="overview-loading"><div className="skeleton skeleton-search" /><div className="skeleton skeleton-panel" /><p role="status" className="sr-only">{scanning ? "Scanning sources…" : "Loading project…"}</p></div> : !hasObjects ?
       <div className="overview-grid">
         <Card className="project-start" role="region" aria-labelledby="project-start-title">
           <h2 id="project-start-title">{hasSources ? "Ready for the first scan" : "Add your project sources"}</h2>
           <p>{hasSources ? "Scan your files to find models, reports, and their dependencies." : "Choose your PBIP project or exported model and report files."}</p>
-          <ol className="start-steps" aria-label="Getting started">
-            <li className={hasSources ? "done" : "current"}><span>{hasSources ? <Check aria-hidden="true" /> : "1"}</span>Add PBIP or model files</li>
-            <li className={hasSources ? "current" : ""}><span>2</span>Scan to index objects</li>
-            <li><span>3</span>Explore, review, export context</li>
-          </ol>
           <Button size="lg" onClick={hasSources ? onScan : onSources} disabled={!config || scanning}>{hasSources ? <ScanLine /> : <Plus />}{hasSources ? scanLabel : "Add sources"}</Button>
         </Card>
         <Card className="status-panel" role="region" aria-label="Project status">{validation}{sourcesRow}</Card>
       </div> : <>
-        <form className="project-search-form" role="search" onSubmit={(event) => { event.preventDefault(); if (query.trim()) onSearch(query.trim()); }}>
-          <Label htmlFor="project-search" className="sr-only">Find an object</Label>
-          <div className="command-input"><NavIcon name="search" size={16} /><Input type="search" id="project-search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Find an object: measure, table, column, or visual" /><kbd aria-hidden="true">Enter</kbd></div>
-          <Button type="submit" variant="outline" aria-label="Search project" disabled={!query.trim()}>Search</Button>
-        </form>
         <Card className="status-panel" role="region" aria-label="Project status">
           <div className={`status-row ${pending ? "tone-brand" : "tone-ok"}`}>
-            <span className="status-count" aria-hidden="true" data-ui-number="">{pending}</span>
+            {pending ? <span className="status-icon status-icon-count" aria-hidden="true"><Inbox /><b data-ui-number="">{pending > 99 ? "99+" : pending}</b></span> : <CircleCheck className="status-icon" aria-hidden="true" />}
             <div className="status-copy">
               <h2>{validationState === "invalid" ? "Resolve graph issues before review" : pending ? "Ready for review" : "No pending reviews"}</h2>
               <p>{pending ? <><span className="sr-only">{pending} {pending === 1 ? "open item" : "open items"}. </span>Check suggested meanings and resolve uncertain matches.</> : "All suggestions have been reviewed."}{counts.warnings || counts.stale ? <span className="review-card-split"><span>{counts.candidates} suggestions</span>{counts.warnings ? <span>{counts.warnings} conflicts</span> : null}{counts.stale ? <span>{counts.stale} outdated decisions</span> : null}</span> : null}</p>
@@ -883,7 +874,7 @@ function SearchView({ transport, overview, onSelect, colors, session, onSession,
       {error ? <div className="search-error" role="alert"><TriangleAlert aria-hidden="true" /><span>{readableText(error.message)}</span><Button variant="outline" size="sm" onClick={() => runSearch(error.offset)}>Retry search</Button></div> : null}
       {!active ? <EmptyState icon={<NavIcon name="search" size={20} />} title="What are you looking for?" detail="Find a measure to inspect its formula and dependencies." action={<p className="empty-hint"><kbd>Ctrl</kbd><kbd>K</kbd> jumps here from anywhere</p>} /> : null}
       {active && !loading && !result?.items?.length && !error ? <EmptyState icon={<NavIcon name="search" size={20} />} title="No matches" detail="Try a shorter name or clear the filters." /> : null}
-      {active && result?.items?.length ? <div className="search-results" onKeyDown={(event) => listKeys(event, () => panel.current?.querySelector(".search-field input")?.focus())}>{result.items.map((item) => { const object = searchObject(item); const color = artifactColor(object, colors); const match = browse && !query.trim() ? "" : searchMatch(item); return <Button variant="ghost" key={object.id} data-result-id={object.id} className="search-result" style={{ "--artifact-color": color }} onClick={() => { onSession((current) => ({ ...current, selectedId: object.id, scrollY: contentScroller().scrollTop })); onSelect(object.id, "inspector"); }}><span className="result-type"><span className="artifact-dot" />{typeLabel(object.type)}</span><span className="result-copy"><strong>{labelFor(object)}</strong><small>{scopeName(object) || readableText(object.description) || typeLabel(object.type)}</small></span>{match ? <span className="result-match">{match}</span> : null}<ChevronRight className="result-chevron" aria-hidden="true" /></Button>; })}</div> : null}
+      {active && result?.items?.length ? <div className="search-results" onKeyDown={(event) => listKeys(event, () => panel.current?.querySelector(".search-field input")?.focus())}>{result.items.map((item) => { const object = searchObject(item); const color = artifactColor(object, colors); const match = browse && !query.trim() ? "" : searchMatch(item); return <Button variant="ghost" key={object.id} data-result-id={object.id} className="search-result" style={{ "--artifact-color": color }} onClick={() => { onSession((current) => ({ ...current, selectedId: object.id, scrollY: contentScroller().scrollTop })); onSelect(object.id, "inspector"); }}><TypeGlyph node={object} colors={colors} size="sm" /><span className="result-type">{typeLabel(object.type)}</span><span className="result-copy"><strong>{labelFor(object)}</strong><small>{scopeName(object) || readableText(object.description) || typeLabel(object.type)}</small></span>{match ? <span className="result-match">{match}</span> : null}<ChevronRight className="result-chevron" aria-hidden="true" /></Button>; })}</div> : null}
       {active && result?.has_more ? <div className="search-footer"><Button variant="outline" size="sm" disabled={loading} onClick={() => runSearch(Number(result.offset || 0) + Number(result.limit || 50))}>{pending ? "Loading…" : "More results"}</Button></div> : null}
     </Card>
   </div>;
@@ -969,7 +960,7 @@ function Inspector({ node, details, loading, error, snapshot, snapshotLoaded, sn
   const scopeTrail = [node.model_id, node.report_id, properties.table_id].filter((id) => id && id !== node.id).map(scopeName).filter(Boolean);
   return <>
     <PageHeading title={labelFor(node)} description={scopeTrail.join(" · ")} action={<Button variant="outline" onClick={onGraph}><Waypoints />Show in graph</Button>}>
-      <div className="object-summary-state" style={{ "--artifact-color": color }}><span className="type-chip"><span className="artifact-dot" />{typeLabel(node.type)}</span><StatusBadge value={node.status} /></div>
+      <div className="object-summary-state" style={{ "--artifact-color": color }}><span className="type-chip" style={artifactStyle(node, colors)}><TypeIcon type={node.type} />{typeLabel(node.type)}</span><StatusBadge value={node.status} /></div>
     </PageHeading>
     <div className="object-workspace">
       <div className="object-main">
@@ -1040,7 +1031,24 @@ function itemScopeValue(item, node, key) {
   return item?.[key] ?? item?.properties?.[key] ?? node?.[key] ?? node?.properties?.[key] ?? "";
 }
 
-function ReviewQueue({ session, onSession, snapshot, loaded, loading, error, onRetry, overview, onSelect, onReview, scanning }) {
+// Keyboard triage (visual contract §9): J/K or ↓/↑ move between items, A approves, R rejects the focused item.
+function reviewKeys(event) {
+  if (event.altKey || event.ctrlKey || event.metaKey || event.target.closest("input, select, textarea")) return;
+  const key = event.key.toLowerCase();
+  const item = event.target.closest(".review-item");
+  if (!item) return;
+  if (key === "j" || key === "k" || event.key === "ArrowDown" || event.key === "ArrowUp") {
+    const targets = [...event.currentTarget.querySelectorAll(".review-target:not(:disabled)")];
+    const index = targets.indexOf(item.querySelector(".review-target"));
+    const next = targets[index + (key === "j" || event.key === "ArrowDown" ? 1 : -1)];
+    if (next) { next.focus(); next.scrollIntoView({ block: "nearest" }); event.preventDefault(); }
+  } else if (key === "a" || key === "r") {
+    const button = item.querySelector(key === "a" ? ".approve-button" : ".reject-button");
+    if (button && !button.disabled) { button.click(); event.preventDefault(); }
+  }
+}
+
+function ReviewQueue({ session, onSession, snapshot, loaded, loading, error, onRetry, overview, onSelect, onReview, scanning, colors }) {
   const { issue, objectType, modelId, reportId, sort } = session;
   const change = (values) => onSession((current) => ({ ...current, ...values }));
   const panel = useRef(null);
@@ -1079,7 +1087,7 @@ function ReviewQueue({ session, onSession, snapshot, loaded, loading, error, onR
     <PageHeading title="Review queue" description="Confirm suggested meanings with the evidence behind each one." />
     {error && !loaded ? <Card className="panel" role="alert"><EmptyState icon={<TriangleAlert />} tone="bad" title="Review queue unavailable" detail={readableText(error)} action={<Button variant="outline" onClick={onRetry}><RefreshCw />Retry review queue</Button>} /></Card> : <>
     {error ? <Card className="panel" role="alert"><EmptyState icon={<TriangleAlert />} tone="bad" title="Review refresh failed" detail={`Showing last loaded reviews. ${readableText(error)}`} action={<Button variant="outline" onClick={onRetry}><RefreshCw />Retry review queue</Button>} /></Card> : null}
-    <div className="review-purpose"><p>Confirm the meanings PBIBrain inferred. Approval saves a trusted label for search and context; rejection excludes it. Your Power BI files stay unchanged.</p><span className="queue-count"><strong data-ui-number="">{loading ? "…" : filtered.length}</strong>{loading ? "Loading…" : " to review"}</span></div>
+    <p className="review-purpose"><span className="queue-count"><strong data-ui-number="">{loading ? "…" : filtered.length}</strong>{loading ? "Loading…" : " to review"}</span><span className="review-purpose-copy">Approval saves a trusted label for search and context; rejection excludes it. Power BI files stay unchanged.</span><span className="review-keys" aria-hidden="true"><kbd>J</kbd><kbd>K</kbd> move <kbd>A</kbd> approve <kbd>R</kbd> reject</span></p>
     <div className="queue-toolbar" data-ui-actions="">
       <Label className="select-field"><span>Issue</span><NativeSelect aria-label="Issue" value={issue} onChange={(event) => change({ issue: event.target.value })}><option value="ALL">All issues</option><option value="candidate">Suggestions</option><option value="conflict">Conflicts</option><option value="stale">Outdated decisions</option></NativeSelect></Label>
       <Label className="select-field"><span>Object</span><NativeSelect aria-label="Object" value={objectType} onChange={(event) => change({ objectType: event.target.value })}><option value="ALL">All types</option>{types.map((type) => <option key={type} value={type}>{typeLabel(type)}</option>)}</NativeSelect></Label>
@@ -1091,14 +1099,14 @@ function ReviewQueue({ session, onSession, snapshot, loaded, loading, error, onR
     <Card className="panel queue-panel" aria-busy={loading}>
       {loading ? <div className="queue-loading">{[0, 1, 2].map((index) => <div className="skeleton skeleton-row-item" key={index} />)}<p className="sr-only" role="status">Loading suggestions…</p></div> : filtered.length ? <>
         <div className="review-columns" aria-hidden="true"><span>Object &amp; suggestion</span><span>Why review this?</span><span>Confidence</span><span>Decision</span></div>
-        <div className="queue-list">{filtered.map((item) => <ReviewItem key={item.id || `${item.issue}-${itemTarget(item)}`} item={item} nodes={snapshot.nodes} disabled={scanning} onSelect={(id, nextView) => { change({ selectedId: item.id || itemTarget(item), scrollY: contentScroller().scrollTop }); onSelect(id, nextView); }} onReview={onReview} />)}</div>
+        <div className="queue-list" onKeyDown={reviewKeys}>{filtered.map((item) => <ReviewItem colors={colors} key={item.id || `${item.issue}-${itemTarget(item)}`} item={item} nodes={snapshot.nodes} disabled={scanning} onSelect={(id, nextView) => { change({ selectedId: item.id || itemTarget(item), scrollY: contentScroller().scrollTop }); onSelect(id, nextView); }} onReview={onReview} />)}</div>
       </> : <EmptyState icon={hasFilters ? <ShieldCheck /> : <CircleCheck />} tone={hasFilters ? undefined : "ok"} title={hasFilters ? "No matching reviews" : "Queue is clear"} detail={hasFilters ? "Choose different filters to see the remaining reviews." : "All suggestions have been reviewed."} action={hasFilters ? <Button variant="outline" onClick={() => change({ issue: "ALL", objectType: "ALL", modelId: "ALL", reportId: "ALL" })}>Clear filters</Button> : null} />}
     </Card>
     </>}
   </div>;
 }
 
-function ReviewItem({ item, nodes, onSelect, onReview, disabled = false }) {
+function ReviewItem({ item, nodes, onSelect, onReview, colors, disabled = false }) {
   const targetNode = nodes.find((node) => node.id === itemTarget(item));
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
@@ -1108,9 +1116,9 @@ function ReviewItem({ item, nodes, onSelect, onReview, disabled = false }) {
   const score = confidence(item.confidence ?? item.properties?.confidence);
   const level = score === null ? "none" : score >= 80 ? "high" : score >= 50 ? "mid" : "low";
   return <div className={`review-item issue-${item.issue}`} aria-busy={pending}>
-    <Button variant="ghost" className="review-target" data-review-id={item.id || itemTarget(item)} disabled={!targetNode} onClick={() => onSelect(targetNode.id, "inspector")}><span className={`review-dot ${item.issue}`} /><span className="review-target-copy"><strong>{targetNode ? labelFor(targetNode) : "Source object unavailable"}</strong><small className="review-scope">{objectScope(targetNode, nodes)}</small><small className="review-suggestion">{item.issue === "conflict" ? "Conflicting suggestions" : item.issue === "stale" ? "Outdated saved decision" : suggestionLabel(item)}</small>{targetNode ? <small className="review-type">{typeLabel(targetNode.type)}</small> : null}</span></Button>
+    <Button variant="ghost" className="review-target" data-review-id={item.id || itemTarget(item)} disabled={!targetNode} onClick={() => onSelect(targetNode.id, "inspector")}>{targetNode ? <TypeGlyph node={targetNode} colors={colors} size="sm" /> : <span className={`review-dot ${item.issue}`} />}<span className="review-target-copy"><strong>{targetNode ? labelFor(targetNode) : "Source object unavailable"}</strong><small className="review-scope">{objectScope(targetNode, nodes)}</small><small className={`review-suggestion issue-${item.issue}`}>{item.issue === "conflict" ? "Conflicting suggestions" : item.issue === "stale" ? "Outdated saved decision" : suggestionLabel(item)}</small>{targetNode ? <small className="review-type">{typeLabel(targetNode.type)}</small> : null}</span></Button>
     <div className="review-evidence"><p>{readableText(reason, nodes)}</p>{evidence ? <small>{evidence}</small> : null}</div>
-    <div className={`review-score level-${level}`}><strong data-ui-number="">{score === null ? "—" : `${confidence(itemConfidence(item))}%`}</strong><span className="meter" aria-hidden="true"><i style={{ width: `${score ?? 0}%` }} /></span><small>{item.issue === "conflict" ? "Conflict" : item.issue === "stale" ? "Outdated" : "Suggested"}</small></div>
+    <div className={`review-score level-${level}`}><strong data-ui-number="">{score === null ? "—" : `${confidence(itemConfidence(item))}%`}</strong><span className="meter" aria-hidden="true"><i style={{ transform: `scaleX(${(score ?? 0) / 100})` }} /></span><small>{item.issue === "conflict" ? "Conflict" : item.issue === "stale" ? "Outdated" : "Suggested"}</small></div>
     <div className="review-actions" data-ui-actions="">{item.issue === "stale" ? <Button variant="destructive" size="sm" disabled={pending || disabled} onClick={() => decide("remove")}>Remove decision</Button> : <><Button variant="outline" size="sm" className="approve-button" disabled={pending || disabled} onClick={() => decide("approve")}><Check aria-hidden="true" />Approve</Button><Button variant="ghost" size="sm" className="reject-button" disabled={pending || disabled} onClick={() => decide("reject")}><X aria-hidden="true" />Reject</Button></>}</div>
     {error ? <p className="review-decision-error" role="alert">{error}</p> : null}
   </div>;

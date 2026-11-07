@@ -5,7 +5,8 @@ import { Button } from "./ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "./ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import VisualBindings from "./VisualBindings";
-import { ARTIFACT_GROUPS, artifactColor, artifactGroup, typeLabel } from "../graphPresentation";
+import { ARTIFACT_GROUPS, artifactColor, artifactGroup, artifactStyle, typeLabel } from "../graphPresentation";
+import { TypeIcon } from "./TypeGlyph";
 import { highlightDax } from "../dax";
 
 import { objectName, readableText, publicProperties, statusLabel } from "../presentation";
@@ -60,7 +61,7 @@ export default function GraphDetails({ node, colors, transport, onClose, onSelec
       onOpenAutoFocus={() => { returnFocus.current = document.activeElement; }}
       onCloseAutoFocus={(event) => { event.preventDefault(); if (returnFocus.current?.isConnected) returnFocus.current.focus(); }}>
       <SheetHeader className="graph-detail-header">
-        <div className="graph-detail-chips"><span className="type-chip"><span className="artifact-dot" />{typeLabel(current?.type)}</span><Badge variant="secondary">{statusLabel(current?.status)}</Badge></div>
+        <div className="graph-detail-chips"><span className="type-chip" style={current ? artifactStyle(current, colors) : undefined}><TypeIcon type={current?.type} />{typeLabel(current?.type)}</span><Badge variant="secondary">{statusLabel(current?.status)}</Badge></div>
         <SheetTitle className="graph-detail-title">{current ? objectName(current) : "Object details"}</SheetTitle>
         <SheetDescription>{current ? ARTIFACT_GROUPS[artifactGroup(current)].label : "Object details"}</SheetDescription>
       </SheetHeader>

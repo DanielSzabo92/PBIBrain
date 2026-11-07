@@ -1,8 +1,8 @@
 import * as React from "react"
-import { CircleCheck, CircleX, Info, Sparkles, TriangleAlert } from "lucide-react"
+import { CircleCheck, CircleDashed, CircleX, Info, TriangleAlert } from "lucide-react"
 import { cn } from "@/lib/utils"
 
-const ICONS = { info: Info, warn: TriangleAlert, bad: CircleX, ok: CircleCheck, brand: Sparkles }
+const ICONS = { info: Info, warn: TriangleAlert, bad: CircleX, ok: CircleCheck, brand: CircleDashed }
 
 // Notice and Banner (UI design 6.1): icon, body, optional list, optional actions.
 // A full hairline border on surface-2, never a one-sided colored border (house rule 5).

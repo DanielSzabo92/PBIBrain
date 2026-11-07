@@ -5,12 +5,39 @@ export const ARTIFACT_GROUPS = {
 };
 
 
+// Default object palette (docs/design/visual-contract.md §3). Each type has a dark-theme colour (stored,
+// user-editable) and a hand-tuned light-theme variant. Every colour is ≥3:1 on its canvas and ≥ΔE 5 from
+// every status colour, so a type never reads as ok/warn/bad. Violet (Page) is a data colour only.
+export const DEFAULT_PALETTE = {
+  name: "Default",
+  description: "Distinct hue per object type",
+  groups: { report: "#e68ac0", model: "#6ea8fe", other: "#b5ac9c" },
+  types: { MODEL: "#6ea8fe", TABLE: "#4cc2b0", COLUMN: "#a2afc2", MEASURE: "#c6c95a", REPORT: "#e68ac0", PAGE: "#c49bf2", VISUAL: "#f0995e" },
+};
+
+const LIGHT_VARIANTS = {
+  "#6ea8fe": "#2563c9", "#4cc2b0": "#0e8273", "#a2afc2": "#5d6b80", "#c6c95a": "#6b6d00",
+  "#e68ac0": "#b83f86", "#c49bf2": "#7c4fc4", "#f0995e": "#b4561c", "#b5ac9c": "#7a7163",
+};
+
 export const PALETTES = [
+  DEFAULT_PALETTE,
+  { name: "High contrast", description: "Saturated, maximum separation", groups: { report: "#ff7ab8", model: "#5c9dff", other: "#c4bba9" }, types: { MODEL: "#5c9dff", TABLE: "#2fd1b8", COLUMN: "#b6c2d4", MEASURE: "#d9de4c", REPORT: "#ff7ab8", PAGE: "#c48dff", VISUAL: "#ff9150" } },
   { name: "Studio", description: "Balanced, muted tones", groups: { report: "#b4a0cd", model: "#8daec6", other: "#b8afa1" }, types: { TABLE: "#8daec6", COLUMN: "#9dafa5", MEASURE: "#d3bb8f", REPORT: "#b4a0cd", PAGE: "#99bcbc", VISUAL: "#c79da3" } },
   { name: "Coast", description: "Cool blue, sage, and sand", groups: { report: "#88b8b1", model: "#8daeca", other: "#b7b1a0" }, types: { TABLE: "#8daeca", COLUMN: "#a7bfbe", MEASURE: "#d0bf99", REPORT: "#88b8b1", PAGE: "#acb8d0", VISUAL: "#c1a7b7" } },
-  { name: "Ember", description: "Warm clay, olive, and rose", groups: { report: "#c49f9a", model: "#b9ad8b", other: "#aab2a0" }, types: { TABLE: "#b9ad8b", COLUMN: "#9cae9c", MEASURE: "#d0ae8e", REPORT: "#c49f9a", PAGE: "#aea4ba", VISUAL: "#a1b9bd" } },
   { name: "Slate", description: "Quiet, neutral shades", groups: { report: "#bbb5c6", model: "#a1b2c1", other: "#b7b5ae" }, types: { TABLE: "#a1b2c1", COLUMN: "#9eaaa5", MEASURE: "#cac2b3", REPORT: "#bbb5c6", PAGE: "#9aadb5", VISUAL: "#c1adaf" } },
 ];
+
+/** Light-theme variant of a stored (dark-theme) colour: the tuned value for defaults, else a darker mix. */
+export function lightVariant(color) {
+  return LIGHT_VARIANTS[String(color).toLowerCase()] || `color-mix(in oklch, ${color} 55%, #18181a)`;
+}
+
+/** CSS custom properties that let any element follow the object's colour in both themes. */
+export function artifactStyle(node, colors) {
+  const color = artifactColor(node, colors);
+  return { "--artifact-color": color, "--artifact-color-light": lightVariant(color) };
+}
 
 export const OBJECT_TYPES = Object.values(ARTIFACT_GROUPS).flatMap((group) => group.types);
 export const EDGE_TYPES = ["CONTAINS", "BELONGS_TO", "DEPENDS_ON", "REFERENCES", "MODIFIES_FILTER", "ACTIVATES_RELATIONSHIP", "MODIFIES_RELATIONSHIP", "USES", "RELATES_TO", "FILTERS", "USES_MODEL", "CONTROLLED_BY", "HAS_OPTION", "DEFAULTS_TO", "SEMANTICALLY_MAPS_TO", "SIMILAR_TO", "OBSERVED_WITH", "CONFLICTS_WITH", "ALIAS_OF", "HAS_ROLE", "HAS_BEHAVIOR"];
@@ -36,7 +63,7 @@ export function normalizeColors(value) {
     }
   }
   const legacy = ["#a78bfa", "#60a5fa", "#94a3b8"].every((color, index) => Object.values(groups)[index] === color);
-  if (!Object.keys(types).length && legacy) return { groups: { ...PALETTES[0].groups }, types: { ...PALETTES[0].types } };
+  if ((!Object.keys(types).length && legacy)) return { groups: { ...DEFAULT_PALETTE.groups }, types: { ...DEFAULT_PALETTE.types } };
   return { groups, types };
 }
 

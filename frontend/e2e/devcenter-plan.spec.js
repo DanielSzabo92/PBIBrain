@@ -23,7 +23,7 @@ async function delay(request, path, ms, extra = {}) {
 
 async function openDevCenter(page) {
   await page.goto("/");
-  await page.getByRole("navigation", { name: "Main navigation" }).getByRole("button", { name: "Development Center" }).click();
+  await page.getByRole("navigation", { name: "Main navigation" }).getByRole("button", { name: "Merge models" }).click();
 }
 
 async function workReady(page, name = "Sales and finance merge") {

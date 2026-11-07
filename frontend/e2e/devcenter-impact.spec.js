@@ -18,7 +18,7 @@ async function setImpact(request, data) {
 
 async function openImpact(page) {
   await page.goto("/");
-  await page.getByRole("navigation", { name: "Main navigation" }).getByRole("button", { name: "Development Center" }).click();
+  await page.getByRole("navigation", { name: "Main navigation" }).getByRole("button", { name: "Merge models" }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Sales and finance merge" })).toBeVisible();
   await expect(page.locator(".dc-busy-line")).toHaveCount(0);
   await page.getByRole("tab", { name: "Impact" }).click();
@@ -77,7 +77,7 @@ test.describe("Scope, group, and view switches", () => {
   test("a row link from Compare sets the row scope", async ({ page, request }) => {
     await scenario(request, "default");
     await page.goto("/");
-    await page.getByRole("navigation", { name: "Main navigation" }).getByRole("button", { name: "Development Center" }).click();
+    await page.getByRole("navigation", { name: "Main navigation" }).getByRole("button", { name: "Merge models" }).click();
     await expect(page.locator(".dc-busy-line")).toHaveCount(0);
     await page.locator(".dc-cell", { hasText: "Budget" }).first().click();
     await page.getByRole("button", { name: "Show impact of this row" }).click();
@@ -181,7 +181,7 @@ test.describe("Completeness strip", () => {
 
     await setImpact(request, { completeness: { status: "complete" } });
     await page.reload();
-    await page.getByRole("navigation", { name: "Main navigation" }).getByRole("button", { name: "Development Center" }).click();
+    await page.getByRole("navigation", { name: "Main navigation" }).getByRole("button", { name: "Merge models" }).click();
     await page.getByRole("tab", { name: "Impact" }).click();
     await expect(page.locator(".dc-complete [data-slot='status-badge']")).toHaveText("Complete");
     await expect(page.locator(".dc-complete-entry")).toHaveCount(0);
