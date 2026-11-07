@@ -73,6 +73,11 @@ EDGE_TYPES = frozenset(
         "ALIAS_OF",
         "HAS_ROLE",
         "HAS_BEHAVIOR",
+        "DRILLS_THROUGH_TO",
+        "TOOLTIP_PAGE",
+        "INTERACTS_WITH",
+        "SYNCED_WITH",
+        "FORMATS_BY",
     }
 )
 

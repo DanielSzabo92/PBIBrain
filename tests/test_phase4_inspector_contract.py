@@ -306,7 +306,7 @@ class Phase4TransportContractTests(unittest.TestCase):
         self.assertIsNotNone(payload)
         self.assertEqual(
             set(payload),
-            {"object", "visual_bindings", "identity", "raw_metadata", "description", "dependencies", "dependents", "relationships", "usage", "semantics", "evidence", "confidence", "approval_state", "warnings", "edges"},
+            {"object", "visual_bindings", "identity", "raw_metadata", "description", "dependencies", "dependents", "relationships", "usage", "usage_roles", "semantics", "evidence", "confidence", "approval_state", "warnings", "edges"},
         )
         self.assertEqual(payload["identity"]["id"], self.ids["measure"])
         self.assertEqual(payload["raw_metadata"]["id"], "revenue")

@@ -176,6 +176,12 @@ def visual_bindings(repository: GraphRepository, node: Node, edges: list[Edge], 
     return groups
 
 
+def _usage_roles(repository: GraphRepository, node: Node, edges: list[Edge]) -> dict[str, Any] | None:
+    from backend.inference.usage_roles import usage_profile
+
+    return usage_profile({item.id: item for item in repository.all_nodes()}, edges, node.id)
+
+
 def inspect_object(
     repository: GraphRepository,
     object_id: str,
@@ -234,6 +240,7 @@ def inspect_object(
             "edges": [_edge_payload(edge, store) for edge in connected if edge.type in {"RELATES_TO", "CONTAINS", "USES_MODEL", "FILTERS"}],
         },
         "usage": [_payload(item, store) for item in repository.get_usage(node.id)],
+        "usage_roles": _usage_roles(repository, node, all_edges),
         "semantics": _semantic_records(repository, node.id, store),
         "evidence": evidence,
         "confidence": object_payload.get("confidence", object_payload.get("properties", {}).get("confidence") if isinstance(object_payload.get("properties"), Mapping) else None),
