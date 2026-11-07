@@ -33,6 +33,8 @@ TOOL_BUDGETS: dict[str, dict[str, int]] = {
     "brain_compare": {"compact": 16_000, "full": 48_000},
     # Issue #14 documented 12,000 characters (about 3,000 tokens) for brain_commonality.
     "brain_commonality": {"compact": 12_000, "full": 32_000},
+    # Issue #17: files changed outside the app since the last scan, with Breaks and Needs.
+    "brain_pending_changes": {"compact": 12_000, "full": 32_000},
     # The Development Center agent tools page on their own; this is only the ceiling.
     "devcenter": {"compact": 24_000, "full": 24_000},
 }
@@ -41,6 +43,7 @@ TOOL_BUDGETS: dict[str, dict[str, int]] = {
 PRIMARY_FIELDS = {
     "brain_search": "items", "brain_object": "object", "brain_context": "target", "brain_graph": "nodes",
     "brain_impact": "direct_impacts", "brain_commonality": "groups",
+    "brain_pending_changes": "safety",
 }
 
 # Room left in each budget for the ``budget`` and ``freshness`` blocks.

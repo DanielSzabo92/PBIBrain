@@ -76,9 +76,21 @@ Configure any stdio MCP client with command `brain` and arguments
 local server (the earlier behaviour).
 The adapter uses the [official MCP Python SDK v1](https://github.com/modelcontextprotocol/python-sdk/tree/v1.x).
 Its read-only tools are `brain_overview`, `brain_search`, `brain_object`, `brain_context`,
-`brain_graph`, `brain_impact`, `brain_compare` and `brain_commonality`, plus the eight
+`brain_graph`, `brain_impact`, `brain_compare`, `brain_commonality` and `brain_pending_changes`, plus the eight
 Development Center agent tools. Configuration, scanning, and review writes are
 intentionally absent from the agent tool surface. MCP never opens the database.
+
+## Check your edits: `brain_pending_changes`
+
+After editing project files, call `brain_pending_changes`. It compares the files with the
+last scan (by hash) and, when some differ, reads them into a graph preview without writing
+anything. The reply lists the changed `files` and a `safety` report: `changes` (objects
+created, deleted, renamed or changed), `breaks` (objects that still use a deleted object, or
+the old name of a renamed one) and `needs` (DAX that names a measure, column or table the
+model does not have). `status` is `UNCHANGED`, `CHANGED`, `NEEDS`, `BREAKS`, `UNREADABLE`
+(a file does not parse yet) or `NO_SCAN`. The app shows the same report as a warning while
+it is open. To make edits that the user reviews before they reach the project files, use
+the change guard (`docs/CHANGE_GUARD_CONTRACT.md`): its no-container tier needs no Docker.
 
 ## MCP without the app and reply budgets
 
@@ -88,7 +100,7 @@ For each tool call, the MCP server reads the open app when it has this project o
 (the connection in `.pbibrain/connection.json` answers for this project), and otherwise
 the snapshot. A stale connection after a crash also falls back to the snapshot. Reads
 from the snapshot are read-only: overview, search, object, context, graph, impact and
-commonality. `brain_compare` and the Development Center tools need the app; the latter
+commonality, and pending changes. `brain_compare` and the Development Center tools need the app; the latter
 answer with the error code `app_not_running`.
 
 Every reply has a `freshness` block:
@@ -113,6 +125,7 @@ a `budget` block. Budgets are characters of JSON (about 4 characters per token):
 | `brain_object` | 12,000 | 40,000 |
 | `brain_context`, `brain_graph`, `brain_impact`, `brain_compare` | 16,000 | 48,000 |
 | `brain_commonality` | 12,000 | 32,000 |
+| `brain_pending_changes` | 12,000 | 32,000 |
 
 Compact replies leave out parser detail (`dax_ast`, `dax_behaviors`, `dax_evidence`,
 `raw_source`, `raw_metadata`, `ast_location`, nested `behavior` copies), listed in

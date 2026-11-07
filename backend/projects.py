@@ -208,6 +208,21 @@ class ProjectService:
             LOGGER.warning("The agent snapshot could not be written", exc_info=True)
         return result
 
+    def preview_graph(self) -> Any:
+        """Scan the local sources as they are now, without publishing anything (issue #17).
+
+        The file watcher compares this graph with the last scan. Nothing is written: not the
+        graph, not the identity map, not the agent snapshot. Cloud items are not read again
+        (they are not files on this computer); ``cloud_skipped`` says when there were some.
+        """
+
+        config = self.get_config()
+        source_paths = [_resolve_path(value, self.config_path.parent) for value in config["sources"]]
+        if not source_paths:
+            raise ProjectConfigError("Project has no local sources")
+        project_paths = _project_paths(config, self.config_path.parent)
+        return self._scan_paths(GraphRepository(use_native=False), source_paths, project_paths, None, publish=False)
+
     def cloud_reader(self) -> ProjectCloudReader:
         service = self.cloud() if callable(self.cloud) else self.cloud
         return ProjectCloudReader(self.config_path.parent / "tmp" / "cloud", service)
@@ -218,8 +233,13 @@ class ProjectService:
         source_paths: list[Path],
         project_paths: dict[str, Path],
         cloud_entries: list[Mapping[str, Any]] | None = None,
-    ) -> ProjectScanResult:
-        """Scan one immutable configuration snapshot."""
+        *,
+        publish: bool = True,
+    ) -> Any:
+        """Scan one immutable configuration snapshot.
+
+        With ``publish=False`` the scanned graph is returned and nothing is written.
+        """
 
         models: list[dict[str, Any]] = []
         reports: list[dict[str, Any]] = []
@@ -255,6 +275,8 @@ class ProjectService:
                 overrides_path=project_paths["overrides"],
             )
             graph = scanner.scan(models, reports)
+            if not publish:
+                return graph
             previous_nodes = repository.all_nodes()
             previous_edges = repository.all_edges()
             preserve_review_statuses(graph.nodes, graph.edges, previous_nodes, previous_edges)

@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Sequence
 from backend.snapshots.manifest import canonical_json
 from .orchestrator import ChangeGuard
-from .workspace import DockerIsolation
+from .workspace import DockerIsolation, LocalCopyIsolation
 
 EXIT_CODES = {"SUCCESS": 0, "INVALID_INPUT": 2, "UNAUTHORIZED_MUTATION": 3, "SOURCE_INTEGRITY_FAILURE": 4,
               "USER_REJECTED": 3, "REVIEW_STALE": 7,
@@ -31,23 +31,24 @@ def main(argv: Sequence[str] | None = None) -> int:
     commands.add_parser("snapshot")
     prepare = commands.add_parser("prepare")
     prepare.add_argument("contract")
-    for name in ("verify", "report", "promote", "recover", "retry"):
+    for name in ("verify", "report", "promote", "recover", "retry", "local-edit"):
         command = commands.add_parser(name)
         command.add_argument("operation_id")
         if name == "promote": command.add_argument("--mode", choices=["local", "git"], default="local")
     authorize = commands.add_parser("authorize")
     authorize.add_argument("operation_id")
-    authorize.add_argument("--purpose", required=True, choices=["CONTRACT", "HIGH_RISK_PROMOTION", "UNEXPECTED_BEHAVIOR", "PROMOTE"])
+    authorize.add_argument("--purpose", required=True, choices=["CONTRACT", "HIGH_RISK_PROMOTION", "UNEXPECTED_BEHAVIOR", "BREAKS_DEPENDENTS", "PROMOTE"])
     for name in ("accept", "reject"):
         decision = commands.add_parser(name)
         decision.add_argument("operation_id")
         decision.add_argument("--binding", required=True, help="Saved review_binding JSON from the reviewed proposal")
         if name == "accept":
-            decision.add_argument("--approval", action="append", required=True, choices=["HIGH_RISK_PROMOTION", "UNEXPECTED_BEHAVIOR", "PROMOTE"])
+            decision.add_argument("--approval", action="append", required=True, choices=["HIGH_RISK_PROMOTION", "UNEXPECTED_BEHAVIOR", "BREAKS_DEPENDENTS", "PROMOTE"])
             decision.add_argument("--mode", choices=["local", "git"], default="local")
     agent = commands.add_parser("run-agent")
     agent.add_argument("operation_id")
-    agent.add_argument("--backend", choices=["docker", "windows"], default="docker")
+    # local: the no-container tier (weaker isolation, issue #17); the default when no Docker image is given.
+    agent.add_argument("--backend", choices=["docker", "windows", "local"], default=None)
     agent.add_argument("--image")
     agent.add_argument("--runtime-root", action="append", default=[])
     agent.add_argument("agent_command", nargs=argparse.REMAINDER)
@@ -78,13 +79,20 @@ def main(argv: Sequence[str] | None = None) -> int:
             result = guard.recover_promotion(args.operation_id)
         elif args.command == "retry":
             result = guard.retry(args.operation_id)
+        elif args.command == "local-edit":
+            result = guard.record_local_edit(args.operation_id)
         elif args.command == "serve":
             from .service import serve_guard
             serve_guard(guard, port=args.port)
             return 0
         else:
             command = args.agent_command[1:] if args.agent_command[:1] == ["--"] else args.agent_command
-            if args.backend == "windows":
+            backend = args.backend or ("docker" if args.image else "local")
+            if backend == "local":
+                if args.image or args.runtime_root:
+                    raise ValueError("The local tier takes no image and no runtime roots")
+                isolation = LocalCopyIsolation()
+            elif backend == "windows":
                 from .workspace.windows import WindowsAppContainer
                 if args.image or not args.runtime_root:
                     raise ValueError("Windows isolation requires read-only runtime roots and no image")

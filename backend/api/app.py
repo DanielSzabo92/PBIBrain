@@ -481,6 +481,8 @@ class BrainApp:
                     return 200, self.project.save_config(payload)
             if method == "POST" and parts == ["scan"] and self.project is not None:
                 result = self.project.scan(self.api.repository)
+                if getattr(self, "_source_watcher", None) is not None:
+                    self._source_watcher.reset()  # the scan is the new baseline; check again
                 return 200, {"overview": self.api.get_overview(), "source_count": result.source_count}
             if method == "GET" and parts == ["search"]:
                 from .retrieval import retrieve_objects
@@ -496,6 +498,15 @@ class BrainApp:
                 )
             if method == "GET" and parts == ["overview"]:
                 return 200, self.api.get_overview()
+            if method == "GET" and parts == ["pending-changes"]:
+                # Issue #17: project files changed outside the app since the last scan, with Breaks and Needs.
+                if self.project is None:
+                    raise ValueError("pending-changes needs an open project")
+                # A background watcher does the work, so a slow preview scan never blocks this read.
+                if getattr(self, "_source_watcher", None) is None:
+                    from backend.pending_changes import DEFAULT_IDLE_SECONDS, SourceWatcher
+                    self._source_watcher = SourceWatcher(self.project.config_path, project=self.project, idle_timeout=DEFAULT_IDLE_SECONDS)
+                return 200, self._source_watcher.read()
             if method == "GET" and parts == ["model-summary"]:
                 from backend.model_summary import build_model_summary
                 model_id = self._query_values(query, "model_id")

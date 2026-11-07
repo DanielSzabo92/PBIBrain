@@ -278,6 +278,16 @@ def create_server(url: str | None = "http://127.0.0.1:8000", *, session_id: str 
             "commonality", type=type, scope=scope, bucket=bucket, group_id=group_id, limit=limit, offset=offset,
             compact="true" if detail == "compact" else "false", max_chars=room))
 
+    @server.tool()
+    def brain_pending_changes(detail: str = "compact") -> dict[str, Any]:
+        """Project files changed outside PBIBrain since the last scan (by an agent, a person or another tool).
+
+        Lists the changed files and the objects created, deleted, renamed or changed, with
+        Breaks (objects that still use a deleted or renamed object) and Needs (DAX that names a
+        missing measure, column or table). Check it after editing project files. Read-only;
+        status UNCHANGED means the files match the last scan."""
+        return reply("brain_pending_changes", detail, lambda: client.get("pending-changes"))
+
     def send(method: str, path: str, query: dict[str, Any] | None, body: dict[str, Any] | None) -> dict[str, Any]:
         payload = client.devcenter(method, path, query, body)
         # The agent tool replies have fixed schemas; only an oversized reply gets the budget block.

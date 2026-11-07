@@ -15,7 +15,7 @@ PBIBrain provides read-only analysis. `change_guard` is a separate trusted contr
 | Snapshot identity | Source path/hash/size manifest, project configuration, stable identity mappings, scanner/schema versions. Capture time and snapshot kind do not influence identity. |
 | Scope | Strict schema plus exact stable object, type, operation, property, previous value, and proposed value checks. No wildcards or unlisted mutations. |
 | Trust | Authorized contracts, evidence, approvals, state, and journals are controller-signed; audit records form a hash chain with a separately signed head. |
-| Isolation | Digest-pinned Docker process, candidate-only mount, no network, read-only root, unprivileged UID, no capabilities, no controller state or production credentials. A manually edited candidate has no isolation receipt and cannot be accepted. |
+| Isolation | Two tiers. Container: digest-pinned Docker process (or Windows AppContainer), candidate-only mount, no network, read-only root, unprivileged UID, no capabilities, no controller state or production credentials. No-container (`LOCAL_COPY`, on by default, issue #17): the agent edits the candidate copy, by `run-agent --backend local` or with its own tools followed by `local-edit`; it runs with the user's rights and network, and the review says `isolation_strength: WEAKER_NO_CONTAINER`. What still holds there: the agent is pointed at a copy, an edit to the real sources makes the baseline stale and blocks acceptance, and every other gate is the same. `Policy(allow_local_copy=False)` requires a container. A candidate with no receipt cannot be accepted. |
 | Impact | Conservative before/after relationship influence, implicit calculation context, transitive consumers and report usage. Possibilities never become factual graph edges. |
 | Runtime | Capability declarations, independent loader/context/permission binding, equivalent frozen data, query AST target coverage, result comparison and required coverage. Mocks and unavailable backends cannot certify runtime behavior. |
 | Promotion | Explicit candidate/evidence-bound approval, source/candidate hash rechecks, project lock, recoverable backups, signed multi-file journal, verified recovery and post-promotion scan. |
@@ -28,11 +28,23 @@ OPEN decisions: deployment-specific OS/container hardening and credentials; real
 
 Guarded scanning currently requires one dedicated PBIP project root. Multiple local semantic models can be ingested when resolvable; missing and remote bindings block completeness. Standalone model-only TMSL/TMDL imports are not yet an accepted guarded workflow.
 
-Recognized TOM metadata is retained in full. Canonical model/table/column/measure/relationship properties are compared. Full mapped PBIR JSON documents are compared without discarding unknown fields. Source coverage currently supports BIM property edits, mapped report/page/visual JSON property edits, and narrow existing-line TMDL relationship scalar replacements. Other TMDL edits, source creation/deletion, unmapped JSON changes, and protected/control-file changes fail closed. This prevents bypass; it does not claim all requested mutation operations are usable yet.
+Recognized TOM metadata is retained in full. Canonical model/table/column/measure/relationship properties are compared. Full mapped PBIR JSON documents are compared without discarding unknown fields. Source coverage currently supports BIM property edits, mapped report/page/visual JSON property edits, narrow existing-line TMDL scalar replacements, and (issue #17) TMDL create, delete and rename: a created or changed `.tmdl` file is covered when it is the text the model library writes for the candidate model (line endings aside), and a deleted one when the model library no longer writes it (`change_guard/coverage.py`, the merge guard's canonical-file rule). A file with text the model library does not keep (comments, hand formatting) is not covered by that proof and goes to the line check, which fails closed. Unmapped JSON changes, non-TMDL source creation/deletion, and protected/control-file changes fail closed. Coverage is not permission: a covered creation still needs its exact contract mutation.
 
 Normalization policy `exact-properties-v1` explicitly permits JSON object-key ordering, insignificant JSON whitespace, and a JSON UTF-8 BOM. Arrays, expression text, literal whitespace, DAX/M strings, TMDL comments, and TMDL newlines remain significant. TOM default expansion is explicitly implemented for selected typed properties. Unrecognized serialization loss fails; unsupported nested model semantics remain incomplete. Recognized report images/fonts in `StaticResources` are hash-pinned opaque assets; changing them is not authorized by metadata scope. Existing `.gitignore`/`.gitattributes` are protected text artifacts; edits fail coverage.
 
 PBIR schema coverage, calculation-group dependency extraction, calculated-table dependencies, RLS/OLS behavior, and complex active filter topology are not certified. They remain explicit blockers. TOM roundtrip success proves deserialization/serialization fidelity within the implemented adapter, **not processing or numerical correctness**.
+
+## One safety report for every write path (issue #17)
+
+`backend/safety.py` `assess_change(before_graph, after_graph)` is the one safety report. It lists objects created, deleted, renamed and changed; **Breaks** (objects that remain but use a deleted object, or still use the old name of a renamed one); and **Needs** (created or changed DAX that names a measure, column or table the model does not have). The same function runs in three places:
+
+| Path | Where | What a Break does |
+|---|---|---|
+| Agent edit (container or no-container tier) | `validate_candidate`, evidence `safety` | Adds the approval purpose `BREAKS_DEPENDENTS`; the user accepts it by name. Failed gates still block. |
+| Development Center apply (merge profile) | `validate_candidate`, evidence `safety` | Shown in the review. The Impact tab already makes the user decide every blocking Break before the plan can be applied, so no second approval is asked. |
+| Files changed outside the app | `backend/pending_changes.py`, `GET /api/pending-changes`, MCP `brain_pending_changes` | Warning banner in the app; nothing is blocked and nothing is written. |
+
+The file watcher compares the source hashes of the last scan's agent snapshot with the files now on disk. When some differ it scans a graph preview without publishing anything (no graph, identity map or snapshot write) and runs the safety report against the last scan. It polls (every 5 seconds while the app reads it) instead of using OS file events, so it behaves the same on every OS and on network drives. Cloud items are not read again; a project with cloud items says `cloud_not_checked`.
 
 ## Commands
 
@@ -51,13 +63,15 @@ python -m change_guard.cli --source C:\Models\Sales --state C:\GuardState\Sales 
 python -m change_guard.cli --source C:\Models\Sales --state C:\GuardState\Sales --project-id sales report OPERATION_ID
 python -m change_guard.cli --source C:\Models\Sales --state C:\GuardState\Sales --project-id sales authorize OPERATION_ID --purpose CONTRACT
 python -m change_guard.cli --source C:\Models\Sales --state C:\GuardState\Sales --project-id sales run-agent OPERATION_ID --image IMAGE@sha256:DIGEST -- COMMAND ARGUMENTS
+python -m change_guard.cli --source C:\Models\Sales --state C:\GuardState\Sales --project-id sales run-agent OPERATION_ID --backend local -- COMMAND ARGUMENTS
+python -m change_guard.cli --source C:\Models\Sales --state C:\GuardState\Sales --project-id sales local-edit OPERATION_ID
 python -m change_guard.cli --source C:\Models\Sales --state C:\GuardState\Sales --project-id sales verify OPERATION_ID
 python -m change_guard.cli --source C:\Models\Sales --state C:\GuardState\Sales --project-id sales serve
 ```
 
-The trusted runtime runner is an in-process API; the CLI does not yet load arbitrary regression scripts. This protects the evaluator from agent-authored privileged code. `authorize --purpose HIGH_RISK_PROMOTION`, `UNEXPECTED_BEHAVIOR`, and `PROMOTE` act only after mandatory gates succeed. `promote` then applies the approved local candidate; `recover` verifies the journal and backups. `retry` creates a fresh candidate under the unchanged contract with a configurable retry limit.
+The trusted runtime runner is an in-process API; the CLI does not yet load arbitrary regression scripts. This protects the evaluator from agent-authored privileged code. `authorize --purpose HIGH_RISK_PROMOTION`, `UNEXPECTED_BEHAVIOR`, `BREAKS_DEPENDENTS`, and `PROMOTE` act only after mandatory gates succeed. `run-agent` without `--image` uses the no-container tier; `local-edit` records a no-container receipt after the agent edited `candidate_root` itself. `promote` then applies the approved local candidate; `recover` verifies the journal and backups. `retry` creates a fresh candidate under the unchanged contract with a configurable retry limit.
 
-Use `--identity-file PATH` to seed from the existing authoritative PBIBrain identity store. Its canonical hash is pinned alongside the source baseline; subsequent identity edits make the baseline stale. Candidate mappings are staged independently and never written back by scanning. New-identity promotion remains unsupported while creation/deletion source coverage is incomplete.
+Use `--identity-file PATH` to seed from the existing authoritative PBIBrain identity store. Its canonical hash is pinned alongside the source baseline; subsequent identity edits make the baseline stale. Candidate mappings are staged independently and never written back by scanning. New-identity promotion of created objects needs an exact `CREATE_OBJECT` contract mutation; a deletion keeps the identity seed unchanged.
 
 Schema: [`contract-v1.schema.json`](../change_guard/contracts/contract-v1.schema.json). The deterministic validator also checks cross-field consistency, target resolution, uniqueness, and baseline property preconditions.
 

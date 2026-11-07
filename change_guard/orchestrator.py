@@ -14,17 +14,19 @@ from backend.adapters.tabular_metadata import TabularMetadataAdapter
 from backend.diff import compare_snapshots
 from backend.impact import analyze_impact
 from backend.impact.cache import SnapshotImpactCache
+from backend.safety import assess_change
 from backend.snapshots import Snapshot, capture_snapshot, source_manifest, content_hash
 from backend.snapshots.manifest import safe_path, utc_now, SourceIntegrityError
 from backend.snapshots.scan import scan_snapshot
 from change_guard.audit import AuditStore
 from change_guard.audit.records import exclusive_lock
 from change_guard.contracts import ChangeContract, authorize_contract, validate_contract, enforce_scope
+from change_guard.coverage import prove_tmdl_changes
 from change_guard.merge import is_merge_contract, merge_impact, verify_merge_candidate, write_merge_files, write_record
 from change_guard.policy import Policy, evaluate_candidate
 from change_guard.promotion import LocalPromotion
 from change_guard.regression import execute_regression_plan
-from change_guard.workspace import create_candidate, assert_candidate_integrity, DockerIsolation
+from change_guard.workspace import create_candidate, assert_candidate_integrity, DockerIsolation, LocalCopyIsolation, LOCAL_COPY_BACKEND
 
 
 class GuardError(RuntimeError):
@@ -42,11 +44,29 @@ def operation_locked(method):
     return locked
 
 
+def _empty_impact(snapshot: dict) -> dict:
+    """Impact over no surviving targets: every target is new (preflight) or deleted (candidate).
+
+    The analyzer needs at least one resolved object. A deletion's dependents are found by the
+    baseline impact and by the safety report; there is nothing left to walk in the candidate.
+    """
+    completeness = dict(snapshot.get("completeness") or {"status": "UNKNOWN"})
+    report = {"impact_report_version": 1, "baseline_snapshot_id": snapshot["snapshot_id"], "target_ids": [], "changed_properties": [],
+              "direct_impacts": [], "potential_impacts": [], "conditional_impacts": [], "unknown_impacts": [], "affected_model_ids": [],
+              "affected_report_ids": [], "impacted_objects": [], "impact_paths": [], "required_tests": [], "warnings": [], "evidence": [],
+              "completeness": {**completeness, "status": "COMPLETE" if completeness.get("status") == "COMPLETE" else "INCOMPLETE",
+                               "analysis_truncated": False, "output_truncated": False, "total_impact_records": 0}}
+    report["impact_report_id"] = content_hash(report)
+    return report
+
+
 class ChangeGuard:
     """Trusted controller. The agent receives a candidate mount only.
 
     Neither this controller nor its credentials are exposed by Brain API/MCP.
     Missing isolation proof blocks acceptance even if semantic scope is valid.
+    A LOCAL_COPY receipt (the no-container tier, issue #17) is proof of the weaker kind:
+    the agent was given a copy, and the sources are checked against the pinned baseline.
     """
     def __init__(self, source_root: str | Path, state_root: str | Path, project_id: str, *, policy: Policy | None = None,
                  identity_manifest: dict | None = None, adapter: TabularMetadataAdapter | None = None,
@@ -142,8 +162,9 @@ class ChangeGuard:
             impact = merge_impact(contract, baseline.snapshot_id)
         else:
             changes = [{"object_id": item["object_id"], "property": item["property"], "new_value": item["expected_after"]} for item in contract["allowed_mutations"] if item["operation"] not in {"CREATE_OBJECT", "DELETE_OBJECT"}]
-            impact = analyze_impact(snapshot["analysis"]["graph"], [item["object_id"] for item in contract["targets"] if item["object_id"] in snapshot["analysis"]["objects"]], changes,
-                                    baseline_snapshot_id=baseline.snapshot_id, completeness=snapshot["completeness"])
+            existing = [item["object_id"] for item in contract["targets"] if item["object_id"] in snapshot["analysis"]["objects"]]
+            impact = analyze_impact(snapshot["analysis"]["graph"], existing, changes, baseline_snapshot_id=baseline.snapshot_id,
+                                    completeness=snapshot["completeness"]) if existing else _empty_impact(snapshot)
         self.store.save(operation_id + "/preflight.json", impact, exclusive=True)
         state["state"] = "PREFLIGHT"
         state["baseline_root"] = str(baseline_root)
@@ -171,7 +192,7 @@ class ChangeGuard:
                 state["state"] = "BASELINE_CAPTURED"
                 self._save(state, "BASELINE_PINNED", {"baseline_snapshot_id": baseline.snapshot_id})
                 return self._create_candidate(state, baseline)
-            if purpose not in {"HIGH_RISK_PROMOTION", "UNEXPECTED_BEHAVIOR", "UNCHECKED_IMPACT", "PROMOTE"}:
+            if purpose not in {"HIGH_RISK_PROMOTION", "UNEXPECTED_BEHAVIOR", "UNCHECKED_IMPACT", "BREAKS_DEPENDENTS", "PROMOTE"}:
                 raise GuardError("INVALID_APPROVAL_OPERATION", "Explicit approval purpose required")
             evidence = self.store.load(operation_id + "/verification.json")
             candidate = Snapshot.from_dict(self.store.load(operation_id + "/candidate.json"))
@@ -320,12 +341,34 @@ class ChangeGuard:
         return self._save(state, "APP_WRITE_RECORDED", {"record_hash": record["record_hash"], "file_count": len(files)})
 
     @operation_locked
-    def run_agent(self, operation_id: str, isolation: DockerIsolation, command: list[str]) -> dict:
+    def record_local_edit(self, operation_id: str) -> dict:
+        """The no-container tier for an agent that edits the candidate copy with its own tools.
+
+        The agent (or a person) changed files under ``candidate_root``; this records a
+        LOCAL_COPY receipt bound to the candidate as it is now. Verification follows as usual.
+        """
+        state = self._operation(operation_id)
+        if is_merge_contract(self._contract(state).to_dict()):
+            raise GuardError("PROFILE_MISMATCH", "An agent never writes a merge candidate; the app write step does")
+        if state["state"] != "CANDIDATE_READY":
+            raise GuardError("INVALID_STAGE", "A local edit requires a fresh authorized candidate")
+        if not self.policy.allow_local_copy:
+            raise GuardError("LOCAL_COPY_DISABLED", "The guard policy requires container isolation")
+        receipt = LocalCopyIsolation().record(state["candidate_root"])
+        state["state"] = "IMPLEMENTING"
+        self._save(state, "IMPLEMENTING", {"attempt": state["attempt"], "backend": LOCAL_COPY_BACKEND})
+        self.store.save(operation_id + "/isolation-" + str(state["attempt"]) + ".json", receipt, exclusive=True)
+        return self._save(state, "AGENT_EXITED", receipt)
+
+    @operation_locked
+    def run_agent(self, operation_id: str, isolation: DockerIsolation | LocalCopyIsolation, command: list[str]) -> dict:
         state = self._operation(operation_id)
         if is_merge_contract(self._contract(state).to_dict()):
             raise GuardError("PROFILE_MISMATCH", "An agent never writes a merge candidate; the app write step does")
         if state["state"] != "CANDIDATE_READY":
             raise GuardError("INVALID_STAGE", "Agent implementation requires a fresh authorized candidate")
+        if isinstance(isolation, LocalCopyIsolation) and not self.policy.allow_local_copy:
+            raise GuardError("LOCAL_COPY_DISABLED", "The guard policy requires container isolation")
         state["state"] = "IMPLEMENTING"
         self._save(state, "IMPLEMENTING", {"attempt": state["attempt"]})
         try:
@@ -385,27 +428,42 @@ class ChangeGuard:
                 scope = merge_result["scope"]
                 security = merge_result["security"]
             else:
-                comparison = compare_snapshots(baseline, candidate, before_root=state["baseline_root"], after_root=state["candidate_root"])
+                # Created, deleted and renamed TMDL blocks are proven by TOM regeneration (issue #17);
+                # anything that proof does not cover still goes through the line check.
+                tmdl_coverage = prove_tmdl_changes(state["baseline_root"], state["candidate_root"], self.adapter)
+                comparison = compare_snapshots(baseline, candidate, before_root=state["baseline_root"], after_root=state["candidate_root"],
+                                               proven_sources=tmdl_coverage["proven_sources"])
                 scope = enforce_scope(contract, comparison)
                 receipt_path = operation_id + "/isolation-" + str(state["attempt"]) + ".json"
                 receipt = self.store.load(receipt_path) if safe_path(self.store.root, receipt_path).exists() else {"status": "NOT_RUN"}
-                isolated = receipt.get("backend") == "DOCKER" or (receipt.get("backend") == "WINDOWS_APPCONTAINER" and receipt.get("token_is_appcontainer") is True and receipt.get("capability_count") == 0 and receipt.get("descendants_exited") is True and receipt.get("inherited_handles") is False)
+                container = receipt.get("backend") == "DOCKER" or (receipt.get("backend") == "WINDOWS_APPCONTAINER" and receipt.get("token_is_appcontainer") is True and receipt.get("capability_count") == 0 and receipt.get("descendants_exited") is True and receipt.get("inherited_handles") is False)
+                local_copy = receipt.get("backend") == LOCAL_COPY_BACKEND and self.policy.allow_local_copy
+                isolated = container or local_copy
                 security = {"status": "PASSED" if receipt.get("status") == "PASSED" and isolated and receipt.get("candidate_source_hash") == content_hash(manifest) else "NOT_RUN", "receipt_hash": content_hash(receipt)}
+                if local_copy:
+                    security["isolation_strength"] = "WEAKER_NO_CONTAINER"
+                    security["backend"] = LOCAL_COPY_BACKEND
             targets = [item["object_id"] for item in contract.to_dict()["targets"] if item["object_id"] in baseline_value["analysis"]["objects"]]
             changes = [{"object_id": item["object_id"], "property": item["property_path"], "new_value": item["new_value"]} for item in comparison["property_changes"] if item["object_id"] in targets]
             if merge:
                 impact = post_impact = merge_impact(contract.to_dict(), baseline.snapshot_id)
             else:
-                impact = self.impact_cache.analyze(baseline, targets, changes)
-                post_impact = self.impact_cache.analyze(candidate, [item for item in targets if item in analyzed["objects"]])
+                impact = self.impact_cache.analyze(baseline, targets, changes) if targets else _empty_impact(baseline_value)
+                surviving = [item for item in targets if item in analyzed["objects"]]
+                post_impact = self.impact_cache.analyze(candidate, surviving) if surviving else _empty_impact(candidate.to_dict())
             # Candidate uncertainty is mandatory even if baseline impact was complete.
             if not merge and post_impact["completeness"]["status"] != "COMPLETE":
                 impact["completeness"]["status"] = "INCOMPLETE"
                 impact["unknown_impacts"].extend(post_impact["unknown_impacts"])
                 impact["impact_report_id"] = content_hash({key: value for key, value in impact.items() if key not in {"impact_report_id", "metrics"}})
             source_passed = not comparison["unknown_differences"] and (merge_result is None or merge_result["source"]["status"] == "PASSED")
+            source = {"status": "PASSED" if source_passed else "FAILED", **({"violations": merge_result["source"]["violations"]} if merge_result else {})}
+            if not merge and tmdl_coverage["changed"]:
+                source["tmdl_coverage"] = tmdl_coverage
+            # The one safety report every write path shows (issue #17): changes, Breaks, Needs.
+            safety = assess_change(baseline_value["analysis"]["graph"], analyzed["graph"])
             evidence = {"verification_version": 1, "security": security, "scope": {"status": scope["status"], **scope}, "baseline": {"status": "PASSED"},
-                        "source": {"status": "PASSED" if source_passed else "FAILED", **({"violations": merge_result["source"]["violations"]} if merge_result else {})},
+                        "source": source, "safety": safety,
                         "static": {"status": analyzed["validation_status"], "validation": analyzed["validation"]},
                         "impact": impact, "post_impact": post_impact, "runtime": {"status": "NOT_RUN", "certified": False}, "comparison": comparison,
                         "candidate_hash": content_hash(manifest), "candidate_snapshot_id": candidate.snapshot_id, "baseline_snapshot_id": baseline.snapshot_id, "contract_hash": contract.contract_hash,
