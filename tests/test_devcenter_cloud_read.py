@@ -406,7 +406,9 @@ class CloudModelDonorTests(CloudTestCase):
         source = self.connect_model()["source"]
         error = self.failed("target_set", {"base_revision": self.devcenter.revision,
                                            "model": {"mode": "existing", "source_id": source["source_id"]}}, code="action_not_allowed")
-        self.assertEqual(("Pull to local PBIP first.", "cloud_target"), (error["message"], error["details"]["reason"]))
+        # Issue #16: a cloud model with Read access is no target; Read/Write access makes it one.
+        self.assertEqual(("Connect the cloud item with Read/Write access, or pull it to a local PBIP first.", "cloud_target"),
+                         (error["message"], error["details"]["reason"]))
 
     def cache_files(self, item_id: str) -> dict[str, bytes]:
         folder = self.devcenter.session_folder() / "tmp" / "cloud" / item_id

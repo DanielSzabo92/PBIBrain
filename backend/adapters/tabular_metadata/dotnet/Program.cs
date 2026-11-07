@@ -8,6 +8,8 @@ System.Globalization.CultureInfo.CurrentUICulture = System.Globalization.Culture
 
 // Subcommand routing for Dev Center bridge commands
 if (args.Length >= 1 && args[0] == "cloud-read") { Environment.ExitCode = CloudRead.Run(new StreamReader(Console.OpenStandardInput(), new System.Text.UTF8Encoding(false)), Console.Out); return; }
+if (args.Length >= 1 && args[0] == "convert-tmdl") { Environment.ExitCode = ConvertTmdl.Run(args, Console.Out); return; }
+if (args.Length >= 1 && args[0] == "cloud-deploy") { Environment.ExitCode = CloudDeploy.Run(new StreamReader(Console.OpenStandardInput(), new System.Text.UTF8Encoding(false)), Console.Out); return; }
 if (args.Length >= 1 && args[0] == "write-model") { Environment.ExitCode = ModelWriter.Run(args, new StreamReader(Console.OpenStandardInput(), new System.Text.UTF8Encoding(false)), Console.Out); return; }
 if (args.Length >= 1 && args[0] == "canonical-check") { Environment.ExitCode = CanonicalCheck.Run(args, new StreamReader(Console.OpenStandardInput(), new System.Text.UTF8Encoding(false)), Console.Out); return; }
 if (args.Length >= 1 && args[0] == "tree-compare") { Environment.ExitCode = TreeCompare.Run(args, new StreamReader(Console.OpenStandardInput(), new System.Text.UTF8Encoding(false)), Console.Out); return; }

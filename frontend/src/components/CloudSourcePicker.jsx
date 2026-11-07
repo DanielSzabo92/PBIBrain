@@ -24,6 +24,7 @@ export function CloudSourcePicker({ api, onAdded, onClose }) {
   const [kind, setKind] = useState("cloud_model");
   const [items, setItems] = useState([]);
   const [itemId, setItemId] = useState("");
+  const [access, setAccess] = useState("Read");
   const [working, setWorking] = useState(false);
   const [error, setError] = useState("");
 
@@ -49,7 +50,7 @@ export function CloudSourcePicker({ api, onAdded, onClose }) {
   const workspace = workspaces.find((item) => item.id === workspaceId);
   const item = items.find((row) => row.id === itemId);
   const add = () => run(async () => {
-    const entry = { kind, workspace_id: workspace.id, workspace_name: workspace.name, item_id: item.id, name: item.name, access_type: "Read" };
+    const entry = { kind, workspace_id: workspace.id, workspace_name: workspace.name, item_id: item.id, name: item.name, access_type: access };
     if (kind === "cloud_report" && item.dataset_id) entry.dataset_id = item.dataset_id;
     const reply = await api.add_cloud_source(entry);
     if (!reply?.ok) throw new Error(reply?.error || "The cloud item could not be added");
@@ -57,7 +58,7 @@ export function CloudSourcePicker({ api, onAdded, onClose }) {
   });
 
   return <div className="cloud-picker" role="group" aria-label="Add a cloud model or report">
-    <div className="panel-heading"><div><h3><Cloud aria-hidden="true" />Add from the Power BI service</h3><p className="muted">Read only. The scan reads the item again each time and keeps a copy in the project folder.</p></div><Button variant="ghost" size="icon-sm" onClick={onClose} aria-label="Close cloud picker"><X /></Button></div>
+    <div className="panel-heading"><div><h3><Cloud aria-hidden="true" />Add from the Power BI service</h3><p className="muted">The scan reads the item again each time and keeps a copy in the project folder. Only a merge with Read/Write access writes it, after a backup.</p></div><Button variant="ghost" size="icon-sm" onClick={onClose} aria-label="Close cloud picker"><X /></Button></div>
     {signedIn === false ? <Button onClick={() => signIn()} disabled={working}><LogIn />Sign in with Microsoft</Button> : null}
     {signedIn ? <div className="cloud-picker-fields">
       <div><Label htmlFor="cloud-kind">Item type</Label><NativeSelect id="cloud-kind" value={kind} onChange={(event) => setKind(event.target.value)} disabled={working}>
@@ -69,6 +70,9 @@ export function CloudSourcePicker({ api, onAdded, onClose }) {
       <div><Label htmlFor="cloud-item">{kind === "cloud_model" ? "Semantic model" : "Report"}</Label><NativeSelect id="cloud-item" value={itemId} onChange={(event) => setItemId(event.target.value)} disabled={working || !workspaceId}>
         <option value="">{workspaceId ? "Select an item" : "Select a workspace first"}</option>
         {items.map((row) => <option key={row.id} value={row.id} disabled={kind === "cloud_model" && row.xmla_readable === false}>{row.name}{kind === "cloud_model" && row.xmla_readable === false ? " (XMLA read not available)" : ""}</option>)}
+      </NativeSelect></div>
+      <div><Label htmlFor="cloud-access">Access</Label><NativeSelect id="cloud-access" value={access} onChange={(event) => setAccess(event.target.value)} disabled={working}>
+        <option value="Read">Read only</option><option value="Read/Write">Read/Write (a merge can write it)</option>
       </NativeSelect></div>
       <Button onClick={add} disabled={working || !item}><Plus />Add to project</Button>
     </div> : null}

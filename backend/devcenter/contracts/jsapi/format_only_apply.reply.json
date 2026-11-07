@@ -41,7 +41,8 @@
       "items": {
         "enum": [
           "apply_external_changes",
-          "desktop_not_checked"
+          "desktop_not_checked",
+          "cloud_written"
         ]
       },
       "uniqueItems": true

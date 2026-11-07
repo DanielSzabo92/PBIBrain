@@ -28,7 +28,7 @@ def jsapi_methods() -> list[str]:
     design = (ROOT / "docs" / "DEV_CENTER_TECHNICAL_DESIGN.md").read_text(encoding="utf-8")
     section = design[design.index("### 14.2"):design.index("### 14.3")]
     listed = section.split("\n\n")[1]
-    return [part.strip().strip("`").split("`")[0] for part in listed.split(",")] + ["cloud_items_list", "target_edit_apply"]
+    return [part.strip().strip("`").split("`")[0] for part in listed.split(",")] + ["cloud_items_list", "target_edit_apply", "target_convert_tmdl", "merge_template_save", "merge_template_list", "merge_template_apply"]
 
 
 class RealAppRouteListTest(unittest.TestCase):
@@ -55,7 +55,7 @@ class RealAppRouteListTest(unittest.TestCase):
 
     def test_the_method_list_has_the_section_14_2_calls(self) -> None:
         methods = jsapi_methods()
-        self.assertEqual(len(methods), 34)
+        self.assertEqual(len(methods), 38)
         for name in ("merge_choice_set", "apply", "undo_apply", "proposal_accept", "session_open", "pull_to_local"):
             self.assertIn(name, methods)
 

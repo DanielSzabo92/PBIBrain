@@ -32,5 +32,9 @@
   { "name": "cloud_connect", "kind": "long" },
   { "name": "pull_to_local", "kind": "long" },
   { "name": "cloud_items_list", "kind": "short" },
-  { "name": "target_edit_apply", "kind": "long" }
+  { "name": "target_edit_apply", "kind": "long" },
+  { "name": "target_convert_tmdl", "kind": "long" },
+  { "name": "merge_template_save", "kind": "short" },
+  { "name": "merge_template_list", "kind": "short" },
+  { "name": "merge_template_apply", "kind": "short" }
 ]

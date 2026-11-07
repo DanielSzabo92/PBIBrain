@@ -29,6 +29,12 @@ class TreeCompareFailed(MetadataUnavailable):
         self.code = code
 
 
+class ConvertFailed(MetadataUnavailable):
+    def __init__(self, code: str, message: str = "") -> None:
+        super().__init__(message or code)
+        self.code = code
+
+
 class TabularMetadataAdapter:
     def __init__(self, bridge: str | Path | None = None, *, timeout: int = 60) -> None:
         self.bridge = Path(bridge) if bridge else Path(__file__).parent / "dotnet" / "bin" / "Release" / "net8.0" / "TabularMetadata.dll"
@@ -130,4 +136,18 @@ class TabularMetadataAdapter:
             error = str(payload.get("error") or "TOM tree compare failed")
             raise TreeCompareFailed(code, error)
 
+        return payload
+
+    def convert_tmdl(self, model_bim: str | Path, folder: str | Path) -> dict[str, Any]:
+        """Write a TMSL model.bim as canonical TMDL into an empty folder; TOM proves the round trip (issue #16)."""
+        if not self.bridge.is_file():
+            raise ConvertFailed("bridge_missing", "Build the trusted TOM bridge before the TMDL conversion")
+        try:
+            command = ["dotnet", str(self.bridge.resolve()), "convert-tmdl", str(Path(model_bim).resolve()), str(Path(folder).resolve())]
+            result = subprocess.run(command, input="", capture_output=True, text=True, encoding="utf-8", timeout=self.timeout, check=False)
+            payload = json.loads(result.stdout)
+        except (OSError, ValueError, subprocess.TimeoutExpired) as exc:
+            raise ConvertFailed("convert_failed", "TOM conversion bridge failed or timed out") from exc
+        if result.returncode or payload.get("status") != "PASSED" or payload.get("adapter_version") != 1:
+            raise ConvertFailed(str(payload.get("code") or "convert_failed"), str(payload.get("error") or "TOM conversion failed"))
         return payload

@@ -1,5 +1,6 @@
 from .bridge import (
     CanonicalCheckFailed,
+    ConvertFailed,
     MetadataUnavailable,
     ModelWriteFailed,
     TabularMetadataAdapter,
@@ -12,4 +13,5 @@ __all__ = [
     "ModelWriteFailed",
     "CanonicalCheckFailed",
     "TreeCompareFailed",
+    "ConvertFailed",
 ]

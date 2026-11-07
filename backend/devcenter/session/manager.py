@@ -57,6 +57,7 @@ FINGERPRINT_NOT_CHECKED = "not_checked"
 
 REPORT_NEW_EMPTY = {"mode": "new_empty"}
 CLOUD_KINDS = (CLOUD_MODEL, CLOUD_REPORT)
+ACCESS_READ_WRITE = "Read/Write"  # The same value as backend.devcenter.sources.cloud.ACCESS_READ_WRITE.
 
 
 def default_app_data_dir() -> Path | None:
@@ -501,8 +502,10 @@ class DevCenterSessions:
         return detect_local_source(self._absolute(record["path"]))
 
     def _load_target(self, record: Mapping[str, Any]) -> LocalSource:
-        if record["kind"] in CLOUD_KINDS:
-            raise not_allowed("Pull to local PBIP first.", "cloud_target")
+        # Issue #16: a cloud item can be a target when it was connected with Read/Write access.
+        # The apply writes it through XMLA (model) or Fabric updateDefinition (report).
+        if record["kind"] in CLOUD_KINDS and record.get("access_type") != ACCESS_READ_WRITE:
+            raise not_allowed("Connect the cloud item with Read/Write access, or pull it to a local PBIP first.", "cloud_target")
         return self._load(record)
 
     def source_add(self, request: Mapping[str, Any]) -> dict[str, Any]:
@@ -590,7 +593,7 @@ class DevCenterSessions:
             if mode == "existing":
                 require_model_target(self._load_target(self._source(document, model.get("source_id"))))
             elif mode == "copy_of":
-                original = self._load_target(self._source(document, model.get("source_id")))
+                original = self._load(self._source(document, model.get("source_id")))  # A copy only reads the original.
                 require_model_target(original)
                 folder = prepare_empty_folder(str(model.get("path") or ""))
             elif mode == "empty":

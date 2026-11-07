@@ -8,7 +8,7 @@ import { camelName, createDevCenterJsApi, isLongMethod, JSAPI_METHODS } from "..
 
 const LONG = [
   "session_create", "session_open", "sources_check", "apply", "format_only_apply", "undo_apply",
-  "pull_to_local", "cloud_connect", "cloud_sign_in", "merge_choice_bulk_set", "proposal_accept_all", "target_edit_apply",
+  "pull_to_local", "cloud_connect", "cloud_sign_in", "merge_choice_bulk_set", "proposal_accept_all", "target_edit_apply", "target_convert_tmdl",
 ];
 
 function deferred() {
