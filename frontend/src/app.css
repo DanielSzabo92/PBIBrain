@@ -1165,3 +1165,16 @@ td:hover > .mx-mark { transform: scale(1.2); }
 .mx-mark.is-partial.is-indirect { background: linear-gradient(135deg, var(--text-2) 50%, transparent 50%); }
 .mx-row-label .version-badge, .mx-fold .version-badge { margin-left: 4px; }
 .mx-col-label .version-badge { min-width: 0; height: auto; padding: 3px 0; writing-mode: inherit; border-radius: 6px; font-size: var(--fs-meta); }
+
+/* Where a model or report comes from (issue #9): its cloud workspace, or "Not checked". */
+.origin-badge { display: inline-flex; flex: none; align-items: center; gap: 3px; max-width: 14ch; margin-left: 4px; height: 16px; padding: 0 5px; border: 1px solid var(--line-strong); border-radius: 8px; color: var(--text-2); font-size: var(--fs-meta); line-height: 1; white-space: nowrap; }
+.origin-badge > span { overflow: hidden; text-overflow: ellipsis; }
+.origin-badge svg { width: 11px; height: 11px; flex: none; }
+.origin-badge.is-not_checked { border-style: dashed; color: var(--text-3); }
+.is-far .origin-badge { display: none; }
+.cloud-picker { display: grid; gap: 12px; margin-bottom: 12px; padding: 16px; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface-2); }
+.cloud-picker h3 { display: flex; align-items: center; gap: 6px; }
+.cloud-picker h3 svg { width: 16px; height: 16px; }
+.cloud-picker-fields { display: flex; flex-wrap: wrap; align-items: end; gap: 12px; }
+.cloud-picker-fields > div { display: grid; gap: 4px; min-width: 180px; }
+.not-checked-list { display: grid; gap: 2px; margin: 4px 0 0; padding: 0; list-style: none; }

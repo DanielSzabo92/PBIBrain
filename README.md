@@ -57,6 +57,26 @@ separate projects:
 }
 ```
 
+Cloud semantic models (XMLA) and cloud reports (Fabric REST) can be project
+sources too. In the app, use **Project › Add cloud item**; it writes entries
+like this under `cloud_sources` (IDs and names only, never a token):
+
+```json
+"cloud_sources": [
+  {"kind": "cloud_model", "workspace_id": "<guid>", "workspace_name": "Sales Analytics",
+   "item_id": "<dataset guid>", "name": "Sales", "access_type": "Read"},
+  {"kind": "cloud_report", "workspace_id": "<guid>", "workspace_name": "Sales Analytics",
+   "item_id": "<report guid>", "name": "Sales report", "dataset_id": "<dataset guid>", "access_type": "Read"}
+]
+```
+
+A scan reads each cloud item again with the app's Microsoft sign-in and keeps
+the export in `tmp/cloud/` next to the config. Without a sign-in (or from the
+command line) it uses that cached export. A report bound `byConnection` binds
+to a scanned cloud model by its semantic model ID or catalog name. A model or
+report that cannot be read stays in the graph marked **Not checked**, so a
+project of thin reports only still scans.
+
 ```powershell
 brain --config C:\Reports\brain.json project-scan
 brain --config C:\Reports\brain.json serve

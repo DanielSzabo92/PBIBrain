@@ -74,7 +74,7 @@ S2_ERROR_SCHEMA = CONTRACTS / "error.json"
 # The public host methods that are not Development Center JS API methods (the desktop shell and its helpers).
 HOST_OTHER_METHODS = frozenset({
     "attach_server", "get_session", "endpoint_session", "choose_folder", "choose_sources", "open_project",
-    "add_sources", "close_project", "shutdown", "active_application",
+    "add_sources", "add_cloud_source", "close_project", "shutdown", "active_application",
 })
 # The methods of jsapi-methods.json that the host does not have yet, with the build step that adds each one
 # (technical design section 16). Remove a method from this list when its step adds it to the host.

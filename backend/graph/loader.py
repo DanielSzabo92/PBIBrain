@@ -216,6 +216,9 @@ class FactGraphBuilder:
             if parent_id in node_ids and node.type in {"PAGE", "VISUAL", "VISUAL_CALCULATION", "VISUAL_FILTER", "PAGE_FILTER", "REPORT_FILTER", "REPORT_MEASURE", "BOOKMARK"}:
                 self._add_edge("CONTAINS", str(parent_id), node.id, source="report_metadata", evidence=["report containment"])
 
+            if node.type in {"MODEL", "REPORT"} and properties.get("workspace_node_id") in node_ids:
+                self._add_edge("CONTAINS", str(properties["workspace_node_id"]), node.id, source="model_metadata",
+                               evidence=["cloud workspace membership"])
             if node.type == "REPORT" and node.model_id in node_ids:
                 self._add_edge("USES_MODEL", node.id, node.model_id, source="report_metadata", evidence=["report model reference"])
             if node.type == "VISUAL":

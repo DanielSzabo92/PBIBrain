@@ -88,3 +88,36 @@ export function suggestionLabel(item) {
   const label = { ROLE: "Role", BUSINESS_CONCEPT: "Meaning", BEHAVIOR: "Behavior", ALIAS: "Alias", SELECTOR: "Selector" }[kind] || "Suggestion";
   return `${label}: ${readableText(item.value ?? item.meaning ?? item.properties?.meaning ?? item.item?.meaning ?? item.item?.properties?.meaning) || "Needs review"}`;
 }
+
+const NOT_CHECKED_REASONS = {
+  model_not_in_project: "the semantic model is not a source of this project",
+  cloud_service_not_available: "the cloud item was not read; open the project in the app and sign in",
+  sign_in_required: "sign in with Microsoft to read the cloud item",
+  cloud_read_failed: "the Power BI service did not give the item",
+  report_not_readable: "the report definition is not readable",
+};
+
+/**
+ * Where a model or report comes from (issue #9): a cloud workspace, or "not checked" when the project scan
+ * could not read it. Null for local objects, so local projects look as before.
+ */
+export function originNote(node) {
+  if (!node) return null;
+  const properties = node.properties || {};
+  const status = node.check_status || properties.check_status;
+  const workspace = node.workspace_name || properties.workspace_name || properties.connection_workspace;
+  if (status === "not_checked") {
+    const reason = NOT_CHECKED_REASONS[node.not_checked_reason || properties.not_checked_reason] || "the item was not read";
+    return { kind: "not_checked", label: "Not checked", title: `Not checked: ${reason}${workspace ? ` (workspace ${workspace})` : ""}` };
+  }
+  if ((node.origin || properties.origin) === "cloud") {
+    return { kind: "cloud", label: workspace || "Cloud", title: `Cloud${workspace ? ` · workspace ${workspace}` : ""}` };
+  }
+  return null;
+}
+
+/** Sort key that keeps local roots first, then each cloud workspace together. */
+export function workspaceKey(node) {
+  const properties = node?.properties || {};
+  return String(node?.workspace_name || properties.workspace_name || "");
+}

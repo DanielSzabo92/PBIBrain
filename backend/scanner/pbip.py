@@ -551,4 +551,17 @@ def _model_for_ref(ref: str | None, models: Mapping[Path, Mapping[str, Any]], re
     return None
 
 
-__all__ = ["is_pbip_source", "read_pbip_project"]
+def read_model_folder(path: str | Path) -> dict[str, Any]:
+    """Read one semantic model folder (``definition/*.tmdl`` or ``model.bim``) outside a PBIP project."""
+
+    return _read_model(Path(path).resolve())
+
+
+def read_report_folder(path: str | Path) -> dict[str, Any]:
+    """Read one PBIR report folder outside a PBIP project. Its model binding stays a reference."""
+
+    folder = Path(path).resolve()
+    return _read_report(folder, {}, folder)
+
+
+__all__ = ["is_pbip_source", "read_model_folder", "read_pbip_project", "read_report_folder"]

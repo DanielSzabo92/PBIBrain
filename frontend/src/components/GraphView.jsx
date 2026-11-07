@@ -20,6 +20,7 @@ import { groupVersions, versionNote } from "../versions";
 import ImpactMatrix from "./ImpactMatrix";
 import LaneChips from "./LaneChips";
 import { VersionBadge } from "./VersionBadge";
+import { OriginBadge } from "./OriginBadge";
 import { isTextEntry } from "../shortcuts";
 
 const EMPTY_FILTERS = { modelId: "", reportId: "", query: "", artifact: "", objectType: "", status: "factual", edgeType: "" };
@@ -818,6 +819,7 @@ function BrainFlowNode({ data, selected }) {
       {data.isGroup ? <span className="flow-node-meta" data-ui-number="">{count} inside</span> : null}
     </span>
     <VersionBadge node={node} note={data.versions} />
+    {node.type === "MODEL" || node.type === "REPORT" ? <OriginBadge node={node} /> : null}
     {StatusIcon ? <span className={`flow-node-status ${data.warning ? "warning" : node.status}`} aria-hidden="true"><StatusIcon /></span> : null}
     {data.isGroup ? <button type="button" className="graph-group-toggle nodrag nopan" aria-label={`${node.explorerExpanded ? "Collapse" : "Expand"} ${name}`} aria-expanded={node.explorerExpanded} title={`${count} loaded objects inside`} onMouseDown={(event) => event.stopPropagation()} onDoubleClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()} onClick={(event) => { event.stopPropagation(); data.onToggleGroup(node.id); }}>
       <ChevronRight aria-hidden="true" />

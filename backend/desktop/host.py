@@ -257,12 +257,41 @@ class DesktopController(DevCenterJSAPI):
         except Exception as exc:
             return {"ok": False, "error": str(exc)}
 
+    def add_cloud_source(self, entry: Mapping[str, Any]) -> dict[str, Any]:
+        """Add one cloud model or cloud report (picked with ``cloud_items_list``) to the project."""
+
+        try:
+            if not isinstance(entry, Mapping):
+                raise ValueError("A cloud source must be an object")
+            with self._lock:
+                if self._project_service is None or self._project is None:
+                    raise ValueError("Open a project first")
+                config = self._project_service.get_config()
+                cloud_sources = list(config.get("cloud_sources", []))
+                wanted = str(entry.get("item_id") or "").casefold()
+                added = not any(str(item.get("item_id") or "").casefold() == wanted for item in cloud_sources)
+                if added:
+                    cloud_sources.append(dict(entry))
+                config["cloud_sources"] = cloud_sources
+                saved = self._project_service.save_config(config)
+                return {
+                    "ok": True,
+                    "project": dict(self._project),
+                    "cloud_sources": list(saved.get("cloud_sources", [])),
+                    "added": added,
+                }
+        except Exception as exc:
+            return {"ok": False, "error": str(exc)}
+
     def _open_project(self, name: str, root: Path) -> dict[str, Any]:
         config_path = root / ".pbibrain" / "brain.json"
         if self._project is not None and Path(self._project["config_path"]) == config_path.resolve():
             return self._open_result(source_count=len(self._project_service_factory(config_path).get_config()["sources"]))
 
         service = self._project_service_factory(config_path)
+        if hasattr(service, "cloud") and getattr(service, "cloud", None) is None:
+            # Project scans read cloud items with the app's one cloud sign-in (issue #9).
+            service.cloud = self._devcenter.cloud_service
         if config_path.is_file():
             config = service.get_config()
         else:

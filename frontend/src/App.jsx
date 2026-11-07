@@ -1,14 +1,15 @@
 import VisualBindings from "./components/VisualBindings";
 import ImpactExplorer from "./components/ImpactExplorer";
 import React, { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, ArrowRight, ArrowUpRight, Boxes, Check, ChartColumn, ChevronRight, CircleCheck, Inbox, PanelLeft, ScanSearch, Copy, Database, FileText, FolderOpen, Moon, Plus, RefreshCw, ScanLine, ShieldAlert, ShieldCheck, Sun, TriangleAlert, Waypoints, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, ArrowUpRight, Boxes, Check, ChartColumn, ChevronRight, CircleCheck, Cloud, Inbox, PanelLeft, ScanSearch, Copy, Database, FileText, FolderOpen, Moon, Plus, RefreshCw, ScanLine, ShieldAlert, ShieldCheck, Sun, TriangleAlert, Waypoints, X } from "lucide-react";
 import { brainTransport, normalizeSnapshot } from "./transport";
 import { desktopRequest, subscribeToDesktopBridge } from "./desktop";
 import NavIcon from "./NavIcon";
 import BrandMark from "./components/BrandMark";
 import { TypeGlyph, TypeIcon } from "./components/TypeGlyph";
+import { CloudSourcePicker } from "./components/CloudSourcePicker";
 import { highlightDax } from "./dax";
-import { objectName, objectScope, readableText, publicProperties, scopeChoices, statusLabel, suggestionLabel } from "./presentation";
+import { objectName, objectScope, originNote, readableText, publicProperties, scopeChoices, statusLabel, suggestionLabel } from "./presentation";
 import { Button } from "./components/ui/button";
 import { Input } from "./components/ui/input";
 import { NativeSelect } from "./components/ui/native-select";
@@ -696,7 +697,17 @@ function DesktopOnboarding({ api, error, onOpen }) {
 function DesktopProjectView({ api, project, overview, config, transport, scanning, onScan, onChange, onRefresh, onSaved }) {
   const [sourceError, setSourceError] = useState("");
   const [sourceWorking, setSourceWorking] = useState(false);
+  const [cloudOpen, setCloudOpen] = useState(false);
   const sources = Array.isArray(config?.sources) ? config.sources : [];
+  const cloudSources = Array.isArray(config?.cloud_sources) ? config.cloud_sources : [];
+  const removeCloudSource = async (item) => {
+    setSourceWorking(true); setSourceError("");
+    try {
+      const saved = await transport.saveConfig({ ...config, cloud_sources: cloudSources.filter((entry) => entry.item_id !== item.item_id) });
+      onSaved(saved);
+    } catch (cause) { setSourceError(cause.message || "Cloud source could not be removed"); }
+    finally { setSourceWorking(false); }
+  };
   const addSources = async () => {
     setSourceWorking(true); setSourceError("");
     try {
@@ -720,6 +731,10 @@ function DesktopProjectView({ api, project, overview, config, transport, scannin
     <Card className="panel desktop-project-panel">
       <div className="project-location"><div><p className="field-label">Project folder</p><strong title={project.folder}>{project.folder}</strong></div></div>
       <div className="desktop-sources"><div className="panel-heading"><div><h2>Power BI source files</h2></div><Button variant="outline" onClick={addSources} disabled={sourceWorking || scanning}><Plus />{sourceWorking ? "Adding…" : "Add source files"}</Button></div>{sources.length ? <div className="source-list">{sources.map((source) => <div className="desktop-source-row" key={source}><FileText className="source-icon" aria-hidden="true" /><span title={source}>{source}</span><Button variant="ghost" size="icon-sm" onClick={() => removeSource(source)} disabled={sourceWorking || scanning} aria-label={`Remove ${source}`}><X /></Button></div>)}</div> : <EmptyState icon={<FileText />} title="No source files yet" detail="Add PBIP projects or model JSON files to scan them with this project." />}{sourceError ? <p className="onboarding-error" role="alert">{sourceError}</p> : null}</div>
+      {typeof api?.add_cloud_source === "function" || cloudSources.length ? <div className="desktop-sources cloud-sources"><div className="panel-heading"><div><h2>Power BI service items</h2><p className="muted">Cloud semantic models and reports, read with your Microsoft sign-in.</p></div>{typeof api?.add_cloud_source === "function" ? <Button variant="outline" onClick={() => setCloudOpen(true)} disabled={sourceWorking || scanning || cloudOpen}><Cloud />Add cloud item</Button> : null}</div>
+        {cloudOpen ? <CloudSourcePicker api={api} onClose={() => setCloudOpen(false)} onAdded={async () => { setCloudOpen(false); await onRefresh(); }} /> : null}
+        {cloudSources.length ? <div className="source-list">{cloudSources.map((item) => <div className="desktop-source-row" key={item.item_id}><Cloud className="source-icon" aria-hidden="true" /><span title={`${item.workspace_name} · ${item.name}`}>{item.workspace_name} · {item.name} <span className="muted">({item.kind === "cloud_model" ? "semantic model" : "report"}, {item.access_type})</span></span><Button variant="ghost" size="icon-sm" onClick={() => removeCloudSource(item)} disabled={sourceWorking || scanning} aria-label={`Remove ${item.name}`}><X /></Button></div>)}</div> : null}
+      </div> : null}
       <div className="config-actions" data-ui-actions=""><Button onClick={onScan} disabled={scanning}><ScanLine />{scanning ? "Scanning…" : "Scan project"}</Button></div>
     </Card>
   </>;
@@ -741,8 +756,9 @@ function PageHeading({ kicker, title, description, action, children }) {
 
 function Overview({ overview, config, counts, colors, loading, projectName, onView, onBrowseType, onSources, onSummary, onScan, onReview, onSelect, scanning, scanLabel }) {
   const hasObjects = counts.objects > 0;
-  const hasSources = Boolean(config?.sources?.length);
-  const sourceCount = config?.sources?.length;
+  const hasSources = Boolean(config?.sources?.length || config?.cloud_sources?.length);
+  const sourceCount = config?.sources ? config.sources.length + (config.cloud_sources?.length || 0) : undefined;
+  const notChecked = Array.isArray(overview.not_checked) ? overview.not_checked : [];
   const lastScan = overview.last_scan;
   const validationState = overview.validation_state || "not_run";
   const validationLabel = { valid: "Graph validation passed", invalid: "Graph validation failed", warning: "Graph validation warnings", not_run: "Graph validation not run" }[validationState] || "Graph validation unavailable";
@@ -766,6 +782,14 @@ function Overview({ overview, config, counts, colors, loading, projectName, onVi
     </div>
     <div className="status-actions" data-ui-actions=""><Button variant="ghost" size="sm" onClick={onSources}>Manage sources</Button></div>
   </div>;
+  // Models and reports the scan could not read (issue #9): they stay in the graph, marked "Not checked".
+  const notCheckedRow = notChecked.length ? <div className="status-row tone-warn" role="status">
+    <TriangleAlert className="status-icon" aria-hidden="true" />
+    <div className="status-copy">
+      <h2>{notChecked.length} {notChecked.length === 1 ? "item" : "items"} not checked</h2>
+      <ul className="not-checked-list">{notChecked.map((item) => { const note = originNote(item); return <li key={item.id}><Button variant="link" size="sm" onClick={() => onSelect(item.id, "inspector")}>{item.name}</Button> <span className="muted">{note?.title || "Not checked"}</span></li>; })}</ul>
+    </div>
+  </div> : null;
   const PRIMARY = ["MODEL", "TABLE", "COLUMN", "MEASURE", "REPORT", "PAGE", "VISUAL"];
   const typeCounts = Object.entries(overview.object_counts || {}).filter(([, count]) => count > 0).sort(([a], [b]) => { const ia = PRIMARY.indexOf(a), ib = PRIMARY.indexOf(b); return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || a.localeCompare(b); });
   const facts = [["object", "objects", counts.objects], ["relationship", "relationships", counts.edges]];
@@ -782,7 +806,7 @@ function Overview({ overview, config, counts, colors, loading, projectName, onVi
           <p>{hasSources ? "Scan your files to find models, reports, and their dependencies." : "Choose your PBIP project or exported model and report files."}</p>
           <Button size="lg" onClick={hasSources ? onScan : onSources} disabled={!config || scanning}>{hasSources ? <ScanLine /> : <Plus />}{hasSources ? scanLabel : "Add sources"}</Button>
         </Card>
-        <Card className="status-panel" role="region" aria-label="Project status">{validation}{sourcesRow}</Card>
+        <Card className="status-panel" role="region" aria-label="Project status">{validation}{sourcesRow}{notCheckedRow}</Card>
       </div> : <>
         <Card className="status-panel" role="region" aria-label="Project status">
           <div className={`status-row ${pending ? "tone-brand" : "tone-ok"}`}>
@@ -795,6 +819,7 @@ function Overview({ overview, config, counts, colors, loading, projectName, onVi
           </div>
           {validation}
           {sourcesRow}
+          {notCheckedRow}
         </Card>
       </>}
   </div>;

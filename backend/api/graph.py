@@ -168,7 +168,8 @@ LINEAGE_EDGES = frozenset({
     "CONTAINS", "BELONGS_TO", "HAS_OPTION", "DEPENDS_ON", "REFERENCES", "USES", "USES_MODEL", "FILTERS",
     "MODIFIES_FILTER", "CONTROLLED_BY", "ACTIVATES_RELATIONSHIP", "MODIFIES_RELATIONSHIP",
 })
-_LINEAGE_FIELDS = ("model_id", "report_id", "table_id", "page_id", "parent_id", "display_name", "source_id", "source_hash", "visual_type", "evidence_class")
+_LINEAGE_FIELDS = ("model_id", "report_id", "table_id", "page_id", "parent_id", "display_name", "source_id", "source_hash", "visual_type", "evidence_class",
+                  "origin", "workspace_name", "check_status", "not_checked_reason")
 
 
 def _definition_hash(payload: dict[str, Any]) -> str | None:

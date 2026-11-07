@@ -17,14 +17,22 @@ from backend.graph.repository import GraphRepository
 from backend.scanner.metadata_reader import load_metadata, pick, source_id
 from backend.scanner.model_reader import ModelReader
 from backend.scanner.normalization import StableIdentity
-from backend.scanner.pbip import is_pbip_source, read_pbip_project
+from backend.project_cloud import (
+    CLOUD_MODEL,
+    STATUS_NOT_CHECKED,
+    CloudSourceConfigError,
+    ProjectCloudReader,
+    bind_reports,
+    validate_cloud_sources,
+)
+from backend.scanner.pbip import is_pbip_source, read_model_folder, read_pbip_project, read_report_folder
 from backend.scanner.pipeline import Scanner
 from backend.scanner.report_reader import ReportReader
 from backend.sync import preserve_review_statuses
 
 
 PROJECT_VERSION = 1
-_CONFIG_KEYS = frozenset({"version", "name", "sources", "database", "identity_map", "graph_colors"})
+_CONFIG_KEYS = frozenset({"version", "name", "sources", "cloud_sources", "database", "identity_map", "graph_colors"})
 
 
 class ProjectConfigError(ValueError):
@@ -46,6 +54,8 @@ class ProjectScanResult:
     model_count: int
     report_count: int
     scanned_at: str
+    not_checked: tuple[dict[str, Any], ...] = ()
+    cloud: tuple[dict[str, Any], ...] = ()
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -55,6 +65,8 @@ class ProjectScanResult:
             "scanned_at": self.scanned_at,
             "node_count": len(self.graph.nodes),
             "edge_count": len(self.graph.edges),
+            "not_checked": [dict(item) for item in self.not_checked],
+            "cloud": [dict(item) for item in self.cloud],
         }
 
 
@@ -119,6 +131,11 @@ class ProjectConfigStore:
             "identity_map": identity_map,
         }
         _reject_path_aliases(config, self.path)
+        if "cloud_sources" in payload:
+            try:
+                config["cloud_sources"] = validate_cloud_sources(payload["cloud_sources"])
+            except CloudSourceConfigError as exc:
+                raise ProjectConfigError(str(exc)) from exc
         if "graph_colors" in payload:
             config["graph_colors"] = _graph_colors(payload["graph_colors"])
         return config
@@ -147,8 +164,11 @@ def _graph_colors(value: Any) -> dict[str, dict[str, str]]:
 class ProjectService:
     """Coordinate project configuration and one safe, combined graph scan."""
 
-    def __init__(self, config_path: str | Path = "config/brain.json") -> None:
+    def __init__(self, config_path: str | Path = "config/brain.json", *, cloud: Any = None) -> None:
         self.config_store = ProjectConfigStore(config_path)
+        # The Development Center ``CloudService`` (or a callable that gives it). None: the
+        # scan reads cloud items from the cache only, as in the stand-alone agent.
+        self.cloud = cloud
 
     @property
     def config_path(self) -> Path:
@@ -170,17 +190,23 @@ class ProjectService:
     def scan(self, repository: GraphRepository) -> ProjectScanResult:
         config = self.get_config()
         source_paths = [_resolve_path(value, self.config_path.parent) for value in config["sources"]]
-        if not source_paths:
+        cloud_entries = list(config.get("cloud_sources", []))
+        if not source_paths and not cloud_entries:
             raise ProjectConfigError("Project has no configured sources")
 
         project_paths = _project_paths(config, self.config_path.parent)
-        return self._scan_paths(repository, source_paths, project_paths)
+        return self._scan_paths(repository, source_paths, project_paths, cloud_entries)
+
+    def cloud_reader(self) -> ProjectCloudReader:
+        service = self.cloud() if callable(self.cloud) else self.cloud
+        return ProjectCloudReader(self.config_path.parent / "tmp" / "cloud", service)
 
     def _scan_paths(
         self,
         repository: GraphRepository,
         source_paths: list[Path],
         project_paths: dict[str, Path],
+        cloud_entries: list[Mapping[str, Any]] | None = None,
     ) -> ProjectScanResult:
         """Scan one immutable configuration snapshot."""
 
@@ -190,10 +216,21 @@ class ProjectService:
             source_models, source_reports = _read_project_source(source_path)
             models.extend(_stable_roots(source_models, source_path, "model"))
             reports.extend(_stable_roots(source_reports, source_path, "report"))
-        if not models:
-            raise ProjectSourceError("Project sources contain no semantic models")
+        not_checked: list[dict[str, Any]] = []
+        cloud_states: list[dict[str, Any]] = []
+        if cloud_entries:
+            reader = self.cloud_reader()
+            for entry in cloud_entries:
+                root, state, item = _read_cloud_source(reader, entry)
+                (models if entry["kind"] == CLOUD_MODEL else reports).append(root)
+                cloud_states.append(state)
+                if item is not None:
+                    not_checked.append(item)
+        if not models and not reports:
+            raise ProjectSourceError("Project sources contain no semantic models or reports")
         models = _deduplicate_roots(models, "model")
         reports = _deduplicate_roots(reports, "report")
+        not_checked.extend(bind_reports(models, reports))
 
         staged_identity = _temporary_identity(project_paths["identity_map"])
         try:
@@ -231,9 +268,13 @@ class ProjectService:
             return ProjectScanResult(
                 graph=graph,
                 source_count=len(source_paths),
-                model_count=sum(node.type == "MODEL" for node in graph.nodes),
-                report_count=sum(node.type == "REPORT" for node in graph.nodes),
+                model_count=sum(node.type == "MODEL" and node.properties.get("check_status") != STATUS_NOT_CHECKED
+                                for node in graph.nodes),
+                report_count=sum(node.type == "REPORT" and node.properties.get("check_status") != STATUS_NOT_CHECKED
+                                 for node in graph.nodes),
                 scanned_at=scanned_at,
+                not_checked=tuple(not_checked),
+                cloud=tuple(cloud_states),
             )
         finally:
             staged_identity.unlink(missing_ok=True)
@@ -348,6 +389,32 @@ def _read_project_source(path: Path) -> tuple[list[dict[str, Any]], list[dict[st
         raise
     except Exception as exc:
         raise ProjectSourceError(f"Cannot read project source {path}: {exc}") from exc
+
+
+def _read_cloud_source(
+    reader: ProjectCloudReader, entry: Mapping[str, Any]
+) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any] | None]:
+    """Read one cloud item: its root mapping, its read state and its not-checked item (or None)."""
+
+    fetch = reader.fetch(entry)
+    cloud = {key: entry[key] for key in ("workspace_id", "workspace_name", "item_id", "access_type")}
+    cloud["kind"] = entry["kind"]
+    if entry.get("dataset_id"):
+        cloud["dataset_id"] = entry["dataset_id"]
+    root: dict[str, Any] = {}
+    if fetch.folder is not None:
+        try:
+            root = read_model_folder(fetch.folder) if entry["kind"] == CLOUD_MODEL else read_report_folder(fetch.folder)
+        except Exception as exc:
+            raise ProjectSourceError(f"Cannot read the cloud item {entry['name']}: {exc}") from exc
+    else:
+        root = {"check_status": STATUS_NOT_CHECKED, "not_checked_reason": fetch.reason}
+        if entry["kind"] != CLOUD_MODEL:
+            root["model_id"] = None
+    root.update(id=entry["item_id"], name=entry["name"], cloud_source=cloud)
+    state = {"item_id": entry["item_id"], "kind": entry["kind"], "status": fetch.status, "reason": fetch.reason}
+    item = fetch.not_checked() if fetch.folder is None else None
+    return root, state, item
 
 
 def _stable_roots(values: list[dict[str, Any]], path: Path, kind: str) -> list[dict[str, Any]]:
