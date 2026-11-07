@@ -20,6 +20,7 @@ export const SHORTCUTS = [
   { id: "reload", keys: "F5", label: "Reload data", group: "View" },
   { id: "sidebar", keys: "Ctrl+B", label: "Toggle side bar", group: "View" },
   { id: "theme", keys: "Ctrl+Shift+L", label: "Toggle light/dark theme", group: "View" },
+  { id: "chat", keys: "Ctrl+J", label: "Open or close the chat", group: "View" },
   { id: "shortcuts", keys: "F1", label: "Keyboard shortcuts", group: "Help" },
   { id: "menu", keys: "Alt", label: "Focus the menu bar (or F10)", group: "Help", display: true },
 ];

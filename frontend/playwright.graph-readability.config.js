@@ -1,10 +1,10 @@
-import config, { devcenterSpecs, graphWebServer, guardedSpec } from "./playwright.config.js";
+import config, { chatSpec, devcenterSpecs, graphWebServer, guardedSpec } from "./playwright.config.js";
 
 // An isolated port avoids interfering with other local previews on 8765.
-// The Development Center specs need the fake server on port 8766. The main config runs them.
+// The Development Center specs need the fake server on port 8766, the chat spec its own on 8767. The main config runs them.
 export default {
   ...config,
-  testIgnore: [guardedSpec, devcenterSpecs],
+  testIgnore: [guardedSpec, devcenterSpecs, chatSpec],
   use: { ...config.use, baseURL: "http://127.0.0.1:8875" },
   webServer: {
     ...graphWebServer,

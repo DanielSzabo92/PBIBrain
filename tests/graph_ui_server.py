@@ -23,6 +23,7 @@ class QuietHandler(WSGIRequestHandler):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--port", type=int, default=8765)
+    parser.add_argument("--chat", action="store_true", help="Issue #7: a scripted chat provider and an open merge-lab session.")
     args = parser.parse_args()
     root = Path(__file__).resolve().parents[1]
     with tempfile.TemporaryDirectory(prefix="pbibrain-graph-ui-") as temporary:
@@ -55,6 +56,8 @@ def main():
         app = create_app(database_path=folder / "brain.lbug", overrides_path=folder / "overrides.json")
         app.project = project
         app.static_dir = root / "frontend" / "dist"
+        if args.chat:
+            attach_chat(app, folder)
         try:
             with make_server("127.0.0.1", args.port, app, handler_class=QuietHandler) as server:
                 print(f"Graph UI ready at http://127.0.0.1:{args.port}", flush=True)
@@ -63,6 +66,35 @@ def main():
             pass
         finally:
             app.close()
+
+
+def attach_chat(app, folder: Path) -> None:
+    """The chat e2e (issue #7): a scripted provider, chat off until Settings turns it on, and a merge session."""
+
+    import shutil
+
+    from backend.devcenter import jsapi
+    from backend.devcenter.session.manager import DevCenterSessions
+    from tests.chat_fake_provider import install
+
+    install(app, settings_file=folder / "settings.json")
+    lab = Path(__file__).resolve().parent / "fixtures" / "merge_lab"
+    merge_root = folder / "merge"
+    for name in ("SalesA", "SalesB"):
+        shutil.copytree(lab / name, merge_root / name)
+    devcenter = DevCenterSessions(app_data_dir=None)
+    devcenter.attach_project(merge_root)
+    app.devcenter = devcenter
+
+    def call(method: str, request: dict) -> None:
+        reply = jsapi.call(devcenter, method, {"base_revision": devcenter.revision, **request} if method != "session_create" else request)
+        if "error" in reply:
+            raise RuntimeError(f"{method}: {reply['error']}")
+
+    call("session_create", {"display_name": "Chat merge"})
+    for name in ("SalesA", "SalesB"):
+        call("source_add", {"path": str(merge_root / name / f"{name}.pbip")})
+    call("target_set", {"model": {"mode": "existing", "source_id": "src-1"}, "report": {"mode": "existing", "source_id": "src-1"}})
 
 
 if __name__ == "__main__":
