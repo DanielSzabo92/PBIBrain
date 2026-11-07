@@ -226,6 +226,13 @@ Models › Tables › Columns › Calculations (measures, field parameters, calc
 - **Scope:** the matrix loads up to 1,000 objects. Above that, a notice points to the model and report scope in Filters.
 - **Folding defaults:** tables fold when there are more than 160 rows, and pages when there are more than 48 visuals.
 
+### 11b. Whole scope, names, versions and lane chips (owner request, 2026-11-07)
+
+- **No object limit in Lineage and Matrix.** Both read `GET /api/lineage` (`get_lineage`): the whole factual structure of the scope in compact form (ids, names, owner ids, hashes; no ASTs or raw source) and only lineage links. Large pictures render only what is in view (`onlyRenderVisibleElements` above 400 objects). Search filters this payload by name in the browser. Suggestions or artifact/type/link filters fall back to the limited `getGraph` slice.
+- **Names.** A lane is as wide as its longest name needs (×1.3 slack for zoomed-out counter-scaling), between 168 and 280px. A name that still does not fit takes a second line (node height 48) before it is shortened in the middle. The full name stays in the title and accessible name.
+- **Versions.** Two models (or reports) are versions when at least half of the smaller one's objects match the other: model objects by type, table and name; report objects by page and visual IDs (which survive a copied PBIP folder). Display › Group versions (on by default) folds matching objects into one node drawn as a small stack with a `×2` badge; `1/2` (dashed) marks an object only in some versions; an amber dot marks copies whose definitions differ. In the Matrix twins share a row/column; a half-filled mark means only some version pairs use it.
+- **Lane chips** sit under the toolbar in dependency order (Models › Tables › Columns › Calculations › Visuals › Visual filters › Pages › Page filters › Reports › Report filters), shared by both views. In Lineage a lane switched off is bridged: chains through it become one "Through hidden" link. In the Matrix: Tables off flattens rows, Columns/Calculations off hide those rows (both off: tables stand for them), Visuals off folds pages, Pages off drops the page row, filter lanes off stop counting what those filters use. Models and Reports are the matrix axes and stay on.
+
 ## 12. e2e name changes
 
 | Old | New | Update |

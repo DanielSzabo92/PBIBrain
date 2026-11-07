@@ -44,9 +44,11 @@ function ancestor(id, types, owner, byId) {
  *   usage: Map<rowId, { direct: number, indirect: number }>,
  *   bound: (modelId, reportId) => boolean,
  *   rows: node[], visuals: node[],
+ *   modelOf: (node) => modelId, reportOf: (node) => reportId,
  * }}
+ * Options switch off what filters count: visual filters (direct use), page and report filters (indirect use).
  */
-export function buildImpactMatrix(nodes, edges) {
+export function buildImpactMatrix(nodes, edges, { visualFilters = true, pageFilters = true, reportFilters = true } = {}) {
   const byId = new Map(nodes.map((node) => [node.id, node]));
   const valid = edges.filter((edge) => byId.has(edge.from_id) && byId.has(edge.to_id));
   const owner = owners(nodes, valid);
@@ -77,10 +79,13 @@ export function buildImpactMatrix(nodes, edges) {
     const marks = new Map();
     const direct = [...(feeders.get(visual.id) || [])];
     // A visual filter or visual calculation of this visual counts as the visual using what it uses.
-    (children.get(visual.id) || []).forEach((child) => direct.push(...(feeders.get(child) || [])));
+    (children.get(visual.id) || []).forEach((child) => {
+      if (!visualFilters && byId.get(child)?.type === "VISUAL_FILTER") return;
+      direct.push(...(feeders.get(child) || []));
+    });
     direct.forEach((id) => { if (rowIds.has(id)) marks.set(id, 2); });
     // Page and report filters act on every visual below them: what they use counts as indirect use.
-    const filtering = [pageOf(visual), reportOf(visual)].flatMap((scope) => (children.get(scope) || []).filter((child) => FILTER_TYPES.has(byId.get(child)?.type)));
+    const filtering = [pageFilters ? pageOf(visual) : "", reportFilters ? reportOf(visual) : ""].filter(Boolean).flatMap((scope) => (children.get(scope) || []).filter((child) => FILTER_TYPES.has(byId.get(child)?.type)));
     const viaFilters = filtering.flatMap((filter) => [...(feeders.get(filter) || [])]);
     const queue = [...direct, ...viaFilters], seen = new Set(queue);
     viaFilters.forEach((id) => { if (rowIds.has(id) && !marks.has(id)) marks.set(id, 1); });
@@ -143,7 +148,7 @@ export function buildImpactMatrix(nodes, edges) {
   colGroups.sort((a, b) => reportRank(a) - reportRank(b) || byName(a.report, b.report));
 
   return {
-    rowGroups, colGroups, rows, visuals, usage, bound,
+    rowGroups, colGroups, rows, visuals, usage, bound, modelOf, reportOf,
     cell: (rowId, visualId) => cells.get(visualId)?.get(rowId) || 0,
   };
 }

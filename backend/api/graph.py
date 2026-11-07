@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 from collections import deque
 from typing import Any, Sequence
 
@@ -160,6 +162,64 @@ def get_graph(
     }
 
 
+# Structural links that lineage and the impact matrix read. Semantic, similarity and
+# co-occurrence links are context, not lineage, and are left out of this payload.
+LINEAGE_EDGES = frozenset({
+    "CONTAINS", "BELONGS_TO", "HAS_OPTION", "DEPENDS_ON", "REFERENCES", "USES", "USES_MODEL", "FILTERS",
+    "MODIFIES_FILTER", "CONTROLLED_BY", "ACTIVATES_RELATIONSHIP", "MODIFIES_RELATIONSHIP",
+})
+_LINEAGE_FIELDS = ("model_id", "report_id", "table_id", "page_id", "parent_id", "display_name", "source_id", "source_hash", "visual_type", "evidence_class")
+
+
+def _definition_hash(payload: dict[str, Any]) -> str | None:
+    """Hash of what the source file says about the object, without the scan's ids: equal for identical copies."""
+
+    raw = payload.get("raw_source")
+    if not isinstance(raw, dict) or not raw:
+        return None
+    text = json.dumps(raw, sort_keys=True, default=str, separators=(",", ":"))
+    return hashlib.sha1(text.encode("utf-8")).hexdigest()[:16]
+
+
+def _lineage_tag(payload: dict[str, Any]) -> str | None:
+    raw = payload.get("raw_source") if isinstance(payload.get("raw_source"), dict) else {}
+    tag = payload.get("lineage_tag") or payload.get("lineageTag") or raw.get("lineageTag") or raw.get("lineage_tag")
+    return str(tag) if tag else None
+
+
+def get_lineage(
+    repository: GraphRepository,
+    *,
+    model_id: str | None = None,
+    report_id: str | None = None,
+    store: OverrideStore | None = None,
+) -> dict[str, Any]:
+    """The whole factual structure of a scope, in compact form and without an object limit.
+
+    Each node carries only what lineage, the impact matrix and version grouping need (a few
+    ids, names and the source hash), so a project of tens of thousands of objects stays a few
+    megabytes; the full object is read on selection with ``get_object``.
+    """
+
+    scoped = get_graph(repository, model_id=model_id, report_id=report_id, status="factual", store=store,
+                       edge_types=sorted(LINEAGE_EDGES))
+    nodes = []
+    for payload in scoped["nodes"]:
+        compact = {"id": payload["id"], "type": payload["type"], "name": payload.get("name") or "", "status": payload.get("status")}
+        compact.update({key: payload[key] for key in _LINEAGE_FIELDS if payload.get(key) not in (None, "")})
+        definition = _definition_hash(payload)
+        if definition:
+            compact["definition_hash"] = definition
+        tag = _lineage_tag(payload)
+        if tag:
+            compact["lineage_tag"] = tag
+        nodes.append(compact)
+    edges = [{"id": edge["id"], "type": edge["type"], "from_id": edge["from_id"], "to_id": edge["to_id"], "status": edge.get("status")}
+             for edge in scoped["edges"] if edge.get("status", "factual") == "factual"]
+    return {"nodes": nodes, "edges": edges, "total_nodes": len(nodes), "truncated": False,
+            "scope": {"model_id": model_id, "report_id": report_id}}
+
+
 def find_path(
     repository: GraphRepository,
     from_id: str,
@@ -180,4 +240,4 @@ graph_data = get_graph
 connected_graph = get_graph
 
 
-__all__ = ["connected_graph", "find_path", "get_graph", "graph", "graph_data"]
+__all__ = ["connected_graph", "find_path", "get_graph", "get_lineage", "graph", "graph_data"]

@@ -14,8 +14,11 @@ import { TypeGlyph } from "./TypeGlyph";
 import { ARTIFACT_GROUPS, EDGE_TYPES, artifactColor, artifactGroup, middleEllipsis, typeLabel } from "../graphPresentation";
 import { buildExplorerGraph, layoutExplorerGraph, layoutArtifactGraph, layoutGraph, NODE_WIDTH, NODE_HEIGHT, GROUP_WIDTH, GROUP_HEIGHT } from "../graphLayout";
 import { objectName, scopeChoices, statusLabel, visualType } from "../presentation";
-import { layoutLineage, lineageOf } from "../lineage";
+import { hideLanes, layoutLineage, lineageOf, TWO_LINE_HEIGHT } from "../lineage";
+import { groupVersions, versionNote } from "../versions";
 import ImpactMatrix from "./ImpactMatrix";
+import LaneChips from "./LaneChips";
+import { VersionBadge } from "./VersionBadge";
 import { isTextEntry } from "../shortcuts";
 
 const EMPTY_FILTERS = { modelId: "", reportId: "", query: "", artifact: "", objectType: "", status: "factual", edgeType: "" };
@@ -40,6 +43,8 @@ const nameScale = (tier) => tier === "full" || tier === "far" ? 1 : 11 / (13 * N
 // Lineage fits no further out than the smallest zoom that still shows names (see GLYPH_ZOOM).
 const FULL_GRAPH_MIN_ZOOM = 0.55;
 const DETAIL_PANE_WIDTH = 360;
+// Large pictures render only what is in view (the whole project stays laid out and searchable).
+const VIEWPORT_ONLY_ABOVE = 400;
 // The pane overlays the canvas for one double-click window before it docks, so the second click of a
 // double-click still lands on the node that the first click selected.
 const DOCK_DELAY = 350;
@@ -74,6 +79,9 @@ export function createGraphSession(selectedId = "") {
     viewMode: "overview",
     expandedIds: null,
     hiddenTypes: [],
+    // Lineage lanes switched off with the lane chips (shared by Lineage and Matrix).
+    hiddenLanes: [],
+    groupVersions: true,
     viewports: {},
     placements: {},
     showLabels: false,
@@ -108,6 +116,8 @@ function normalizeGraphSession(value, selectedId) {
     viewMode: ["full", "matrix"].includes(incoming.viewMode) ? incoming.viewMode : "overview",
     expandedIds: Array.isArray(incoming.expandedIds) ? incoming.expandedIds.filter((id) => typeof id === "string") : null,
     hiddenTypes: Array.isArray(incoming.hiddenTypes) ? incoming.hiddenTypes.filter((type) => typeof type === "string") : [],
+    hiddenLanes: Array.isArray(incoming.hiddenLanes) ? incoming.hiddenLanes.filter((lane) => typeof lane === "string") : [],
+    groupVersions: typeof incoming.groupVersions === "boolean" ? incoming.groupVersions : defaults.groupVersions,
     viewports: incoming.viewports && typeof incoming.viewports === "object" ? incoming.viewports : {},
     placements: incoming.placements && typeof incoming.placements === "object" ? incoming.placements : {},
     showLabels: typeof incoming.showLabels === "boolean" ? incoming.showLabels : defaults.showLabels,
@@ -116,8 +126,19 @@ function normalizeGraphSession(value, selectedId) {
   };
 }
 
+/**
+ * Lineage and Matrix read the whole factual structure of the scope (getLineage: compact, no object limit).
+ * Suggestions, artifact/type/link filters and the other views use the scoped, limited getGraph slice.
+ */
+function wholeScope(session) {
+  const { filters } = session;
+  return !session.centerId && ["full", "matrix"].includes(session.viewMode) && filters.status === "factual" && !filters.artifact && !filters.objectType && !filters.edgeType;
+}
+
 function graphRequestKey(session) {
-  return JSON.stringify([session.revision || 0, session.filters, session.centerId, session.depth, session.limit]);
+  return wholeScope(session)
+    ? JSON.stringify([session.revision || 0, "lineage", session.filters.modelId, session.filters.reportId])
+    : JSON.stringify([session.revision || 0, session.filters, session.centerId, session.depth, session.limit]);
 }
 
 /** The type a person reads first: the visual kind for visuals, else the object type. */
@@ -190,7 +211,7 @@ function TypesPopover({ nodes, hiddenTypes, colors, onChange }) {
   </Popover>;
 }
 
-function DisplayPopover({ direction, showLabels, includeSuggestions, grouped, canGroup, onChange }) {
+function DisplayPopover({ direction, showLabels, includeSuggestions, grouped, canGroup, versions, canVersion, onChange }) {
   return <Popover label="Display options" className="graph-popover graph-display-popover"
     trigger={<ToolbarTrigger icon={SlidersHorizontal} label="Display" title="Layout direction and labels" />}>
     <div className="graph-popover-stack">
@@ -198,6 +219,7 @@ function DisplayPopover({ direction, showLabels, includeSuggestions, grouped, ca
       <Label className="graph-label-control"><Checkbox checked={showLabels} onCheckedChange={(checked) => onChange({ showLabels: checked === true })} />Relationship labels</Label>
       <Label className="graph-label-control"><Checkbox checked={includeSuggestions} onCheckedChange={(checked) => onChange({ includeSuggestions: checked === true })} />Include suggestions</Label>
       {canGroup ? <Label className="graph-label-control"><Checkbox checked={grouped} onCheckedChange={(checked) => onChange({ grouped: checked === true })} />Group by ownership</Label> : null}
+      {canVersion ? <Label className="graph-label-control" title="Show an object once when it is in several versions of a model or report (same table and name, same page and visual IDs)"><Checkbox checked={versions} onCheckedChange={(checked) => onChange({ groupVersions: checked === true })} />Group versions</Label> : null}
     </div>
   </Popover>;
 }
@@ -239,7 +261,7 @@ export default function GraphView({ transport, overview, snapshot, selectedId, c
         result: null,
       }
     : normalizedSession, [normalizedSession, selectedId, selectionNeedsRecenter]);
-  const { filters, query, centerId, depth, limit, grouped, showLabels, direction, hiddenTypes } = graphSession;
+  const { filters, query, centerId, depth, limit, grouped, showLabels, direction, hiddenTypes, hiddenLanes } = graphSession;
   const graphKey = graphRequestKey(graphSession);
   const requestedKey = useRef(graphKey);
   requestedKey.current = graphKey;
@@ -284,7 +306,9 @@ export default function GraphView({ transport, overview, snapshot, selectedId, c
     const requestId = ++request.current;
     setLoading(true); setGraphError(null);
     try {
-      const data = await transport.getGraph({ ...filters, centerId, depth, limit });
+      const data = wholeScope(graphSession) && typeof transport.getLineage === "function"
+        ? await transport.getLineage({ modelId: filters.modelId, reportId: filters.reportId })
+        : await transport.getGraph({ ...filters, centerId, depth, limit: wholeScope(graphSession) ? 1000 : limit });
       if (requestId === request.current && requestedKey.current === graphKey) {
         updateSession((current) => graphRequestKey(current) === graphKey ? { ...current, result: { key: graphKey, data } } : current);
       }
@@ -296,18 +320,41 @@ export default function GraphView({ transport, overview, snapshot, selectedId, c
     } finally {
       if (requestId === request.current && requestedKey.current === graphKey) setLoading(false);
     }
+    // graphKey covers every input of the request.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [graphKey, transport, updateSession]);
   useEffect(() => { loadGraph(); return () => { request.current += 1; }; }, [loadGraph]);
   const graph = graphSession.result?.key === graphKey ? graphSession.result.data : null;
-  const nodes = graph?.nodes || [];
-  const edges = graph?.edges || [];
   const viewMode = centerId ? "connections" : graphSession.viewMode;
   const overviewMode = viewMode === "overview";
+  const lanesView = viewMode === "full" || viewMode === "matrix";
+  // The whole-scope payload is not searched by the server: the search box filters it here, by name.
+  const searchHere = wholeScope(graphSession) && filters.query;
+  const loadedNodes = graph?.nodes;
+  const nodes = useMemo(() => {
+    const list = loadedNodes || [];
+    if (!searchHere) return list;
+    const needle = filters.query.toLowerCase();
+    return list.filter((node) => objectName(node).toLowerCase().includes(needle));
+  }, [loadedNodes, searchHere, filters.query]);
+  const edges = graph?.edges || [];
+  // Lineage: versions folded into one node, then lanes that are switched off bridged over.
+  const versioned = useMemo(() => lanesView && graphSession.groupVersions ? groupVersions(nodes, edges) : null, [lanesView, graphSession.groupVersions, nodes, edges]);
+  const rawById = useMemo(() => new Map((loadedNodes || []).map((node) => [node.id, node])), [loadedNodes]);
   // Type visibility is a view choice on the loaded slice. The focused object always stays for context.
   const hiddenSet = useMemo(() => new Set(hiddenTypes), [hiddenTypes]);
-  const shownNodes = useMemo(() => hiddenSet.size ? nodes.filter((node) => !hiddenSet.has(node.type) || node.id === centerId) : nodes, [nodes, hiddenSet, centerId]);
-  const shownIds = useMemo(() => new Set(shownNodes.map((node) => node.id)), [shownNodes]);
-  const shownEdges = useMemo(() => hiddenSet.size ? edges.filter((edge) => shownIds.has(edge.from_id) && shownIds.has(edge.to_id)) : edges, [edges, hiddenSet, shownIds]);
+  const typedNodes = useMemo(() => {
+    const list = versioned ? versioned.nodes : nodes;
+    return hiddenSet.size ? list.filter((node) => !hiddenSet.has(node.type) || node.id === centerId) : list;
+  }, [nodes, versioned, hiddenSet, centerId]);
+  const typedIds = useMemo(() => new Set(typedNodes.map((node) => node.id)), [typedNodes]);
+  const typedEdges = useMemo(() => {
+    const list = versioned ? versioned.edges : edges;
+    return hiddenSet.size ? list.filter((edge) => typedIds.has(edge.from_id) && typedIds.has(edge.to_id)) : list;
+  }, [edges, versioned, hiddenSet, typedIds]);
+  const laned = useMemo(() => viewMode === "full" && hiddenLanes.length ? hideLanes(typedNodes, typedEdges, hiddenLanes) : null, [viewMode, hiddenLanes, typedNodes, typedEdges]);
+  const shownNodes = laned ? laned.nodes : typedNodes;
+  const shownEdges = laned ? laned.edges : typedEdges;
   // Default expansion opens each model, unless that would show more than the readable budget.
   const defaultExpanded = useMemo(() => {
     const models = shownNodes.filter((node) => node.type === "MODEL").map((node) => node.id);
@@ -320,7 +367,8 @@ export default function GraphView({ transport, overview, snapshot, selectedId, c
   const canvasEdges = useMemo(() => overviewMode
     ? explorer.edges.filter((edge) => filters.edgeType || edge.type === "CONTAINS" || DEPENDENCY_EDGES.has(edge.type) || edge.from_id === focusedId || edge.to_id === focusedId)
     : shownEdges, [overviewMode, explorer, filters.edgeType, focusedId, shownEdges]);
-  const canvasKey = JSON.stringify([graphKey, viewMode, direction, !overviewMode && grouped]);
+  // Lineage searches and lane choices are applied here, not by the request: they re-fit the canvas too.
+  const canvasKey = JSON.stringify([graphKey, viewMode, direction, !overviewMode && grouped, searchHere ? filters.query : "", viewMode === "full" ? hiddenLanes : []]);
   const saveViewport = useCallback((viewport) => updateSession((current) => {
     const previous = current.viewports?.[canvasKey];
     if (previous && previous.x === viewport.x && previous.y === viewport.y && previous.zoom === viewport.zoom) return current;
@@ -344,8 +392,8 @@ export default function GraphView({ transport, overview, snapshot, selectedId, c
   const edgeTypes = [...new Set([...EDGE_TYPES, ...edges.map((edge) => edge.type)])].sort();
   const warningIds = useMemo(() => new Set((snapshot.conflicts || []).flatMap((item) => [item.target?.id || item.target || item.target_id || item.object_id, item.id, item.conflict_id].filter(Boolean))), [snapshot.conflicts]);
   const activeFilters = ["artifact", "modelId", "reportId", "edgeType", "objectType"].filter((key) => filters[key]).length + (filters.status && filters.status !== "factual" ? 1 : 0);
-  const hasFilters = Object.entries(filters).some(([key, value]) => value !== EMPTY_FILTERS[key]) || Boolean(query) || Boolean(centerId) || hiddenTypes.length > 0;
-  const reset = () => { updateSession((current) => ({ ...current, filters: { ...EMPTY_FILTERS }, query: "", centerId: "", depth: 1, limit: DEFAULT_LIMIT, result: null, expandedIds: null, hiddenTypes: [] })); setFocusedNode(null); };
+  const hasFilters = Object.entries(filters).some(([key, value]) => value !== EMPTY_FILTERS[key]) || Boolean(query) || Boolean(centerId) || hiddenTypes.length > 0 || hiddenLanes.length > 0;
+  const reset = () => { updateSession((current) => ({ ...current, filters: { ...EMPTY_FILTERS }, query: "", centerId: "", depth: 1, limit: DEFAULT_LIMIT, result: null, expandedIds: null, hiddenTypes: [], hiddenLanes: [] })); setFocusedNode(null); };
   const center = useCallback((node) => {
     if (!node) return;
     updateSession((current) => ({ ...current, filters: { ...EMPTY_FILTERS, status: node.status === "factual" ? "factual" : "" }, query: "", centerId: node.id }));
@@ -404,7 +452,9 @@ export default function GraphView({ transport, overview, snapshot, selectedId, c
   const summary = loading && !graph ? "Loading graph…" : `${canvasNodes.length} ${canvasNodes.length === 1 ? "object" : "objects"} · ${canvasEdges.length} ${canvasEdges.length === 1 ? "link" : "links"}`;
   const summaryDetail = [
     overviewMode && explorer.hiddenCount ? `${explorer.hiddenCount} in collapsed groups` : "",
-    hiddenTypes.length && nodes.length !== shownNodes.length ? `${nodes.length - shownNodes.length} hidden by type` : "",
+    hiddenTypes.length && typedNodes.length !== (versioned ? versioned.nodes : nodes).length ? `${(versioned ? versioned.nodes : nodes).length - typedNodes.length} hidden by type` : "",
+    laned ? `${typedNodes.length - shownNodes.length} in lanes switched off` : "",
+    versioned?.grouped ? `${nodes.length - versioned.nodes.length} version copies folded` : "",
     `${nodes.length} of ${graph?.total_nodes ?? 0} matching objects loaded`,
   ].filter(Boolean).join(" · ");
   const evidenceShown = canvasEdges.some((edge) => String(edge.evidence_class || "FACT").toUpperCase() !== "FACT");
@@ -422,7 +472,7 @@ export default function GraphView({ transport, overview, snapshot, selectedId, c
       </Tabs>
       <span className="toolbar-divider" aria-hidden="true" />
       <TypesPopover nodes={nodes} hiddenTypes={hiddenTypes} colors={colors} onChange={(next) => { updateSession({ hiddenTypes: next }); }} />
-      <DisplayPopover direction={direction} showLabels={showLabels} includeSuggestions={filters.status !== "factual"} grouped={grouped} canGroup={!overviewMode} onChange={changeDisplay} />
+      <DisplayPopover direction={direction} showLabels={showLabels} includeSuggestions={filters.status !== "factual"} grouped={grouped} canGroup={!overviewMode} versions={graphSession.groupVersions} canVersion={lanesView} onChange={changeDisplay} />
       <FiltersPopover filters={filters} depth={depth} centerId={centerId} overview={overview} edgeTypes={edgeTypes} activeCount={activeFilters} hasFilters={hasFilters}
         onFilters={updateFilters}
         onScope={(change) => { updateSession((current) => ({ ...current, centerId: "", filters: { ...current.filters, ...change } })); setFocusedNode(null); }}
@@ -432,12 +482,13 @@ export default function GraphView({ transport, overview, snapshot, selectedId, c
       <span className="graph-summary" role="status" aria-live="polite" data-ui-number="" title={summaryDetail}>{summary}<span className="sr-only">{summaryDetail ? `. ${summaryDetail}` : ""}</span></span>
       <Button variant="ghost" size="sm" aria-label="Fit view" tooltip="Fit view (F)" disabled={!canvasNodes.length} onClick={() => canvasApi.current?.fit()}><Maximize />Fit</Button>
     </div>
+    {lanesView ? <LaneChips nodes={versioned ? versioned.nodes : nodes} hidden={hiddenLanes} matrix={viewMode === "matrix"} colors={colors} onChange={(next) => { updateSession({ hiddenLanes: next }); setFocusedNode(null); }} /> : null}
     <div className="graph-body">
       <div id="graph-canvas" className="graph-canvas-card" data-slot="card" aria-busy={loading} style={docked ? { marginRight: DETAIL_PANE_WIDTH + 8 } : undefined}>
-        {viewMode === "matrix" ? <ImpactMatrix transport={transport} filters={filters} query={query} colors={colors} selectedId={focusedNode?.id} onSelect={setFocusedNode} />
+        {viewMode === "matrix" ? <ImpactMatrix graph={graph} error={error} onRetry={loadGraph} query={query} hiddenLanes={hiddenLanes} groupVersions={graphSession.groupVersions} colors={colors} selectedId={focusedNode?.id} onSelect={setFocusedNode} />
           : error ? <div className="graph-empty" role="alert"><span className="empty-icon tone-bad" aria-hidden="true"><TriangleAlert /></span><h3>Graph unavailable</h3><p>{error}</p><Button variant="outline" onClick={loadGraph}>Retry graph</Button></div>
           : !graph ? <div className="graph-empty graph-loading" role="status"><p>Loading graph…</p></div>
-          : canvasNodes.length ? <GraphCanvas key={canvasKey} apiRef={canvasApi} overview={overviewMode} full={viewMode === "full"} grouped={!overviewMode && grouped} onCenter={center} onInspect={inspect} nodes={canvasNodes} edges={canvasEdges} selectedId={focusedNode?.id || centerId} docked={docked} warningIds={warningIds} direction={direction} showLabels={showLabels} colors={colors} onSelect={setFocusedNode} onToggleGroup={toggleGroup} viewport={graphSession.viewports[canvasKey]} onViewportChange={saveViewport} placements={graphSession.placements[canvasKey]} onPlacementsChange={savePlacements} />
+          : canvasNodes.length ? <GraphCanvas key={canvasKey} rawById={rawById} apiRef={canvasApi} overview={overviewMode} full={viewMode === "full"} grouped={!overviewMode && grouped} onCenter={center} onInspect={inspect} nodes={canvasNodes} edges={canvasEdges} selectedId={focusedNode?.id || centerId} docked={docked} warningIds={warningIds} direction={direction} showLabels={showLabels} colors={colors} onSelect={setFocusedNode} onToggleGroup={toggleGroup} viewport={graphSession.viewports[canvasKey]} onViewportChange={saveViewport} placements={graphSession.placements[canvasKey]} onPlacementsChange={savePlacements} />
           : <div className="graph-empty"><span className="empty-icon" aria-hidden="true"><Search /></span><h3>No matching objects</h3><p>{hasFilters ? "Try another filter or clear the filters." : "Scan project sources to see their relationships."}</p>{hasFilters ? <Button variant="outline" onClick={reset}>Clear filters</Button> : null}</div>}
         <div className="graph-overlay graph-overlay-top" data-ui-actions="">
           {centerId ? <div className="graph-center">
@@ -448,7 +499,7 @@ export default function GraphView({ transport, overview, snapshot, selectedId, c
               <Button variant="ghost" size="xs" onClick={() => { updateSession({ centerId: "" }); setFocusedNode(null); }}>Back to project</Button>
             </span>
           </div> : overviewMode && graphSession.expandedIds != null && explorer.collapsedCount < explorer.nodes.filter((node) => node.explorerChildCount > 0).length ? <Button variant="outline" size="xs" className="graph-overlay-button" onClick={() => updateSession({ expandedIds: null })}><ChevronsDownUp />Collapse all</Button> : null}
-          {graph?.truncated && viewMode !== "matrix" ? <div className="scope-notice">Showing {nodes.length} of {graph.total_nodes} objects{limit < 1000 ? <> · <Button variant="link" size="xs" onClick={() => updateSession({ limit: Math.min(limit * 2, 1000) })}>Show more</Button></> : null}</div> : null}
+          {graph?.truncated && viewMode !== "matrix" ? <div className="scope-notice">Showing {graph.nodes.length} of {graph.total_nodes} objects{limit < 1000 ? <> · <Button variant="link" size="xs" onClick={() => updateSession({ limit: Math.min(limit * 2, 1000) })}>Show more</Button></> : null}</div> : null}
         </div>
         {evidenceShown && viewMode !== "matrix" ? <div className="graph-overlay graph-overlay-key"><EvidenceKey /></div> : null}
       </div>
@@ -478,6 +529,9 @@ function nameRoom(width, isGroup, hasStatus) {
   const chrome = isGroup ? 2 + 11 + 24 + 8 + 8 + 24 + 8 : 2 + 3 + 24 + 8 + 10;
   return width - chrome - (hasStatus ? 24 : 0);
 }
+
+// Room for the "×2" / "1/2" version badge and its gap.
+const versionRoom = (node) => (node?.familySize > 1 ? 34 : 0);
 
 const SIDES = {
   LR: { forward: [Position.Right, Position.Left], backward: [Position.Left, Position.Right], same: [Position.Right, Position.Right] },
@@ -515,7 +569,7 @@ function edgeGeometry(source, target, direction, offset) {
   return { path, labelX, labelY };
 }
 
-function GraphCanvas({ apiRef, overview, full, grouped, onCenter, onInspect, nodes, edges, selectedId, docked, warningIds, direction, showLabels, colors, onSelect, onToggleGroup, viewport, onViewportChange, placements, onPlacementsChange }) {
+function GraphCanvas({ rawById, apiRef, overview, full, grouped, onCenter, onInspect, nodes, edges, selectedId, docked, warningIds, direction, showLabels, colors, onSelect, onToggleGroup, viewport, onViewportChange, placements, onPlacementsChange }) {
   const [flow, setFlow] = useState(null);
   const [zoom, setZoom] = useState(viewport?.zoom || 1);
   const [tier, setTier] = useState(() => zoomTier(viewport?.zoom || 1));
@@ -537,12 +591,14 @@ function GraphCanvas({ apiRef, overview, full, grouped, onCenter, onInspect, nod
   // Lineage lanes (Model › Tables › Columns › Calculations › Visuals › … › Reports) for every view except Overview.
   const lineage = !overview && !grouped;
   const layout = useMemo(() => {
-    if (lineage) return { ...layoutLineage(nodes, edges, direction), groups: [] };
+    if (lineage) return { ...layoutLineage(nodes, edges, direction, { measure: measureName, badge: versionRoom }), groups: [] };
     if (!overview) return grouped ? layoutArtifactGraph(nodes, edges, direction, sizeOf) : { ...layoutGraph(nodes, edges, direction, sizeOf), groups: [] };
     const next = layoutExplorerGraph(nodes, edges, direction, previousPositions.current, sizeOf);
     previousPositions.current = new Map(next.nodes.map(({ node, position }) => [node.id, position]));
     return { ...next, groups: [] };
-  }, [nodes, edges, direction, grouped, overview, sizeOf, lineage]);
+    // fontsReady: lane widths follow measured names.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nodes, edges, direction, grouped, overview, sizeOf, lineage, fontsReady]);
   useEffect(() => {
     if (overview) onPlacementsChange(Object.fromEntries(previousPositions.current));
   }, [layout, overview, onPlacementsChange]);
@@ -582,7 +638,8 @@ function GraphCanvas({ apiRef, overview, full, grouped, onCenter, onInspect, nod
     if (!lineage || initialViewport.current || !layout.nodes.length || typeof window === "undefined") return null;
     const xs = layout.nodes.map(({ position }) => position.x), ys = layout.nodes.map(({ position }) => position.y);
     const minX = Math.min(...xs), minY = Math.min(...ys) - 48;
-    const spanX = Math.max(...xs) + NODE_WIDTH - minX, spanY = Math.max(...ys) + NODE_HEIGHT - minY;
+    const spanX = Math.max(...layout.nodes.map(({ position, width }) => position.x + (width || NODE_WIDTH))) - minX;
+    const spanY = Math.max(...layout.nodes.map(({ position, height }) => position.y + (height || NODE_HEIGHT))) - minY;
     const fitZoom = Math.min(1, (window.innerWidth - 300) / spanX, (window.innerHeight - 260) / spanY);
     return fitZoom < minFitZoom ? { x: 24 - minX * minFitZoom, y: 24 - minY * minFitZoom, zoom: minFitZoom } : null;
     // Only for the first paint of this canvas.
@@ -615,8 +672,9 @@ function GraphCanvas({ apiRef, overview, full, grouped, onCenter, onInspect, nod
   const flowNodes = useMemo(() => [
     ...(layout.lanes || []).map((lane) => ({ id: `lane:${lane.key}`, type: "lane", position: { x: lane.x, y: lane.y }, width: lane.width, height: 28, measured: { width: lane.width, height: 28 }, selectable: false, focusable: false, draggable: false, style: { width: lane.width, pointerEvents: "none" }, data: lane })),
     ...layout.groups.map((group) => ({ id: group.id, type: "artifactGroup", position: group.position, width: group.width, height: group.height, measured: { width: group.width, height: group.height }, zIndex: -1, selectable: false, focusable: false, draggable: false, style: { width: group.width, height: group.height, pointerEvents: "none" }, data: { ...group, color: colors.groups[group.key] } })),
-    ...layout.nodes.map(({ node }) => {
+    ...layout.nodes.map(({ node, lines }) => {
       const rect = rects.get(node.id);
+      const twoLine = lines === 2 && rect.height >= TWO_LINE_HEIGHT;
       const warning = warningIds.has(node.id) || node.type === "CONFLICT";
       const isGroup = overview && node.explorerChildCount > 0;
       const statusGlyph = warning || Boolean(STATUS_GLYPHS[node.status]);
@@ -627,10 +685,11 @@ function GraphCanvas({ apiRef, overview, full, grouped, onCenter, onInspect, nod
         // state when controlled nodes are replaced after saving the session.
         measured: { width: rect.width, height: rect.height },
         className: focusing && !connected.has(node.id) ? "is-dimmed" : "",
-        data: { node, direction, isGroup, onToggleGroup, warning, color: artifactColor(node, colors), colors, displayName: middleEllipsis(objectName(node), nameRoom(rect.width, isGroup, statusGlyph) / scale, measureName) },
+        // Two-line names are shortened to what two lines hold, with a little slack for word wrapping.
+        data: { node, direction, isGroup, onToggleGroup, warning, twoLine, versions: versionNote(node, rawById), color: artifactColor(node, colors), colors, displayName: middleEllipsis(objectName(node), (twoLine ? 1.8 : 1) * (nameRoom(rect.width, isGroup, statusGlyph) - versionRoom(node)) / scale, measureName) },
       };
     }),
-  ], [layout, rects, warningIds, overview, selectedId, focusing, connected, direction, onToggleGroup, colors, fontsReady, scale]);
+  ], [layout, rects, warningIds, overview, selectedId, focusing, connected, direction, onToggleGroup, colors, fontsReady, scale, rawById]);
   const laneCount = layout.lanes?.length || 0;
 
   const flowEdges = useMemo(() => {
@@ -714,6 +773,7 @@ function GraphCanvas({ apiRef, overview, full, grouped, onCenter, onInspect, nod
       onNodeDoubleClick={(_, node) => { if (node.type === "brain") onCenter(node.data.node); }} onNodeClick={(_, node) => { if (node.type === "brain") onSelect(node.data.node); }} onPaneClick={() => onSelect(null)}
       onNodeMouseEnter={(_, node) => setHoverId(node.id)} onNodeMouseLeave={() => setHoverId(null)}
       onMove={onMove} onMoveEnd={(_, nextViewport) => { setZoom(nextViewport.zoom); onViewportChange(nextViewport); }}
+      onlyRenderVisibleElements={flowNodes.length > VIEWPORT_ONLY_ABOVE}
       defaultViewport={initialViewport.current || leftAnchor || undefined} zoomOnDoubleClick={false} fitView={!initialViewport.current && !leftAnchor} fitViewOptions={fitOptions} minZoom={0.08} maxZoom={2}
       nodesDraggable={false} nodesConnectable={false} edgesFocusable={false} disableKeyboardA11y deleteKeyCode={null} selectionKeyCode={null} multiSelectionKeyCode={null} proOptions={{ hideAttribution: true }}>
       <Background gap={20} size={1.2} color="var(--grid-dot)" />
@@ -746,7 +806,8 @@ function BrainFlowNode({ data, selected }) {
   const StatusIcon = data.warning ? TriangleAlert : STATUS_GLYPHS[node.status];
   const vertical = data.direction === "TB";
   const count = node.explorerDescendantCount || 0;
-  return <div className={`flow-node artifact-node ${data.isGroup ? "explorer-group-node" : ""} ${selected ? "selected" : ""} ${suggested ? "is-suggested" : ""} ${data.warning ? "has-warning" : ""}`} style={{ "--artifact-color": data.color }} title={`${kindLabel(node)} · ${name}${data.isGroup ? ` · ${count} inside` : ""}`} data-type={node.type}>
+  const stacked = node.familySize > 1 && node.versionCount > 1;
+  return <div className={`flow-node artifact-node ${data.isGroup ? "explorer-group-node" : ""} ${selected ? "selected" : ""} ${suggested ? "is-suggested" : ""} ${data.warning ? "has-warning" : ""} ${data.twoLine ? "is-two-line" : ""} ${stacked ? "is-stack" : ""}`} style={{ "--artifact-color": data.color }} title={`${kindLabel(node)} · ${name}${data.isGroup ? ` · ${count} inside` : ""}${data.versions ? `\n${data.versions}` : ""}`} data-type={node.type}>
     <Handle type="target" position={vertical ? Position.Top : Position.Left} className="flow-handle" isConnectable={false} />
     <TypeGlyph node={node} colors={data.colors} />
     <span className="flow-node-text">
@@ -755,6 +816,7 @@ function BrainFlowNode({ data, selected }) {
       {data.displayName !== name ? <span className="sr-only" translate="no">{name}</span> : null}
       {data.isGroup ? <span className="flow-node-meta" data-ui-number="">{count} inside</span> : null}
     </span>
+    <VersionBadge node={node} note={data.versions} />
     {StatusIcon ? <span className={`flow-node-status ${data.warning ? "warning" : node.status}`} aria-hidden="true"><StatusIcon /></span> : null}
     {data.isGroup ? <button type="button" className="graph-group-toggle nodrag nopan" aria-label={`${node.explorerExpanded ? "Collapse" : "Expand"} ${name}`} aria-expanded={node.explorerExpanded} title={`${count} loaded objects inside`} onMouseDown={(event) => event.stopPropagation()} onDoubleClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()} onClick={(event) => { event.stopPropagation(); data.onToggleGroup(node.id); }}>
       <ChevronRight aria-hidden="true" />

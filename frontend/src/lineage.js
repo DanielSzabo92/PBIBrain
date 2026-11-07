@@ -34,6 +34,9 @@ export function laneOf(node) {
 // Edges whose canonical direction is "dependent → dependency": data flows the other way.
 const DEPENDENCY = new Set(["DEPENDS_ON", "REFERENCES", "USES", "USES_MODEL", "FILTERS", "MODIFIES_FILTER", "CONTROLLED_BY", "ACTIVATES_RELATIONSHIP", "MODIFIES_RELATIONSHIP"]);
 const OWNERSHIP = new Set(["CONTAINS", "BELONGS_TO", "HAS_OPTION"]);
+/** A link drawn across lanes that are switched off: it stands for a chain through hidden objects. */
+export const THROUGH = "THROUGH_HIDDEN";
+const LINEAGE_LINKS = new Set([...DEPENDENCY, ...OWNERSHIP, THROUGH]);
 
 /**
  * The flow orientation of an edge: `{ from, to }` so that data runs from `from` into `to`.
@@ -48,11 +51,21 @@ export function flowEnds(edge, laneById) {
 
 const compareName = (left, right) => objectName(left).localeCompare(objectName(right), undefined, { numeric: true, sensitivity: "base" }) || left.id.localeCompare(right.id);
 
+// Lane widths follow their longest name (LR): never narrower than a node, never wider than MAX_LANE_WIDTH.
+// A name that still does not fit wraps to a second line (TWO_LINE_HEIGHT) before it is shortened.
+export const MAX_LANE_WIDTH = 280;
+export const TWO_LINE_HEIGHT = 48;
+// Node chrome around the name (app.css .flow-node): border, padding, type chip and gaps, room for a badge.
+export const NAME_CHROME = 2 + 3 + 24 + 8 + 10;
+const ZOOM_SLACK = 1.3;
+const estimate = (text) => String(text).length * 7;
+
 /**
  * Lay nodes out in lineage lanes.
- * @returns {{ nodes: {node, position, width, height}[], edges: {edge, from, to}[], lanes: {key,label,count,x,y,width}[] }}
+ * `measure(text)` gives the rendered width of a name; lanes widen to fit names and long names take two lines.
+ * @returns {{ nodes: {node, position, width, height, lines}[], edges: {edge, from, to}[], lanes: {key,label,count,x,y,width}[] }}
  */
-export function layoutLineage(nodes, edges, direction = "LR", { laneGap = 64, rowGap = 8, ownerGap = 16 } = {}) {
+export function layoutLineage(nodes, edges, direction = "LR", { laneGap = 64, rowGap = 8, ownerGap = 16, measure = estimate, badge = () => 0 } = {}) {
   const byId = new Map(nodes.map((node) => [node.id, node]));
   const laneById = new Map(nodes.map((node) => [node.id, laneOf(node)]));
   const valid = edges.filter((edge) => byId.has(edge.from_id) && byId.has(edge.to_id) && edge.from_id !== edge.to_id);
@@ -118,28 +131,37 @@ export function layoutLineage(nodes, edges, direction = "LR", { laneGap = 64, ro
   });
   for (let pass = 0; pass < 3; pass += 1) { sweep(used.slice(1)); sweep([...used].reverse().slice(1)); }
 
-  // Positions: each lane is a column (LR) or a row (TB), top-aligned under one row of lane headers, with a small gap between owners.
+  // Sizes: a lane is as wide as its longest name allows (LR); names beyond that wrap to two lines.
   const horizontal = direction !== "TB";
-  const along = horizontal ? NODE_HEIGHT : NODE_WIDTH;
-  const extents = used.map((lane) => {
-    let size = 0, previous = null;
-    laneNodes[lane].forEach((node, index) => { const key = ownerKey(node); size += (index ? rowGap : 0) + (index && key !== previous ? ownerGap : 0) + along; previous = key; });
-    return size;
+  const widths = new Map(), lines = new Map();
+  used.forEach((lane) => {
+    const need = (node) => measure(objectName(node)) + badge(node);
+    const longest = Math.max(0, ...laneNodes[lane].map(need));
+    // Slack: names are counter-scaled to stay readable when zoomed out, so they need more room than at 100%.
+    const width = horizontal ? Math.min(MAX_LANE_WIDTH, Math.max(NODE_WIDTH, Math.ceil(longest * ZOOM_SLACK + NAME_CHROME))) : NODE_WIDTH;
+    widths.set(lane, width);
+    laneNodes[lane].forEach((node) => lines.set(node.id, need(node) > width - NAME_CHROME ? 2 : 1));
   });
-  const tallest = Math.max(0, ...extents);
+  const heightOf = (node) => (lines.get(node.id) === 2 ? TWO_LINE_HEIGHT : NODE_HEIGHT);
+  const laneHeight = (lane) => Math.max(NODE_HEIGHT, ...laneNodes[lane].map(heightOf));
+
+  // Positions: each lane is a column (LR) or a row (TB), top-aligned under one row of lane headers, with a small gap between owners.
   const placed = [];
   const lanes = [];
-  used.forEach((lane, column) => {
-    const cross = column * ((horizontal ? NODE_WIDTH : NODE_HEIGHT) + laneGap);
+  let cross = 0;
+  used.forEach((lane) => {
+    const width = widths.get(lane);
     let cursor = 0, previous = null;
     laneNodes[lane].forEach((node, index) => {
       const key = ownerKey(node);
       if (index) cursor += rowGap + (key !== previous ? ownerGap : 0);
       previous = key;
-      placed.push({ node, position: horizontal ? { x: cross, y: cursor } : { x: cursor, y: cross }, width: NODE_WIDTH, height: NODE_HEIGHT });
-      cursor += along;
+      const height = horizontal ? heightOf(node) : laneHeight(lane);
+      placed.push({ node, position: horizontal ? { x: cross, y: cursor } : { x: cursor, y: cross }, width, height, lines: lines.get(node.id) });
+      cursor += horizontal ? height : width;
     });
-    lanes.push({ key: LANES[lane].key, label: LANES[lane].label, count: laneNodes[lane].length, index: lane, x: horizontal ? cross : -NODE_WIDTH - 40, y: horizontal ? -40 : cross, width: horizontal ? NODE_WIDTH : NODE_WIDTH });
+    lanes.push({ key: LANES[lane].key, label: LANES[lane].label, count: laneNodes[lane].length, index: lane, x: horizontal ? cross : -NODE_WIDTH - 40, y: horizontal ? -40 : cross, width: horizontal ? width : NODE_WIDTH });
+    cross += (horizontal ? width : laneHeight(lane)) + laneGap;
   });
 
   return {
@@ -158,7 +180,7 @@ export function lineageOf(id, flowEdges) {
   const into = new Map(), out = new Map();
   flowEdges.forEach(({ edge, from, to }) => {
     // Only real data flow: "observed with", semantic and similarity links are context, not lineage.
-    if (!DEPENDENCY.has(edge.type) && !OWNERSHIP.has(edge.type)) return;
+    if (!LINEAGE_LINKS.has(edge.type)) return;
     if (!into.has(to)) into.set(to, []);
     if (!out.has(from)) out.set(from, []);
     into.get(to).push({ id: from, edge });
@@ -180,4 +202,53 @@ export function lineageOf(id, flowEdges) {
   const up = walk(id, into);
   const down = walk(id, out);
   return { ids: new Set([...up.ids, ...down.ids]), edgeIds: new Set([...up.edgeIds, ...down.edgeIds]), upstream: up.ids, downstream: down.ids };
+}
+
+// Cap on the links drawn across hidden lanes, so switching off a busy lane never builds a hairball.
+const MAX_THROUGH_LINKS = 20000;
+
+/**
+ * Switch lanes off without breaking the chains that run through them: objects in `hiddenLanes` (lane keys)
+ * leave the picture, and every chain that passed through them becomes one THROUGH link from the last shown
+ * object before them to the first shown object after them. With Columns off, a table links straight to the
+ * measures and visuals that use its columns.
+ */
+export function hideLanes(nodes, edges, hiddenLanes) {
+  const hidden = new Set(hiddenLanes || []);
+  if (!hidden.size) return { nodes, edges };
+  const laneById = new Map(nodes.map((node) => [node.id, laneOf(node)]));
+  const isHidden = (id) => hidden.has(LANES[laneById.get(id)]?.key);
+  const shownNodes = nodes.filter((node) => !isHidden(node.id));
+  const out = new Map();
+  edges.forEach((edge) => {
+    if (!laneById.has(edge.from_id) || !laneById.has(edge.to_id) || !LINEAGE_LINKS.has(edge.type)) return;
+    const { from, to } = flowEnds(edge, laneById);
+    if (!out.has(from)) out.set(from, []);
+    out.get(from).push(to);
+  });
+  const kept = edges.filter((edge) => laneById.has(edge.from_id) && laneById.has(edge.to_id) && !isHidden(edge.from_id) && !isHidden(edge.to_id));
+  const direct = new Set(kept.map((edge) => { const { from, to } = flowEnds(edge, laneById); return `${from}\u0000${to}`; }));
+  const through = [];
+  for (const node of shownNodes) {
+    // Walk forward through hidden objects only; every shown object reached that way gets one link.
+    const starts = (out.get(node.id) || []).filter(isHidden);
+    if (!starts.length) continue;
+    const seen = new Set(starts), queue = [...starts], reached = new Set();
+    while (queue.length) {
+      const current = queue.pop();
+      (out.get(current) || []).forEach((next) => {
+        if (next === node.id) return;
+        if (!isHidden(next)) { reached.add(next); return; }
+        if (!seen.has(next)) { seen.add(next); queue.push(next); }
+      });
+    }
+    for (const target of reached) {
+      const key = `${node.id}\u0000${target}`;
+      if (direct.has(key)) continue;
+      direct.add(key);
+      through.push({ id: `through:${node.id}>${target}`, type: THROUGH, from_id: node.id, to_id: target, status: "factual", evidence_class: "FACT" });
+      if (through.length >= MAX_THROUGH_LINKS) return { nodes: shownNodes, edges: [...kept, ...through], capped: true };
+    }
+  }
+  return { nodes: shownNodes, edges: [...kept, ...through] };
 }

@@ -147,7 +147,7 @@ test("failed decisions remain reviewable and command buttons work without WebGL"
   expect(errors).toEqual([]);
 });
 
-test("large native scans start bounded and search finds objects beyond the first slice", async ({ page, request }) => {
+test("large native scans load whole in Lineage and search finds any object", async ({ page, request }) => {
   test.setTimeout(60000);
   const original = await (await request.get("/api/config")).json();
   const folder = await mkdtemp(path.join(tmpdir(), "pbibrain-large-ui-"));
@@ -159,8 +159,9 @@ test("large native scans start bounded and search finds objects beyond the first
     await page.goto("/");
     await page.getByRole("button", { name: "Graph", exact: true }).click();
     await page.getByRole("tab", { name: "Lineage", exact: true }).click();
-    await expect(page.locator(".react-flow__node-brain")).toHaveCount(80);
-    await expect(page.locator(".scope-notice")).toContainText("80 of 183");
+    // Lineage reads the whole scope (no object limit), so nothing is cut off.
+    await expect(page.locator(".react-flow__node-brain")).toHaveCount(183);
+    await expect(page.locator(".scope-notice")).toHaveCount(0);
     await page.getByRole("searchbox", { name: "Filter graph objects" }).fill("Scenario 174");
     await expect(page.locator(".react-flow__node-brain")).toHaveCount(1);
     await expect(page.locator(".flow-node-name")).toHaveText("Scenario 174");
@@ -217,7 +218,8 @@ test("native scan exposes full report hierarchy and matching visual bindings", a
     await page.goto("/");
     await page.getByRole("button", { name: "Graph", exact: true }).click();
   await page.getByRole("tab", { name: "Lineage", exact: true }).click();
-    await expect(page.locator(".react-flow__node-brain")).toHaveCount(graph.nodes.length);
+    const whole = await (await request.get("/api/lineage")).json();
+    await expect(page.locator(".react-flow__node-brain")).toHaveCount(whole.nodes.length);
     const card = page.locator(".react-flow__node-brain").filter({ hasText: "Revenue trend" });
     // The node shows the type as a glyph; its accessible name carries the visual kind.
     await expect(card).toHaveAttribute("aria-label", /^Line Chart Revenue trend/);
