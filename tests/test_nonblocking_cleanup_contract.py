@@ -156,13 +156,16 @@ class InspectorCleanupContractTests(unittest.TestCase):
 
     def test_flow_nodes_are_keyboard_operable_and_semantically_focusable(self):
         source = (ROOT / "frontend" / "src" / "components" / "GraphView.jsx").read_text(encoding="utf-8")
-        # React Flow owns the one focusable wrapper and its Enter/Space handler.
-        # Browser acceptance also exercises both keys against the rendered nodes.
+        # React Flow owns the one focusable wrapper per node. Since the visual-contract graph rework
+        # (2026-11-07) the canvas handles the keys itself: Enter selects (a second Enter opens the
+        # Inspector), Space expands or selects, arrows move along links. Browser acceptance
+        # (graphExplorer.spec.js keyboard round trip) exercises these against rendered nodes.
         self.assertRegex(source, r'ariaRole\s*:\s*["\']button["\']')
         self.assertIn("ariaLabel:", source)
-        self.assertIn("onNodesChange=", source)
-        self.assertIn('change.type === "select"', source)
-        self.assertNotIn("disableKeyboardA11y={true}", source)
+        self.assertIn('event.key === "Enter"', source)
+        self.assertIn('event.key === " "', source)
+        self.assertIn('event.key.startsWith("Arrow")', source)
+        self.assertIn("onKeyDown={onKeyDown}", source)
         self.assertNotIn("nodesFocusable={false}", source)
 
 

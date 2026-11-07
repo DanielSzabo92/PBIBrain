@@ -14,7 +14,7 @@ from backend.context import get_context as build_context
 from backend.devcenter.http_routes import dispatch as devcenter_dispatch
 from backend.graph.repository import GraphRepository
 
-from .graph import find_path, get_graph
+from .graph import find_path, get_graph, get_lineage
 from .objects import (
     get_dependencies,
     get_dependents,
@@ -313,6 +313,9 @@ class BrainAPI:
     def get_graph(self, **kwargs: Any) -> dict[str, Any]:
         return get_graph(self.repository, store=self.overrides, **kwargs)
 
+    def get_lineage(self, **kwargs: Any) -> dict[str, Any]:
+        return get_lineage(self.repository, store=self.overrides, **kwargs)
+
     def get_review_queue(self, **kwargs: Any) -> list[dict[str, Any]]:
         return get_review_queue(self.repository, self.overrides, **kwargs)
 
@@ -507,6 +510,8 @@ class BrainApp:
                 payload = self._json_body(body)
                 object_ids = payload.get("object_ids", payload.get("ids", payload.get("objects", [])))
                 return 200, self.api.validate_selection(object_ids)
+            if method == "GET" and parts == ["lineage"]:
+                return 200, self.api.get_lineage(model_id=self._query_values(query, "model_id"), report_id=self._query_values(query, "report_id"))
             if method == "GET" and parts and parts[0] == "graph":
                 params: dict[str, Any] = {
                     "query": str(self._query_values(query, "query") or ""),

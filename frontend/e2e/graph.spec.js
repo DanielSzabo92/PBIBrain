@@ -105,7 +105,9 @@ test("project color mapping persists through reload and drives nodes, minimap, a
     await expect(page.getByRole("textbox", { name: "Visual hex color", exact: true })).toHaveValue("#34d399");
     // The minimap appears only for graphs of more than 30 objects, so pad the real graph with
     // unconnected columns; the two visuals still carry the saved colour.
-    await page.route("**/api/graph?**", async (route) => {
+    // Lineage reads the whole-scope payload (/api/lineage); the other views read /api/graph.
+    const graphRequests = /\/api\/(graph|lineage)(\?|$)/;
+    await page.route(graphRequests, async (route) => {
       const body = await (await route.fetch()).json();
       const filler = Array.from({ length: 30 }, (_, index) => ({ id: `filler-${index}`, name: `Filler ${index}`, type: "COLUMN", status: "factual", artifact_group: "model" }));
       await route.fulfill({ json: { ...body, nodes: [...body.nodes, ...filler], total_nodes: (body.total_nodes || body.nodes.length) + filler.length } });
@@ -119,7 +121,7 @@ test("project color mapping persists through reload and drives nodes, minimap, a
     await openTypes(page);
     await expect(page.getByLabel("Graph color legend").locator(".graph-type-row").filter({ hasText: "Visual" }).locator(".type-glyph")).toHaveCSS("color", "rgb(52, 211, 153)");
     await page.keyboard.press("Escape");
-    await page.unroute("**/api/graph?**");
+    await page.unroute(graphRequests);
     await page.getByRole("button", { name: "Settings", exact: true }).click();
     await page.getByRole("tab", { name: "Graph colors", exact: true }).click();
     await page.getByText("Customize colors", { exact: true }).click();
@@ -255,4 +257,25 @@ test("shared shadcn controls preserve search, full inspector, review, and source
   await expect(page.getByLabel("Brain database", { exact: false })).toHaveCount(0);
   await page.screenshot({ path: "test-results/project-settings.png", fullPage: true });
   expect(errors).toEqual([]);
+});
+
+test("lane chips list lanes in dependency order and switch a lane off in Lineage and Matrix", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "Graph", exact: true }).click();
+  await page.getByRole("tab", { name: "Lineage", exact: true }).click();
+  const chips = page.getByRole("toolbar", { name: "Lanes, in dependency order" }).getByRole("button");
+  await expect(chips.first()).toContainText("Models");
+  const labels = await chips.allTextContents();
+  const order = ["Models", "Tables", "Columns", "Calculations", "Visuals", "Pages", "Reports"];
+  expect(labels.map((text) => order.findIndex((lane) => text.startsWith(lane)))).toEqual([...labels.keys()].map((index) => index));
+  await expect(page.locator('.flow-node[data-type="MEASURE"]')).not.toHaveCount(0);
+  await chips.filter({ hasText: "Calculations" }).click();
+  await expect(chips.filter({ hasText: "Calculations" })).toHaveAttribute("aria-pressed", "false");
+  await expect(page.locator('.flow-node[data-type="MEASURE"]')).toHaveCount(0);
+  // The visuals still trace back to the columns their measures used.
+  await page.locator(".react-flow__node-brain").filter({ hasText: "Target card" }).click();
+  await expect(page.locator(".react-flow__node-brain:not(.is-dimmed)").filter({ hasText: "Amount" })).toHaveCount(1);
+  await page.getByRole("tab", { name: "Matrix", exact: true }).click();
+  await expect(page.locator(".mx-object-row")).toHaveCount(2);
+  await expect(page.locator(".mx-object-row").filter({ hasText: "Net Sales" })).toHaveCount(0);
 });

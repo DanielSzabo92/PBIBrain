@@ -85,6 +85,14 @@ export function createBrainTransport({ baseUrl = API_ROOT, fetcher = globalThis.
       }
       return request(`/graph?${params}`);
     },
+    /** The whole factual structure of a scope, compact and without an object limit (lineage and matrix). */
+    getLineage({ modelId = "", reportId = "" } = {}) {
+      const params = new URLSearchParams();
+      if (modelId) params.set("model_id", modelId);
+      if (reportId) params.set("report_id", reportId);
+      const search = String(params);
+      return request(`/lineage${search ? `?${search}` : ""}`);
+    },
     getObject(id) {
       return request(`/objects/${encodeURIComponent(id)}`);
     },

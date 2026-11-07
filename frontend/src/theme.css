@@ -141,7 +141,7 @@
   --warn-tint: #2f291f;
   --bad-tint: #2f2223;
   --info-tint: #202831;
-  --brand-tint: var(--surface-3);
+  --brand-tint: #262628;
   /* Destructive fill: text and icon on --bad, and the hover fill. */
   --bad-ink: #0e0e10;
   --bad-strong: #f49a9a;
@@ -246,11 +246,11 @@
   --info: #216a9f;
   --info-soft: rgb(42 127 192 / 0.1);
 
-  --ok-tint: #ecf4f0;
-  --warn-tint: #f6f1ec;
-  --bad-tint: #faeeee;
-  --info-tint: #edf3f7;
-  --brand-tint: var(--surface-3);
+  --ok-tint: #e9f5f0;
+  --warn-tint: #f8f1e7;
+  --bad-tint: #fbefef;
+  --info-tint: #eaf2f9;
+  --brand-tint: #f1f1f1;
   --bad-ink: #ffffff;
   --bad-strong: #9f2626;
 

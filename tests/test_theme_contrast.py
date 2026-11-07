@@ -1,7 +1,8 @@
 """Contrast of the theme.css tokens in the dark and the light theme (UI design A2, A3).
 
 The expected values are the ticket 01 measurement
-(.scratch/dev-center-ui/gates/theme-contrast-2026-10-31.txt). The test computes
+(.scratch/dev-center-ui/gates/theme-contrast-2026-10-31.txt), re-measured on
+2026-11-07 for the ink-accent palette of docs/design/visual-contract.md. The test computes
 each ratio again from frontend/src/theme.css with the WCAG 2.2 formula, so a
 token change that is not measured again makes this test fail.
 """
@@ -29,52 +30,52 @@ NON_TEXT_MIN = 3.0
 # Ticket 01 values. Rows: foreground token, then one value for each surface of SURFACES.
 TICKET_01_TEXT = {
     "dark": {
-        "text": (16.74, 16.39, 15.64, 14.90, 13.77, 14.26),
-        "text-2": (8.12, 7.95, 7.59, 7.23, 6.68, 6.92),
-        "text-3": (6.76, 6.62, 6.32, 6.02, 5.56, 5.76),
-        "brand": (7.47, 7.32, 6.98, 6.65, 6.15, 6.36),
-        "brand-strong": (9.63, 9.43, 9.00, 8.57, 7.92, 8.20),
-        "ok": (10.10, 9.89, 9.44, 8.99, 8.31, 8.60),
-        "warn": (10.85, 10.62, 10.14, 9.65, 8.92, 9.24),
-        "bad": (7.49, 7.34, 7.00, 6.67, 6.17, 6.38),
-        "info": (8.94, 8.76, 8.36, 7.96, 7.36, 7.62),
+        "text": (16.35, 15.99, 15.46, 14.72, 13.61, 14.25),
+        "text-2": (9.35, 9.15, 8.85, 8.42, 7.79, 8.16),
+        "text-3": (5.94, 5.81, 5.62, 5.35, 4.94, 5.18),
+        "brand": (16.35, 15.99, 15.46, 14.72, 13.61, 14.25),
+        "brand-strong": (19.28, 18.86, 18.24, 17.36, 16.06, 16.82),
+        "ok": (9.96, 9.74, 9.42, 8.97, 8.29, 8.69),
+        "warn": (10.69, 10.46, 10.11, 9.63, 8.91, 9.33),
+        "bad": (7.39, 7.23, 6.99, 6.65, 6.15, 6.44),
+        "info": (8.82, 8.62, 8.34, 7.94, 7.34, 7.69),
     },
     "light": {
-        "text": (16.55, 15.55, 17.91, 17.00, 15.70, 15.84),
-        "text-2": (5.90, 5.54, 6.38, 6.06, 5.59, 5.64),
-        "text-3": (5.01, 4.71, 5.42, 5.15, 4.75, 4.80),
-        "brand": (5.10, 4.79, 5.52, 5.24, 4.84, 4.88),
-        "brand-strong": (6.71, 6.30, 7.26, 6.89, 6.36, 6.42),
-        "ok": (5.43, 5.10, 5.87, 5.58, 5.15, 5.19),
-        "warn": (5.79, 5.43, 6.26, 5.94, 5.49, 5.54),
-        "bad": (5.35, 5.02, 5.79, 5.49, 5.07, 5.12),
-        "info": (5.35, 5.03, 5.79, 5.50, 5.07, 5.12),
+        "text": (16.53, 15.53, 17.73, 16.97, 15.67, 15.95),
+        "text-2": (7.81, 7.33, 8.37, 8.01, 7.40, 7.53),
+        "text-3": (5.30, 4.98, 5.69, 5.44, 5.03, 5.12),
+        "brand": (16.53, 15.53, 17.73, 16.97, 15.67, 15.95),
+        "brand-strong": (19.58, 18.39, 21.00, 20.09, 18.56, 18.89),
+        "ok": (5.48, 5.14, 5.87, 5.62, 5.19, 5.28),
+        "warn": (5.84, 5.48, 6.26, 5.99, 5.53, 5.63),
+        "bad": (5.39, 5.07, 5.79, 5.54, 5.11, 5.20),
+        "info": (5.40, 5.07, 5.79, 5.54, 5.12, 5.21),
     },
 }
 # Status token on its "-soft" tint, composed over "surface" and over "bg".
 TICKET_01_SOFT = {
-    "dark": {"ok": (7.61, 8.39), "warn": (8.03, 8.87), "bad": (5.87, 6.45), "info": (6.83, 7.52), "brand": (5.80, 6.37)},
-    "light": {"ok": (5.25, 4.87), "warn": (5.58, 5.19), "bad": (5.15, 4.79), "info": (5.12, 4.76), "brand": (4.87, 4.53)},
+    "dark": {"ok": (7.58, 8.20), "warn": (7.99, 8.71), "bad": (5.86, 6.30), "info": (6.81, 7.34), "brand": (12.80, 13.79)},
+    "light": {"ok": (5.25, 4.92), "warn": (5.58, 5.24), "bad": (5.15, 4.83), "info": (5.12, 4.79), "brand": (15.70, 14.72)},
 }
 TICKET_01_INK = {
-    "dark": (7.41, 9.56, 16.74),
-    "light": (5.52, 7.26, 17.91),
+    "dark": (16.35, 19.28, 16.35),
+    "light": (17.73, 21.00, 17.73),
 }
 # Rows: token, then one value for each surface of NON_TEXT_SURFACES.
 TICKET_01_NON_TEXT = {
     "dark": {
-        "control-border": (4.01, 3.74, 3.57),
-        "brand": (7.47, 6.98, 6.65),
-        "line": (1.23, 1.15, 1.09),
-        "line-strong": (1.46, 1.36, 1.30),
-        "line-focus": (1.85, 1.73, 1.65),
+        "control-border": (3.65, 3.45, 3.29),
+        "brand": (16.35, 15.46, 14.72),
+        "line": (1.28, 1.21, 1.15),
+        "line-strong": (1.53, 1.45, 1.38),
+        "line-focus": (2.03, 1.92, 1.82),
     },
     "light": {
-        "control-border": (3.25, 3.52, 3.34),
-        "brand": (5.10, 5.52, 5.24),
-        "line": (1.16, 1.26, 1.20),
-        "line-strong": (1.36, 1.47, 1.40),
-        "line-focus": (1.76, 1.90, 1.81),
+        "control-border": (3.42, 3.66, 3.51),
+        "brand": (16.53, 17.73, 16.97),
+        "line": (1.19, 1.27, 1.22),
+        "line-strong": (1.40, 1.50, 1.44),
+        "line-focus": (1.77, 1.90, 1.82),
     },
 }
 
@@ -82,32 +83,32 @@ TICKET_01_NON_TEXT = {
 # UI design 7.4 (ticket 09 section 2.4). Rows: foreground, background, minimum, dark value, light value.
 # The tokens can be aliases (var(--x)); the test follows each alias to its color.
 SECTION_7_4_PAIRS = (
-    ("ok", "ok-tint", TEXT_MIN, 7.61, 5.25),
-    ("warn", "warn-tint", TEXT_MIN, 8.03, 5.58),
-    ("bad", "bad-tint", TEXT_MIN, 5.87, 5.15),
-    ("info", "info-tint", TEXT_MIN, 6.83, 5.12),
-    ("brand", "brand-tint", TEXT_MIN, 5.80, 4.87),
-    ("proposal", "proposal-tint", TEXT_MIN, 7.47, 6.41),
-    ("text-2", "row-active", TEXT_MIN, 6.30, 5.63),
-    ("text-3", "row-active", TEXT_MIN, 5.24, 4.79),
-    ("text-2", "row-selected", TEXT_MIN, 6.68, 5.59),
+    ("ok", "ok-tint", TEXT_MIN, 7.58, 5.25),
+    ("warn", "warn-tint", TEXT_MIN, 7.99, 5.58),
+    ("bad", "bad-tint", TEXT_MIN, 5.86, 5.15),
+    ("info", "info-tint", TEXT_MIN, 6.81, 5.12),
+    ("brand", "brand-tint", TEXT_MIN, 12.80, 15.70),
+    ("proposal", "proposal-tint", TEXT_MIN, 7.79, 7.40),
+    ("text-2", "row-active", TEXT_MIN, 7.79, 7.40),
+    ("text-3", "row-active", TEXT_MIN, 4.94, 5.03),
+    ("text-2", "row-selected", TEXT_MIN, 7.79, 7.40),
     # U-fix-1: the destructive Button fill and its hover.
-    ("bad-ink", "bad", TEXT_MIN, 7.49, 5.79),
-    ("bad-ink", "bad-strong", TEXT_MIN, 9.25, 7.56),
-    ("bad", "surface", TEXT_MIN, 7.00, 5.79),
+    ("bad-ink", "bad", TEXT_MIN, 7.39, 5.79),
+    ("bad-ink", "bad-strong", TEXT_MIN, 9.12, 7.56),
+    ("bad", "surface", TEXT_MIN, 6.99, 5.79),
     # Edge of the destructive hover fill against the page.
-    ("bad-strong", "surface", NON_TEXT_MIN, 8.65, 7.56),
-    ("ring", "row-active", NON_TEXT_MIN, 5.80, 4.87),
-    ("ring", "row-selected", NON_TEXT_MIN, 6.15, 4.84),
-    ("control-border", "row-active", NON_TEXT_MIN, 3.11, 3.11),
-    ("control-border", "row-selected", NON_TEXT_MIN, 3.30, 3.08),
+    ("bad-strong", "surface", NON_TEXT_MIN, 8.63, 7.56),
+    ("ring", "row-active", NON_TEXT_MIN, 13.61, 15.67),
+    ("ring", "row-selected", NON_TEXT_MIN, 13.61, 15.67),
+    ("control-border", "row-active", NON_TEXT_MIN, 3.04, 3.24),
+    ("control-border", "row-selected", NON_TEXT_MIN, 3.04, 3.24),
 )
 TINT_TOKENS = ("ok", "warn", "bad", "info", "brand")
 # Lowest value of "text" on each -tint token.
-TEXT_ON_TINT_LOWEST = {"dark": 12.39, "light": 15.81}
+TEXT_ON_TINT_LOWEST = {"dark": 12.21, "light": 15.68}
 # Wireframe status borders on "surface" (UI design 7.3). Lowest value.
 WIREFRAME_BORDERS = ("impact-removed", "impact-breaks", "impact-changes", "impact-new", "impact-unchecked", "impact-unchanged")
-WIREFRAME_BORDER_LOWEST = {"dark": 3.74, "light": 3.52}
+WIREFRAME_BORDER_LOWEST = {"dark": 3.45, "light": 3.66}
 
 
 def _block(css: str, selector: str) -> dict[str, str]:

@@ -107,6 +107,7 @@ test("a dense loaded slice starts compact, keeps counts honest, and retains the 
     edges.push({ id: `usage-${id}`, from_id: id, to_id: `table-0-field-${visual}`, type: "USES", evidence_class: "FACT" });
   }
   await page.route("**/api/graph?**", (route) => route.fulfill({ json: { nodes, edges, total_nodes: 400, truncated: true } }));
+  await page.route(/\/api\/lineage(\?|$)/, (route) => route.fulfill({ json: { nodes, edges, total_nodes: nodes.length, truncated: false } }));
   await page.goto("/");
   await page.getByRole("button", { name: "Graph", exact: true }).click();
   await expect(page.locator(".react-flow__node-brain")).toHaveCount(7);
