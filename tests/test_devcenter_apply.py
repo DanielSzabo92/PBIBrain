@@ -723,7 +723,7 @@ class GuardPipelineEndToEndTests(unittest.TestCase):
                     ok("source_add", {"base_revision": devcenter.revision, "path": str(root / name / f"{name}.pbip")})
                 ok("target_set", {"base_revision": devcenter.revision, "model": {"mode": "existing", "source_id": "src-1"},
                                   "report": {"mode": "existing", "source_id": "src-1"}})
-                for key in (PAGE, "measure:Sales/Total Sales"):
+                for key in (MARGIN, PAGE):
                     ok("merge_choice_set", {"base_revision": devcenter.revision, "row_key": key, "choice": TAKE_B})
                 original = source_manifest(root / "SalesA")
                 status, preview = app.handle("GET", "/api/devcenter/apply/preview")

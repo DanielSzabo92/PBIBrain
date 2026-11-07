@@ -9,7 +9,7 @@ def reference_project(root: Path, *, report: bool = False) -> Path:
     model.mkdir()
     def write(path: Path, value):
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps(value, indent=2) + "\n", encoding="utf-8")
+        path.write_text(json.dumps(value, indent=2) + "\n", encoding="utf-8", newline="\r\n")  # The bytes Windows wrote when the reference IDs were recorded.
     write(model / ".platform", {"metadata": {"displayName": "Sales", "type": "SemanticModel"}, "config": {"logicalId": "model-sales"}})
     database = {"name": "Sales", "id": "Sales", "compatibilityLevel": 1600, "model": {"culture": "en-US", "tables": [
         {"name": "Date", "lineageTag": "table-date", "columns": [{"name": "DateKey", "dataType": "int64", "sourceColumn": "DateKey", "lineageTag": "column-date"},

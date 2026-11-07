@@ -127,7 +127,7 @@ static class ModelWriter
             {
                 Directory.CreateDirectory(candidateFull);
             }
-            TmdlSerializer.SerializeDatabaseToFolder(database, candidateFull);
+            CanonicalTmdl.SerializeToFolder(database, candidateFull);
 
             // 6. Restore / preserve non-TMDL files
             foreach (var kvp in nonTmdlFiles)

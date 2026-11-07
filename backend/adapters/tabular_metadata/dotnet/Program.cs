@@ -35,7 +35,7 @@ try
     Dictionary<string, string>? documents = null;
     try
     {
-        TmdlSerializer.SerializeDatabaseToFolder(database, temporary);
+        CanonicalTmdl.SerializeToFolder(database, temporary);
         var roundtrip = TomJson.SerializeDatabase(TmdlSerializer.DeserializeDatabaseFromFolder(temporary));
         var roundtripNode = JsonNode.Parse(roundtrip)!;
         ExpandDefaults(roundtripNode, TmdlSerializer.DeserializeDatabaseFromFolder(temporary));

@@ -64,7 +64,7 @@ static class CanonicalCheck
         try
         {
             Database database = TmdlSerializer.DeserializeDatabaseFromFolder(fullPath);
-            TmdlSerializer.SerializeDatabaseToFolder(database, tempDir);
+            CanonicalTmdl.SerializeToFolder(database, tempDir);
 
             var sourceFiles = Directory.GetFiles(fullPath, "*.tmdl", SearchOption.AllDirectories)
                 .OrderBy(f => f, StringComparer.Ordinal)
