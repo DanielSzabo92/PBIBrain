@@ -5,6 +5,7 @@ import { Checkbox } from "./ui/checkbox";
 import { Label } from "./ui/label";
 import { TypeGlyph } from "./TypeGlyph";
 import { VersionBadge } from "./VersionBadge";
+import { OriginBadge } from "./OriginBadge";
 import { buildImpactMatrix } from "../matrix";
 import { LANES, laneOf } from "../lineage";
 import { groupVersions, versionNote } from "../versions";
@@ -191,7 +192,7 @@ export default function ImpactMatrix({ graph, error, onRetry, query, hiddenLanes
             <th className="mx-corner" rowSpan={headRows} scope="col"><span>Model objects</span><span className="mx-corner-x">Visuals →</span></th>
             {matrix.colGroups.map((group) => <th key={group.report.id} colSpan={reportSpan(group)} scope="colgroup" className="mx-report">
               <button type="button" className="mx-fold" aria-expanded={!fold.reports.has(group.report.id)} onClick={() => setFold("reports", group.report.id)} title={objectName(group.report)}>
-                {fold.reports.has(group.report.id) ? <ChevronRight aria-hidden="true" /> : <ChevronDown aria-hidden="true" />}<TypeGlyph node={group.report} colors={colors} size="xs" /><span translate="no">{objectName(group.report)}</span><VersionBadge node={group.report} note={versionNote(group.report, rawById)} />
+                {fold.reports.has(group.report.id) ? <ChevronRight aria-hidden="true" /> : <ChevronDown aria-hidden="true" />}<TypeGlyph node={group.report} colors={colors} size="xs" /><span translate="no">{objectName(group.report)}</span><VersionBadge node={group.report} note={versionNote(group.report, rawById)} /><OriginBadge node={group.report} />
               </button>
             </th>)}
             <th className="mx-total-head" rowSpan={headRows} scope="col">Used by</th>
@@ -218,7 +219,7 @@ export default function ImpactMatrix({ graph, error, onRetry, query, hiddenLanes
             if (row.kind === "model") return <tr key={`m:${row.key}`} className="mx-model-row">
               <th scope="rowgroup" colSpan={row.folded ? 1 : columns.length + 2}>
                 <button type="button" className="mx-fold" aria-expanded={!row.folded} onClick={() => setFold("models", row.key)}>
-                  {row.folded ? <ChevronRight aria-hidden="true" /> : <ChevronDown aria-hidden="true" />}<TypeGlyph node={row.node} colors={colors} size="xs" /><span translate="no">{objectName(row.node)}</span><VersionBadge node={row.node} note={versionNote(row.node, rawById)} /><span className="mx-dim" data-ui-number="">{row.count}</span>
+                  {row.folded ? <ChevronRight aria-hidden="true" /> : <ChevronDown aria-hidden="true" />}<TypeGlyph node={row.node} colors={colors} size="xs" /><span translate="no">{objectName(row.node)}</span><VersionBadge node={row.node} note={versionNote(row.node, rawById)} /><OriginBadge node={row.node} /><span className="mx-dim" data-ui-number="">{row.count}</span>
                 </button>
               </th>
               {row.folded ? <>{columns.map((column, index) => renderCell(row, column, index))}<td /></> : null}

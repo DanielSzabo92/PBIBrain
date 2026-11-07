@@ -387,6 +387,7 @@ class Normalizer:
         self._model_ids: list[str] = []
         self._report_ids: list[str] = []
         self._current_report: str | None = None
+        self._workspaces: dict[str, str] = {}
 
     @property
     def model_ids(self) -> list[str]:
@@ -395,6 +396,43 @@ class Normalizer:
     @property
     def report_ids(self) -> list[str]:
         return list(self._report_ids)
+
+    def _cloud_properties(self, raw: Mapping[str, Any]) -> dict[str, Any]:
+        """Properties of a project root read from the cloud (issue #9), with its WORKSPACE node."""
+
+        values: dict[str, Any] = {
+            "check_status": pick(raw, "check_status"),
+            "not_checked_reason": pick(raw, "not_checked_reason"),
+            "connection_workspace": pick(raw, "connection_workspace"),
+        }
+        cloud = raw.get("cloud_source")
+        if not isinstance(cloud, Mapping) or not cloud.get("workspace_id"):
+            return values
+        workspace_key = str(cloud["workspace_id"]).casefold()
+        workspace_id = self._workspaces.get(workspace_key)
+        if workspace_id is None:
+            workspace_id, workspace_source = self.identity.object_id(
+                "WORKSPACE", str(cloud["workspace_id"]), fallback=f"workspace:{cloud['workspace_id']}"
+            )
+            self._workspaces[workspace_key] = workspace_id
+            self._add(Node(
+                id=workspace_id,
+                type="WORKSPACE",
+                name=str(cloud.get("workspace_name") or cloud["workspace_id"]),
+                source_id=workspace_source,
+                properties={"origin": "cloud", "workspace_id": str(cloud["workspace_id"]),
+                            "workspace_name": cloud.get("workspace_name")},
+                source="model_metadata",
+            ))
+        values.update(
+            origin="cloud",
+            workspace_id=str(cloud["workspace_id"]),
+            workspace_name=cloud.get("workspace_name"),
+            workspace_node_id=workspace_id,
+            cloud_item_id=cloud.get("item_id"),
+            access_type=cloud.get("access_type"),
+        )
+        return values
 
     def _add(self, node: Node, *, aliases: Iterable[Any] = ()) -> Node:
         existing = self.nodes.get(node.id)
@@ -551,8 +589,8 @@ class Normalizer:
             properties=_raw_properties(
                 raw,
                 # Roles are SECURITY_ROLE nodes. Their members stay out of the graph.
-                exclude=("tables", "entities", "relationships", "measures", "roles"),
-                workspace_id=pick(raw, "workspace_id", "workspaceId"),
+                exclude=("tables", "entities", "relationships", "measures", "roles", "cloud_source"),
+                **{"workspace_id": pick(raw, "workspace_id", "workspaceId"), **self._cloud_properties(raw)},
                 compatibility_level=pick(raw, "compatibility_level", "compatibilityLevel"),
             ),
             source="model_metadata",
@@ -1044,8 +1082,10 @@ class Normalizer:
             source_id=report_effective_source,
             properties=_raw_properties(
                 raw,
-                exclude=("sections", "pages", "visualContainers", "report_extensions", "reportExtensions", "bookmarks"),
+                exclude=("sections", "pages", "visualContainers", "report_extensions", "reportExtensions", "bookmarks",
+                         "cloud_source"),
                 model_ref=_safe_value(model_ref),
+                **self._cloud_properties(raw),
             ),
             source="report_metadata",
         )

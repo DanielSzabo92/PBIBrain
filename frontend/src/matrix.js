@@ -6,7 +6,7 @@
 // model against a report that is not bound to it cannot have usage and is shown as not connected.
 
 import { flowEnds, laneOf, LANES } from "./lineage.js";
-import { objectName } from "./presentation.js";
+import { objectName, workspaceKey } from "./presentation.js";
 
 const ROW_LANES = new Set(LANES.flatMap((lane, index) => (lane.key === "column" || lane.key === "calc" ? [index] : [])));
 const VISUAL_LANE = LANES.findIndex((lane) => lane.key === "visual");
@@ -14,6 +14,8 @@ const FLOW = new Set(["DEPENDS_ON", "REFERENCES", "USES", "FILTERS", "MODIFIES_F
 const OWNERSHIP = new Set(["CONTAINS", "BELONGS_TO"]);
 const FILTER_TYPES = new Set(["PAGE_FILTER", "REPORT_FILTER"]);
 
+// Local roots first, then each cloud workspace as one block (issue #9).
+const byWorkspace = (left, right) => workspaceKey(left).localeCompare(workspaceKey(right), undefined, { sensitivity: "base" });
 const byName = (left, right) => objectName(left).localeCompare(objectName(right), undefined, { numeric: true, sensitivity: "base" }) || left.id.localeCompare(right.id);
 
 function owners(nodes, edges) {
@@ -116,7 +118,7 @@ export function buildImpactMatrix(nodes, edges, { visualFilters = true, pageFilt
   const rowGroups = [...rowTree].map(([model, tables]) => ({
     model: nodeOrStub(model, "MODEL", "Model"),
     tables: [...tables].map(([table, list]) => ({ table: nodeOrStub(table, "TABLE", "Model-level objects"), rows: list.sort((a, b) => (a.type === b.type ? 0 : a.type === "COLUMN" ? -1 : b.type === "COLUMN" ? 1 : a.type.localeCompare(b.type)) || byName(a, b)) })).sort((a, b) => byName(a.table, b.table)),
-  })).sort((a, b) => byName(a.model, b.model));
+  })).sort((a, b) => byWorkspace(a.model, b.model) || byName(a.model, b.model));
 
   // Column groups: report › page.
   const colTree = new Map();
@@ -130,7 +132,7 @@ export function buildImpactMatrix(nodes, edges, { visualFilters = true, pageFilt
   const colGroups = [...colTree].map(([report, pages]) => ({
     report: nodeOrStub(report, "REPORT", "Report"),
     pages: [...pages].map(([page, list]) => ({ page: nodeOrStub(page, "PAGE", "Page"), visuals: list.sort(byName) })).sort((a, b) => byName(a.page, b.page)),
-  })).sort((a, b) => byName(a.report, b.report));
+  })).sort((a, b) => byWorkspace(a.report, b.report) || byName(a.report, b.report));
 
   // Which models each report is bound to (USES_MODEL). Unknown bindings count as bound, so nothing is hidden.
   const bindings = new Map();
@@ -145,7 +147,7 @@ export function buildImpactMatrix(nodes, edges, { visualFilters = true, pageFilt
   // Reports follow the order of the model they are bound to, so model/report blocks run down the diagonal.
   const modelRank = new Map(rowGroups.map((group, index) => [group.model.id, index]));
   const reportRank = (group) => Math.min(rowGroups.length, ...[...(bindings.get(group.report.id) || [])].map((id) => modelRank.get(id) ?? rowGroups.length));
-  colGroups.sort((a, b) => reportRank(a) - reportRank(b) || byName(a.report, b.report));
+  colGroups.sort((a, b) => reportRank(a) - reportRank(b) || byWorkspace(a.report, b.report) || byName(a.report, b.report));
 
   return {
     rowGroups, colGroups, rows, visuals, usage, bound, modelOf, reportOf,

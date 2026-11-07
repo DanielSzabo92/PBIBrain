@@ -50,6 +50,21 @@ def _default_overrides_path() -> Path:
     return Path("config") / "overrides.json"
 
 
+def _root_summary(node: Any) -> dict[str, Any]:
+    """Id and name of a model or report, with where it lives and whether it was read (issue #9)."""
+
+    summary = {"id": node.id, "name": node.name}
+    properties = node.properties
+    if properties.get("origin") == "cloud":
+        summary.update(origin="cloud", workspace_name=properties.get("workspace_name"),
+                       workspace_id=properties.get("workspace_id"))
+    if properties.get("check_status") == "not_checked":
+        summary.update(check_status="not_checked", not_checked_reason=properties.get("not_checked_reason"))
+    if node.type == "REPORT" and node.model_id:
+        summary["model_id"] = node.model_id
+    return summary
+
+
 def get_overview(repository: GraphRepository, *, store: OverrideStore | None = None) -> dict[str, Any]:
     """Return the compact status/count payload used by the Overview screen."""
 
@@ -77,8 +92,12 @@ def get_overview(repository: GraphRepository, *, store: OverrideStore | None = N
         "reports": sum(1 for node in nodes if node.type == "REPORT"),
         "model_ids": sorted(node.id for node in nodes if node.type == "MODEL"),
         "report_ids": sorted(node.id for node in nodes if node.type == "REPORT"),
-        "model_objects": [{"id": node.id, "name": node.name} for node in nodes if node.type == "MODEL"],
-        "report_objects": [{"id": node.id, "name": node.name} for node in nodes if node.type == "REPORT"],
+        "model_objects": [_root_summary(node) for node in nodes if node.type == "MODEL"],
+        "report_objects": [_root_summary(node) for node in nodes if node.type == "REPORT"],
+        "workspaces": [{"id": node.id, "name": node.name, "workspace_id": node.properties.get("workspace_id")}
+                       for node in nodes if node.type == "WORKSPACE"],
+        "not_checked": [{**_root_summary(node), "type": node.type} for node in nodes
+                        if node.type in {"MODEL", "REPORT"} and node.properties.get("check_status") == "not_checked"],
         "storage": repository.storage,
         "last_scan": _last_scan(repository),
         "scan_state": "ready" if nodes else "empty",

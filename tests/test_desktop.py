@@ -154,6 +154,21 @@ class DesktopTests(unittest.TestCase):
         self.assertTrue(added["ok"])
         self.assertEqual(len(added["sources"]), 1)
 
+    def test_add_cloud_source_saves_one_entry_and_attaches_the_cloud_service(self):
+        self.controller.attach_server("http://127.0.0.1:8123")
+        self.assertTrue(self.controller.open_project("Cloud project", str(self.root))["ok"])
+        entry = {"kind": "cloud_model", "workspace_id": "ws-1", "workspace_name": "Sales", "item_id": "model-1", "name": "Sales model"}
+
+        first = self.controller.add_cloud_source(entry)
+        again = self.controller.add_cloud_source(entry)
+        rejected = self.controller.add_cloud_source({**entry, "item_id": "../bad"})
+
+        self.assertTrue(first["added"])
+        self.assertFalse(again["added"])
+        self.assertEqual([item["item_id"] for item in again["cloud_sources"]], ["model-1"])
+        self.assertFalse(rejected["ok"])
+        self.assertIsNotNone(self.controller._project_service.cloud)
+
     def test_shutdown_preserves_connection_marker_owned_by_another_session(self):
         source = self.root / "Project.pbip"
         source.write_text("{}", encoding="utf-8")
