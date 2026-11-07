@@ -28,7 +28,7 @@ skips in this shell. Existing README edits and untracked user files are preserve
 
 1. Documentation export: deterministic Markdown from the same project snapshot,
    with model/report inventories, exact DAX, relationships, lineage, source
-   evidence, unresolved bindings, and scan identity. Optional PDF rendering later.
+   evidence, unresolved bindings, and scan identity. PDF and scoped Markdown export from the app shipped with issue #15 (File › Export documentation…).
    Never turn inferred business meaning into asserted fact.
 2. Structural understanding: reuse scoped graph payloads for table relationships,
    report-to-model usage, and impact paths. No second graph store or 3D renderer.

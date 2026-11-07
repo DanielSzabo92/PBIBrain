@@ -58,6 +58,12 @@ def _parser() -> argparse.ArgumentParser:
     context.add_argument("--task", default=None)
     export_markdown = commands.add_parser("export-markdown", help="export the canonical project snapshot as Markdown")
     export_markdown.add_argument("--output", help="create a new Markdown file; stdout when omitted")
+    export_docs = commands.add_parser("export-docs", help="export scoped documentation as PDF or Markdown (the app has the same export)")
+    export_docs.add_argument("--format", choices=("pdf", "markdown"), default="pdf")
+    export_docs.add_argument("--output", required=True, help="create a new file")
+    export_docs.add_argument("--model-id", action="append", default=None, help="limit to these models (repeat); default all")
+    export_docs.add_argument("--report-id", action="append", default=None, help="limit to these reports (repeat); default all")
+    export_docs.add_argument("--section", action="append", default=None, help="limit to these sections (repeat); default all")
     commands.add_parser("project-scan", help="scan all sources in the configured Brain project")
     commands.add_parser("config", help="show resolved project configuration")
     impact = commands.add_parser("impact", help="read conservative downstream impact")
@@ -113,7 +119,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         serve(port=args.port, database_path=args.db, overrides_path=Path(args.identity).with_name("overrides.json"), config_path=args.config, static_dir=args.ui)
         return 0
     export_output = None
-    if args.command == "export-markdown" and args.output:
+    if args.command in {"export-markdown", "export-docs"} and args.output:
         from backend.documentation_export import UnsafeExportPathError, validate_output_path
 
         try:
@@ -157,6 +163,27 @@ def main(argv: Sequence[str] | None = None) -> int:
                 return 0
             try:
                 write_markdown(export_output, markdown)
+            except FileExistsError:
+                parser.error(f"Export output already exists: {export_output}")
+            except OSError as exc:
+                parser.error(f"Cannot create export output {export_output}: {exc}")
+            print(str(export_output))
+            return 0
+        if args.command == "export-docs":
+            from backend.api.review import OverrideStore
+            from backend.documentation_pdf import DocumentationScopeError, export_documentation
+
+            try:
+                result = export_documentation(
+                    repository, fmt=args.format, project_name=config["name"], model_ids=args.model_id,
+                    report_ids=args.report_id, sections=args.section,
+                    store=OverrideStore(Path(args.identity).with_name("overrides.json")),
+                )
+            except DocumentationScopeError as exc:
+                parser.error(str(exc))
+            try:
+                with export_output.open("xb") as handle:
+                    handle.write(result["data"])
             except FileExistsError:
                 parser.error(f"Export output already exists: {export_output}")
             except OSError as exc:
