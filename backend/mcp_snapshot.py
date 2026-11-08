@@ -87,15 +87,46 @@ def _display(path: Path, base: Path) -> str:
         return path.as_posix()
 
 
+def _own_files(config_path: Path) -> tuple[set[Path], tuple[str, ...]]:
+    """The files PBIBrain writes for this project, and the name prefixes of the database files (WAL, lock)."""
+
+    base = config_path.resolve().parent
+    files = {config_path.resolve(), snapshot_path(config_path), (base / "connection.json").resolve()}
+    prefixes: list[str] = []
+    try:
+        config = json.loads(config_path.read_text(encoding="utf-8"))
+        from backend.projects import _project_paths
+
+        paths = _project_paths(config, base)
+    except (OSError, ValueError, KeyError, TypeError):
+        paths = {}
+    for key, path in paths.items():
+        files.add(Path(path).resolve())
+        if key == "database":
+            prefixes.append(Path(path).name)
+    return files, tuple(prefixes)
+
+
 def source_fingerprint(config_path: str | Path, source_paths: Iterable[Path]) -> dict[str, str]:
     """``{file: sha256}`` for every file of the configured sources, paths relative to the config folder."""
 
     base = Path(config_path).resolve().parent
+    own_files, own_prefixes = _own_files(Path(config_path))
     hashes: dict[str, str] = {}
     for source in source_paths:
-        for path in _source_files(Path(source)):
-            if path.resolve().is_relative_to(base):
-                continue  # PBIBrain's own folder (this snapshot, the database) is not a source
+        source = Path(source)
+        root = (source.parent if source.suffix.casefold() == ".pbip" else source).resolve()
+        # A source below the config folder (``C:\Reports\brain.json`` with ``C:\Reports\Sales\Sales.pbip``)
+        # is hashed. A source that is the config folder or holds it (the app's ``<project>/.pbibrain``
+        # layout) leaves the config folder out: those files are PBIBrain's own.
+        below_base = root != base and root.is_relative_to(base)
+        for path in _source_files(source):
+            resolved = path.resolve()
+            if resolved in own_files or any(resolved.name.startswith(prefix) and resolved.parent == base
+                                            for prefix in own_prefixes):
+                continue
+            if not below_base and resolved.is_relative_to(base):
+                continue
             if len(hashes) >= MAX_SOURCE_FILES:
                 return hashes
             try:

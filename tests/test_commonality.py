@@ -183,5 +183,32 @@ class CommonalityRouteTests(unittest.TestCase):
         self.assertEqual(status, 400)
 
 
+class ScannedProjectTests(unittest.TestCase):
+    """Through the real project scan, which stamps a per-node source_fingerprint (it differs between models)."""
+
+    def test_identical_objects_of_two_scanned_pbip_models_are_identical(self):
+        import shutil
+        import tempfile
+        from pathlib import Path
+        from backend.projects import ProjectService
+
+        lab = Path(__file__).resolve().parent / "fixtures" / "merge_lab"
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            for name in ("SalesA", "SalesB"):
+                shutil.copytree(lab / name, root / name)
+            config = root / ".pbibrain" / "brain.json"
+            config.parent.mkdir()
+            config.write_text(json.dumps({"version": 1, "name": "Lab", "sources": ["../SalesA/SalesA.pbip", "../SalesB/SalesB.pbip"],
+                                          "database": "brain.lbug", "identity_map": "identity.json"}), encoding="utf-8")
+            with GraphRepository(use_native=False) as repository:
+                ProjectService(config).scan(repository)
+                result = build_commonality(repository.all_nodes())
+        self.assertGreater(result["totals"]["identical"], 0)
+        self.assertFalse([group for group in result["groups"] if "source_fingerprint" in (group.get("differs") or [])])
+        amount = next(group for group in result["groups"] if group["type"] == "COLUMN" and group["name"] == "Amount" and group.get("table") == "Sales")
+        self.assertEqual(amount["bucket"], "identical")
+
+
 if __name__ == "__main__":
     unittest.main()

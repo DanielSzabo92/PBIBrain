@@ -46,7 +46,7 @@ _DUPLICATE_TYPES = {"MEASURE", "COLUMN", "CALCULATION_ITEM"}
 
 # Properties that are scan bookkeeping, links or layout, not the definition of the object.
 _IGNORED = {
-    "raw_source", "dax_ast", "source_hash", "lineage_tag", "lineageTag", "check_status", "not_checked_reason",
+    "raw_source", "dax_ast", "source_hash", "source_fingerprint", "lineage_tag", "lineageTag", "check_status", "not_checked_reason",
     "not_checked_detail", "model_ids", "field_roles", "binding_evidence", "unresolved_field_refs", "query",
     "visual_name", "x", "y", "z", "width", "height", "from_ref", "to_ref", "origin", "workspace_name",
     "source_status", "parameters", "sources",

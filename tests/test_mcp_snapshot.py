@@ -346,5 +346,38 @@ class LargeProjectBudgetTests(unittest.TestCase):
             self.call("brain_overview", detail="everything")
 
 
+class ConfigBesideSourcesTests(unittest.TestCase):
+    """The README layout: brain.json in the folder that holds the sources (C:\\Reports\\brain.json, C:\\Reports\\Sales\\...)."""
+
+    def setUp(self) -> None:
+        self.temporary = tempfile.TemporaryDirectory()
+        self.root = Path(self.temporary.name)
+        source = self.root / "Sales" / "sales.json"
+        _write_small_project(self.root)
+        moved = self.root / "Sales"
+        moved.mkdir()
+        (self.root / "sources" / "sales.json").rename(source)
+        self.config = self.root / "brain.json"
+        self.config.write_text(json.dumps({"version": 1, "name": "Sales", "sources": ["Sales/sales.json"],
+                                           "database": "brain.lbug", "identity_map": "identity.json"}), encoding="utf-8")
+        self.source = source
+
+    def tearDown(self) -> None:
+        self.temporary.cleanup()
+
+    def test_sources_below_the_config_folder_are_hashed_and_pbibrain_files_are_not(self) -> None:
+        for name in ("brain.lbug", "brain.lbug.wal", "identity.json", "overrides.json", "connection.json", "agent-snapshot.json"):
+            (self.root / name).write_text("x", encoding="utf-8")
+        self.assertEqual({"Sales/sales.json"}, set(source_fingerprint(self.config, [self.source])))
+
+    def test_a_changed_source_marks_the_snapshot_stale(self) -> None:
+        _scan(self.config)
+        recorded = load_agent_snapshot(self.config)["sources"]
+        self.assertEqual({"Sales/sales.json"}, set(recorded))
+        self.assertFalse(freshness(self.config, recorded)["stale"])
+        self.source.write_text(self.source.read_text(encoding="utf-8").replace("SUM", "SUMX"), encoding="utf-8")
+        self.assertTrue(freshness(self.config, recorded)["stale"])
+
+
 if __name__ == "__main__":
     unittest.main()
