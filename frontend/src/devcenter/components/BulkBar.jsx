@@ -43,11 +43,11 @@ export default function BulkBar({
   reasonId,
   selectedRows = [],
   setMenuRef,
-  modeControl,
   menuOpen,
   onMenuOpenChange,
 }) {
   const [pendingChoice, setPendingChoice] = useState(null);
+  const [removalPolicy, setRemovalPolicy] = useState("block");
 
   const displayCount = allMatching ? totalMatching : selectedCount;
 
@@ -78,6 +78,7 @@ export default function BulkBar({
   const handleSelectMenuChoice = (choice) => {
     const { replaceCount, skippedCount } = checkChoiceImpact(choice);
     if (choice.kind === "remove" || replaceCount > 0) {
+      setRemovalPolicy("block");
       setPendingChoice({ ...choice, replaceCount, skippedCount });
       return;
     }
@@ -87,6 +88,9 @@ export default function BulkBar({
   const confirmBulkChoice = () => {
     if (!pendingChoice) return;
     const choice = { ...pendingChoice };
+    if (choice.kind === "remove") {
+      choice.policy = removalPolicy;
+    }
     setPendingChoice(null);
     onApplyChoice(choice, { skippedCount: choice.skippedCount });
   };
@@ -199,8 +203,6 @@ export default function BulkBar({
 
         <span className="dc-spacer" />
 
-        {modeControl}
-
         <Button
           id="clearsel"
           variant="ghost"
@@ -222,14 +224,18 @@ export default function BulkBar({
             id="selallbtn"
             onClick={onSelectAllMatching}
           >
-            Select all {totalMatching} rows that match the filters
+            {totalMatching > 5000
+              ? `Select all 5,000 rows that match the filters (capped at 5,000)`
+              : `Select all ${totalMatching} rows that match the filters`}
           </button>
         </div>
       ) : null}
 
       {allMatching ? (
         <div className="dc-selall" role="status">
-          All {totalMatching} rows that match the filters are selected.
+          {totalMatching > 5000
+            ? `All 5,000 rows that match the filters are selected (capped at 5,000).`
+            : `All ${totalMatching} rows that match the filters are selected.`}
         </div>
       ) : null}
 
@@ -266,7 +272,43 @@ export default function BulkBar({
               {isRemove ? (
                 <>
                   <li>{t("compare.bulk.dialog.remove.body")}</li>
-                  <li>{t("compare.bulk.dialog.remove.policy")}</li>
+                  <li className="mt-2 list-none">
+                    <fieldset className="ui-choice border border-[var(--line)] rounded-md p-3">
+                      <legend className="ui-choice-legend font-medium text-xs px-1">Removal policy</legend>
+                      <div className="flex flex-col gap-2 mt-1">
+                        <label className="flex items-start gap-2 cursor-pointer text-sm">
+                          <input
+                            type="radio"
+                            name="bulk-remove-policy"
+                            value="block"
+                            checked={removalPolicy === "block"}
+                            onChange={() => setRemovalPolicy("block")}
+                          />
+                          <div>
+                            <strong>Block</strong>
+                            <p className="text-xs text-[var(--text-2)] m-0">
+                              Keep references. The plan is not valid until you resolve them.
+                            </p>
+                          </div>
+                        </label>
+                        <label className="flex items-start gap-2 cursor-pointer text-sm">
+                          <input
+                            type="radio"
+                            name="bulk-remove-policy"
+                            value="cascade"
+                            checked={removalPolicy === "cascade"}
+                            onChange={() => setRemovalPolicy("cascade")}
+                          />
+                          <div>
+                            <strong>Cascade</strong>
+                            <p className="text-xs text-[var(--text-2)] m-0">
+                              Also delete objects that use these objects.
+                            </p>
+                          </div>
+                        </label>
+                      </div>
+                    </fieldset>
+                  </li>
                 </>
               ) : null}
               {pendingChoice.replaceCount > 0 ? (

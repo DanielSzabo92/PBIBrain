@@ -343,11 +343,11 @@ html { scroll-padding-top: 12px; }
 .shortcuts-row kbd { min-width: 0; height: 18px; color: var(--text); }
 
 .content { position: relative; flex: 1; min-width: 0; min-height: 0; padding: 16px 20px 32px; overflow: auto; overscroll-behavior: contain; scroll-padding: 12px 0; }
-.content-graph { display: flex; flex-direction: column; padding: 8px 10px 10px; }
+.content-graph, .content-devcenter { display: flex; flex-direction: column; padding: 8px 10px 10px; overflow: hidden; height: 100%; }
 .view-frame { min-width: 0; }
 .view-loading { display: flex; align-items: center; gap: 10px; padding: 24px; color: var(--text-2); }
 .view-loading svg { width: 18px; height: 18px; }
-.content-graph .view-frame { display: flex; flex: 1; flex-direction: column; min-height: 0; }
+.content-graph .view-frame, .content-devcenter .view-frame { display: flex; flex: 1; flex-direction: column; min-height: 0; height: 100%; }
 
 /* Desktop tools fill the window and align to the start edge; reading-width caps only where prose dominates. */
 .page { width: 100%; margin: 0; }

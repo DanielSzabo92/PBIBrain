@@ -10,22 +10,22 @@
   min-width: 0;
   min-height: 0;
   flex: 1;
+  height: 100%;
 }
 
 .dc-compare-area {
+  position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: var(--space-4);
-  /* No flex grow: the parent has no fixed height, so a flex basis takes the content height and the
-   * grid stops to scroll (U12: the 5000-row list was 144000 px high and the page scrolled). */
-  flex: none;
-  min-height: 480px;
-  height: clamp(480px, calc(100vh - 210px), 880px);
-  padding-bottom: var(--space-4);
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+  padding-bottom: var(--space-2);
 }
 
 .dc-compare-area.with-pane {
-  grid-template-columns: minmax(0, 1fr) var(--pane-w);
+  grid-template-columns: minmax(0, 1fr);
 }
 
 @media (max-width: 1279.98px) {
@@ -182,8 +182,36 @@
 }
 
 .dc-body-row[aria-selected="true"],
-.dc-body-row[aria-selected="true"] .dc-cell {
-  background: var(--row-selected);
+.dc-body-row[aria-selected="true"] .dc-cell,
+.dc-body-row[aria-selected="true"] .dc-stick,
+.dc-body-row.is-selected,
+.dc-body-row.is-selected .dc-cell,
+.dc-body-row.is-selected .dc-stick {
+  background: var(--brand-tint) !important;
+}
+
+.dc-body-row[aria-selected="true"]:hover,
+.dc-body-row[aria-selected="true"]:hover .dc-cell,
+.dc-body-row[aria-selected="true"]:hover .dc-stick,
+.dc-body-row.is-selected:hover,
+.dc-body-row.is-selected:hover .dc-cell,
+.dc-body-row.is-selected:hover .dc-stick {
+  background: color-mix(in srgb, var(--brand) 16%, var(--surface)) !important;
+}
+
+@keyframes row-saved-flash {
+  0% {
+    background: var(--ok-tint);
+  }
+  100% {
+    background: transparent;
+  }
+}
+
+.dc-body-row.is-flashing,
+.dc-body-row.is-flashing .dc-cell,
+.dc-body-row.is-flashing .dc-stick {
+  animation: row-saved-flash 1.2s ease-out;
 }
 
 .dc-body-row.active,
@@ -252,7 +280,7 @@
   left: 300px;
 }
 
-.dc-col-tg {
+.dc-col-mc {
   left: 416px;
   border: 0 solid var(--line-strong);
   border-right-width: 1px;
@@ -260,7 +288,7 @@
 
 @media (max-width: 1279.98px) {
   .dc-col-rs,
-  .dc-col-tg {
+  .dc-col-mc {
     position: static;
   }
 }
@@ -358,6 +386,82 @@
   width: 8px;
   height: 8px;
   fill: currentColor;
+}
+
+.dc-mc-cell {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  min-width: 0;
+}
+
+.dc-mc-toggle-group {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--control-border);
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+  padding: 1px;
+  flex: none;
+}
+
+.dc-mc-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 22px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: calc(var(--r-sm) - 2px);
+  background: transparent;
+  color: var(--text-2);
+  font: inherit;
+  font-size: var(--fs-micro);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--dur-fast);
+}
+
+.dc-mc-btn:hover:not(:disabled) {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+.dc-mc-btn.is-active {
+  background: var(--brand);
+  color: var(--brand-ink);
+  font-weight: 600;
+}
+
+.dc-mc-btn:disabled {
+  opacity: var(--disabled-opacity);
+  cursor: not-allowed;
+}
+
+.dc-mc-saved {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--fs-micro);
+  color: var(--ok);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.dc-mc-undo-btn {
+  font-size: var(--fs-micro);
+  padding: 0;
+  min-height: auto;
+}
+
+.dc-mc-custom-label {
+  font-size: var(--fs-meta);
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 90px;
 }
 
 .dc-mc-text {
@@ -560,15 +664,23 @@
 
 /* ---------- Row detail placeholder pane --------------------------------- */
 .dc-row-pane {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: min(440px, 92vw);
+  z-index: 30;
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
   min-height: 0;
   overflow: auto;
   padding: var(--space-4);
-  border: 1px solid var(--line);
-  border-radius: var(--r-md);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-md) 0 0 var(--r-md);
   background: var(--surface);
+  box-shadow: var(--shadow-lg);
+  animation: sheet-in var(--dur, 150ms) var(--ease-out);
 }
 
 .dc-row-pane-head {

@@ -29,7 +29,7 @@ import BulkBar from "./BulkBar.jsx";
 import CodeDiff from "./CodeDiff.jsx";
 import CompareRowDetail from "./CompareRowDetail.jsx";
 import StateCell, { normalizeState, STATE_ICONS, stateWord } from "./StateCell.jsx";
-import { formatMergeChoiceLabel } from "./rowDetailModel.js";
+import { formatMergeChoiceLabel, normalizeChoiceKind } from "./rowDetailModel.js";
 import "./compare.css";
 
 const PAGE_SIZE = 200;
@@ -100,6 +100,7 @@ export default function CompareGrid({
 
   const setModeAction = useAction("compare_mode_set");
   const bulkSetAction = useAction("merge_choice_bulk_set");
+  const singleChoiceAction = useAction("merge_choice_set");
   const confirmAction = useAction("row_confirm");
   const [editOpen, setEditOpen] = useState(false);
 
@@ -159,6 +160,22 @@ export default function CompareGrid({
   const [paneFocusSeq, setPaneFocusSeq] = useState(0);
   const [focusedCell, setFocusedCell] = useState({ r: 0, c: 1 });
 
+  // Single row save visual feedback and undo state.
+  const [lastSavedRowKey, setLastSavedRowKey] = useState(null);
+  const [flashingRowKeys, setFlashingRowKeys] = useState(new Set());
+  const [undoHistory, setUndoHistory] = useState([]);
+
+  const triggerRowFlash = useCallback((key) => {
+    setFlashingRowKeys((prev) => new Set(prev).add(key));
+    setTimeout(() => {
+      setFlashingRowKeys((prev) => {
+        const next = new Set(prev);
+        next.delete(key);
+        return next;
+      });
+    }, 1200);
+  }, []);
+
   useEffect(() => {
     if (tabState?.rowKey) {
       setActiveRowKey(tabState.rowKey);
@@ -198,12 +215,12 @@ export default function CompareGrid({
   }, []);
 
   // Columns definition.
-  // Col 0: chk, Col 1: obj, Col 2: rs, Col 3: tg, Col 4..: donors, Col N-2: mc, Col N-1: mk
+  // Col 0: chk, Col 1: obj, Col 2: rs, Col 3: mc (pinned), Col 4: tg, Col 5..: donors, Col N-1: mk
   const totalCols = 6 + donors.length;
   const colWidths = useMemo(() => {
-    const list = [40, 260, 116, 132];
+    const list = [40, 260, 116, 220, 132];
     for (let i = 0; i < donors.length; i++) list.push(132);
-    list.push(228, 112);
+    list.push(112);
     return list;
   }, [donors.length]);
   const totalGridWidth = useMemo(() => colWidths.reduce((sum, w) => sum + w, 0), [colWidths]);
@@ -678,9 +695,9 @@ export default function CompareGrid({
           closePaneAndReturnFocus();
         }
       } else if ((k === "d" || k === "D") && !e.ctrlKey && !e.metaKey && !e.altKey) {
-        if (c >= 4 && c < 4 + donors.length) {
+        if (c >= 5 && c < 5 + donors.length) {
           const row = getRow(r);
-          const donor = donors[c - 4];
+          const donor = donors[c - 5];
           if (row && donor) {
             const cell = Array.isArray(row.cells)
               ? row.cells.find((x) => x.source_id === donor.source_id)
@@ -697,6 +714,60 @@ export default function CompareGrid({
           e.preventDefault();
           setBulkMenuOpen(true);
         }
+      } else if ((k === "k" || k === "K") && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        e.preventDefault();
+        const row = getRow(r);
+        if (row) handleSingleRowChoice(row, "keep");
+      } else if ((k === "t" || k === "T") && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        e.preventDefault();
+        const row = getRow(r);
+        if (row) handleSingleRowChoice(row, "take");
+      } else if ((k === "s" || k === "S") && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        e.preventDefault();
+        const row = getRow(r);
+        if (row) handleSingleRowChoice(row, "skip");
+      } else if ((k === "z" || k === "Z") && (e.ctrlKey || e.metaKey) && !e.altKey) {
+        e.preventDefault();
+        if (lastSavedRowKey) {
+          handleUndoSingle(lastSavedRowKey);
+        }
+      } else if ((k === "u" || k === "U") && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        e.preventDefault();
+        const dir = e.shiftKey ? -1 : 1;
+        let targetR = -1;
+        const start = r + dir;
+        const end = dir === 1 ? totalR : -1;
+        for (let i = start; i !== end; i += dir) {
+          const row = getRow(i);
+          if (row && !row.merge_choice) {
+            targetR = i;
+            break;
+          }
+        }
+        if (targetR >= 0) {
+          moveFocus(targetR, c);
+        }
+      } else if ((k === "b" || k === "B") && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        e.preventDefault();
+        const dir = e.shiftKey ? -1 : 1;
+        let targetR = -1;
+        const start = r + dir;
+        const end = dir === 1 ? totalR : -1;
+        for (let i = start; i !== end; i += dir) {
+          const row = getRow(i);
+          if (
+            row &&
+            (row.row_state === "conflict" ||
+              row.row_state === "missing" ||
+              (row.marks && row.marks.length > 0))
+          ) {
+            targetR = i;
+            break;
+          }
+        }
+        if (targetR >= 0) {
+          moveFocus(targetR, c);
+        }
       }
     },
     [
@@ -704,6 +775,9 @@ export default function CompareGrid({
       closePaneAndReturnFocus,
       donors,
       getRow,
+      handleSingleRowChoice,
+      handleUndoSingle,
+      lastSavedRowKey,
       moveFocus,
       toggleRowSelection,
       toggleSelectLoaded,
@@ -745,22 +819,121 @@ export default function CompareGrid({
       keys = Array.from(selectedKeys);
     }
 
+    const previousMap = new Map();
+    for (const key of keys) {
+      const r = allLoadedRows.find((row) => row.row_key === key);
+      previousMap.set(key, r?.merge_choice ? { ...r.merge_choice } : null);
+    }
+
     const choicePayload = { choice: choice.kind };
     if (choice.kind === "take_from") choicePayload.source = choice.source_id;
+    if (choice.kind === "remove" && choice.policy) choicePayload.policy = choice.policy;
 
     const reply = await bulkSetAction.run({ row_keys: keys, choice: choicePayload });
     if (reply) {
       clearSelection();
       const appliedCount = Math.max(0, keys.length - skippedCount);
+      const isCapped = allMatching && total > 5000;
+      const capSuffix = isCapped ? " (cap: 5,000)" : "";
       const toastText =
-        skippedCount > 0
+        (skippedCount > 0
           ? tn("compare.bulk.toast", appliedCount, { m: skippedCount })
-          : tn("compare.bulk.toast.clean", appliedCount);
-      toast.show({ tone: "ok", text: toastText });
+          : tn("compare.bulk.toast.clean", appliedCount)) + capSuffix;
+
+      const undoBulk = async () => {
+        try {
+          const items = Array.from(previousMap.entries()).map(([row_key, c]) => ({
+            row_key,
+            choice: c,
+          }));
+          await bulkSetAction.run({ items });
+          toast.show({ tone: "ok", text: "Bulk choices undone" });
+          reloadLoadedPages();
+          store.load("session");
+          store.load("plan");
+        } catch {
+          // ignore
+        }
+      };
+
+      toast.show({
+        tone: "ok",
+        text: toastText,
+        action: { label: "Undo", onClick: undoBulk },
+      });
       reloadLoadedPages();
       store.load("compareRows", queryParams);
+      store.load("session");
+      store.load("plan");
     }
   };
+
+  const handleSingleRowChoice = useCallback(
+    async (row, kind) => {
+      if (!row || changeDisabled) return;
+      const previousChoice = row.merge_choice ? { ...row.merge_choice } : null;
+      let choicePayload = { choice: kind };
+      if (kind === "take") {
+        const availableDonor =
+          donors.find((d) => {
+            const cell = Array.isArray(row.cells)
+              ? row.cells.find((c) => c.source_id === d.source_id)
+              : row.cells?.[d.source_id];
+            return cell && cell.state !== "missing";
+          }) || donors[0];
+        if (availableDonor) {
+          choicePayload = { choice: "take", source: availableDonor.source_id };
+        }
+      }
+
+      setUndoHistory((h) => [...h, { type: "single", rowKey: row.row_key, previousChoice }]);
+      setLastSavedRowKey(row.row_key);
+      triggerRowFlash(row.row_key);
+
+      const reply = await singleChoiceAction.run({
+        row_key: row.row_key,
+        choice: choicePayload,
+      });
+
+      if (reply) {
+        toast.show({
+          tone: "ok",
+          text: `Merge choice saved: ${kind}`,
+          action: {
+            label: "Undo",
+            onClick: () => handleUndoSingle(row.row_key, previousChoice),
+          },
+        });
+        reloadLoadedPages();
+        store.load("session");
+        store.load("plan");
+      }
+    },
+    [changeDisabled, donors, singleChoiceAction, reloadLoadedPages, store, toast, triggerRowFlash]
+  );
+
+  const handleUndoSingle = useCallback(
+    async (rowKey, fallbackChoice) => {
+      let prev = fallbackChoice;
+      if (prev === undefined) {
+        const item = [...undoHistory].reverse().find((h) => h.type === "single" && h.rowKey === rowKey);
+        prev = item ? item.previousChoice : null;
+      }
+      const reply = await singleChoiceAction.run({
+        row_key: rowKey,
+        choice: prev || null,
+      });
+      if (reply) {
+        setLastSavedRowKey(null);
+        triggerRowFlash(rowKey);
+        toast.show({ tone: "ok", text: "Merge choice undone" });
+        reloadLoadedPages();
+        store.load("session");
+        store.load("plan");
+      }
+    },
+    [singleChoiceAction, reloadLoadedPages, store, toast, triggerRowFlash, undoHistory]
+  );
 
   // Bulk Confirm Rows.
   const handleConfirmRows = async () => {
@@ -843,7 +1016,7 @@ export default function CompareGrid({
       return (
         <div
           key={`cell-${rowIndex}-${colIndex}`}
-          className={`dc-cell ${colIndex < 4 ? `dc-stick dc-col-${["chk", "obj", "rs", "tg"][colIndex]}` : ""}`}
+          className={`dc-cell ${colIndex < 4 ? `dc-stick dc-col-${["chk", "obj", "rs", "mc"][colIndex]}` : ""}`}
           role="gridcell"
           aria-colindex={colIndex + 1}
           tabIndex={tabIndex}
@@ -860,7 +1033,7 @@ export default function CompareGrid({
       return (
         <div
           key={`cell-${rowIndex}-${colIndex}`}
-          className={`dc-cell ${colIndex < 4 ? `dc-stick dc-col-${["chk", "obj", "rs", "tg"][colIndex]}` : ""}`}
+          className={`dc-cell ${colIndex < 4 ? `dc-stick dc-col-${["chk", "obj", "rs", "mc"][colIndex]}` : ""}`}
           role="gridcell"
           aria-colindex={colIndex + 1}
           tabIndex={tabIndex}
@@ -971,21 +1144,107 @@ export default function CompareGrid({
       );
     }
 
-    // Col 3: Target
+    // Col 3: Merge Choice (pinned next to row state)
     if (colIndex === 3) {
-      const targetCell = getCellData("s0") || getCellData(targetSource?.source_id) || {
-        state: "target",
-      };
+      const mc = choiceText(row.merge_choice, donors);
+      const badge = mergeChoiceBadge(row, session, donors);
+      const rawKind = row.merge_choice ? (row.merge_choice.kind || row.merge_choice.choice) : null;
+      const choiceKind = rawKind ? normalizeChoiceKind(rawKind) : null;
+      const isSaved = lastSavedRowKey === row.row_key;
+
+      const hasDonor = donors.some((d) => {
+        const cell = getCellData(d.source_id);
+        return cell && cell.state !== "missing";
+      });
+
       return (
         <div
           key={`cell-${rowIndex}-3`}
-          className="dc-cell dc-stick dc-col-tg"
+          className="dc-cell dc-stick dc-col-mc"
           role="gridcell"
           aria-colindex={4}
           tabIndex={tabIndex}
           data-r={rowIndex}
           data-c={3}
           onFocus={() => handleCellFocus(rowIndex, 3)}
+          onClick={(e) => {
+            if (!e.target.closest("button")) {
+              openPaneByClick(row.row_key);
+            }
+          }}
+        >
+          <div className="dc-mc-cell">
+            <div className="dc-mc-toggle-group" role="group" aria-label={t("compare.column.choice")}>
+              <button
+                type="button"
+                className={`dc-mc-btn ${choiceKind === "keep" ? "is-active" : ""}`}
+                disabled={changeDisabled}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleSingleRowChoice(row, "keep");
+                }}
+                title="Keep target (K)"
+              >
+                Keep
+              </button>
+              <button
+                type="button"
+                className={`dc-mc-btn ${choiceKind === "take" ? "is-active" : ""}`}
+                disabled={changeDisabled || !hasDonor}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleSingleRowChoice(row, "take");
+                }}
+                title={hasDonor ? "Take from donor (T)" : "No donor available"}
+              >
+                Take
+              </button>
+              <button
+                type="button"
+                className={`dc-mc-btn ${choiceKind === "skip" ? "is-active" : ""}`}
+                disabled={changeDisabled}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleSingleRowChoice(row, "skip");
+                }}
+                title="Skip (S)"
+              >
+                Skip
+              </button>
+            </div>
+            {isSaved ? (
+              <span className="dc-mc-saved">
+                Saved · <button type="button" className="dc-link dc-mc-undo-btn" onClick={(e) => { e.stopPropagation(); handleUndoSingle(row.row_key); }}>Undo</button>
+              </span>
+            ) : choiceKind && !["keep", "take", "skip"].includes(choiceKind) ? (
+              <span className="dc-mc-custom-label" title={mc}>{mc}</span>
+            ) : null}
+            {badge ? (
+              <span className={`dc-badge ${badge.className}`} title={badge.tooltip} data-badge={badge.kind}>
+                {badge.kind === "mark" ? <Flag aria-hidden="true" /> : null}
+                <span>{badge.label}</span>
+              </span>
+            ) : null}
+          </div>
+        </div>
+      );
+    }
+
+    // Col 4: Target
+    if (colIndex === 4) {
+      const targetCell = getCellData("s0") || getCellData(targetSource?.source_id) || {
+        state: "target",
+      };
+      return (
+        <div
+          key={`cell-${rowIndex}-4`}
+          className="dc-cell dc-col-tg"
+          role="gridcell"
+          aria-colindex={5}
+          tabIndex={tabIndex}
+          data-r={rowIndex}
+          data-c={4}
+          onFocus={() => handleCellFocus(rowIndex, 4)}
           onClick={() => openPaneByClick(row.row_key)}
         >
           <StateCell cell={targetCell} sourceName={targetSource?.display_name || "Target"} />
@@ -993,9 +1252,9 @@ export default function CompareGrid({
       );
     }
 
-    // Donor columns (4 .. 4 + donors.length - 1)
-    if (colIndex >= 4 && colIndex < 4 + donors.length) {
-      const donorIndex = colIndex - 4;
+    // Donor columns (5 .. 5 + donors.length - 1)
+    if (colIndex >= 5 && colIndex < 5 + donors.length) {
+      const donorIndex = colIndex - 5;
       const donor = donors[donorIndex];
       const cell = getCellData(donor.source_id);
 
@@ -1021,34 +1280,6 @@ export default function CompareGrid({
             sourceName={donor.display_name || donor.name}
             onOpenDiff={openDiffForDonor}
           />
-        </div>
-      );
-    }
-
-    // Merge Choice column: colIndex === totalCols - 2
-    if (colIndex === totalCols - 2) {
-      const mc = choiceText(row.merge_choice, donors);
-      const badge = mergeChoiceBadge(row, session, donors);
-
-      return (
-        <div
-          key={`cell-${rowIndex}-${colIndex}`}
-          className="dc-cell"
-          role="gridcell"
-          aria-colindex={colIndex + 1}
-          tabIndex={tabIndex}
-          data-r={rowIndex}
-          data-c={colIndex}
-          onFocus={() => handleCellFocus(rowIndex, colIndex)}
-          onClick={() => openPaneByClick(row.row_key)}
-        >
-          <span className={`dc-mc-text ${row.merge_choice ? "" : "dc-mc-none"}`}>{mc}</span>
-          {badge ? (
-            <span className={`dc-badge ${badge.className}`} title={badge.tooltip} data-badge={badge.kind}>
-              {badge.kind === "mark" ? <Flag aria-hidden="true" /> : null}
-              <span>{badge.label}</span>
-            </span>
-          ) : null}
         </div>
       );
     }
@@ -1140,7 +1371,6 @@ export default function CompareGrid({
           reasonId={reasonId}
           selectedRows={selectedRowsList}
           setMenuRef={bulkMenuBtnRef}
-          modeControl={modeControl}
           menuOpen={bulkMenuOpen}
           onMenuOpenChange={setBulkMenuOpen}
         />
@@ -1395,7 +1625,15 @@ export default function CompareGrid({
                       </button>
                     </div>
 
-                    <div className="dc-hcell dc-stick dc-col-tg" role="columnheader" aria-colindex={4}>
+                    <div
+                      className="dc-hcell dc-stick dc-col-mc"
+                      role="columnheader"
+                      aria-colindex={4}
+                    >
+                      <span>{t("compare.column.choice")}</span>
+                    </div>
+
+                    <div className="dc-hcell dc-col-tg" role="columnheader" aria-colindex={5}>
                       <Target className="w-3.5 h-3.5" aria-hidden="true" />
                       <span>{targetSource?.display_name || "Target"}</span>
                       <span className="sr-only"> (target)</span>
@@ -1406,19 +1644,11 @@ export default function CompareGrid({
                         key={donor.source_id}
                         className="dc-hcell"
                         role="columnheader"
-                        aria-colindex={5 + dIdx}
+                        aria-colindex={6 + dIdx}
                       >
                         <span>{donor.display_name || donor.name}</span>
                       </div>
                     ))}
-
-                    <div
-                      className="dc-hcell"
-                      role="columnheader"
-                      aria-colindex={totalCols - 1}
-                    >
-                      <span>{t("compare.column.choice")}</span>
-                    </div>
 
                     <div
                       className="dc-hcell"
@@ -1444,11 +1674,12 @@ export default function CompareGrid({
                       const row = getRow(rIdx);
                       const isSelected = allMatching || (row && selectedKeys.has(row.row_key));
                       const isActive = row && activeRowKey === row.row_key;
+                      const isFlashing = row && flashingRowKeys.has(row.row_key);
 
                       return (
                         <div
                           key={`row-${rIdx}`}
-                          className={`dc-row dc-body-row ${isActive ? "active" : ""}`}
+                          className={`dc-row dc-body-row ${isActive ? "active" : ""} ${isSelected ? "is-selected" : ""} ${isFlashing ? "is-flashing" : ""}`}
                           role="row"
                           aria-rowindex={rIdx + 2}
                           aria-selected={Boolean(isSelected)}

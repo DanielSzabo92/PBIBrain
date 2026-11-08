@@ -349,10 +349,28 @@ export default function CompareRowDetail({
 
   const commitMergeChoice = async (nextChoiceObj) => {
     if (!row || disabled) return;
-    await mergeChoiceAction.run({
+    const previousChoice = row.merge_choice ? { ...row.merge_choice } : null;
+    const reply = await mergeChoiceAction.run({
       row_key: row.row_key,
       choice: nextChoiceObj,
     });
+    if (reply) {
+      const kind = nextChoiceObj?.kind || nextChoiceObj?.choice || "saved";
+      toast.show({
+        tone: "ok",
+        text: `Merge choice saved: ${kind}`,
+        action: {
+          label: "Undo",
+          onClick: async () => {
+            await mergeChoiceAction.run({
+              row_key: row.row_key,
+              choice: previousChoice || null,
+            });
+            toast.show({ tone: "ok", text: "Merge choice undone" });
+          },
+        },
+      });
+    }
   };
 
   const handleSelectChoice = async (nextKind) => {
@@ -627,16 +645,6 @@ export default function CompareRowDetail({
     if (itemValue === "take") {
       return (
         <div className="ui-choice-sub" data-slot="choice-sub">
-          {showDonorSelect ? (
-            <Select
-              label={t("row.source")}
-              value={activeDonorId || ""}
-              options={donorOptions}
-              disabled={disabled}
-              onValueChange={handleDonorChange}
-            />
-          ) : null}
-
           {!showChangeName ? (
             <div>
               <Button
@@ -1071,6 +1079,17 @@ export default function CompareRowDetail({
         aria-busy={mergeChoiceAction.pending ? "true" : undefined}
       >
         <legend className="ui-choice-legend">{t("row.choice.legend")}</legend>
+        {showDonorSelect ? (
+          <div className="dc-choice-donor-picker my-2">
+            <Select
+              label={t("row.source")}
+              value={activeDonorId || ""}
+              options={donorOptions}
+              disabled={disabled}
+              onValueChange={handleDonorChange}
+            />
+          </div>
+        ) : null}
         <div
           className="ui-choice-list"
           role="radiogroup"
@@ -1120,7 +1139,6 @@ export default function CompareRowDetail({
                     {item.reason}
                   </p>
                 ) : null}
-                {renderChoiceSubfields(item.value)}
               </div>
             );
           })}
@@ -1171,13 +1189,17 @@ export default function CompareRowDetail({
                         {item.reason}
                       </p>
                     ) : null}
-                    {renderChoiceSubfields(item.value)}
                   </div>
                 );
               })}
             </div>
           ) : null}
         </div>
+        {renderChoiceSubfields(choiceKind) ? (
+          <div className="dc-choice-subfields mt-3 pt-2 border-t border-[var(--line)]">
+            {renderChoiceSubfields(choiceKind)}
+          </div>
+        ) : null}
         {mergeChoiceAction.pending ? (
           <p className="ui-choice-status" role="status">
             <LoaderCircle className="spin" aria-hidden="true" />
