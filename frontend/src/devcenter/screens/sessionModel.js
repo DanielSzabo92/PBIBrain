@@ -35,8 +35,177 @@ export function targetLine(session) {
   return `${model}. ${report}.`;
 }
 
+const IMPACT_BLOCK_KINDS = new Set(["removed", "renamed", "need_missing", "need_clash"]);
+
+// One derived readiness model (blocking impact + source health + unconfirmed rows + plan freshness).
+// It feeds the pill, the tab badges, the strip and the apply confirmation.
+export function deriveReadiness({ session = null, plan = null, checking = false } = {}) {
+  const rawPlan = plan?.data ?? plan;
+  const isChecking = checking || session?.plan_state === "checking" || (plan?.status === "loading" && !rawPlan);
+  if (isChecking) {
+    return {
+      state: "checking",
+      tone: "plain",
+      text: t("work.plan.checking"),
+      checking: true,
+      ready: false,
+      applyDisabled: true,
+      missingSourcesCount: 0,
+      unconfirmedCount: 0,
+      blockingImpactCount: 0,
+      blockingCount: 0,
+      warnCount: 0,
+    };
+  }
+
+  const isStale = Boolean(session?.revision != null && rawPlan?.revision != null && session.revision > rawPlan.revision)
+    || Boolean(plan?.stale || rawPlan?.stale);
+
+  const missingSources = (session?.sources ?? []).filter((s) => s.status !== "ok");
+  const missingSourcesCount = missingSources.length;
+
+  const unconfirmedCount = session?.counts?.marks ?? 0;
+
+  const rawBlocking = Array.isArray(rawPlan?.blocking) ? rawPlan.blocking : [];
+  const blockingImpactItems = rawBlocking.filter((it) => IMPACT_BLOCK_KINDS.has(it.kind));
+  const blockingImpactCount = blockingImpactItems.length;
+  const isPlanInvalid = rawPlan?.status === "invalid" || session?.plan_status === "invalid";
+  const blockingCount = Math.max(rawBlocking.length, isPlanInvalid ? 1 : 0);
+
+  const rawWarnings = Array.isArray(rawPlan?.warnings) ? rawPlan.warnings : [];
+  const warnCount = rawWarnings.length;
+  const hasWarnings = warnCount > 0 || rawPlan?.status === "valid_with_warnings" || session?.plan_status === "valid_with_warnings";
+
+  const stepCount = rawPlan?.steps?.length ?? rawPlan?.summary?.steps ?? 0;
+
+  // Derive readiness state in strict priority order:
+  // 1. Stale plan: must re-check
+  if (isStale) {
+    return {
+      state: "stale",
+      tone: "warn",
+      text: t("work.plan.stale"),
+      stale: true,
+      ready: false,
+      applyDisabled: true,
+      reason: "Plan is out of date with recent changes.",
+      missingSourcesCount,
+      unconfirmedCount,
+      blockingImpactCount,
+      blockingCount,
+      warnCount,
+    };
+  }
+
+  // 2. Missing/unhealthy sources: commit blocked
+  if (missingSourcesCount > 0) {
+    return {
+      state: "missing_sources",
+      tone: "bad",
+      text: tn("work.plan.missing", missingSourcesCount),
+      ready: false,
+      applyDisabled: true,
+      reason: "Source unavailable before apply.",
+      missingSourcesCount,
+      unconfirmedCount,
+      blockingImpactCount,
+      blockingCount,
+      warnCount,
+    };
+  }
+
+  // 3. Blocking impact or plan items: commit blocked
+  if (blockingCount > 0) {
+    return {
+      state: "invalid",
+      tone: "bad",
+      text: t("work.plan.invalid", { n: blockingCount }),
+      blocking: blockingCount,
+      ready: false,
+      applyDisabled: true,
+      reason: `Fix ${blockingCount} item${blockingCount === 1 ? "" : "s"} before you apply.`,
+      missingSourcesCount,
+      unconfirmedCount,
+      blockingImpactCount,
+      blockingCount,
+      warnCount,
+    };
+  }
+
+  // 4. Unconfirmed rows (source marks): commit blocked
+  if (unconfirmedCount > 0) {
+    return {
+      state: "unconfirmed_rows",
+      tone: "warn",
+      text: tn("work.plan.unconfirmed", unconfirmedCount),
+      ready: false,
+      applyDisabled: true,
+      reason: "Confirm changes before you apply.",
+      missingSourcesCount,
+      unconfirmedCount,
+      blockingImpactCount,
+      blockingCount,
+      warnCount,
+    };
+  }
+
+  // 5. Warnings
+  if (hasWarnings) {
+    const text = warnCount === 0
+      ? t("work.plan.warnings.unknown")
+      : tn("work.plan.warnings", warnCount);
+    return {
+      state: "valid_with_warnings",
+      tone: "warn",
+      text,
+      ready: true,
+      applyDisabled: false,
+      reason: null,
+      missingSourcesCount: 0,
+      unconfirmedCount: 0,
+      blockingImpactCount: 0,
+      blockingCount: 0,
+      warnCount,
+    };
+  }
+
+  // 6. Empty plan
+  if (stepCount === 0 && !rawPlan?.status) {
+    return {
+      state: "none",
+      tone: "plain",
+      text: t("work.plan.none"),
+      ready: false,
+      applyDisabled: true,
+      missingSourcesCount: 0,
+      unconfirmedCount: 0,
+      blockingImpactCount: 0,
+      blockingCount: 0,
+      warnCount: 0,
+    };
+  }
+
+  // 7. Fully Valid
+  return {
+    state: "valid",
+    tone: "ok",
+    text: t("work.plan.valid"),
+    ready: true,
+    applyDisabled: false,
+    reason: null,
+    missingSourcesCount: 0,
+    unconfirmedCount: 0,
+    blockingImpactCount: 0,
+    blockingCount: 0,
+    warnCount: 0,
+  };
+}
+
 // The plan status button (UI design 4.2). GET session gives only plan_status. The counts come from GET plan (S5).
-export function planStatus(planStatusValue, plan = null, checking = false) {
+export function planStatus(planStatusValue, plan = null, checking = false, session = null) {
+  if (session) {
+    return deriveReadiness({ session, plan, checking });
+  }
   if (checking) return { tone: "plain", text: t("work.plan.checking"), checking: true };
   const blocking = Array.isArray(plan?.blocking) ? plan.blocking.length : null;
   const warnings = Array.isArray(plan?.warnings) ? plan.warnings.length : null;

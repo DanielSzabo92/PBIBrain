@@ -88,14 +88,21 @@ export default function PlanTab({ session, changeDisabled, reasonId, onTabs, onC
 
   const { model: targetModelName } = targetNames(session);
 
+  const isStale = Boolean(
+    session?.revision != null &&
+    effectivePlan?.revision != null &&
+    session.revision > effectivePlan.revision
+  ) || planResource.stale === true;
+
   const blocks = useMemo(
     () => buildBlockList({
       plan: effectivePlan,
       session,
       applyPreview: preview,
       targetModelName,
+      isStale,
     }),
-    [effectivePlan, session, preview, targetModelName],
+    [effectivePlan, session, preview, targetModelName, isStale],
   );
 
   const isChecking = checking || session?.plan_state === "checking";
@@ -105,8 +112,9 @@ export default function PlanTab({ session, changeDisabled, reasonId, onTabs, onC
       blocks,
       checking: isChecking,
       checkTime,
+      isStale,
     }),
-    [effectivePlan, blocks, isChecking, checkTime],
+    [effectivePlan, blocks, isChecking, checkTime, isStale],
   );
 
   const summary = useMemo(() => planSummaryGroups(effectivePlan), [effectivePlan]);
@@ -134,6 +142,13 @@ export default function PlanTab({ session, changeDisabled, reasonId, onTabs, onC
       return next;
     });
   };
+
+  // Re-check automatically when plan is stale.
+  useEffect(() => {
+    if (isStale && !checking && !planResource.loading) {
+      handleCheckPlan();
+    }
+  }, [isStale, checking, planResource.loading]);
 
   const handleCheckPlan = async () => {
     if (checking) return;
@@ -180,6 +195,8 @@ export default function PlanTab({ session, changeDisabled, reasonId, onTabs, onC
     } else if (action.type === "change_target") {
       if (onChangeTarget) onChangeTarget();
       else onTabs({ tab: "sources" });
+    } else if (action.type === "sources") {
+      onTabs({ tab: "sources" });
     } else if (action.type === "check_plan") {
       await handleCheckPlan();
     } else if (action.type === "format_files") {
@@ -420,7 +437,12 @@ export default function PlanTab({ session, changeDisabled, reasonId, onTabs, onC
 
           <section className="dc-card dc-plan-card dc-plan-steps-card" aria-labelledby="dc-plan-steps-title">
             <div className="dc-plan-card-head dc-plan-steps-bar">
-              <h2 id="dc-plan-steps-title" className="dc-section-title">{t("plan.steps")}</h2>
+              <div>
+                <h2 id="dc-plan-steps-title" className="dc-section-title">{t("plan.steps")}</h2>
+                <span className="dc-muted dc-num">
+                  {stepCount} plan step{stepCount === 1 ? "" : "s"} · {effectivePlan?.operations?.length ?? 0} operations
+                </span>
+              </div>
               <div className="dc-plan-steps-controls">
                 <SegmentedControl
                   mode="radio"

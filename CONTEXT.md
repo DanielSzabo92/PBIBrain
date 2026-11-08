@@ -89,11 +89,11 @@ The compare mode that compares the exact text and the annotations. The default c
 _Avoid_: Exact mode, raw diff
 
 **Plan Step**:
-One item of the Change Plan that comes from one Merge Choice or one prerequisite. The app counts plan steps in the plan summary.
+One item of the Change Plan that comes from one Merge Choice or one prerequisite. The app counts plan steps in the plan summary. One plan step compiles to one or more operations (for example, renaming a table is 1 plan step that compiles to 1 rename table operation and dependent expression rewrite operations).
 _Avoid_: Operation, task
 
 **Operation**:
-One atomic change to the target that a plan step compiles to, for example one expression rewrite or one field rebind.
+One atomic change to the target that a plan step compiles to, for example one expression rewrite or one field rebind. Each plan step produces one or more operations; UI summaries, strips, and dialogs report both together (e.g. "3 plan steps · 5 operations") so commit numbers reconcile completely.
 _Avoid_: Step, action
 
 **Removal Policy**:

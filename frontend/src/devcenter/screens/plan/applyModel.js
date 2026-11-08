@@ -157,6 +157,31 @@ export function deletedNames(plan) {
   return names;
 }
 
+// Single data source for apply dialog counts: always reconciled with the deletedNames list.
+export function applySummary(plan) {
+  const deletes = deletedNames(plan);
+  const remove = deletes.length;
+  let add = 0;
+  let change = 0;
+  let rename = 0;
+
+  if (plan?.summary) {
+    const model = plan.summary.model ?? {};
+    const report = plan.summary.report ?? {};
+    add = (model.created?.total ?? 0) + (report.created?.total ?? 0);
+    change = (model.modified?.total ?? 0) + (report.modified?.total ?? 0);
+    rename = (model.renamed?.total ?? 0) + (report.renamed?.total ?? 0);
+  } else if (Array.isArray(plan?.operations)) {
+    for (const op of plan.operations) {
+      if (op.op === "CREATE" || op.op === "COPY_PAGE" || op.op === "CREATE_REPORT_MEASURE") add += 1;
+      else if (op.op === "RENAME" || op.op === "RENAME_PAIR") rename += 1;
+      else if (op.op !== "DELETE") change += 1;
+    }
+  }
+
+  return { add, remove, change, rename };
+}
+
 // The Desktop line of the dialog. null when Power BI Desktop does not have the target open.
 export function desktopLine(state, kind = "apply") {
   if (state === "open_saved" || state === "open_unsaved") return kind === "undo" ? t("undo.desktop") : t("apply.desktop.open");

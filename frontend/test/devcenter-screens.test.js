@@ -5,7 +5,7 @@ import test from "node:test";
 import { DevCenterError } from "../src/devcenter/errors.js";
 import { setSlashSearchEnabled, slashGoesToSearch, slashSearchEnabled } from "../src/devcenter/preferences.js";
 import {
-  agentCount, banners, defaultSessionName, draftHasModel, draftSource, listRowState, planStatus, runCreateFlow,
+  agentCount, banners, defaultSessionName, deriveReadiness, draftHasModel, draftSource, listRowState, planStatus, runCreateFlow,
   sortSessions, targetLine, targetModelItems, targetNames, targetPayload, targetReportItems,
 } from "../src/devcenter/screens/sessionModel.js";
 
@@ -28,6 +28,36 @@ test("the plan status button uses GET plan counts when it has them", () => {
   assert.equal(planStatus("invalid").text, "Plan not valid");
   assert.equal(planStatus(null).text, "Plan not checked");
   assert.equal(planStatus("valid", null, true).text, "Checking plan");
+});
+
+test("deriveReadiness ensures no screen can show Valid when blocking items, missing sources, unconfirmed marks, or stale plan exist", async () => {
+  const missingSession = await fixture("source-missing/session.json");
+  const missingReadiness = deriveReadiness({ session: missingSession, plan: { status: "valid" } });
+  assert.equal(missingReadiness.tone, "bad");
+  assert.equal(missingReadiness.text, "1 source missing");
+  assert.equal(missingReadiness.ready, false);
+
+  const changedSession = await fixture("sources-changed/session.json");
+  const changedReadiness = deriveReadiness({ session: changedSession, plan: { status: "valid" } });
+  assert.equal(changedReadiness.tone, "warn");
+  assert.equal(changedReadiness.text, "3 unconfirmed rows");
+  assert.equal(changedReadiness.ready, false);
+
+  const invalidPlan = await fixture("plan-invalid/plan.json");
+  const invalidReadiness = deriveReadiness({ session: { sources: [], counts: {} }, plan: invalidPlan });
+  assert.equal(invalidReadiness.tone, "bad");
+  assert.equal(invalidReadiness.text, "Plan not valid: 2 blocking");
+  assert.equal(invalidReadiness.ready, false);
+
+  const staleReadiness = deriveReadiness({ session: { revision: 15, sources: [] }, plan: { revision: 12, status: "valid" } });
+  assert.equal(staleReadiness.tone, "warn");
+  assert.equal(staleReadiness.text, "Stale, re-check");
+  assert.equal(staleReadiness.ready, false);
+
+  const cleanReadiness = deriveReadiness({ session: { revision: 12, sources: [{ status: "ok" }], counts: { marks: 0 } }, plan: { revision: 12, status: "valid", steps: [{}], blocking: [], warnings: [] } });
+  assert.equal(cleanReadiness.tone, "ok");
+  assert.equal(cleanReadiness.text, "Valid");
+  assert.equal(cleanReadiness.ready, true);
 });
 
 test("the banner stack has the order locked, source missing, sources changed", async () => {

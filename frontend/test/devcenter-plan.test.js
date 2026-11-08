@@ -32,7 +32,7 @@ test("planDeletesCount sums model and report deleted totals and drives destructi
   const stripReady = planStripState({ plan: applyReadyPlan, blocks: [], checkTime: "14:22" });
   assert.equal(stripReady.applyVariant, "destructive");
   assert.equal(stripReady.state, "valid");
-  assert.equal(stripReady.body, "5 plan steps. Full check 14:22.");
+  assert.equal(stripReady.body, "5 plan steps · 6 operations. Full check 14:22.");
 });
 
 test("planStripState covers invalid, valid_with_warnings, valid, empty, and checking states", async () => {
@@ -43,8 +43,21 @@ test("planStripState covers invalid, valid_with_warnings, valid, empty, and chec
   assert.equal(warningsStrip.state, "valid_with_warnings");
   assert.equal(warningsStrip.badgeTone, "warn");
   assert.equal(warningsStrip.badgeLabel, "Valid with 1 warning");
-  assert.equal(warningsStrip.body, "3 plan steps, 1 warning. Full check 09:30.");
+  assert.equal(warningsStrip.body, "3 plan steps · 5 operations, 1 warning. Full check 09:30.");
   assert.equal(warningsStrip.applyDisabled, false);
+
+  const staleStrip = planStripState({ plan: defaultPlan, blocks: [], checkTime: "09:30", isStale: true });
+  assert.equal(staleStrip.state, "stale");
+  assert.equal(staleStrip.badgeTone, "warn");
+  assert.equal(staleStrip.badgeLabel, "Stale, re-check");
+  assert.equal(staleStrip.applyDisabled, true);
+
+  const missingBlocks = buildBlockList({ plan: defaultPlan, session: { sources: [{ source_id: "src-1", status: "missing", display_name: "Sales" }] } });
+  assert.equal(missingBlocks.some((b) => b.kind === "missing_sources"), true);
+  const missingStrip = planStripState({ plan: defaultPlan, blocks: missingBlocks, checkTime: "09:30" });
+  assert.equal(missingStrip.state, "invalid");
+  assert.equal(missingStrip.badgeTone, "bad");
+  assert.equal(missingStrip.applyDisabled, true);
 
   const blocks = buildBlockList({ plan: invalidPlan });
   const invalidStrip = planStripState({ plan: invalidPlan, blocks, checkTime: "09:30" });

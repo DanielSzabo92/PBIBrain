@@ -15,7 +15,7 @@ import ImpactTab from "./impact/ImpactTab.jsx";
 import AgentTab from "./agent/AgentTab.jsx";
 import LogTab from "./log/LogTab.jsx";
 import CompareGrid from "../components/CompareGrid.jsx";
-import { agentCount, banners, planStatus, targetLine } from "./sessionModel.js";
+import { agentCount, banners, deriveReadiness, planStatus, targetLine } from "./sessionModel.js";
 
 export const TABS = ["compare", "impact", "plan", "agent", "sources", "log"];
 export const LOCKED_REASON_ID = "dc-locked-reason";
@@ -34,13 +34,13 @@ export default function WorkArea({ session, tabState, onTabs, onRetryLock, onClo
   const longBusy = busy === "long";
   const changeDisabled = readOnly || longBusy;
   const reasonId = readOnly ? LOCKED_REASON_ID : longBusy ? BUSY_REASON_ID : undefined;
-  const status = planStatus(
-    plan.data?.status ?? session.plan_status,
-    plan.data,
-    (plan.status === "loading" && !plan.data) || session.plan_state === "checking",
-  );
+  const status = deriveReadiness({
+    session,
+    plan,
+    checking: (plan.status === "loading" && !plan.data) || session.plan_state === "checking",
+  });
   const agent = agentCount(session);
-  const blocking = status.blocking ?? 0;
+  const blocking = status.blockingCount ?? status.blocking ?? 0;
   const stack = banners(session).filter((banner) => !(banner.id === "missing" && tabState.tab === "sources"));
   const busyText = longBusy && running ? longCallText(running) : null;
   // Step U10: after an apply, undo, or format with the target open in Power BI Desktop.
@@ -106,16 +106,44 @@ export default function WorkArea({ session, tabState, onTabs, onRetryLock, onClo
       ) : null}
       <Tabs value={tabState.tab} onValueChange={(tab) => onTabs({ tab })} className="dc-tabs" activationMode="automatic">
         <TabsList aria-label={t("work.tabs")} className="dc-tab-row">
-          {TABS.map((tab) => (
-            <TabsTrigger
-              key={tab}
-              value={tab}
-              count={tab === "plan" && blocking > 0 ? blocking : tab === "agent" && agent > 0 ? agent : undefined}
-              countTone={tab === "plan" ? "bad" : "info"}
-              countLabel={tab === "plan" ? t("work.tab.count.plan") : tab === "agent" ? t("work.tab.count.agent") : undefined}>
-              {t(`work.tab.${tab}`)}
-            </TabsTrigger>
-          ))}
+          {TABS.map((tab) => {
+            let count;
+            let countTone = "info";
+            let countLabel;
+
+            if (tab === "sources" && status.missingSourcesCount > 0) {
+              count = status.missingSourcesCount;
+              countTone = "bad";
+              countLabel = tn("work.plan.missing", status.missingSourcesCount);
+            } else if (tab === "compare" && status.unconfirmedCount > 0) {
+              count = status.unconfirmedCount;
+              countTone = "warn";
+              countLabel = tn("work.plan.unconfirmed", status.unconfirmedCount);
+            } else if (tab === "impact" && status.blockingImpactCount > 0) {
+              count = status.blockingImpactCount;
+              countTone = "bad";
+              countLabel = t("work.tab.count.impact");
+            } else if (tab === "plan" && blocking > 0) {
+              count = blocking;
+              countTone = "bad";
+              countLabel = t("work.tab.count.plan");
+            } else if (tab === "agent" && agent > 0) {
+              count = agent;
+              countTone = "info";
+              countLabel = t("work.tab.count.agent");
+            }
+
+            return (
+              <TabsTrigger
+                key={tab}
+                value={tab}
+                count={count}
+                countTone={countTone}
+                countLabel={countLabel}>
+                {t(`work.tab.${tab}`)}
+              </TabsTrigger>
+            );
+          })}
         </TabsList>
         {TABS.map((tab) => (
           <TabsContent key={tab} value={tab} className="dc-tab-panel">

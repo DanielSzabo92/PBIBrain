@@ -13,6 +13,7 @@ import ApplyProgressList from "./ApplyProgressList.jsx";
 import ApplyResultPanel from "./ApplyResultPanel.jsx";
 import "./apply.css";
 import {
+  applySummary,
   approvalItems,
   approvalPurposes,
   clockTime,
@@ -28,9 +29,11 @@ import {
 const APPROVE_ID = "dc-apply-approve";
 
 function ApplyConfirmBody({ preview, plan, approvals, approved, onApproved }) {
-  const summary = preview?.summary ?? {};
+  const summary = applySummary(plan);
   const deletes = deletedNames(plan);
   const desktop = desktopLine(preview?.desktop_state, "apply");
+  const stepCount = plan?.steps?.length ?? 0;
+  const opCount = plan?.operations?.length ?? 0;
   return (
     <>
       <ul className="dc-apply-counts" aria-label={t("plan.summary")}>
@@ -39,6 +42,9 @@ function ApplyConfirmBody({ preview, plan, approvals, approved, onApproved }) {
         <li className="dc-num">{t("apply.summary.modified", { n: summary.change ?? 0 })}</li>
         <li className="dc-num">{t("apply.summary.renamed", { n: summary.rename ?? 0 })}</li>
       </ul>
+      <p className="dc-apply-steps-meta dc-num">
+        {stepCount} plan step{stepCount === 1 ? "" : "s"} · {opCount} operation{opCount === 1 ? "" : "s"}
+      </p>
       {deletes.length > 0 ? <p className="dc-apply-deletes" data-apply="deletes">{t("apply.deletes", { n: deletes.length, list: deletes.join(", ") })}</p> : null}
       {approvals.length > 0 ? (
         <>

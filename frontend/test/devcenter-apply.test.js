@@ -2,6 +2,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
+  applySummary,
   approvalItems,
   approvalPurposes,
   changeReportName,
@@ -23,6 +24,16 @@ const PLAN = {
     { row_key: "row-margin", name: "Margin", op: "CREATE" },
   ],
 };
+
+test("applySummary derives counts from plan so deleted count and deletedNames always agree", () => {
+  const summary = applySummary(PLAN);
+  assert.equal(summary.remove, 1);
+  assert.equal(summary.add, 1);
+  assert.equal(summary.change, 0);
+  assert.equal(summary.rename, 0);
+  assert.deepEqual(deletedNames(PLAN), ["Region"]);
+  assert.equal(summary.remove, deletedNames(PLAN).length);
+});
 
 test("approval items list Critical, then High, then Not checked, with the object names", () => {
   const preview = {

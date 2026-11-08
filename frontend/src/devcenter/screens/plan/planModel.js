@@ -170,10 +170,44 @@ export function formatWarningText(item) {
 // Build the "Before you apply" block list in the fixed order of section 4.6:
 // (1) unconfirmed source marks, (2) plan blocking items, (3) Desktop unsaved changes,
 // (4) non-canonical target files, (5) full validation failures.
-export function buildBlockList({ plan, session, applyPreview, targetModelName } = {}) {
+export function buildBlockList({ plan, session, applyPreview, targetModelName, isStale = false } = {}) {
   const blocks = [];
   const rawBlocking = Array.isArray(plan?.blocking) ? plan.blocking : [];
   const preview = applyPreview ?? plan?.apply_preview ?? null;
+
+  // (0) Missing or damaged sources.
+  const missingSources = (session?.sources ?? []).filter((s) => s.status !== "ok");
+  if (missingSources.length > 0) {
+    blocks.push({
+      id: "block-missing-sources",
+      category: "sources",
+      kind: "missing_sources",
+      icon: "bad",
+      text: missingSources.length === 1
+        ? `1 source is not available: ${missingSources[0].display_name || missingSources[0].source_id}.`
+        : `${missingSources.length} sources are not available.`,
+      fix: "Restore or relink the source before you apply.",
+      files: [],
+      actionLabel: "View sources",
+      action: { type: "sources" },
+    });
+  }
+
+  // (0b) Stale plan.
+  const stale = isStale || Boolean(session?.revision != null && plan?.revision != null && session.revision > plan.revision);
+  if (stale) {
+    blocks.push({
+      id: "block-stale",
+      category: "plan",
+      kind: "stale_plan",
+      icon: "warn",
+      text: "The plan is out of date with recent changes.",
+      fix: "Run Check plan to update the plan.",
+      files: [],
+      actionLabel: "Check plan",
+      action: { type: "check_plan" },
+    });
+  }
 
   // (1) Unconfirmed source marks.
   const marksBlocking = rawBlocking.find((item) => item.kind === "source_marks");
@@ -293,7 +327,7 @@ export function buildBlockList({ plan, session, applyPreview, targetModelName } 
   return blocks;
 }
 
-export function planStripState({ plan, blocks = [], checking = false, checkTime = "09:30" } = {}) {
+export function planStripState({ plan, blocks = [], checking = false, checkTime = "09:30", isStale = false } = {}) {
   const time = formatCheckTime(checkTime);
   const deletesCount = planDeletesCount(plan);
   const applyVariant = deletesCount > 0 ? "destructive" : "default";
@@ -305,6 +339,18 @@ export function planStripState({ plan, blocks = [], checking = false, checkTime 
       badgeLabel: t("plan.check.loading"),
       body: "Validating expressions and dependencies.",
       reason: "Wait for the plan check.",
+      applyDisabled: true,
+      applyVariant,
+    };
+  }
+
+  if (isStale) {
+    return {
+      state: "stale",
+      badgeTone: "warn",
+      badgeLabel: t("plan.strip.stale"),
+      body: `The plan is out of date with recent changes. Full check ${time}.`,
+      reason: "Re-check the plan before you apply.",
       applyDisabled: true,
       applyVariant,
     };
@@ -341,15 +387,18 @@ export function planStripState({ plan, blocks = [], checking = false, checkTime 
     };
   }
 
+  const opCount = Array.isArray(plan?.operations) ? plan.operations.length : 0;
+  const countText = opCount > 0
+    ? `${stepCount} plan step${stepCount === 1 ? "" : "s"} · ${opCount} operation${opCount === 1 ? "" : "s"}`
+    : `${stepCount} plan step${stepCount === 1 ? "" : "s"}`;
+
   const warnCount = plan?.warnings?.length ?? 0;
   if (warnCount > 0 || plan?.status === "valid_with_warnings") {
     const w = Math.max(warnCount, 1);
     const badgeLabel = w === 1 ? "Valid with 1 warning" : t("plan.strip.warnings", { n: w });
-    const body = stepCount === 1 && w === 1
-      ? `1 plan step, 1 warning. Full check ${time}.`
-      : w === 1
-        ? `${stepCount} plan steps, 1 warning. Full check ${time}.`
-        : t("plan.strip.warnings.body", { steps: stepCount, n: w, time });
+    const body = w === 1
+      ? `${countText}, 1 warning. Full check ${time}.`
+      : `${countText}, ${w} warnings. Full check ${time}.`;
     return {
       state: "valid_with_warnings",
       badgeTone: "warn",
@@ -361,9 +410,7 @@ export function planStripState({ plan, blocks = [], checking = false, checkTime 
     };
   }
 
-  const body = stepCount === 1
-    ? `1 plan step. Full check ${time}.`
-    : t("plan.strip.valid.body", { steps: stepCount, time });
+  const body = `${countText}. Full check ${time}.`;
   return {
     state: "valid",
     badgeTone: "ok",

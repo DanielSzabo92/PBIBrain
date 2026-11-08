@@ -51,7 +51,7 @@ test.describe("Plan status strip, header sync, and empty state", () => {
     const strip = page.locator(".dc-plan-strip");
     await expect(strip).toBeVisible();
     await expect(strip.locator('[data-slot="status-badge"]')).toHaveText("Valid with 1 warning");
-    await expect(strip.locator(".dc-plan-strip-body")).toHaveText("3 plan steps, 1 warning. Full check 10:00.");
+    await expect(strip.locator(".dc-plan-strip-body")).toHaveText("3 plan steps · 5 operations, 1 warning. Full check 10:00.");
 
     // Default plan has 0 deletes, so Apply plan wears the primary (default) variant and is enabled.
     const applyBtn = strip.getByRole("button", { name: "Apply plan" });
@@ -70,7 +70,7 @@ test.describe("Plan status strip, header sync, and empty state", () => {
     await openPlanTab(page);
     const strip = page.locator(".dc-plan-strip");
     await expect(strip.locator('[data-slot="status-badge"]')).toHaveText("Valid");
-    await expect(strip.locator(".dc-plan-strip-body")).toHaveText("5 plan steps. Full check 10:00.");
+    await expect(strip.locator(".dc-plan-strip-body")).toHaveText("5 plan steps · 6 operations. Full check 10:00.");
 
     const applyBtn = strip.getByRole("button", { name: "Apply plan" });
     await expect(applyBtn).toBeEnabled();
@@ -332,7 +332,7 @@ test.describe("Summary, warnings, phases, filters, expand operations, Check plan
     await expect(page.locator(".dc-plan-strip").getByRole("button", { name: "Checking plan" })).toBeVisible();
 
     // After completion, full check time updates to 14:22.
-    await expect(page.locator(".dc-plan-strip-body")).toHaveText("3 plan steps, 1 warning. Full check 14:22.");
+    await expect(page.locator(".dc-plan-strip-body")).toHaveText("3 plan steps · 5 operations, 1 warning. Full check 14:22.");
 
     // Clicking "Open Agent" on the proposals info line opens the Agent tab.
     await proposalsInfo.getByRole("button", { name: "Open Agent" }).click();
