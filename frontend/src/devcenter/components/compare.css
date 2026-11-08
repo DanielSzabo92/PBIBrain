@@ -352,6 +352,15 @@
   color: var(--cmp-missing);
 }
 
+.dc-st-not-checked {
+  color: var(--text-2);
+}
+
+.dc-cell-missing,
+.dc-hcell-missing {
+  opacity: 0.55;
+}
+
 .dc-st-renamed {
   color: var(--cmp-renamed);
 }

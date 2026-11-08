@@ -5,6 +5,7 @@ import {
   ArrowUpDown,
   Calculator,
   Circle,
+  CircleDashed,
   Columns2,
   Flag,
   Layers,
@@ -1241,22 +1242,30 @@ export default function CompareGrid({
 
     // Col 4: Target
     if (colIndex === 4) {
-      const targetCell = getCellData("s0") || getCellData(targetSource?.source_id) || {
+      const isMissing = targetSource?.status === "missing";
+      const targetCell = isMissing ? null : (getCellData("s0") || getCellData(targetSource?.source_id) || {
         state: "target",
-      };
+      });
       return (
         <div
           key={`cell-${rowIndex}-4`}
-          className="dc-cell dc-col-tg"
+          className={`dc-cell dc-col-tg ${isMissing ? "dc-cell-missing" : ""}`}
           role="gridcell"
           aria-colindex={5}
           tabIndex={tabIndex}
           data-r={rowIndex}
           data-c={4}
           onFocus={() => handleCellFocus(rowIndex, 4)}
-          onClick={() => openPaneByClick(row.row_key)}
+          onClick={isMissing ? undefined : () => openPaneByClick(row.row_key)}
         >
-          <StateCell cell={targetCell} sourceName={targetSource?.display_name || "Target"} />
+          {isMissing ? (
+            <span className="dc-st dc-st-missing" title={`${targetSource?.display_name || "Target"}: Not found`}>
+              <CircleDashed aria-hidden="true" />
+              <span>Not found</span>
+            </span>
+          ) : (
+            <StateCell cell={targetCell} sourceName={targetSource?.display_name || "Target"} />
+          )}
         </div>
       );
     }
@@ -1265,9 +1274,11 @@ export default function CompareGrid({
     if (colIndex >= 5 && colIndex < 5 + donors.length) {
       const donorIndex = colIndex - 5;
       const donor = donors[donorIndex];
-      const cell = getCellData(donor.source_id);
+      const isMissing = donor?.status === "missing";
+      const cell = isMissing ? null : getCellData(donor.source_id);
 
       const openDiffForDonor = () => {
+        if (isMissing) return;
         const triggerEl = gridRef.current?.querySelector(`[data-r="${rowIndex}"][data-c="${colIndex}"]`);
         setDiffTarget({ row, donor, triggerElement: triggerEl });
       };
@@ -1275,20 +1286,27 @@ export default function CompareGrid({
       return (
         <div
           key={`cell-${rowIndex}-${colIndex}`}
-          className="dc-cell"
+          className={`dc-cell ${isMissing ? "dc-cell-missing" : ""}`}
           role="gridcell"
           aria-colindex={colIndex + 1}
           tabIndex={tabIndex}
           data-r={rowIndex}
           data-c={colIndex}
           onFocus={() => handleCellFocus(rowIndex, colIndex)}
-          onClick={() => openPaneByClick(row.row_key)}
+          onClick={isMissing ? undefined : () => openPaneByClick(row.row_key)}
         >
-          <StateCell
-            cell={cell}
-            sourceName={donor.display_name || donor.name}
-            onOpenDiff={openDiffForDonor}
-          />
+          {isMissing ? (
+            <span className="dc-st dc-st-missing" title={`${donor.display_name || donor.name}: Not found`}>
+              <CircleDashed aria-hidden="true" />
+              <span>Not found</span>
+            </span>
+          ) : (
+            <StateCell
+              cell={cell}
+              sourceName={donor.display_name || donor.name}
+              onOpenDiff={openDiffForDonor}
+            />
+          )}
         </div>
       );
     }
@@ -1643,22 +1661,26 @@ export default function CompareGrid({
                       <span>{t("compare.column.choice")}</span>
                     </div>
 
-                    <div className="dc-hcell dc-col-tg" role="columnheader" aria-colindex={5}>
+                    <div className={`dc-hcell dc-col-tg ${targetSource?.status === "missing" ? "dc-hcell-missing" : ""}`} role="columnheader" aria-colindex={5}>
                       <Target className="w-3.5 h-3.5" aria-hidden="true" />
-                      <span>{targetSource?.display_name || "Target"}</span>
+                      <span>{targetSource?.display_name || "Target"}{targetSource?.status === "missing" ? " (Not found)" : ""}</span>
                       <span className="sr-only"> (target)</span>
                     </div>
 
-                    {donors.map((donor, dIdx) => (
-                      <div
-                        key={donor.source_id}
-                        className="dc-hcell"
-                        role="columnheader"
-                        aria-colindex={6 + dIdx}
-                      >
-                        <span>{donor.display_name || donor.name}</span>
-                      </div>
-                    ))}
+                    {donors.map((donor, dIdx) => {
+                      const isMissing = donor?.status === "missing";
+                      return (
+                        <div
+                          key={donor.source_id}
+                          className={`dc-hcell ${isMissing ? "dc-hcell-missing" : ""}`}
+                          role="columnheader"
+                          aria-colindex={6 + dIdx}
+                          title={isMissing ? `${donor.display_name || donor.name}: Not found` : undefined}
+                        >
+                          <span>{donor.display_name || donor.name}{isMissing ? " (Not found)" : ""}</span>
+                        </div>
+                      );
+                    })}
 
                     <div
                       className="dc-hcell"

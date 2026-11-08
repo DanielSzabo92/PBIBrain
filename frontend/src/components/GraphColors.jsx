@@ -84,7 +84,13 @@ export default function GraphColors({ config, transport, overview, onSaved }) {
         </Tabs>
         </details>
         <div className="settings-actions" data-ui-actions="">
-          <Button onClick={save} disabled={!dirty || saving || !config}>{saving ? "Saving…" : "Save colors"}</Button>
+          <Button
+            onClick={save}
+            disabled={!dirty || saving || !config}
+            tooltip={!config ? "Project settings unavailable" : saving ? "Saving colors…" : !dirty ? "No color changes to save" : undefined}
+          >
+            {saving ? "Saving…" : "Save colors"}
+          </Button>
           <Button variant="outline" onClick={() => { setDraft(normalizeColors()); setMessage(""); }}>Restore defaults</Button>
           {dirty ? <Button variant="ghost" onClick={() => { setDraft(saved); setMessage(""); }}>Discard changes</Button> : null}
           {dirty && !message ? <span className="unsaved-dot">Unsaved changes</span> : null}

@@ -233,3 +233,11 @@ export function workspaceKey(node) {
   const properties = node?.properties || {};
   return String(node?.workspace_name || properties.workspace_name || "");
 }
+
+/** Detects whether an error indicates the backend service is offline or unreachable. */
+export function isBackendUnreachableError(err) {
+  if (!err) return false;
+  if (err?.status === 502 || err?.status === 503 || err?.status === 504) return true;
+  const msg = typeof err === "string" ? err : err?.message || String(err);
+  return /failed to fetch|fetch failed|networkerror|network request failed|econnrefused|connection refused|load failed|could not connect|cannot connect|unreachable/i.test(msg);
+}

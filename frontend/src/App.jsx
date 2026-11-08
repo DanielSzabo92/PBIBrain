@@ -14,7 +14,7 @@ import BrandMark from "./components/BrandMark";
 import { TypeGlyph, TypeIcon } from "./components/TypeGlyph";
 import { CloudSourcePicker } from "./components/CloudSourcePicker";
 import { highlightDax } from "./dax";
-import { objectName, objectScope, originNote, readableText, publicProperties, scopeChoices, statusLabel, suggestionLabel } from "./presentation";
+import { objectName, objectScope, originNote, readableText, publicProperties, scopeChoices, statusLabel, suggestionLabel, isBackendUnreachableError } from "./presentation";
 import { Button } from "./components/ui/button";
 import { Input } from "./components/ui/input";
 import { NativeSelect } from "./components/ui/native-select";
@@ -778,14 +778,18 @@ function AppInner({ transport = brainTransport }) {
           {(view !== "devcenter" && (error || configError || operationError)) || desktopError ? (
             <div className="error-banner" role="alert">
               <TriangleAlert aria-hidden="true" />
-              <span>{readableText(error || configError || operationError || desktopError)}</span>
+              <span>
+                {isBackendUnreachableError(error || configError)
+                  ? "Can't reach the PBIBrain service. Make sure the service is running, then retry."
+                  : readableText(error || configError || operationError || desktopError)}
+              </span>
               {error || configError ? <Button variant="outline" size="sm" onClick={load}>Retry</Button> : null}
             </div>
           ) : null}
           {counts.objects > 0 && view !== "devcenter" ? <PendingChanges transport={transport} scanning={scanning} onScan={applyScan} /> : null}
           <div className="view-frame" key={view}>
             <Suspense fallback={<div className="view-loading" role="status"><RefreshCw className="spin" aria-hidden="true" />Loading view…</div>}>
-            {view === "overview" ? <Overview onSelect={selectNode} overview={overview} config={config} counts={counts} colors={graphColors} loading={loading} projectName={projectName} onView={navigate} onBrowseType={(objectType) => { setSearchSession({ query: "", modelId: "", reportId: "", objectType, result: null }); setView("search"); }} onSources={() => { setSettingsTab("project"); setView("config"); }} onSummary={() => { setSettingsTab("summary"); setView("config"); }} onScan={applyScan} scanning={scanning} scanLabel={activeProject ? "Scan project" : "Scan sources"} onReview={() => navigate("review")} transport={transport} onMerge={(modelIds) => { const names = modelIds.map((id) => (overview.model_objects || []).find((item) => item.id === id)?.name || id); setNotice(`Start a merge session with ${names.join(", ")}`); navigate("devcenter"); }} /> : null}
+            {view === "overview" ? <Overview onSelect={selectNode} overview={overview} config={config} counts={counts} colors={graphColors} loading={loading} projectName={projectName} onView={navigate} onBrowseType={(objectType) => { setSearchSession({ query: "", modelId: "", reportId: "", objectType, result: null }); setView("search"); }} onSources={() => { setSettingsTab("project"); setView("config"); }} onSummary={() => { setSettingsTab("summary"); setView("config"); }} onScan={applyScan} scanning={scanning} scanLabel={activeProject ? "Scan project" : "Scan sources"} onReview={() => navigate("review")} transport={transport} onMerge={(modelIds) => { const names = modelIds.map((id) => (overview.model_objects || []).find((item) => item.id === id)?.name || id); setNotice(`Start a merge session with ${names.join(", ")}`); navigate("devcenter"); }} error={error || configError} onRetry={load} /> : null}
             {view === "search" ? <div className="page page-narrow" data-ui-stack=""><SearchView session={searchSession} onSession={setSearchSession} colors={graphColors} transport={transport} overview={overview} onSelect={selectNode} /></div> : null}
             {view === "graph" ? <GraphView session={graphSession} onSession={setGraphSession} colors={graphColors} transport={transport} overview={overview} snapshot={snapshot} selectedId={selectedId} onSelect={selectNode} /> : null}
             {view === "inspector" ? <div className="page page-wide" data-ui-stack="">{selectedId ? <><Button variant="ghost" size="sm" className="inspector-back" onClick={() => { if (inspectorOrigin === "inspector") { setSelectedId(null); setInspectedObject(null); } else setView(inspectorOrigin); }}><ArrowLeft aria-hidden="true" />{inspectorOrigin === "search" ? "Back to search results" : inspectorOrigin === "inspector" ? "Inspect another object" : `Back to ${VIEWS.find(([key]) => key === inspectorOrigin)?.[1]?.toLowerCase() || "overview"}`}</Button><Inspector key={selectedId} transport={transport} scanning={scanning} colors={graphColors} node={selected} details={inspectedDetails} loading={Boolean(selectedId && !inspectedDetails && !inspectorError)} error={inspectorError} snapshot={snapshot} snapshotLoaded={snapshotLoaded} snapshotError={snapshotError} onEvidenceRetry={() => loadSnapshot().catch(() => {})} overview={overview} onSelect={selectNode} onRetry={() => selectNode(selectedId)} onReview={review} onGraph={() => setView("graph")} /></> : <InspectorEmpty overview={overview} colors={graphColors} recentObjects={recentObjects} onSelect={(id) => { setInspectorOrigin("inspector"); selectNode(id); }} onOpenSearch={() => { setView("search"); focusSearchField(); }} onOpenPalette={() => setPaletteOpen(true)} onOpenGraph={() => setView("graph")} />}</div> : null}
@@ -809,7 +813,7 @@ function AppInner({ transport = brainTransport }) {
           onMerge={() => navigate("devcenter")} onSettings={() => openSettings("ai")} />
       </Suspense> : null}
       </div>
-      <StatusBar connection={connection} projectName={projectName} counts={counts} pending={pending} onReview={() => navigate("review")} scanning={scanning} lastScan={lastScan} notice={notice} noticeFailed={failedNotice} theme={theme} onTheme={toggleTheme} onShortcuts={() => setShortcutsOpen(true)} />
+      <StatusBar connection={connection} projectName={projectName} counts={counts} pending={pending} onReview={() => navigate("review")} scanning={scanning} lastScan={lastScan} notice={notice} noticeFailed={failedNotice} theme={theme} onTheme={toggleTheme} onShortcuts={() => setShortcutsOpen(true)} onScan={runScan} />
       <ShortcutsDialog open={shortcutsOpen} onOpenChange={setShortcutsOpen} />
       <CommandPalette
         open={paletteOpen}
@@ -948,12 +952,12 @@ function DesktopProjectView({ api, project, overview, config, transport, scannin
     <PageHeading title={project.name} description="Everything PBIBrain creates stays with this project folder." action={<Button variant="outline" onClick={onChange} disabled={scanning}><FolderOpen />Change project</Button>} />
     <Card className="panel desktop-project-panel">
       <div className="project-location"><div><p className="field-label">Project folder</p><strong title={project.folder}>{project.folder}</strong></div></div>
-      <div className="desktop-sources"><div className="panel-heading"><div><h2>Power BI source files</h2></div><Button variant="outline" onClick={addSources} disabled={sourceWorking || scanning}><Plus />{sourceWorking ? "Adding…" : "Add source files"}</Button></div>{sources.length ? <div className="source-list">{sources.map((source) => <div className="desktop-source-row" key={source}><FileText className="source-icon" aria-hidden="true" /><span title={source}>{source}</span><Button variant="ghost" size="icon-sm" onClick={() => removeSource(source)} disabled={sourceWorking || scanning} aria-label={`Remove ${source}`}><X /></Button></div>)}</div> : <EmptyState icon={<FileText />} title="No source files yet" detail="Add PBIP projects or model JSON files to scan them with this project." />}{sourceError ? <p className="onboarding-error" role="alert">{sourceError}</p> : null}</div>
+      <div className="desktop-sources"><div className="panel-heading"><div><h2>Power BI source files</h2></div><Button variant="outline" onClick={addSources} disabled={sourceWorking || scanning} tooltip={scanning ? "Cannot add sources while scan is in progress" : sourceWorking ? "Adding sources…" : undefined}><Plus />{sourceWorking ? "Adding…" : "Add source files"}</Button></div>{sources.length ? <div className="source-list">{sources.map((source) => <div className="desktop-source-row" key={source}><FileText className="source-icon" aria-hidden="true" /><span title={source}>{source}</span><Button variant="ghost" size="icon-sm" onClick={() => removeSource(source)} disabled={sourceWorking || scanning} aria-label={`Remove ${source}`}><X /></Button></div>)}</div> : <EmptyState icon={<FileText />} title="No source files yet" detail="Add PBIP projects or model JSON files to scan them with this project." />}{sourceError ? <p className="onboarding-error" role="alert">{sourceError}</p> : null}</div>
       {typeof api?.add_cloud_source === "function" || cloudSources.length ? <div className="desktop-sources cloud-sources"><div className="panel-heading"><div><h2>Power BI service items</h2><p className="muted">Cloud semantic models and reports, read with your Microsoft sign-in.</p></div>{typeof api?.add_cloud_source === "function" ? <Button variant="outline" onClick={() => setCloudOpen(true)} disabled={sourceWorking || scanning || cloudOpen}><Cloud />Add cloud item</Button> : null}</div>
         {cloudOpen ? <CloudSourcePicker api={api} onClose={() => setCloudOpen(false)} onAdded={async () => { setCloudOpen(false); await onRefresh(); }} /> : null}
         {cloudSources.length ? <div className="source-list">{cloudSources.map((item) => <div className="desktop-source-row" key={item.item_id}><Cloud className="source-icon" aria-hidden="true" /><span title={`${item.workspace_name} · ${item.name}`}>{item.workspace_name} · {item.name} <span className="muted">({item.kind === "cloud_model" ? "semantic model" : "report"}, {item.access_type})</span></span><Button variant="ghost" size="icon-sm" onClick={() => removeCloudSource(item)} disabled={sourceWorking || scanning} aria-label={`Remove ${item.name}`}><X /></Button></div>)}</div> : null}
       </div> : null}
-      <div className="config-actions" data-ui-actions=""><Button onClick={onScan} disabled={scanning}><ScanLine />{scanning ? "Scanning…" : "Scan project"}</Button></div>
+      <div className="config-actions" data-ui-actions=""><Button onClick={onScan} disabled={scanning} tooltip={scanning ? "Scan in progress" : undefined}><ScanLine />{scanning ? "Scanning…" : "Scan project"}</Button></div>
     </Card>
   </>;
 }
@@ -972,8 +976,28 @@ function PageHeading({ kicker, title, description, action, children }) {
   );
 }
 
-function Overview({ overview, config, counts, colors, loading, projectName, onView, onBrowseType, onSources, onSummary, onScan, onReview, onSelect, onMerge, transport, scanning, scanLabel }) {
+function Overview({ overview, config, counts, colors, loading, projectName, onView, onBrowseType, onSources, onSummary, onScan, onReview, onSelect, onMerge, transport, scanning, scanLabel, error, onRetry }) {
   const hasObjects = counts.objects > 0;
+  if (isBackendUnreachableError(error) && !hasObjects) {
+    return (
+      <div className="page page-overview" data-ui-stack="">
+        <header className="overview-hero">
+          <h1>{projectName}</h1>
+          <p className="hero-meta muted">Service offline</p>
+        </header>
+        <Card className="panel" role="region" aria-label="PBIBrain service unreachable">
+          <div className="empty-state tone-bad">
+            <span className="empty-icon" aria-hidden="true"><TriangleAlert /></span>
+            <h2>Can't reach the PBIBrain service</h2>
+            <p>Make sure the PBIBrain backend service is running, then retry.</p>
+            <div className="status-actions" data-ui-actions="">
+              <Button onClick={onRetry}><RefreshCw />Retry connection</Button>
+            </div>
+          </div>
+        </Card>
+      </div>
+    );
+  }
   const hasSources = Boolean(config?.sources?.length || config?.cloud_sources?.length);
   const sourceCount = config?.sources ? config.sources.length + (config.cloud_sources?.length || 0) : undefined;
   const notChecked = Array.isArray(overview.not_checked) ? overview.not_checked : [];
@@ -991,6 +1015,13 @@ function Overview({ overview, config, counts, colors, loading, projectName, onVi
       <p>{validationState === "not_run" ? "Scan sources to check graph validity." : validationState === "invalid" ? "Sources were extracted, but graph issues need attention." : "Graph validity is checked separately from source extraction and review decisions."}</p>
       {issues.length ? <details className="validation-issues"><summary>View validation issues ({issues.length})</summary><ul>{issues.map((item, index) => <li key={`${item.code}-${index}`}><span className={`severity severity-${String(item.severity).toLowerCase()}`}>{item.severity}</span><span className="issue-message">{item.message}</span>{item.object_id || item.from_id || item.to_id ? <Button variant="link" size="sm" onClick={() => onSelect(item.object_id || item.from_id || item.to_id, "inspector")}>Inspect affected object</Button> : null}</li>)}</ul></details> : null}
     </div>
+    {validationState === "not_run" && onScan ? (
+      <div className="status-actions" data-ui-actions="">
+        <Button variant="ghost" size="sm" onClick={onScan} disabled={scanning} tooltip={!hasSources ? "Add sources before running validation" : undefined}>
+          <ShieldCheck />Run validation
+        </Button>
+      </div>
+    ) : null}
   </div>;
   const sourcesRow = <div className="status-row tone-idle">
     <Database className="status-icon" aria-hidden="true" />
@@ -998,7 +1029,14 @@ function Overview({ overview, config, counts, colors, loading, projectName, onVi
       <h2>{scanning ? "Scanning sources…" : hasObjects ? "Sources indexed" : "Sources"}</h2>
       <p className="scan-meta">{sourceCount === undefined ? "Source settings unavailable" : `${sourceCount} ${sourceCount === 1 ? "source" : "sources"}`}{hasObjects ? ` · ${lastScan ? `Last scan ${formatDate(lastScan)}` : "Last scan time unavailable"}` : ""}</p>
     </div>
-    <div className="status-actions" data-ui-actions=""><Button variant="ghost" size="sm" onClick={onSources}>Manage sources</Button></div>
+    <div className="status-actions" data-ui-actions="">
+      {(!lastScan || !hasObjects) && onScan ? (
+        <Button variant="ghost" size="sm" onClick={onScan} disabled={scanning || !hasSources} tooltip={!hasSources ? "Add sources before scanning" : undefined}>
+          <ScanLine />Scan now
+        </Button>
+      ) : null}
+      <Button variant="ghost" size="sm" onClick={onSources}>Manage sources</Button>
+    </div>
   </div>;
   // Models and reports the scan could not read (issue #9): they stay in the graph, marked "Not checked".
   const notCheckedRow = notChecked.length ? <div className="status-row tone-warn" role="status">
@@ -1014,7 +1052,26 @@ function Overview({ overview, config, counts, colors, loading, projectName, onVi
   return <div className="page page-overview" data-ui-stack="">
     <header className="overview-hero">
       <h1>{projectName}</h1>
-      {hasObjects ? <dl className="project-counts" aria-label="Project counts">{facts.map(([one, many, count]) => <div key={many}><dd>{count.toLocaleString()}</dd><dt>{count === 1 ? one : many}</dt></div>)}{lastScan ? <div><dt>last scan</dt><dd className="fact-date">{formatDate(lastScan)}</dd></div> : null}</dl> : <p className="hero-meta">Connect your Power BI sources to build the project brain.</p>}
+      {loading ? (
+        <p className="hero-meta muted">{scanning ? "Scanning project…" : "Loading project…"}</p>
+      ) : hasObjects ? (
+        <dl className="project-counts" aria-label="Project counts">
+          {facts.map(([one, many, count]) => (
+            <div key={many}>
+              <dd>{count.toLocaleString()}</dd>
+              <dt>{count === 1 ? one : many}</dt>
+            </div>
+          ))}
+          {lastScan ? (
+            <div>
+              <dt>last scan</dt>
+              <dd className="fact-date">{formatDate(lastScan)}</dd>
+            </div>
+          ) : null}
+        </dl>
+      ) : (
+        <p className="hero-meta">Connect your Power BI sources to build the project brain.</p>
+      )}
     </header>
     {hasObjects && typeCounts.length ? <nav className="type-strip" aria-label="Objects by type">{typeCounts.map(([type, count]) => <button type="button" key={type} className="type-strip-item" onClick={() => onBrowseType(type)} title={`Browse ${count.toLocaleString()} ${typeLabel(type).toLowerCase()} objects`}><TypeGlyph type={type} colors={colors} size="sm" /><span className="type-strip-count" data-ui-number="">{count.toLocaleString()}</span><span className="type-strip-label">{typeLabel(type)}</span></button>)}</nav> : null}
     {loading && !hasObjects ? <div className="overview-loading"><div className="skeleton skeleton-search" /><div className="skeleton skeleton-panel" /><p role="status" className="sr-only">{scanning ? "Scanning sources…" : "Loading project…"}</p></div> : !hasObjects ?
@@ -1022,7 +1079,15 @@ function Overview({ overview, config, counts, colors, loading, projectName, onVi
         <Card className="project-start" role="region" aria-labelledby="project-start-title">
           <h2 id="project-start-title">{hasSources ? "Ready for the first scan" : "Add your project sources"}</h2>
           <p>{hasSources ? "Scan your files to find models, reports, and their dependencies." : "Choose your PBIP project or exported model and report files."}</p>
-          <Button size="lg" onClick={hasSources ? onScan : onSources} disabled={!config || scanning}>{hasSources ? <ScanLine /> : <Plus />}{hasSources ? scanLabel : "Add sources"}</Button>
+          <Button
+            size="lg"
+            onClick={hasSources ? onScan : onSources}
+            disabled={!config || scanning}
+            tooltip={!config ? "Project settings unavailable. Connect to the PBIBrain service first." : scanning ? "Scan in progress" : undefined}
+          >
+            {hasSources ? <ScanLine /> : <Plus />}
+            {hasSources ? scanLabel : "Add sources"}
+          </Button>
         </Card>
         <Card className="status-panel" role="region" aria-label="Project status">{validation}{sourcesRow}{notCheckedRow}</Card>
       </div> : <>
@@ -1178,7 +1243,25 @@ function ConfigView({ transport, config, onSaved, onScan, scanning }) {
           <Button variant="outline" size="sm" className="add-source" onClick={() => setDraft({ ...draft, sources: [...draft.sources, ""] })}><Plus />Add source</Button>
         </div>
       </div>
-      <div className="config-actions" data-ui-actions=""><Button onClick={save} disabled={saving || scanning || !dirty}>{saving ? "Saving…" : "Save configuration"}</Button><Button variant="outline" onClick={onScan} disabled={scanning || saving || dirty || !config?.sources?.length}><ScanLine />{scanning ? "Scanning…" : "Scan saved sources"}</Button>{dirty ? <span className="muted-copy compact">Save changes before scanning.</span> : null}{message ? <span role={message === "Saved" ? "status" : "alert"} className={message === "Saved" ? "success-text" : "error-copy"}>{message === "Saved" ? <Check aria-hidden="true" /> : null}{message}</span> : null}</div>
+      <div className="config-actions" data-ui-actions="">
+        <Button
+          onClick={save}
+          disabled={saving || scanning || !dirty}
+          tooltip={saving ? "Saving…" : scanning ? "Cannot save while scan is in progress" : !dirty ? "No configuration changes to save" : undefined}
+        >
+          {saving ? "Saving…" : "Save configuration"}
+        </Button>
+        <Button
+          variant="outline"
+          onClick={onScan}
+          disabled={scanning || saving || dirty || !config?.sources?.length}
+          tooltip={scanning ? "Scan in progress" : saving ? "Wait for configuration to save" : dirty ? "Save configuration changes before scanning" : !config?.sources?.length ? "Add at least one source file to scan" : undefined}
+        >
+          <ScanLine />{scanning ? "Scanning…" : "Scan saved sources"}
+        </Button>
+        {dirty ? <span className="muted-copy compact">Save changes before scanning.</span> : null}
+        {message ? <span role={message === "Saved" ? "status" : "alert"} className={message === "Saved" ? "success-text" : "error-copy"}>{message === "Saved" ? <Check aria-hidden="true" /> : null}{message}</span> : null}
+      </div>
     </Card>
   </>;
 }
@@ -1615,3 +1698,5 @@ export default function App(props) {
     </ToastProvider>
   );
 }
+
+export { isBackendUnreachableError, Overview, AppInner };

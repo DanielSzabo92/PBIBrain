@@ -96,8 +96,31 @@ export default function WorkArea({ session, tabState, onTabs, onRetryLock, onClo
     if (reply) toast.show({ tone: reply.mark_count > 0 ? "warn" : "ok", text: reply.mark_count > 0 ? tn("work.check_sources.marks", reply.mark_count) : t("work.check_sources.same") });
   };
 
+  const sessionPath = session.path || (session.session_id ? `.pbibrain/sessions/${session.session_id}/session.json` : "");
+
+  const handleCopyPath = () => {
+    if (sessionPath && navigator.clipboard) {
+      navigator.clipboard.writeText(sessionPath);
+      toast.show({ tone: "ok", text: "Session path copied" });
+    }
+  };
+
   const bannerActions = {
-    locked: <Button variant="outline" size="sm" onClick={onRetryLock} disabled={longBusy}>{t("shared.locked.action")}</Button>,
+    locked: (
+      <div className="dc-banner-actions-group flex items-center gap-2">
+        <Button variant="outline" size="sm" onClick={onRetryLock} disabled={longBusy}>{t("shared.locked.action")}</Button>
+        {sessionPath ? (
+          <Button variant="outline" size="sm" onClick={handleCopyPath} title="Copy session path">
+            <Copy className="size-3.5" aria-hidden="true" />
+            <span>Copy path</span>
+          </Button>
+        ) : null}
+        <Button variant="outline" size="sm" onClick={() => setDeleteOpen(true)} title="Delete session">
+          <Trash2 className="size-3.5" aria-hidden="true" />
+          <span>Delete session</span>
+        </Button>
+      </div>
+    ),
     missing: <Button variant="outline" size="sm" onClick={() => onTabs({ tab: "sources" })}>{t("work.banner.missing.action")}</Button>,
     changed: <Button variant="outline" size="sm" onClick={() => onTabs({ tab: "compare", marks: true })}>{t("work.banner.changed.action")}</Button>,
   };

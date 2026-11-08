@@ -229,7 +229,21 @@ export function banners(session) {
   if (!session) return [];
   const list = [];
   const sources = session.sources ?? [];
-  if (session.read_only) list.push({ id: "locked", tone: "info", text: t("shared.locked.banner") });
+  if (session.read_only || session.lock_state === "locked" || session.locked) {
+    const owner = session.lock_owner || session.lock_holder?.owner;
+    const time = session.lock_time ? formatTime(session.lock_time) : (session.updated_at ? formatTime(session.updated_at) : null);
+    let lockedText = t("shared.locked.banner");
+    const details = [];
+    if (owner) details.push(`Owner: ${owner}`);
+    if (time) details.push(`Locked: ${time}`);
+    if (details.length) {
+      lockedText += ` (${details.join(" · ")})`;
+    }
+    if (session.read_only) {
+      lockedText += ` Working in read-only mode.`;
+    }
+    list.push({ id: "locked", tone: "info", text: lockedText, owner, time });
+  }
   const missing = sources.filter((source) => source.status !== "ok");
   if (missing.length > 0) {
     list.push({

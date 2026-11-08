@@ -86,15 +86,27 @@ export function AppMenuBar({ menus, projectName, children }) {
   );
 }
 
-export function StatusBar({ connection, projectName, counts, pending, onReview, scanning, lastScan, notice, noticeFailed, theme, onTheme, onShortcuts }) {
+export function StatusBar({ connection, projectName, counts, pending, onReview, scanning, lastScan, notice, noticeFailed, theme, onTheme, onShortcuts, onScan }) {
   const label = connection === "loading" ? "Loading" : connection === "error" ? "Offline" : "Connected";
+  const countsText = connection === "loading"
+    ? "Loading project…"
+    : connection === "error"
+      ? "Service unreachable"
+      : `${counts.models} ${counts.models === 1 ? "model" : "models"} · ${counts.reports} ${counts.reports === 1 ? "report" : "reports"} · ${counts.objects.toLocaleString()} objects · ${counts.edges.toLocaleString()} relationships`;
+  const isScanUnknown = lastScan === "Last scan time unknown" || lastScan === "Not scanned";
   return (
     <footer className="app-statusbar" aria-label="Status bar">
       <span className={`statusbar-item connection connection-${connection}`} title={label}><i />{label}</span>
       {scanning ? <span className="statusbar-item topbar-scanning"><span className="statusbar-progress" aria-hidden="true" />Scanning sources…</span> : null}
-      <span className="statusbar-item statusbar-counts">{counts.models} {counts.models === 1 ? "model" : "models"} · {counts.reports} {counts.reports === 1 ? "report" : "reports"} · {counts.objects.toLocaleString()} objects · {counts.edges.toLocaleString()} relationships</span>
+      <span className={`statusbar-item statusbar-counts ${connection === "loading" ? "statusbar-loading" : ""}`}>{countsText}</span>
       {pending > 0 ? <button type="button" className="statusbar-item statusbar-button statusbar-review" onClick={onReview} title="Open the review queue (Ctrl+5)">{pending.toLocaleString()} to review</button> : null}
-      <span className="statusbar-item statusbar-scan">{lastScan}</span>
+      {isScanUnknown && onScan ? (
+        <button type="button" className="statusbar-item statusbar-button statusbar-scan-now" onClick={onScan} disabled={scanning} title="Scan sources now">
+          {lastScan} · <strong>Scan now</strong>
+        </button>
+      ) : (
+        <span className="statusbar-item statusbar-scan">{lastScan}</span>
+      )}
       <span className="statusbar-spacer" />
       {notice ? <span className={`statusbar-item toast ${noticeFailed ? "toast-error" : ""}`} role="status">{noticeFailed ? <TriangleAlert aria-hidden="true" /> : <CircleCheck aria-hidden="true" />}{notice}</span> : null}
       <Tooltip content="Keyboard shortcuts (F1)"><button type="button" className="statusbar-item statusbar-button" onClick={onShortcuts} aria-label="Keyboard shortcuts"><Keyboard aria-hidden="true" /></button></Tooltip>

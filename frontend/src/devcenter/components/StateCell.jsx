@@ -9,6 +9,7 @@ export const STATE_ICONS = {
   conflict: OctagonAlert,
   type_conflict: OctagonAlert,
   missing: CircleDashed,
+  not_checked: CircleDashed,
   renamed: PenLine,
   moved: ArrowRightLeft,
   different: EqualNot,
@@ -19,17 +20,29 @@ export const STATE_ICONS = {
 // Normalize backend state names to copy keys.
 export function normalizeState(state) {
   if (state === "conflict") return "type_conflict";
+  if (state === "not_checked") return "not_checked";
   return state || "same";
 }
 
 export function stateWord(state) {
   const key = normalizeState(state);
-  return t(`compare.state.${key}`);
+  return t(`compare.state.${key}`) || (key === "not_checked" ? "Not checked" : key);
 }
 
-export default function StateCell({ cell, sourceName, onOpenDiff }) {
-  if (!cell) {
+export default function StateCell({ cell, sourceName, onOpenDiff, loading = false }) {
+  if (loading) {
     return <span className="dc-skel-line" aria-hidden="true" />;
+  }
+
+  if (!cell) {
+    const word = stateWord("not_checked");
+    const Icon = STATE_ICONS.not_checked || CircleDashed;
+    return (
+      <span className="dc-st dc-st-not-checked" title={sourceName ? `${sourceName}: ${word}` : word}>
+        <Icon aria-hidden="true" />
+        <span>{word}</span>
+      </span>
+    );
   }
 
   const rawState = cell.state || "same";

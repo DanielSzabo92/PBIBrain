@@ -9,6 +9,7 @@ import { Menu } from "@/components/ui/menu";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { useToast } from "@/components/ui/toast";
 import { errorCopy, t } from "../copy.js";
 import { useAction, useDevCenterState, useDevCenterStore, useResource } from "../useDevCenter.js";
 import { formatTime, listPlanLabel, listRowState, sortSessions } from "./sessionModel.js";
@@ -31,10 +32,19 @@ export default function SessionList({
   const closeSession = useAction("session_close");
   const current = useDevCenterState((state) => state.session);
   const busy = useDevCenterState((state) => state.busy);
+  const toast = useToast();
   const [opening, setOpening] = React.useState(null);
   const [renameTarget, setRenameTarget] = React.useState(null);
   const [deleteTarget, setDeleteTarget] = React.useState(null);
   const [renameDraft, setRenameDraft] = React.useState("");
+
+  const copyPath = (path) => {
+    if (!path) return;
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(path);
+      toast.show({ tone: "ok", text: "Session path copied" });
+    }
+  };
 
   const startRename = (row) => {
     setRenameTarget(row);
@@ -173,6 +183,7 @@ export default function SessionList({
               const name = row.display_name || t("list.unnamed");
               const reasonId = `dc-row-reason-${row.session_id}`;
               const loading = opening === row.session_id;
+              const sessionPath = row.path || (row.session_id ? `.pbibrain/sessions/${row.session_id}/session.json` : null);
               return (
                 <tr key={row.session_id} data-openable={state.openable || undefined} onClick={state.openable && !opening ? () => open(row) : undefined}>
                   <th scope="row">
@@ -183,6 +194,21 @@ export default function SessionList({
                       </Button>
                     ) : <span className="dc-row-name">{name}</span>}
                     {state.reason ? <p id={reasonId} className="dc-row-reason">{state.reason}</p> : null}
+                    {row.lock_state === "locked" ? (
+                      <p className="dc-row-lock-meta text-xs text-muted-foreground mt-0.5">
+                        Owner: {row.lock_owner || "Another window"} · Locked: {formatTime(row.lock_time || row.updated_at)}
+                      </p>
+                    ) : null}
+                    {row.schema_state !== "ok" && sessionPath ? (
+                      <div className="dc-row-damaged-meta text-xs text-muted-foreground mt-0.5">
+                        <p className="dc-row-path font-mono text-xs truncate max-w-sm" title={sessionPath}>{sessionPath}</p>
+                        <div className="dc-row-recovery-actions flex items-center gap-2 mt-1">
+                          <button type="button" className="dc-link text-xs" onClick={(e) => { e.stopPropagation(); copyPath(sessionPath); }}>Copy path</button>
+                          <span>·</span>
+                          <button type="button" className="dc-link text-xs text-destructive" onClick={(e) => { e.stopPropagation(); setDeleteTarget(row); }}>Delete session</button>
+                        </div>
+                      </div>
+                    ) : null}
                     {row.is_open ? <p className="dc-row-reason">{t("list.open.current")}</p> : null}
                   </th>
                   <td>
@@ -200,9 +226,10 @@ export default function SessionList({
                       trigger={<Button variant="ghost" size="icon-sm" aria-label={`Actions for ${name}`} onClick={(e) => e.stopPropagation()}><MoreHorizontal /></Button>}
                       groups={[{
                         items: [
-                          state.openable ? { label: t("list.row.open"), icon: FolderOpen, onSelect: () => open(row) } : null,
-                          { label: t("list.row.rename"), icon: Edit3, onSelect: () => startRename(row) },
-                          { label: t("list.row.duplicate"), icon: Copy, onSelect: () => onDuplicateSession?.(row.session_id) },
+                          state.openable ? { label: row.lock_state === "locked" ? "Open read-only" : t("list.row.open"), icon: FolderOpen, onSelect: () => open(row) } : null,
+                          sessionPath ? { label: "Copy session path", icon: Copy, onSelect: () => copyPath(sessionPath) } : null,
+                          state.openable ? { label: t("list.row.rename"), icon: Edit3, onSelect: () => startRename(row) } : null,
+                          state.openable ? { label: t("list.row.duplicate"), icon: Copy, onSelect: () => onDuplicateSession?.(row.session_id) } : null,
                           { label: t("list.row.delete"), icon: Trash2, onSelect: () => setDeleteTarget(row) },
                         ].filter(Boolean),
                       }]}

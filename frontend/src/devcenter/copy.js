@@ -323,6 +323,8 @@ export const COPY = Object.freeze({
   "compare.state.type_conflict": "Type conflict",
   "compare.state.type_conflict.help": "An object with this name exists in both models with different object types.",
   "compare.state.missing": "Missing",
+  "compare.state.not_checked": "Not checked",
+  "compare.state.not_checked.help": "This object was not checked.",
   "compare.state.renamed": "Renamed",
   "compare.state.moved": "Moved",
   "compare.state.different": "Different",

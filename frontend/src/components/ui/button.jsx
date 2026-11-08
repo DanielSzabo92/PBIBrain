@@ -59,7 +59,12 @@ const Button = React.forwardRef(function ButtonBase({
   const tip = tooltip === false ? null : tooltip || (String(size).startsWith("icon") && typeof props["aria-label"] === "string" ? props["aria-label"] : null)
   if (tip && !asChild) {
     const { title: _title, ...rest } = props
-    return <Tooltip content={tip}><Button ref={ref} variant={variant} size={size} tone={tone} loading={loading} loadingText={loadingText} className={className} onClick={onClick} tooltip={false} {...rest}>{children}</Button></Tooltip>
+    const buttonNode = <Button ref={ref} variant={variant} size={size} tone={tone} loading={loading} loadingText={loadingText} className={className} onClick={onClick} tooltip={false} title={typeof tip === "string" ? tip : undefined} {...rest}>{children}</Button>
+    return (
+      <Tooltip content={tip}>
+        {rest.disabled ? <span tabIndex={0} className="inline-flex cursor-not-allowed">{buttonNode}</span> : buttonNode}
+      </Tooltip>
+    )
   }
   return (
     <Comp
