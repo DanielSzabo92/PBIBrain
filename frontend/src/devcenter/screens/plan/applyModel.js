@@ -115,20 +115,45 @@ export function progressLine(kind, rows, progress, elapsedMs) {
   return t("apply.progress.count", { i, n, elapsed });
 }
 
+// The qualified name of an operation: Sales[Region] when table and name exist.
+export function qualifiedOperationName(op) {
+  if (!op) return "";
+  if (op.table && op.name && op.object_type !== "table") {
+    return `${op.table}[${op.name}]`;
+  }
+  return op.name || op.row_key || "";
+}
+
 // The approval items of the Apply dialog (UI design 5.5 step 2): Critical, High, Not checked.
+// Each item links back to its row or impact item so the user can inspect it before committing.
 export function approvalItems(preview, plan) {
   const names = new Map();
   for (const op of plan?.operations ?? []) {
-    if (op?.row_key && op?.name && !names.has(op.row_key)) names.set(op.row_key, op.name);
+    if (op?.row_key && op?.name && !names.has(op.row_key)) names.set(op.row_key, qualifiedOperationName(op));
   }
   const items = [];
   for (const need of preview?.approvals_needed ?? []) {
     if (need.purpose !== "HIGH_RISK_PROMOTION") continue;
     const severity = need.risk === "CRITICAL" ? "critical" : "high";
-    for (const key of need.row_keys ?? []) items.push({ id: `${severity}-${key}`, severity, name: names.get(key) ?? key });
+    for (const key of need.row_keys ?? []) {
+      items.push({
+        id: `${severity}-${key}`,
+        severity,
+        name: names.get(key) ?? key,
+        rowKey: key,
+        type: "row",
+      });
+    }
   }
   for (const item of preview?.not_checked ?? []) {
-    items.push({ id: `not_checked-${item.object_id}`, severity: "not_checked", name: item.object_name || item.object_id });
+    items.push({
+      id: `not_checked-${item.object_id}`,
+      severity: "not_checked",
+      name: item.object_name || item.object_id,
+      rowKey: item.object_id,
+      itemId: item.object_id,
+      type: "impact",
+    });
   }
   // Issue #16: the write to a cloud target is one approval item (the service then blocks the PBIX download).
   const cloud = preview?.cloud_target;
@@ -140,6 +165,137 @@ export function approvalItems(preview, plan) {
   return items.sort((a, b) => rank[a.severity] - rank[b.severity]);
 }
 
+// Format the combined target label: "Combined model and Combined report" or single target.
+export function applyTargetLabel(targets) {
+  if (typeof targets === "string") return targets;
+  const model = targets?.model;
+  const report = targets?.report;
+  if (model && report) return `${model} and ${report}`;
+  if (model) return model;
+  if (report) return report;
+  return "the target";
+}
+
+// Derive target files to be written from session and preview.
+export function targetFiles(session, preview) {
+  if (Array.isArray(preview?.target_files) && preview.target_files.length > 0) {
+    return preview.target_files;
+  }
+  const files = [];
+  const target = session?.target ?? {};
+  const sources = session?.sources ?? [];
+  const modelSource = sources.find((s) => s.source_id === target.model?.source_id || (s.role === "target" && (s.kind === "pbip" || s.kind === "tmdl_folder" || s.model_format)));
+  const reportSource = sources.find((s) => s.source_id === target.report?.source_id || (s.role === "target" && (s.kind === "pbir_report" || s.report_format)));
+
+  if (modelSource) {
+    const p = modelSource.model_path || modelSource.path;
+    if (p && !files.includes(p)) files.push(p);
+  }
+  if (reportSource) {
+    const p = reportSource.report_path || reportSource.path;
+    if (p && !files.includes(p)) files.push(p);
+  }
+  return files;
+}
+
+// Pre-checks evaluated before user confirms apply, displayed green/red inside confirmation.
+export function applyPreChecks(preview, plan) {
+  const checks = [];
+
+  // 1. Desktop check
+  const desktopState = preview?.desktop_state;
+  const desktopOk = desktopState !== "open_unsaved";
+  checks.push({
+    id: "desktop_check",
+    label: t("apply.step.desktop_check"),
+    ok: desktopOk,
+    detail: !desktopOk ? t("details.step.desktop_check") : null,
+  });
+
+  // 2. Source check
+  const unconfirmed = preview?.unconfirmed_marks?.count ?? 0;
+  const sourcesOk = unconfirmed === 0;
+  checks.push({
+    id: "source_check",
+    label: t("apply.step.source_check"),
+    ok: sourcesOk,
+    detail: !sourcesOk ? t("details.step.source_check") : null,
+  });
+
+  // 3. Plan status
+  const validationStatus = preview?.validation?.status ?? plan?.status;
+  const failedChecks = preview?.validation?.failed_checks ?? [];
+  const planOk = validationStatus !== "invalid" && failedChecks.length === 0 && plan?.status !== "invalid";
+  checks.push({
+    id: "plan_status",
+    label: t("apply.step.plan_status"),
+    ok: planOk,
+    detail: !planOk ? t("details.step.plan_status") : null,
+  });
+
+  // 4. Canonical check
+  const nonCanonical = preview?.non_canonical_files ?? [];
+  const canonicalOk = nonCanonical.length === 0;
+  checks.push({
+    id: "canonical_check",
+    label: t("apply.step.canonical_check"),
+    ok: canonicalOk,
+    detail: !canonicalOk ? t("details.step.canonical_check") : null,
+  });
+
+  return checks;
+}
+
+// Build exportable Markdown report for leads before applying.
+export function buildBeforeApplyReport({ plan, session, preview, targetName = "Target", targetFiles: files = [] } = {}) {
+  const summary = applySummary(plan);
+  const deletes = deletedNames(plan);
+  const approvals = approvalItems(preview, plan);
+  const prechecks = applyPreChecks(preview, plan);
+  const stepCount = plan?.steps?.length ?? 0;
+  const opCount = plan?.operations?.length ?? 0;
+
+  const lines = [
+    `# Before-Apply Report: ${targetName}`,
+    "",
+    `Generated at: ${new Date().toISOString()}`,
+    "",
+    "## Pre-checks",
+    "",
+    ...prechecks.map((c) => `- [${c.ok ? "x" : " "}] ${c.label}${c.detail ? `: ${c.detail}` : ""}`),
+    "",
+    "## Plan Summary",
+    "",
+    `- Plan steps: ${stepCount}`,
+    `- Operations: ${opCount}`,
+    `- Created: ${summary.add ?? 0}`,
+    `- Deleted: ${summary.remove ?? 0}`,
+    `- Modified: ${summary.change ?? 0}`,
+    `- Renamed: ${summary.rename ?? 0}`,
+    "",
+  ];
+
+  if (files.length > 0) {
+    lines.push("## Files to Write", "");
+    for (const f of files) lines.push(`- \`${f}\``);
+    lines.push("");
+  }
+
+  if (deletes.length > 0) {
+    lines.push("## Deletions", "");
+    for (const d of deletes) lines.push(`- \`${d}\``);
+    lines.push("");
+  }
+
+  if (approvals.length > 0) {
+    lines.push("## Approvals Needed", "");
+    for (const a of approvals) lines.push(`- [${a.severity.toUpperCase()}] ${a.name}`);
+    lines.push("");
+  }
+
+  return lines.join("\n");
+}
+
 // The approval purposes that the apply request sends (apply.request.json).
 export function approvalPurposes(preview) {
   const purposes = new Set();
@@ -148,11 +304,14 @@ export function approvalPurposes(preview) {
   return [...purposes].filter((value) => value === "HIGH_RISK_PROMOTION" || value === "UNCHECKED_IMPACT" || value === "CLOUD_WRITE").sort();
 }
 
-// The names of the objects that the plan deletes.
+// The names of the objects that the plan deletes, using qualified names (e.g. Sales[Region]).
 export function deletedNames(plan) {
   const names = [];
   for (const op of plan?.operations ?? []) {
-    if (op?.op === "DELETE" && op.name && !names.includes(op.name)) names.push(op.name);
+    if (op?.op === "DELETE") {
+      const name = qualifiedOperationName(op);
+      if (name && !names.includes(name)) names.push(name);
+    }
   }
   return names;
 }

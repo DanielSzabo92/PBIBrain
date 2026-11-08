@@ -83,6 +83,14 @@ test("planStripState covers invalid, valid_with_warnings, valid, empty, and chec
   assert.equal(checkingStrip.body, "Validating expressions and dependencies.");
   assert.equal(checkingStrip.reason, "Wait for the plan check.");
   assert.equal(checkingStrip.applyDisabled, true);
+
+  const appliedStrip = planStripState({ plan: defaultPlan, blocks: [], checkTime: "12:42", applied: { time: "12:42" } });
+  assert.equal(appliedStrip.state, "applied");
+  assert.equal(appliedStrip.badgeTone, "ok");
+  assert.equal(appliedStrip.badgeLabel, "Applied 12:42");
+  assert.equal(appliedStrip.body, "Applied 12:42 · Undo · Write change report");
+  assert.equal(appliedStrip.reason, "Plan already applied at 12:42.");
+  assert.equal(appliedStrip.applyDisabled, true);
 });
 
 test("buildBlockList orders marks, plan blocking items, Desktop, non-canonical files, and validation failures", () => {

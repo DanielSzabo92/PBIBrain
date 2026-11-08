@@ -2,9 +2,12 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
+  applyPreChecks,
   applySummary,
+  applyTargetLabel,
   approvalItems,
   approvalPurposes,
+  buildBeforeApplyReport,
   changeReportName,
   deletedNames,
   desktopLine,
@@ -14,6 +17,8 @@ import {
   needsDesktopBanner,
   progressLine,
   progressRows,
+  qualifiedOperationName,
+  targetFiles,
   undoState,
 } from "../src/devcenter/screens/plan/applyModel.js";
 
@@ -159,3 +164,122 @@ test("a cloud target adds the CLOUD_WRITE approval item and purpose (issue #16)"
   assert.match(items[0].name, /Sales Cloud in Sales Analytics/);
   assert.deepEqual(approvalPurposes(preview), ["CLOUD_WRITE"]);
 });
+
+test("qualifiedOperationName formats Sales[Region] for column/measure inside table", () => {
+  assert.equal(qualifiedOperationName({ table: "Sales", name: "Region", object_type: "column" }), "Sales[Region]");
+  assert.equal(qualifiedOperationName({ table: "Sales", name: "Sales", object_type: "table" }), "Sales");
+  assert.equal(qualifiedOperationName({ name: "Date", object_type: "table" }), "Date");
+  assert.equal(qualifiedOperationName(null), "");
+
+  const planWithQualified = {
+    operations: [
+      { op: "DELETE", table: "Sales", name: "Region", object_type: "column" },
+      { op: "DELETE", name: "OldTable", object_type: "table" },
+    ],
+  };
+  assert.deepEqual(deletedNames(planWithQualified), ["Sales[Region]", "OldTable"]);
+});
+
+test("approvalItems links high-risk and not_checked items to rowKey and itemId", () => {
+  const preview = {
+    approvals_needed: [
+      { purpose: "HIGH_RISK_PROMOTION", risk: "HIGH", row_keys: ["row-calc"] },
+    ],
+    not_checked: [
+      { object_id: "obj-visual-1", object_name: "Sales Bar Chart" },
+    ],
+  };
+  const plan = {
+    operations: [
+      { row_key: "row-calc", name: "CalcColumn", table: "Orders", object_type: "column" },
+    ],
+  };
+  const items = approvalItems(preview, plan);
+  assert.equal(items.length, 2);
+
+  const high = items.find((it) => it.severity === "high");
+  assert.equal(high.name, "Orders[CalcColumn]");
+  assert.equal(high.rowKey, "row-calc");
+  assert.equal(high.type, "row");
+
+  const unchecked = items.find((it) => it.severity === "not_checked");
+  assert.equal(unchecked.name, "Sales Bar Chart");
+  assert.equal(unchecked.rowKey, "obj-visual-1");
+  assert.equal(unchecked.itemId, "obj-visual-1");
+  assert.equal(unchecked.type, "impact");
+});
+
+test("applyTargetLabel formats both model and report or single target", () => {
+  assert.equal(applyTargetLabel({ model: "Combined model", report: "Combined report" }), "Combined model and Combined report");
+  assert.equal(applyTargetLabel({ model: "Combined model", report: null }), "Combined model");
+  assert.equal(applyTargetLabel({ model: null, report: "Combined report" }), "Combined report");
+  assert.equal(applyTargetLabel(null), "the target");
+  assert.equal(applyTargetLabel("Direct Target"), "Direct Target");
+});
+
+test("targetFiles derives paths from session sources and preview", () => {
+  const session = {
+    target: { model: { source_id: "src-model" }, report: { source_id: "src-report" } },
+    sources: [
+      { source_id: "src-model", path: "target/Combined.SemanticModel", model_path: "target/Combined.SemanticModel" },
+      { source_id: "src-report", path: "target/Combined.Report", report_path: "target/Combined.Report" },
+    ],
+  };
+  assert.deepEqual(targetFiles(session, null), ["target/Combined.SemanticModel", "target/Combined.Report"]);
+  assert.deepEqual(targetFiles(null, { target_files: ["custom/path.pbip"] }), ["custom/path.pbip"]);
+});
+
+test("applyPreChecks evaluates Desktop, sources, plan validation, and canonical format", () => {
+  const cleanPreview = {
+    desktop_state: "open_saved",
+    unconfirmed_marks: { count: 0 },
+    validation: { status: "valid", failed_checks: [] },
+    non_canonical_files: [],
+  };
+  const checks = applyPreChecks(cleanPreview, { status: "valid" });
+  assert.equal(checks.length, 4);
+  assert.equal(checks.every((c) => c.ok), true);
+
+  const badPreview = {
+    desktop_state: "open_unsaved",
+    unconfirmed_marks: { count: 2 },
+    validation: { status: "invalid", failed_checks: [{ check: "syntax" }] },
+    non_canonical_files: ["a.tmdl"],
+  };
+  const badChecks = applyPreChecks(badPreview, { status: "invalid" });
+  assert.equal(badChecks.find((c) => c.id === "desktop_check").ok, false);
+  assert.equal(badChecks.find((c) => c.id === "source_check").ok, false);
+  assert.equal(badChecks.find((c) => c.id === "plan_status").ok, false);
+  assert.equal(badChecks.find((c) => c.id === "canonical_check").ok, false);
+});
+
+test("buildBeforeApplyReport generates structured markdown report for leads", () => {
+  const plan = {
+    steps: [{}, {}],
+    operations: [
+      { op: "DELETE", table: "Sales", name: "Region", object_type: "column" },
+      { op: "CREATE", table: "Sales", name: "Profit", object_type: "measure" },
+    ],
+  };
+  const preview = {
+    desktop_state: "not_open",
+    unconfirmed_marks: { count: 0 },
+    validation: { status: "valid" },
+    non_canonical_files: [],
+    approvals_needed: [{ purpose: "HIGH_RISK_PROMOTION", risk: "CRITICAL", row_keys: ["profit-key"] }],
+  };
+  const report = buildBeforeApplyReport({
+    plan,
+    preview,
+    targetName: "Combined model and Combined report",
+    targetFiles: ["target/Combined.SemanticModel", "target/Combined.Report"],
+  });
+  assert.match(report, /# Before-Apply Report: Combined model and Combined report/);
+  assert.match(report, /Pre-checks/);
+  assert.match(report, /Plan steps: 2/);
+  assert.match(report, /Files to Write/);
+  assert.match(report, /target\/Combined\.SemanticModel/);
+  assert.match(report, /Deletions/);
+  assert.match(report, /Sales\[Region\]/);
+});
+

@@ -327,7 +327,7 @@ export function buildBlockList({ plan, session, applyPreview, targetModelName, i
   return blocks;
 }
 
-export function planStripState({ plan, blocks = [], checking = false, checkTime = "09:30", isStale = false } = {}) {
+export function planStripState({ plan, blocks = [], checking = false, checkTime = "09:30", isStale = false, applied = null } = {}) {
   const time = formatCheckTime(checkTime);
   const deletesCount = planDeletesCount(plan);
   const applyVariant = deletesCount > 0 ? "destructive" : "default";
@@ -369,6 +369,20 @@ export function planStripState({ plan, blocks = [], checking = false, checkTime 
       reason: n === 1
         ? "Fix 1 item before you apply."
         : t("plan.strip.invalid.fix", { n }),
+      applyDisabled: true,
+      applyVariant,
+    };
+  }
+
+  if (applied) {
+    const appliedTime = formatCheckTime(typeof applied === "object" ? applied?.time || checkTime : checkTime);
+    const appliedLabel = t("apply.strip.applied", { time: appliedTime });
+    return {
+      state: "applied",
+      badgeTone: "ok",
+      badgeLabel: appliedLabel,
+      body: t("apply.strip.applied.body", { time: appliedTime }),
+      reason: t("apply.strip.applied.reason", { time: appliedTime }),
       applyDisabled: true,
       applyVariant,
     };

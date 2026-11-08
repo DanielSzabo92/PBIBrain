@@ -86,7 +86,7 @@ export default function PlanTab({ session, changeDisabled, reasonId, onTabs, onC
     };
   }, [planResource.data, validationOverride]);
 
-  const { model: targetModelName } = targetNames(session);
+  const { model: targetModelName, report: targetReportName } = targetNames(session);
 
   const isStale = Boolean(
     session?.revision != null &&
@@ -106,6 +106,15 @@ export default function PlanTab({ session, changeDisabled, reasonId, onTabs, onC
   );
 
   const isChecking = checking || session?.plan_state === "checking";
+
+  const lastApply = lastResource.data?.apply_id && lastResource.data?.kind === "apply" && !lastResource.data?.undone ? lastResource.data : null;
+  const isApplied = Boolean(
+    lastApply &&
+    !isStale &&
+    (session?.revision == null || lastApply.revision == null || session.revision <= lastApply.revision)
+  );
+  const appliedInfo = isApplied ? { time: timeOf(lastApply.finished_utc) || checkTime } : null;
+
   const strip = useMemo(
     () => planStripState({
       plan: effectivePlan,
@@ -113,8 +122,9 @@ export default function PlanTab({ session, changeDisabled, reasonId, onTabs, onC
       checking: isChecking,
       checkTime,
       isStale,
+      applied: appliedInfo,
     }),
-    [effectivePlan, blocks, isChecking, checkTime, isStale],
+    [effectivePlan, blocks, isChecking, checkTime, isStale, appliedInfo],
   );
 
   const summary = useMemo(() => planSummaryGroups(effectivePlan), [effectivePlan]);
@@ -234,6 +244,10 @@ export default function PlanTab({ session, changeDisabled, reasonId, onTabs, onC
     setValidationOverride(null);
     if (needsDesktopBanner(reply)) onDesktopBanner?.();
     store.load("applyLast");
+    if (kind === "apply") {
+      store.load("session");
+      store.load("plan");
+    }
     // After a format only apply, the app runs "Check plan" (full) automatically (UI design 5.6).
     if (kind === "format") handleCheckPlan();
   };
@@ -300,7 +314,7 @@ export default function PlanTab({ session, changeDisabled, reasonId, onTabs, onC
               disabled={changeDisabled}
               aria-describedby={changeDisabled ? reasonId : undefined}
               onClick={() => setFlow({ kind: "undo", last: lastResource.data, preview: preview ?? effectivePlan?.apply_preview ?? null })}>
-              {t("undo.action")}
+              {lastResource.data?.finished_utc ? t("undo.action.time", { time: timeOf(lastResource.data.finished_utc) }) : t("undo.action")}
             </Button>
           ) : null}
           {lastResource.data?.apply_id && lastResource.data?.kind === "apply" && !lastResource.data?.undone ? (
@@ -548,11 +562,21 @@ export default function PlanTab({ session, changeDisabled, reasonId, onTabs, onC
           plan={flow.plan}
           last={flow.last}
           targetName={targetModelName}
+          targetReportName={targetReportName}
+          session={session}
           onClose={() => setFlow(null)}
           onDone={(reply) => afterFlow(flow.kind, reply)}
           onCheckPlan={handleCheckPlan}
           onOpenLog={() => onTabs({ tab: "log" })}
           onWriteReport={() => setFlow({ kind: "report" })}
+          onOpenItem={(item) => {
+            setFlow(null);
+            if (item.type === "impact") {
+              onTabs({ tab: "impact", impactRowKey: item.rowKey, impactItemId: item.itemId });
+            } else {
+              onTabs({ tab: "compare", rowKey: item.rowKey, marks: false });
+            }
+          }}
         />
       ) : null}
       {flow?.kind === "report" ? (

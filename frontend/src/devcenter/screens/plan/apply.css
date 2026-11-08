@@ -31,3 +31,20 @@
 .dc-tone-ok { color: var(--ok); }
 .dc-report-fields { display: grid; grid-template-columns: 90px minmax(0, 1fr); gap: 4px var(--space-3); margin: 0; font-size: var(--fs-body); }
 .dc-report-fields dd { margin: 0; word-break: break-word; }
+
+/* Reassuring apply confirmation: deletes callout, target files, prechecks, and item links */
+.dc-apply-deletes-box { display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-2) var(--space-3); border: 1px solid var(--bad); border-radius: var(--radius); background: var(--surface-2); }
+.dc-apply-deletes-header { display: flex; align-items: center; gap: var(--space-2); font-weight: 600; font-size: var(--fs-body); color: var(--bad); }
+.dc-apply-deletes-icon { width: 16px; height: 16px; flex: none; }
+.dc-apply-deletes-list { margin: 0; padding-left: var(--space-4); font-size: var(--fs-meta); color: var(--bad); }
+.dc-apply-target-files { display: flex; flex-direction: column; gap: var(--space-1); }
+.dc-apply-prechecks { display: flex; flex-direction: column; gap: var(--space-1); }
+.dc-apply-precheck-list { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; font-size: var(--fs-body); }
+.dc-apply-precheck-item { display: flex; align-items: center; gap: var(--space-2); }
+.dc-apply-precheck-icon { width: 16px; height: 16px; flex: none; }
+.dc-apply-precheck-label { font-size: var(--fs-body); color: var(--text); }
+.dc-apply-precheck-failed { color: var(--bad); font-weight: 500; }
+.dc-apply-precheck-detail { font-size: var(--fs-meta); color: var(--text-2); margin-left: var(--space-1); }
+.dc-apply-item-link { appearance: none; background: none; border: none; padding: 0; margin: 0; font: inherit; font-size: var(--fs-body); color: var(--primary); text-decoration: underline; cursor: pointer; text-align: left; }
+.dc-apply-item-link:hover { color: var(--primary-hover); }
+

@@ -341,6 +341,12 @@ class ApplyService:
         status = plan.get("status")
         ready = (not row_keys and not failed and status != "invalid" and bool(plan.get("operations"))
                  and desktop_state != desktop_states.OPEN_UNSAVED and not non_canonical)
+        target_files = []
+        if target is not None:
+            if getattr(target, "model_path", None):
+                target_files.append(str(target.model_path))
+            if getattr(target, "report_path", None):
+                target_files.append(str(target.report_path))
         return {
             "revision": document["revision"],
             "ready": ready,
@@ -349,6 +355,7 @@ class ApplyService:
             "unconfirmed_marks": {"count": len(row_keys), "row_keys": row_keys},
             "desktop_state": desktop_state,
             "non_canonical_files": non_canonical,
+            "target_files": target_files,
             "validation": {"status": status, "failed_checks": failed},
             "approvals_needed": approvals_needed(plan, cloud=cloud_target is not None),
             "not_checked": not_checked(plan),
@@ -475,7 +482,7 @@ class ApplyService:
             notices.append(NOTICE_CLOUD_WRITTEN)
         return {"revision": revision, "apply_id": record["apply_id"], "kind": kind, "file_count": len(record["files"]),
                 "files": record["files"], "desktop_state": record["desktop_state"], "notices": notices,
-                "rescan_differences": record["rescan_differences"]}
+                "rescan_differences": record["rescan_differences"], "finished_utc": record["finished_utc"]}
 
     def format_only_apply(self, request: Mapping[str, Any]) -> dict[str, Any]:
         return self._run("format_only", lambda apply_id: self._format_only(apply_id, request))
