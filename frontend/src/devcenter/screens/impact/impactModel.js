@@ -1,5 +1,6 @@
 // Pure helpers of the Impact tab (UI design 4.5, 5.3, 7.3, step U8). No React here.
 import { t, tn } from "../../copy.js";
+import { formatObjectRef } from "../../phrases.js";
 
 export const PAGE_SIZE = 500;
 export const GRAPH_LIMIT = 150;
@@ -141,7 +142,7 @@ export function otherPathsText(n) {
 }
 
 export function shortestPathText(item) {
-  return (item?.path ?? []).map((step) => step.name).join(" > ");
+  return (item?.path ?? []).map((step) => formatObjectRef(step.name || step.object_id)).join(" > ");
 }
 
 // Completeness strip (UI design 4.5): the entries of each area, 20 at a time.
@@ -155,8 +156,8 @@ const AREAS = [
 
 function entryText(entry) {
   if (entry === null || entry === undefined) return "";
-  if (typeof entry === "string") return entry;
-  return String(entry.name ?? entry.title ?? entry.object_id ?? entry.id ?? JSON.stringify(entry));
+  if (typeof entry === "string") return formatObjectRef(entry);
+  return formatObjectRef(entry.name ?? entry.title ?? entry.object_id ?? entry.id ?? JSON.stringify(entry));
 }
 
 export function completenessEntries(completeness) {
@@ -335,7 +336,9 @@ export function missingFieldCount(offers) {
 }
 
 export function offerLine(offer) {
-  return t("impact.offers.item", { visual_type: t(`impact.offers.kind.${offer.kind}`), object: (offer.references ?? [])[0] ?? t("shared.not_known") });
+  const ref = (offer.references ?? [])[0];
+  const objName = ref ? formatObjectRef(ref) : t("shared.not_known");
+  return t("impact.offers.item", { visual_type: t(`impact.offers.kind.${offer.kind}`), object: objName });
 }
 
 // Removal policy dialog (UI design 5.3, 8.4).

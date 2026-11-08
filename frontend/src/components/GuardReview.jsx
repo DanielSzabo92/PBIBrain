@@ -2,10 +2,64 @@ import React, { useEffect, useRef, useState } from "react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Card } from "./ui/card";
+import { formatObjectRef } from "../presentation.js";
 import "../guard.css";
 
-const explain = (value) => String(value || "Not run").replaceAll("_", " ").toLowerCase();
-const valueText = (value, names) => typeof value === "string" ? names.get(value) || value : value == null ? "Blank" : typeof value === "object" ? JSON.stringify(value) : String(value);
+const GUARD_PHRASES = {
+  PBIR_SCHEMA_UNSUPPORTED: "Unsupported report schema",
+  PBIR_REQUIRED_ARTIFACT_MISSING: "Required report file missing",
+  PBIR_PAGE_COVERAGE_MISMATCH: "Report page mismatch",
+  PBIR_ACTIVE_PAGE_UNRESOLVED: "Active page not found",
+  PBIR_PAGE_ID_PATH_MISMATCH: "Page ID path mismatch",
+  PBIR_UNSUPPORTED_ARTIFACT: "Unsupported report item",
+  PBIR_DYNAMIC_CONTEXT_UNSUPPORTED: "Dynamic report feature not supported",
+  SCANNER_COVERAGE_UNKNOWN: "Scanner coverage unknown: metadata incomplete for this source",
+  APPROVAL_REQUIRED: "Ready for your decision",
+  ELIGIBLE_FOR_PROMOTION: "Eligible for promotion",
+  POST_PROMOTION_VERIFIED: "Changes applied and verified",
+  PREFLIGHT: "Proposal awaiting your decision",
+  REQUIRED_RUNTIME_NOT_VERIFIED: "Required model tests incomplete",
+  MANDATORY_IMPACT_INCOMPLETE: "Impact coverage incomplete",
+  SECURITY_VIOLATION: "Security violation",
+  REFERENCE_CHANGED: "Reference changed",
+  PASSED: "Passed",
+  FAILED: "Failed",
+  NOT_RUN: "Not run",
+  CONTRACT: "Contract",
+};
+
+const explain = (value) => {
+  if (!value) return "Not run";
+  const str = String(value).trim();
+  const upper = str.toUpperCase();
+  if (GUARD_PHRASES[upper]) return GUARD_PHRASES[upper];
+  const pbirMatch = str.match(/^pbir[ _]schema[ _]unsupported(?::\s*(.*))?$/i);
+  if (pbirMatch) {
+    const reportPath = pbirMatch[1];
+    if (reportPath) {
+      const reportName = reportPath.split("/")[0] || reportPath;
+      return `Unsupported report schema in ${reportName}`;
+    }
+    return "Unsupported report schema";
+  }
+  return str.replaceAll("_", " ").toLowerCase();
+};
+
+const formatGuardObjectName = (id, names) => {
+  if (!id) return "Resolved target";
+  const raw = names?.get(id) || id;
+  if (typeof raw === "string") {
+    if (raw.startsWith("relationship-")) {
+      const clean = raw.slice("relationship-".length);
+      const title = clean.charAt(0).toUpperCase() + clean.slice(1);
+      return `Relationship: ${title} (${raw})`;
+    }
+    return formatObjectRef(raw);
+  }
+  return String(raw);
+};
+
+const valueText = (value, names) => typeof value === "string" ? (names?.get(value) || formatGuardObjectName(value, names)) : value == null ? "Blank" : typeof value === "object" ? JSON.stringify(value) : String(value);
 
 export default function GuardReview({ fetcher = globalThis.fetch }) {
   const token = useRef(new URLSearchParams(globalThis.location?.hash?.slice(1) || "").get("session") || "");
@@ -56,8 +110,8 @@ export default function GuardReview({ fetcher = globalThis.fetch }) {
     {error ? <p role="alert" className="inline-error">{error}</p> : null}
     {review ? <div className="guard-stack">
       <Card className="panel"><h2>{rejected ? "Changes rejected" : operation.state === "POST_PROMOTION_VERIFIED" ? "Changes applied and verified" : canApprove ? "Ready for your decision" : operation.state === "PREFLIGHT" ? "Proposal awaiting your decision" : "Checks incomplete"}</h2><p>{rejected ? "Your project remains unchanged." : explain(operation.state)}</p>{blocking.length && !rejected ? <ul role="alert">{blocking.map((item, i) => <li key={i}>{blockerLabel(item)} · {explain(item.status)}</li>)}</ul> : null}</Card>
-      <Card className="panel"><h2>Proposed edits</h2><p>{contract.intent?.description || "Proposal pending"}</p><ul>{contract.allowed_mutations?.map((item, i) => <li key={i}>{names.get(item.object_id) || "Resolved target"} · {propertyLabel(item.property)} · {valueText(item.expected_before, names)} → {valueText(item.expected_after, names)}</li>)}</ul>{operation.state === "PREFLIGHT" ? <><p>Accepting this proposal allows work on a separate copy. Your project changes only after you accept the verified edits.</p><Button disabled={working} onClick={() => mutate("authorize", "CONTRACT")}>Accept proposal</Button></> : null}</Card>
-      <Card className="panel"><h2>Semantic differences</h2><div className="guard-table-wrap"><table><thead><tr><th>Object</th><th>Property</th><th>Original</th><th>Candidate</th><th>Permission</th></tr></thead><tbody>{verification.comparison?.object_changes?.map((item, i) => <tr key={i}><td>{names.get(item.object_id) || explain(item.object_type)}</td><td>{propertyLabel(item.property_path)}<small>{explain(item.classification)}</small></td><td>{valueText(item.previous_value, names)}</td><td>{valueText(item.new_value, names)}</td><td>{violations.has(`${item.object_id}:${item.property_path}`) ? "Unauthorized" : verification.scope?.status === "PASSED" ? "Authorized" : "Unverified"}</td></tr>)}</tbody></table></div><details><summary>Source coverage</summary><ul>{verification.comparison?.source_changes?.map((item) => <li key={item.source_file}>{item.source_file} · {explain(item.classification)}</li>)}</ul><ul>{verification.comparison?.unknown_differences?.map((item, i) => <li key={i}>{item.source_file} · {item.reason}</li>)}</ul></details></Card>
+      <Card className="panel"><h2>Proposed edits</h2><p>{contract.intent?.description || "Proposal pending"}</p><ul>{contract.allowed_mutations?.map((item, i) => <li key={i}>{formatGuardObjectName(item.object_id, names)} · {propertyLabel(item.property)} · {valueText(item.expected_before, names)} → {valueText(item.expected_after, names)}</li>)}</ul>{operation.state === "PREFLIGHT" ? <><p>Accepting this proposal allows work on a separate copy. Your project changes only after you accept the verified edits.</p><Button disabled={working} onClick={() => mutate("authorize", "CONTRACT")}>Accept proposal</Button></> : null}</Card>
+      <Card className="panel"><h2>Semantic differences</h2><div className="guard-table-wrap"><table><thead><tr><th>Object</th><th>Property</th><th>Original</th><th>Candidate</th><th>Permission</th></tr></thead><tbody>{verification.comparison?.object_changes?.map((item, i) => <tr key={i}><td>{formatGuardObjectName(item.object_id, names)}</td><td>{propertyLabel(item.property_path)}<small>{explain(item.classification)}</small></td><td>{valueText(item.previous_value, names)}</td><td>{valueText(item.new_value, names)}</td><td>{violations.has(`${item.object_id}:${item.property_path}`) ? "Unauthorized" : verification.scope?.status === "PASSED" ? "Authorized" : "Unverified"}</td></tr>)}</tbody></table></div><details><summary>Source coverage</summary><ul>{verification.comparison?.source_changes?.map((item) => <li key={item.source_file}>{item.source_file} · {explain(item.classification)}</li>)}</ul><ul>{verification.comparison?.unknown_differences?.map((item, i) => <li key={i}>{item.source_file} · {explain(item.reason)}</li>)}</ul></details></Card>
       <Card className="panel"><h2>Regression results</h2><p>{explain(verification.runtime?.status)} · {verification.runtime?.certified ? "Runtime evidence certified" : "Runtime evidence incomplete"}</p><p>{verification.runtime?.tested_objects?.length || 0} objects tested · {verification.runtime?.uncovered_impact_paths?.length ?? "Unknown"} uncovered paths</p><ul>{verification.runtime?.results?.map((test) => <li key={test.test_id}><strong>{test.test_id} · {explain(test.status)}</strong>{test.error ? <p>{explain(test.error)}</p> : null}<ul>{test.assertions?.map((item, i) => <li key={i}>{explain(item.code)}{item.before !== undefined ? ` · ${valueText(item.before, names)} → ${valueText(item.after, names)}` : ""}{item.delta ? ` · delta ${item.delta}` : ""}</li>)}</ul></li>)}</ul><p>Untested contexts remain unverified.</p></Card>
       <Card className="panel"><h2>Impact coverage</h2><p>{explain(verification.impact?.completeness?.status || review.preflight?.completeness?.status)}</p><ul>{[...new Set((verification.impact?.unknown_impacts || review.preflight?.unknown_impacts || []).map((item) => item.reason))].map((reason) => <li key={reason}>{explain(reason)}</li>)}</ul></Card>
       <Card className="panel"><h2>Your decision</h2><p>Accept applies the exact verified changes shown above. Reject keeps your project unchanged.</p>{decision.approval_reasons?.includes("HIGH_RISK_PROMOTION") ? <p>This change affects model behavior. Accept also approves this disclosed risk.</p> : null}{decision.approval_reasons?.includes("UNEXPECTED_BEHAVIOR") ? <p>Accept also approves the behavior differences shown in the regression results.</p> : null}{!canApprove && !rejected && operation.state !== "POST_PROMOTION_VERIFIED" ? <p>Accept becomes available when all required checks pass.</p> : null}<div className="guard-fields">{operation.state !== "PREFLIGHT" ? <Button disabled={!canApprove} onClick={() => mutate("accept", { binding: review.review_binding, approval_operations: [...(decision.approval_reasons || []), "PROMOTE"] })}>Accept changes</Button> : null}<Button variant="outline" disabled={!canReject} onClick={() => mutate("reject", { binding: review.review_binding })}>{operation.state === "PREFLIGHT" ? "Reject proposal" : "Reject changes"}</Button></div></Card>

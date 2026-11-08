@@ -15,7 +15,7 @@ export default function CompletenessStrip({ completeness, open, onOpenChange }) 
     <section className="dc-complete" data-complete={state.complete ? "true" : "false"} aria-label={state.label}>
       <div className="dc-complete-main">
         <StatusBadge tone={state.tone} label={state.label} />
-        <p className="dc-complete-help">{state.help}</p>
+        <p className="dc-complete-help" title={t("impact.completeness.safe_superset.tooltip")}>{state.help}</p>
         {state.entries.length > 0 ? (
           <Button variant="outline" size="sm" aria-expanded={open} aria-controls={listId} onClick={() => onOpenChange(!open)}>
             {open ? t("impact.completeness.hide") : t("impact.completeness.show")}

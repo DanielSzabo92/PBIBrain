@@ -55,7 +55,7 @@ test("blank search with a type filter browses matching objects", async ({ page }
   await page.getByRole("navigation").getByRole("button", { name: "Search", exact: true }).click();
   await page.getByLabel("Search object type", { exact: true }).selectOption("MEASURE");
 
-  await expect(page.getByRole("searchbox", { name: "Search the brain" })).toHaveValue("");
+  await expect(page.getByRole("searchbox", { name: "Search objects" })).toHaveValue("");
   await expect(page.locator(".search-result").first()).toBeVisible();
   await expect(page.locator(".search-status")).toContainText("objects");
   await expect(page.getByText("No matches", { exact: true })).toHaveCount(0);

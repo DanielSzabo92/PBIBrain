@@ -30,6 +30,7 @@ import CodeDiff from "./CodeDiff.jsx";
 import CompareRowDetail from "./CompareRowDetail.jsx";
 import StateCell, { normalizeState, STATE_ICONS, stateWord } from "./StateCell.jsx";
 import { formatMergeChoiceLabel, normalizeChoiceKind } from "./rowDetailModel.js";
+import { formatDaxName, formatObjectRef } from "../phrases.js";
 import "./compare.css";
 
 const PAGE_SIZE = 200;
@@ -1095,10 +1096,15 @@ export default function CompareGrid({
         >
           <ObjIcon className="dc-obj-icon" aria-hidden="true" />
           <div className="dc-obj-box">
-            <span className="dc-obj-name">{row.name}</span>
+            <span className="dc-obj-name">
+              {row.table && row.object_type !== "table"
+                ? formatDaxName(row.table, row.name)
+                : row.object_type === "table"
+                  ? `'${row.name}'`
+                  : formatObjectRef(row.name)}
+            </span>
             <span className="dc-obj-meta">
               {row.object_type}
-              {row.table ? `, ${row.table}` : ""}
             </span>
           </div>
         </div>
@@ -1131,7 +1137,10 @@ export default function CompareGrid({
           onFocus={() => handleCellFocus(rowIndex, 2)}
           onClick={() => openPaneByClick(row.row_key)}
         >
-          <span className={`dc-st dc-st-${state}`}>
+          <span
+            className={`dc-st dc-st-${state}`}
+            title={state === "type_conflict" ? t("compare.state.type_conflict.help") : undefined}
+          >
             <StateIcon aria-hidden="true" />
             <span>{label}</span>
           </span>
@@ -1436,6 +1445,7 @@ export default function CompareGrid({
             data-active={changedFilter || undefined}
             onClick={() => setChangedFilter((v) => !v)}
             aria-pressed={changedFilter}
+            title={t("compare.filter.changed.help")}
           >
             {t("compare.filter.changed")}
           </Button>

@@ -992,11 +992,11 @@ function SearchView({ transport, overview, onSelect, colors, session, onSession,
     <Card className="panel search-panel" aria-busy={loading}>
       <div className="search-toolbar" data-ui-actions="">
         <Label htmlFor={inputId} className="search-query-label">{browse ? "Filter by name or formula" : "Name or formula"}</Label>
-        <div className="search-field"><NavIcon name="search" size={18} /><Input id={inputId} type="search" value={query} onChange={(event) => change({ query: event.target.value })} onKeyDown={(event) => { if (event.key === "Enter") runSearch(); else if (event.key === "ArrowDown" && moveInList(panel.current?.querySelector(".search-results"), "first")) event.preventDefault(); }} placeholder={browse ? "Filter objects by name…" : "Measure, table, column, or visual…"} aria-label="Search the brain" />{loading && active ? <RefreshCw className="search-spinner spin" aria-hidden="true" /> : null}</div>
+        <div className="search-field"><NavIcon name="search" size={18} /><Input id={inputId} type="search" value={query} onChange={(event) => change({ query: event.target.value })} onKeyDown={(event) => { if (event.key === "Enter") runSearch(); else if (event.key === "ArrowDown" && moveInList(panel.current?.querySelector(".search-results"), "first")) event.preventDefault(); }} placeholder={browse ? "Filter objects by name…" : "Measure, table, column, or visual…"} aria-label="Search objects" />{loading && active ? <RefreshCw className="search-spinner spin" aria-hidden="true" /> : null}</div>
         <div className="search-filters">
           <Label className="select-field"><span>Model</span><NativeSelect aria-label="Model" value={modelId} onChange={(event) => change({ modelId: event.target.value, reportId: "" })}><option value="">All models</option>{models.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</NativeSelect></Label>
           <Label className="select-field"><span>Report</span><NativeSelect aria-label="Report" value={reportId} onChange={(event) => change({ reportId: event.target.value, modelId: "" })}><option value="">All reports</option>{reports.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</NativeSelect></Label>
-          <Label className="select-field"><span>Type</span><NativeSelect aria-label="Search object type" value={objectType} onChange={(event) => change({ objectType: event.target.value })}><option value="">All types</option>{Object.keys(overview.object_counts || {}).sort().map((type) => <option key={type} value={type}>{typeLabel(type)}</option>)}</NativeSelect></Label>
+          <Label className="select-field"><span>Type</span><NativeSelect aria-label="Search object type" value={objectType} onChange={(event) => change({ objectType: event.target.value })}><option value="">All types</option>{Object.keys(overview.object_counts || {}).filter((type) => !new Set(["ALIAS", "BUSINESS_CONCEPT", "ROLE", "BEHAVIOR", "CONFLICT", "SELECTOR", "SELECTOR_OPTION", "SEMANTIC_ASSERTION"]).has(type)).sort().map((type) => <option key={type} value={type}>{typeLabel(type)}</option>)}</NativeSelect></Label>
           {modelId || reportId || objectType ? <Button variant="ghost" size="sm" className="clear-filters" onClick={() => change({ modelId: "", reportId: "", objectType: "" })}><X />Clear filters</Button> : null}
         </div>
       </div>
@@ -1124,7 +1124,7 @@ function UsageRoles({ profile }) {
   if (!facts.length) return null;
   return <details className="object-metadata object-usage-roles panel" open><summary><span>How it is used</span><span className="summary-count">{facts.length}</span></summary>
     {facts.map((fact) => <div className="usage-row" key={`${fact.code}-${fact.text}`}><span>{fact.text}</span></div>)}
-    <p className="footnote">{profile.basis}</p>
+    <p className="footnote">{readableText(profile.basis)}</p>
   </details>;
 }
 

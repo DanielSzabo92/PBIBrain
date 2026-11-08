@@ -1,5 +1,6 @@
 // Pure helpers for the Plan view (UI design 4.6, 5.5, 8, step U7).
 import { t } from "../../copy.js";
+import { formatDaxName, formatObjectRef, formatOperationKind } from "../../phrases.js";
 
 const MODEL_TYPES = [
   ["table", "Tables"],
@@ -473,9 +474,12 @@ export function planSummaryGroups(plan) {
 
 function formatOperationTarget(op) {
   if (op.table && op.name && op.object_type !== "table") {
-    return `${op.table}[${op.name}]`;
+    return formatDaxName(op.table, op.name);
   }
-  return op.name || op.row_key || "";
+  if (op.name && op.object_type === "table") {
+    return `'${op.name}'`;
+  }
+  return formatObjectRef(op.name || op.row_key || "");
 }
 
 function formatOperationView(op) {
@@ -488,6 +492,7 @@ function formatOperationView(op) {
   return {
     opId: op.op_id,
     op: op.op,
+    opLabel: formatOperationKind(op.op),
     target: formatOperationTarget(op),
     property: op.property || null,
     oldLine,
@@ -532,7 +537,11 @@ export function planPhaseGroups(plan, { domainFilter = "all", query = "" } = {})
       if (uiPhase === "renames" && firstOp?.old_name && firstOp?.new_name && firstOp.old_name !== firstOp.new_name) {
         displayTitle = `${firstOp.old_name} -> ${firstOp.new_name}`;
       } else if (useOpIdentity && firstOp?.table && firstOp?.name && objectType !== "table") {
-        displayTitle = `${firstOp.table}[${firstOp.name}]`;
+        displayTitle = formatDaxName(firstOp.table, firstOp.name);
+      } else if (step.table && step.name && objectType !== "table") {
+        displayTitle = formatDaxName(step.table, step.name);
+      } else if (objectType === "table" && displayTitle) {
+        displayTitle = `'${displayTitle.replace(/^'+|'+$/g, "")}'`;
       }
 
       const opViews = phaseOps.map(formatOperationView);

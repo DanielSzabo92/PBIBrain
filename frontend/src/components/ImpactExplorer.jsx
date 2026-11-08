@@ -6,11 +6,27 @@ import { Button } from "./ui/button";
 import { NativeSelect } from "./ui/native-select";
 import { Input } from "./ui/input";
 import { Card } from "./ui/card";
+import { formatDaxName, formatObjectRef } from "../presentation.js";
 import ProvenanceLegend from "./ProvenanceLegend";
 import "../guard.css";
 
 const LABELS = { from_column_id: "Source column", to_column_id: "Target column", active: "Active relationship", cross_filter_direction: "Filter direction" };
 const CATEGORY = { DIRECT: "Direct change", STRUCTURAL: "Factual reference", POTENTIAL_BEHAVIORAL: "Inferred effect", CONDITIONAL: "Depends on context", UNKNOWN: "Unknown impact" };
+
+const REASON_PHRASES = {
+  SCANNER_COVERAGE_UNKNOWN: "Scanner coverage unknown: metadata incomplete for this source",
+  "Explicit modification target": "Directly modified object",
+  "Consumes potentially affected object": "Uses an object affected by this change",
+};
+
+const formatReason = (reason) => {
+  if (!reason) return "";
+  const str = String(reason).trim();
+  const upper = str.toUpperCase();
+  if (REASON_PHRASES[upper]) return REASON_PHRASES[upper];
+  if (REASON_PHRASES[str]) return REASON_PHRASES[str];
+  return str.replaceAll("_", " ");
+};
 
 export default function ImpactExplorer({ node, nodes = [], onSelect, transport = brainTransport }) {
   const [open, setOpen] = useState(false);
@@ -27,7 +43,8 @@ export default function ImpactExplorer({ node, nodes = [], onSelect, transport =
   const allRecords = [...(report?.direct_impacts || []), ...(report?.potential_impacts || []), ...(report?.conditional_impacts || [])];
   const records = allRecords.filter((item) => (!category || item.impact_category === category) && (!scope || item.model_id === scope || item.report_id === scope));
   const scopes = [...new Set(allRecords.flatMap((item) => [item.model_id, item.report_id]).filter(Boolean))];
-  const name = (id) => nodes.find((item) => item.id === id)?.name || allRecords.find((item) => item.object_id === id)?.name || "Related object";
+  const formatNodeName = (raw) => (raw ? formatObjectRef(raw) : "Related object");
+  const name = (id) => formatNodeName(nodes.find((item) => item.id === id)?.name || allRecords.find((item) => item.object_id === id)?.name);
   const graph = useMemo(() => {
     const ids = new Map(); const edges = new Map();
     records.forEach((item) => {
@@ -81,10 +98,10 @@ export default function ImpactExplorer({ node, nodes = [], onSelect, transport =
         <div className="guard-fields"><label>Impact category<NativeSelect value={category} onChange={(event) => setCategory(event.target.value)}><option value="">All categories</option>{Object.entries(CATEGORY).map(([key, value]) => <option key={key} value={key}>{value}</option>)}</NativeSelect></label><label>Model or report<NativeSelect value={scope} onChange={(event) => setScope(event.target.value)}><option value="">All models and reports</option>{scopes.map((id) => <option key={id} value={id}>{name(id)}</option>)}</NativeSelect></label></div>
         {graph.nodes.length ? <div className="impact-flow" aria-label="Impact paths"><ReactFlow nodes={graph.nodes} edges={graph.edges} fitView nodesDraggable={false} onNodeClick={(_, item) => onSelect?.(item.id, "inspector")}><Background /><Controls showInteractive={false} /></ReactFlow></div> : <p>No displayed impacts match these filters.</p>}
         <ProvenanceLegend className="impact-explorer-legend" />
-        <ul className="guard-records">{records.map((item, index) => <li key={`${item.object_id}:${item.analyzer_rule_id}:${index}`}><Button variant="link" onClick={() => onSelect?.(item.object_id, "inspector")}>{item.name || name(item.object_id)}</Button><span>{CATEGORY[item.impact_category]}</span><p>{item.reason}</p>{item.conditions?.length ? <p>{item.conditions.join(" · ")}</p> : null}<details><summary>Evidence path</summary><ol>{item.path.map((step, i) => <li key={i}>{name(step.from_id)} → {name(step.to_id)} · {step.edge_type.replaceAll("_", " ").toLowerCase()} · {step.direction === "analytical" ? "Inferred" : "Factual"}</li>)}</ol></details></li>)}</ul>
+        <ul className="guard-records">{records.map((item, index) => <li key={`${item.object_id}:${item.analyzer_rule_id}:${index}`}><Button variant="link" onClick={() => onSelect?.(item.object_id, "inspector")}>{formatNodeName(item.name) || name(item.object_id)}</Button><span>{CATEGORY[item.impact_category]}</span><p>{formatReason(item.reason)}</p>{item.conditions?.length ? <p>{item.conditions.join(" · ")}</p> : null}<details><summary>Evidence path</summary><ol>{item.path.map((step, i) => <li key={i}>{name(step.from_id)} → {name(step.to_id)} · {step.edge_type.replaceAll("_", " ").toLowerCase()} · {step.direction === "analytical" ? "Inferred" : "Factual"}</li>)}</ol></details></li>)}</ul>
 
-        {report.unknown_impacts?.length ? <div role="alert"><h4>Unresolved impact</h4><ul>{report.unknown_impacts.map((item, i) => <li key={i}>{item.reason.replaceAll("_", " ")}</li>)}</ul></div> : null}
-        <details><summary>Required regression contexts ({report.required_tests?.length || 0})</summary><ul>{report.required_tests?.map((item) => <li key={item.test_id}>{item.category.replaceAll("_", " ")} · Query required</li>)}</ul></details>
+        {report.unknown_impacts?.length ? <div role="alert"><h4>Unresolved impact</h4><ul>{report.unknown_impacts.map((item, i) => <li key={i}>{formatReason(item.reason)}</li>)}</ul></div> : null}
+        <details><summary title="Test queries required to verify that calculations and visuals remain accurate after this change">Required verification queries ({report.required_tests?.length || 0})</summary><ul>{report.required_tests?.map((item) => <li key={item.test_id}>{item.category.replaceAll("_", " ")} · Query required</li>)}</ul></details>
       </> : null}
     </div> : null}
   </Card>;

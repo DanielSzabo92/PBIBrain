@@ -117,7 +117,7 @@ def analyze_impact(graph: Any, target_ids: list[str], proposed_changes: list[dic
         node = nodes[target]
         triggers = sorted({item["property"] for item in changes if item["object_id"] == target}) or ["unspecified"]
         for trigger in triggers:
-            add(target, target, trigger, "DIRECT", [], "Explicit modification target", rule="seed")
+            add(target, target, trigger, "DIRECT", [], "Directly modified object", rule="seed")
             seeds = [(target, [])]
             if node["type"] == "RELATIONSHIP":
                 before_paths, before_unknown = relationship_paths(nodes, [])
@@ -195,7 +195,7 @@ def analyze_impact(graph: Any, target_ids: list[str], proposed_changes: list[dic
                         continue
                     next_path = path + [{"from_id": current, "to_id": consumer, "edge_type": edge["type"], "direction": "in", "edge_id": edge["id"], "evidence": edge.get("evidence", []), "evidence_class": edge.get("evidence_class", "FACT")}]
                     category = "STRUCTURAL" if node["type"] != "RELATIONSHIP" else "POTENTIAL_BEHAVIORAL"
-                    add(consumer, target, trigger, category, next_path, "Consumes potentially affected object", rule="consumer_closure")
+                    add(consumer, target, trigger, category, next_path, "Uses an object affected by this change", rule="consumer_closure")
                     queue.append((consumer, next_path))
                 for edge in parents.get(current, []):
                     parent = edge["from_id"]

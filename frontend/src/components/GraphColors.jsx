@@ -65,8 +65,8 @@ export default function GraphColors({ config, transport, overview, onSaved }) {
         </div>
         <details className="customize-colors"><summary>Customize colors</summary>
         <Tabs defaultValue="report">
-          <TabsList aria-label="Artifact color groups" className="color-tabs">
-            {Object.entries(ARTIFACT_GROUPS).map(([key, group]) => <TabsTrigger key={key} value={key}><span className="artifact-dot" style={{ backgroundColor: draft.groups[key] }} />{group.label.replace(" artifacts", "")}</TabsTrigger>)}
+          <TabsList aria-label="Object color groups" className="color-tabs">
+            {Object.entries(ARTIFACT_GROUPS).map(([key, group]) => <TabsTrigger key={key} value={key}><span className="artifact-dot" style={{ backgroundColor: draft.groups[key] }} />{group.label.replace(/ (?:artifacts|objects)/, "")}</TabsTrigger>)}
           </TabsList>
           {Object.entries(ARTIFACT_GROUPS).map(([key, group]) => <TabsContent key={key} value={key}>
             <div className="group-color-row">

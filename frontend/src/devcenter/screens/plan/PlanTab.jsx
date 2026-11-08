@@ -295,7 +295,7 @@ export default function PlanTab({ session, changeDisabled, reasonId, onTabs, onC
       <section className="dc-plan-strip" aria-label="Plan status">
         <div className="dc-plan-strip-main">
           <StatusBadge tone={strip.badgeTone} label={strip.badgeLabel} />
-          <span className="dc-plan-strip-body">{strip.body}</span>
+          <span className="dc-plan-strip-body" title={t("plan.strip.full_check.tooltip")}>{strip.body}</span>
         </div>
         <div className="dc-plan-strip-actions" data-ui-actions="">
           {strip.reason ? (
@@ -511,7 +511,7 @@ export default function PlanTab({ session, changeDisabled, reasonId, onTabs, onC
                                 {item.operations.map((op) => (
                                   <div key={op.opId} className="dc-plan-op">
                                     <div className="dc-plan-op-head">
-                                      <span className="dc-mono dc-plan-op-kind">{op.op}</span>
+                                      <span className="dc-plan-op-kind">{op.opLabel || op.op}</span>
                                       <span className="dc-mono dc-plan-op-target">{op.target}</span>
                                     </div>
                                     {op.oldLine !== null || op.newLine !== null ? (

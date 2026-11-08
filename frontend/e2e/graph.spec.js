@@ -58,7 +58,7 @@ test("filters compose on the server, clear cleanly, and show empty states", asyn
   await page.getByRole("tab", { name: "Lineage", exact: true }).click();
   await chooseObjects(page, "report");
   await expect(page.locator(".react-flow__node-artifactGroup")).toHaveCount(2);
-  await expect(page.locator(".artifact-group-title").filter({ hasText: "Report artifacts" })).toContainText("Report artifacts");
+  await expect(page.locator(".artifact-group-title").filter({ hasText: "Report objects" })).toContainText("Report objects");
   await page.keyboard.press("Escape");
   // The Types popover is the colour key and the type filter in one: "Only" keeps a single type.
   await openTypes(page);
@@ -89,7 +89,7 @@ test("project color mapping persists through reload and drives nodes, minimap, a
     await page.getByRole("button", { name: "Settings", exact: true }).click();
     await page.getByRole("tab", { name: "Graph colors", exact: true }).click();
     await page.getByText("Customize colors", { exact: true }).click();
-    await page.getByRole("textbox", { name: "Report artifacts hex color", exact: true }).fill("#f472b6");
+    await page.getByRole("textbox", { name: "Report objects hex color", exact: true }).fill("#f472b6");
     await page.getByRole("textbox", { name: "Visual hex color", exact: true }).fill("#34d399");
     await page.getByRole("button", { name: "Save colors", exact: true }).click();
     await expect(page.getByRole("button", { name: "Save colors", exact: true })).toBeDisabled();
@@ -126,7 +126,7 @@ test("project color mapping persists through reload and drives nodes, minimap, a
     await page.getByRole("tab", { name: "Graph colors", exact: true }).click();
     await page.getByText("Customize colors", { exact: true }).click();
     await page.getByRole("button", { name: "Restore defaults", exact: true }).click();
-    await expect(page.getByRole("textbox", { name: "Report artifacts hex color", exact: true })).toHaveValue("#e68ac0");
+    await expect(page.getByRole("textbox", { name: "Report objects hex color", exact: true })).toHaveValue("#e68ac0");
     await page.getByRole("button", { name: "Save colors", exact: true }).click();
     await expect(page.getByRole("button", { name: "Save colors", exact: true })).toBeDisabled();
     await page.screenshot({ path: "test-results/graph-settings.png", fullPage: true });
@@ -239,7 +239,7 @@ test("shared shadcn controls preserve search, full inspector, review, and source
   await page.goto("/");
   await expect(page.locator('[data-slot="card"]')).not.toHaveCount(0);
   await page.getByRole("button", { name: "Search", exact: true }).click();
-  await page.getByRole("searchbox", { name: "Search the brain", exact: true }).fill("Net Sales");
+  await page.getByRole("searchbox", { name: "Search objects", exact: true }).fill("Net Sales");
   await page.locator(".search-result").filter({ has: page.locator(".result-type", { hasText: "Measure" }) }).first().click();
   await expect(page.getByRole("heading", { name: "Net Sales", exact: true }).first()).toBeVisible();
   await expect(page.getByText("SUM('Sales'[Amount])", { exact: true })).toBeVisible();

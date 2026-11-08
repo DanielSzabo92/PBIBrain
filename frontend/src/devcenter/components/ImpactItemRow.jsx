@@ -8,6 +8,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Menu } from "@/components/ui/menu";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { t } from "../copy.js";
+import { formatDaxName, formatObjectRef } from "../phrases.js";
 import {
   STATUS_TONE,
   actionLabel,
@@ -39,7 +40,10 @@ export default function ImpactItemRow({
   const status = itemStatus(item);
   const primary = primaryAction(item);
   const others = menuActions(item);
-  const name = item.impacted_object?.name ?? item.id;
+  const obj = item.impacted_object;
+  const name = obj?.table && obj?.name && obj?.object_type !== "table"
+    ? formatDaxName(obj.table, obj.name)
+    : formatObjectRef(obj?.name ?? item.id);
   const other = otherPathsText(item.other_paths_count ?? 0);
   return (
     <tr

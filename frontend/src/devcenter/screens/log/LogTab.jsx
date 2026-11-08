@@ -124,7 +124,7 @@ export default function LogTab({ onTabs, proposalId: initialProposal = null }) {
                     <td>{actionText(entry)}</td>
                     <td>
                       {rowKey ? (
-                        <button type="button" className="dc-agent-link" onClick={() => openRow(rowKey)}>{rowKey}</button>
+                        <button type="button" className="dc-agent-link" onClick={() => openRow(rowKey)}>{targetText(rowKey)}</button>
                       ) : targetText(entry.target)}
                     </td>
                     <td className="dc-log-code" data-col="before">{valueText(entry.before)}</td>

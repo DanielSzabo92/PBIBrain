@@ -1,6 +1,108 @@
 // UI boundaries: names and readable evidence, never storage identities or payloads.
 const identity = /\b(?:model|report|table|column|measure|page|visual|workspace|semantic|edge|override|relationship|selector|conflict):[^\s,;"{}]+|\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b|\b[0-9a-f]{32,64}\b/gi;
 
+export function formatDaxName(table, name) {
+  if (!table && !name) return "";
+  if (table && !name) {
+    const match = String(table).match(/^(?:'([^']+)'|([A-Za-z0-9_ ]+))\[(.*)\]$/);
+    if (match) {
+      const tbl = match[1] || match[2];
+      const col = match[3];
+      return `'${tbl}'[${col}]`;
+    }
+    const clean = String(table).replace(/^'+|'+$/g, "");
+    return `'${clean}'`;
+  }
+  if (!table && name) {
+    const match = String(name).match(/^(?:'([^']+)'|([A-Za-z0-9_ ]+))\[(.*)\]$/);
+    if (match) {
+      const tbl = match[1] || match[2];
+      const col = match[3];
+      return `'${tbl}'[${col}]`;
+    }
+    return `[${name}]`;
+  }
+  const cleanTable = String(table).replace(/^'+|'+$/g, "");
+  return `'${cleanTable}'[${name}]`;
+}
+
+export function formatObjectRef(ref) {
+  if (ref == null || ref === "") return "";
+  if (typeof ref !== "string") {
+    if (typeof ref === "object") {
+      if (ref.table && ref.name && ref.object_type !== "table") {
+        return formatDaxName(ref.table, ref.name);
+      }
+      if (ref.name) {
+        return ref.object_type === "table" ? `'${ref.name}'` : ref.name;
+      }
+    }
+    return String(ref);
+  }
+
+  const str = ref.trim();
+
+  // Pattern 1: URI/prefix style: measure:Sales/Net Sales, column:Sales/Amount, table:Sales
+  const uriMatch = str.match(/^(?:model:[^/]+\/)?(table|column|measure|hierarchy|partition|calculation_item|calculation_group|relationship):([^/]+)(?:\/(.+))?$/i);
+  if (uriMatch) {
+    const [, kind, part1, part2] = uriMatch;
+    const lowerKind = kind.toLowerCase();
+    if (lowerKind === "table" || lowerKind === "calculation_group") {
+      return `'${part1}'`;
+    }
+    if (part2) {
+      return formatDaxName(part1, part2);
+    }
+    return `'${part1}'`;
+  }
+
+  // Pattern 2: Table[Measure] without single quotes
+  const daxMatch = str.match(/^([A-Za-z0-9_ ]+)\[(.*)\]$/);
+  if (daxMatch) {
+    return `'${daxMatch[1]}'[` + daxMatch[2] + `]`;
+  }
+  if (/^'[^']+'\[.*\]$/.test(str)) {
+    return str;
+  }
+
+  // Pattern 3: row-* slug from Dev Center compare rows (e.g. row-gross-margin, row-net-sales, row-customer)
+  const rowMatch = str.match(/^row-(.+)$/);
+  if (rowMatch) {
+    return rowMatch[1]
+      .split("-")
+      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+      .join(" ");
+  }
+
+  // Pattern 4: relationship-*
+  const relMatch = str.match(/^relationship-(.+)$/i);
+  if (relMatch) {
+    const label = relMatch[1]
+      .split("-")
+      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+      .join(" ");
+    return `Relationship (${label})`;
+  }
+
+  return str;
+}
+
+const PHRASE_MAPPINGS = [
+  [/Report bindings of the scanned reports \(USES, FILTERS and page bindings\)\.?/gi, "Field usage and visual filters across scanned reports."],
+  [/USES, FILTERS and page bindings/gi, "field usage and visual filters"],
+  [/SCANNER_COVERAGE_UNKNOWN/gi, "Scanner coverage unknown: metadata incomplete for this source"],
+  [/Explicit modification target/gi, "Directly modified object"],
+  [/Consumes potentially affected object/gi, "Uses an object affected by this change"],
+];
+
+function sanitizePhrases(text) {
+  let cleaned = text;
+  for (const [regex, replacement] of PHRASE_MAPPINGS) {
+    cleaned = cleaned.replace(regex, replacement);
+  }
+  return cleaned;
+}
+
 export function readableText(value, nodes = []) {
   if (value == null || value === "") return "";
   if (typeof value === "string") {
@@ -9,7 +111,8 @@ export function readableText(value, nodes = []) {
     }
     const named = nodes.find((node) => node.id === value);
     if (named?.name && named.name !== value) return readableText(named.name);
-    return value.replace(identity, (id) => nodes.find((node) => node.id === id)?.name || "Referenced object");
+    const replaced = value.replace(identity, (id) => nodes.find((node) => node.id === id)?.name || "Referenced object");
+    return sanitizePhrases(replaced);
   }
   if (Array.isArray(value)) return [...new Set(value.map((item) => readableText(item, nodes)).filter(Boolean))].join(" · ");
   if (typeof value === "object") {

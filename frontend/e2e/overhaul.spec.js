@@ -28,7 +28,7 @@ test("Inspector starts with browsable measures and keeps browse filters on retur
 test("search has a clear focus boundary and respects reduced motion", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: "Search", exact: true }).click();
-  const input = page.getByRole("searchbox", { name: "Search the brain" });
+  const input = page.getByRole("searchbox", { name: "Search objects" });
   await input.fill("Net Sales");
   await expect(page.locator(".search-result").first()).toBeVisible();
   await expect(input).toBeFocused();

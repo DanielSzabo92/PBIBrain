@@ -92,7 +92,7 @@ test("the log helpers give the author, the action label, None for an empty value
   assert.ok(LOG_ACTIONS.includes("proposal_accept") && !LOG_ACTIONS.includes("alignment_override.break"));
   assert.equal(valueText(null), "None");
   assert.equal(valueText(""), "None");
-  assert.equal(valueText({ choice: "keep" }), '{"choice":"keep"}');
+  assert.equal(valueText({ choice: "keep" }), "Keep target");
   assert.equal(targetRowKey(["a", "b"]), null);
   assert.deepEqual(logParams(), { limit: 50 });
   assert.deepEqual(logParams({ author: "agent", action: "proposal_accept", target: " row-1 ", proposalId: "p-1", pages: 2 }), {

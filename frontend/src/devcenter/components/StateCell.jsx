@@ -46,6 +46,9 @@ export default function StateCell({ cell, sourceName, onOpenDiff }) {
   if (sourceName) {
     tooltipLines.push(`${sourceName}: ${word}`);
   }
+  if (state === "type_conflict") {
+    tooltipLines.push(t("compare.state.type_conflict.help"));
+  }
   for (const item of properties) {
     const text = phraseText(item.phrase_id || item.property);
     const detail = item.old !== undefined && item.new !== undefined ? `: ${item.old} to ${item.new}` : "";

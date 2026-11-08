@@ -137,7 +137,7 @@ def _field_profile(target: Node, nodes: Mapping[str, Node], edges: list[Edge]) -
         "object_id": target.id,
         "object_type": target.type,
         "evidence_class": "INFERRED",
-        "basis": "Report bindings of the scanned reports (USES, FILTERS and page bindings).",
+        "basis": "Field usage and visual filters across scanned reports.",
         "visual_count": len({edge.from_id for edge in visual_uses}),
         "page_count": len(pages),
         "report_count": len(reports),
