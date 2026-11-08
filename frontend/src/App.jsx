@@ -4,9 +4,13 @@ import CommonObjects from "./components/CommonObjects";
 import PendingChanges from "./components/PendingChanges";
 import { hasComparableSources } from "./commonality";
 import React, { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, ArrowRight, ArrowUpRight, Boxes, Check, ChartColumn, ChevronRight, CircleCheck, Cloud, Inbox, PanelLeft, ScanSearch, Copy, Bot, Database, FileText, FolderOpen, Moon, Plus, RefreshCw, RotateCcw, ScanLine, ShieldAlert, ShieldCheck, Sun, TriangleAlert, Waypoints, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, ArrowUpRight, Boxes, Check, ChartColumn, ChevronDown, ChevronRight, CircleCheck, Cloud, Inbox, PanelLeft, ScanSearch, Copy, Bot, Database, FileText, FolderOpen, Moon, Plus, RefreshCw, RotateCcw, ScanLine, ShieldAlert, ShieldCheck, Sun, TriangleAlert, Waypoints, X } from "lucide-react";
 import { ToastProvider, useToast } from "./components/ui/toast";
 import { SegmentedControl } from "./components/ui/segmented-control";
+import { Tooltip } from "./components/ui/tooltip";
+import ReviewDecision from "./components/ReviewDecision";
+import ObjectContextPreview from "./components/ObjectContextPreview";
+import { isLowEvidence, explainConfidence } from "./reviewEvidence";
 import { brainTransport, normalizeSnapshot } from "./transport";
 import { desktopRequest, subscribeToDesktopBridge } from "./desktop";
 import NavIcon from "./NavIcon";
@@ -1267,6 +1271,7 @@ function ConfigView({ transport, config, onSaved, onScan, scanning }) {
 }
 
 function Inspector({ node, details, loading, error, snapshot, snapshotLoaded, snapshotError, overview, onSelect, onRetry, onEvidenceRetry, onReview, onGraph, colors, scanning, transport }) {
+  const [activeEditId, setActiveEditId] = useState(null);
   if (error) return <Card className="panel inspector-state"><div className="empty-state tone-bad"><span className="empty-icon" aria-hidden="true"><TriangleAlert /></span><h2>Object unavailable</h2><p>{readableText(error)}</p><Button variant="outline" onClick={onRetry}><RefreshCw />Retry object</Button></div></Card>;
   if (loading) return <div className="inspector-loading"><div className="skeleton skeleton-title" /><div className="skeleton-grid"><div className="skeleton skeleton-block" /><div className="skeleton skeleton-block" /></div><p role="status" className="loading-label">Loading object details…</p></div>;
   if (!node) return <><PageHeading title="Select an object" description="Choose an object from Search or the graph." action={<Button onClick={onGraph}>Open graph</Button>} /></>;
@@ -1298,7 +1303,7 @@ function Inspector({ node, details, loading, error, snapshot, snapshotLoaded, sn
           {fields.length ? <dl className="metadata-grid">{fields.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl> : null}
         </Card>
         <UsageRoles profile={details?.usage_roles} />
-        {candidates.length || warnings.length ? <details className="object-metadata object-review panel" open><summary><span>Review &amp; evidence</span><span className="summary-count">{candidates.length} suggestions{warnings.length ? ` · ${warnings.length} warnings` : ""}</span></summary>{candidates.map((item) => <div className="object-review-item" key={item.id || item.target}><CandidateActions item={item} onReview={onReview} disabled={scanning} /><EvidenceCard item={item} /></div>)}{warnings.map((warning) => <div className="warning-card" key={warning.id || formatEvidence(warning.reason)}><strong><TriangleAlert aria-hidden="true" />Conflict</strong><p>{formatEvidence(warning.reason || warning.message || warning.description || "Conflicting evidence needs review.")}</p></div>)}</details> : null}
+        {candidates.length || warnings.length ? <details className="object-metadata object-review panel" open><summary><span>Review &amp; evidence</span><span className="summary-count">{candidates.length} suggestions{warnings.length ? ` · ${warnings.length} warnings` : ""}</span></summary>{candidates.map((item) => { const itemId = item.id || item.target || itemTarget(item); return <div className="object-review-item" key={itemId}><CandidateActions item={item} node={node} onReview={onReview} disabled={scanning} isEditing={activeEditId === itemId} onStartEdit={() => setActiveEditId(itemId)} onCancelEdit={() => setActiveEditId(null)} /><EvidenceCard item={item} /></div>; })}{warnings.map((warning) => <div className="warning-card" key={warning.id || formatEvidence(warning.reason)}><strong><TriangleAlert aria-hidden="true" />Conflict</strong><p>{formatEvidence(warning.reason || warning.message || warning.description || "Conflicting evidence needs review.")}</p></div>)}</details> : null}
         {snapshotError ? <div className="inline-error" role="alert"><p>{snapshotLoaded ? "Review evidence could not be refreshed. Showing last loaded evidence." : "Review evidence unavailable."} {readableText(snapshotError)}</p><Button variant="outline" size="sm" onClick={onEvidenceRetry}>Retry evidence</Button></div> : !snapshotLoaded ? <p className="muted-copy object-review" role="status">Loading review evidence…</p> : null}
         {connected.some((edge) => !usageTypes.has(edge.type) && edge.type !== "OBSERVED_WITH") ? <details className="object-metadata object-other panel"><summary><span>Other relationships</span></summary><RelationshipGroup title="Connected objects" nodeId={node.id} edges={connected.filter((edge) => !usageTypes.has(edge.type) && edge.type !== "OBSERVED_WITH")} nodes={relatedNodes} onSelect={onSelect} empty="No other relationships." /></details> : null}
         {observations.length ? <details className="object-metadata object-observed panel"><summary><span>Observed report usage</span><span className="summary-count">{observations.length}</span></summary>{observations.map((edge) => <div className="usage-row" key={edge.id}><span>{scopeName(edge.from_id === node.id ? edge.to_id : edge.from_id)}</span><strong>{formatValue(edge.properties?.count || edge.count || "observed")}</strong></div>)}<p className="footnote">Co-occurrence does not establish compatibility.</p></details> : null}
@@ -1370,8 +1375,14 @@ function itemScopeValue(item, node, key) {
 }
 
 // Keyboard triage (visual contract §9): J/K or ↓/↑ move between items, A approves, R rejects the focused item.
-function reviewKeys(event) {
-  if (event.altKey || event.ctrlKey || event.metaKey || event.target.closest("input, select, textarea")) return;
+// Esc cancels any active inline edit.
+function reviewKeys(event, onCancelEdit) {
+  if (event.altKey || event.ctrlKey || event.metaKey) return;
+  if (event.key === "Escape") {
+    onCancelEdit?.();
+    return;
+  }
+  if (event.target.closest("input, select, textarea")) return;
   const key = event.key.toLowerCase();
   const item = event.target.closest(".review-item");
   if (!item) return;
@@ -1387,9 +1398,13 @@ function reviewKeys(event) {
 }
 
 function ReviewQueue({ session, onSession, snapshot, loaded, loading, error, onRetry, overview, onSelect, onReview, scanning, colors, auditTrail = [], onUndoReview }) {
-  const { issue, objectType, modelId, reportId, sort, tab = "queue" } = session;
+  const { issue = "ALL", objectType = "ALL", modelId = "ALL", reportId = "ALL", sort = "confidence-high", tab = "queue" } = session;
   const change = (values) => onSession((current) => ({ ...current, ...values }));
   const panel = useRef(null);
+  const toast = useToast();
+  const [activeEditId, setActiveEditId] = useState(null);
+  const [bulkBusy, setBulkBusy] = useState(false);
+
   useEffect(() => {
     const frame = requestAnimationFrame(() => {
       const selected = [...(panel.current?.querySelectorAll("[data-review-id]") || [])].find((element) => element.dataset.reviewId === session.selectedId);
@@ -1408,7 +1423,9 @@ function ReviewQueue({ session, onSession, snapshot, loaded, loading, error, onR
   const reports = [...new Set(all.map((item) => itemScopeValue(item, snapshot.nodes.find((node) => node.id === itemTarget(item)), "report_id")).filter(Boolean))].sort();
   const filtered = all.filter((item) => {
     const targetNode = snapshot.nodes.find((node) => node.id === itemTarget(item));
-    return (issue === "ALL" || item.issue === issue)
+    const isLow = isLowEvidence(item, snapshot.nodes);
+    const matchesIssue = issue === "ALL" ? true : issue === "low-evidence" ? isLow : item.issue === issue;
+    return matchesIssue
       && (objectType === "ALL" || targetNode?.type === objectType)
       && (modelId === "ALL" || itemScopeValue(item, targetNode, "model_id") === modelId)
       && (reportId === "ALL" || itemScopeValue(item, targetNode, "report_id") === reportId);
@@ -1418,6 +1435,29 @@ function ReviewQueue({ session, onSession, snapshot, loaded, loading, error, onR
     if (sort === "impact-low") return itemImpact(a) - itemImpact(b);
     return itemConfidence(b) - itemConfidence(a);
   });
+
+  const lowEvidenceItems = filtered.filter((item) => isLowEvidence(item, snapshot.nodes));
+  const standardItems = filtered.filter((item) => !isLowEvidence(item, snapshot.nodes));
+
+  const handleBulkAction = async (action, items) => {
+    if (bulkBusy || scanning || !items?.length) return;
+    setBulkBusy(true);
+    let count = 0;
+    try {
+      for (const item of items) {
+        try {
+          const ok = await onReview(action, item);
+          if (ok !== false) count++;
+        } catch {}
+      }
+      toast.show({
+        tone: "ok",
+        text: `${action === "approve" ? "Approved" : "Rejected"} ${count} low-evidence ${count === 1 ? "suggestion" : "suggestions"}`,
+      });
+    } finally {
+      setBulkBusy(false);
+    }
+  };
 
   const candidatesReviewed = (snapshot?.semantic_candidates || []).filter(
     (item) => ["approved", "rejected", "overridden"].includes(item.status)
@@ -1534,7 +1574,7 @@ function ReviewQueue({ session, onSession, snapshot, loaded, loading, error, onR
       <>
         <p className="review-purpose"><span className="queue-count"><strong data-ui-number="">{loading ? "…" : filtered.length}</strong>{loading ? "Loading…" : " to review"}</span><span className="review-purpose-copy">Approval saves a trusted label for search and context; rejection excludes it. Power BI files stay unchanged.</span><span className="review-keys" aria-hidden="true"><kbd>J</kbd><kbd>K</kbd> move <kbd>A</kbd> approve <kbd>R</kbd> reject</span></p>
         <div className="queue-toolbar" data-ui-actions="">
-          <Label className="select-field"><span>Issue</span><NativeSelect aria-label="Issue" value={issue} onChange={(event) => change({ issue: event.target.value })}><option value="ALL">All issues</option><option value="candidate">Suggestions</option><option value="conflict">Conflicts</option><option value="stale">Outdated decisions</option></NativeSelect></Label>
+          <Label className="select-field"><span>Issue</span><NativeSelect aria-label="Issue" value={issue} onChange={(event) => change({ issue: event.target.value })}><option value="ALL">All issues</option><option value="candidate">Suggestions</option><option value="low-evidence">Low evidence</option><option value="conflict">Conflicts</option><option value="stale">Outdated decisions</option></NativeSelect></Label>
           <Label className="select-field"><span>Object</span><NativeSelect aria-label="Object" value={objectType} onChange={(event) => change({ objectType: event.target.value })}><option value="ALL">All types</option>{types.map((type) => <option key={type} value={type}>{typeLabel(type)}</option>)}</NativeSelect></Label>
           {models.length > 1 ? <Label className="select-field"><span>Model</span><NativeSelect aria-label="Model" value={modelId} onChange={(event) => change({ modelId: event.target.value, reportId: "ALL" })}><option value="ALL">All models</option>{models.map((value, index) => <option key={value} value={value}>{scopeName(value, "Model", index)}</option>)}</NativeSelect></Label> : null}
           {reports.length > 1 ? <Label className="select-field"><span>Report</span><NativeSelect aria-label="Report" value={reportId} onChange={(event) => change({ reportId: event.target.value, modelId: "ALL" })}><option value="ALL">All reports</option>{reports.map((value, index) => <option key={value} value={value}>{scopeName(value, "Report", index)}</option>)}</NativeSelect></Label> : null}
@@ -1544,7 +1584,106 @@ function ReviewQueue({ session, onSession, snapshot, loaded, loading, error, onR
         <Card className="panel queue-panel" aria-busy={loading}>
           {loading ? <div className="queue-loading">{[0, 1, 2].map((index) => <div className="skeleton skeleton-row-item" key={index} />)}<p className="sr-only" role="status">Loading suggestions…</p></div> : filtered.length ? <>
             <div className="review-columns" aria-hidden="true"><span>Object &amp; suggestion</span><span>Why review this?</span><span>Confidence</span><span>Decision</span></div>
-            <div className="queue-list" onKeyDown={reviewKeys}>{filtered.map((item) => <ReviewItem colors={colors} key={item.id || `${item.issue}-${itemTarget(item)}`} item={item} nodes={snapshot.nodes} disabled={scanning} onSelect={(id, nextView) => { change({ selectedId: item.id || itemTarget(item), scrollY: contentScroller().scrollTop }); onSelect(id, nextView); }} onReview={onReview} />)}</div>
+            {issue === "low-evidence" ? (
+              <div className="low-evidence-group" role="region" aria-label="Low evidence suggestions">
+                <div className="low-evidence-header">
+                  <div className="low-evidence-title">
+                    <ShieldAlert className="size-4" aria-hidden="true" />
+                    <div>
+                      <h3>Low-evidence suggestions ({lowEvidenceItems.length})</h3>
+                      <p>Name-only tautologies and weak proposals with no supporting description or formula.</p>
+                    </div>
+                  </div>
+                  <div className="low-evidence-actions" data-ui-actions="">
+                    <Button variant="outline" size="sm" className="bulk-approve-low" disabled={bulkBusy || scanning} onClick={() => handleBulkAction("approve", lowEvidenceItems)}><Check className="size-4" aria-hidden="true" />Approve all low-evidence ({lowEvidenceItems.length})</Button>
+                    <Button variant="ghost" size="sm" className="bulk-reject-low" disabled={bulkBusy || scanning} onClick={() => handleBulkAction("reject", lowEvidenceItems)}><X className="size-4" aria-hidden="true" />Reject all low-evidence ({lowEvidenceItems.length})</Button>
+                  </div>
+                </div>
+                <div className="queue-list" onKeyDown={(e) => reviewKeys(e, () => setActiveEditId(null))}>
+                  {lowEvidenceItems.map((item) => (
+                    <ReviewItem
+                      colors={colors}
+                      key={item.id || `${item.issue}-${itemTarget(item)}`}
+                      item={item}
+                      nodes={snapshot.nodes}
+                      edges={snapshot.edges}
+                      disabled={scanning}
+                      isEditing={activeEditId === (item.id || itemTarget(item))}
+                      onStartEdit={() => setActiveEditId(item.id || itemTarget(item))}
+                      onCancelEdit={() => setActiveEditId(null)}
+                      onSelect={(id, nextView) => {
+                        change({ selectedId: item.id || itemTarget(item), scrollY: contentScroller().scrollTop });
+                        onSelect(id, nextView);
+                      }}
+                      onReview={onReview}
+                    />
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <>
+                {standardItems.length ? (
+                  <div className="queue-list" onKeyDown={(e) => reviewKeys(e, () => setActiveEditId(null))}>
+                    {standardItems.map((item) => (
+                      <ReviewItem
+                        colors={colors}
+                        key={item.id || `${item.issue}-${itemTarget(item)}`}
+                        item={item}
+                        nodes={snapshot.nodes}
+                        edges={snapshot.edges}
+                        disabled={scanning}
+                        isEditing={activeEditId === (item.id || itemTarget(item))}
+                        onStartEdit={() => setActiveEditId(item.id || itemTarget(item))}
+                        onCancelEdit={() => setActiveEditId(null)}
+                        onSelect={(id, nextView) => {
+                          change({ selectedId: item.id || itemTarget(item), scrollY: contentScroller().scrollTop });
+                          onSelect(id, nextView);
+                        }}
+                        onReview={onReview}
+                      />
+                    ))}
+                  </div>
+                ) : null}
+
+                {lowEvidenceItems.length ? (
+                  <div className="low-evidence-group" role="region" aria-label="Low evidence suggestions">
+                    <div className="low-evidence-header">
+                      <div className="low-evidence-title">
+                        <ShieldAlert className="size-4" aria-hidden="true" />
+                        <div>
+                          <h3>Low-evidence suggestions ({lowEvidenceItems.length})</h3>
+                          <p>Name-only tautologies and weak proposals with no supporting description or formula.</p>
+                        </div>
+                      </div>
+                      <div className="low-evidence-actions" data-ui-actions="">
+                        <Button variant="outline" size="sm" className="bulk-approve-low" disabled={bulkBusy || scanning} onClick={() => handleBulkAction("approve", lowEvidenceItems)}><Check className="size-4" aria-hidden="true" />Approve all low-evidence ({lowEvidenceItems.length})</Button>
+                        <Button variant="ghost" size="sm" className="bulk-reject-low" disabled={bulkBusy || scanning} onClick={() => handleBulkAction("reject", lowEvidenceItems)}><X className="size-4" aria-hidden="true" />Reject all low-evidence ({lowEvidenceItems.length})</Button>
+                      </div>
+                    </div>
+                    <div className="queue-list" onKeyDown={(e) => reviewKeys(e, () => setActiveEditId(null))}>
+                      {lowEvidenceItems.map((item) => (
+                        <ReviewItem
+                          colors={colors}
+                          key={item.id || `${item.issue}-${itemTarget(item)}`}
+                          item={item}
+                          nodes={snapshot.nodes}
+                          edges={snapshot.edges}
+                          disabled={scanning}
+                          isEditing={activeEditId === (item.id || itemTarget(item))}
+                          onStartEdit={() => setActiveEditId(item.id || itemTarget(item))}
+                          onCancelEdit={() => setActiveEditId(null)}
+                          onSelect={(id, nextView) => {
+                            change({ selectedId: item.id || itemTarget(item), scrollY: contentScroller().scrollTop });
+                            onSelect(id, nextView);
+                          }}
+                          onReview={onReview}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+              </>
+            )}
           </> : <EmptyState icon={hasFilters ? <ShieldCheck /> : <CircleCheck />} tone={hasFilters ? undefined : "ok"} title={hasFilters ? "No matching reviews" : "Queue is clear"} detail={hasFilters ? "Choose different filters to see the remaining reviews." : "All suggestions have been reviewed."} action={hasFilters ? <Button variant="outline" onClick={() => change({ issue: "ALL", objectType: "ALL", modelId: "ALL", reportId: "ALL" })}>Clear filters</Button> : null} />}
         </Card>
       </>
@@ -1612,14 +1751,26 @@ function ReviewedItem({ entry, nodes, colors, onSelect, onUndo, disabled = false
   );
 }
 
-function ReviewItem({ item, nodes, onSelect, onReview, colors, disabled = false }) {
+function ReviewItem({
+  item,
+  nodes,
+  edges = [],
+  onSelect,
+  onReview,
+  colors,
+  disabled = false,
+  isEditing = false,
+  onStartEdit,
+  onCancelEdit,
+}) {
   const targetNode = nodes.find((node) => node.id === itemTarget(item));
   const [pending, setPending] = useState(false);
   const [exiting, setExiting] = useState(false);
+  const [expanded, setExpanded] = useState(false);
   const [error, setError] = useState("");
   const rowRef = useRef(null);
 
-  const decide = async (action) => {
+  const decide = async (action, reviewItem, valueOverride) => {
     if (pending || disabled || exiting) return;
     setError("");
 
@@ -1638,7 +1789,7 @@ function ReviewItem({ item, nodes, onSelect, onReview, colors, disabled = false 
     setPending(true);
     await new Promise((resolve) => setTimeout(resolve, 180));
     try {
-      if (!await onReview(action, item)) {
+      if (!await onReview(action, item, valueOverride)) {
         setExiting(false);
         setError("Decision could not be saved. Try again.");
       }
@@ -1654,32 +1805,119 @@ function ReviewItem({ item, nodes, onSelect, onReview, colors, disabled = false 
   const reason = item.reason || (item.source === "object_name" ? "Only the object name supports this meaning; no description confirms it." : item.source === "description" ? "The source description suggests this meaning. Confirm that the label fits." : "An inference rule proposed this meaning. Confirm it using the recorded evidence.");
   const score = confidence(item.confidence ?? item.properties?.confidence);
   const level = score === null ? "none" : score >= 80 ? "high" : score >= 50 ? "mid" : "low";
-  return <div ref={rowRef} className={`review-item issue-${item.issue} ${exiting ? "is-exiting" : ""}`} aria-busy={pending}>
-    <Button variant="ghost" className="review-target" data-review-id={item.id || itemTarget(item)} disabled={!targetNode} onClick={() => onSelect(targetNode.id, "inspector")}>{targetNode ? <TypeGlyph node={targetNode} colors={colors} size="sm" /> : <span className={`review-dot ${item.issue}`} />}<span className="review-target-copy"><strong>{targetNode ? labelFor(targetNode) : "Source object unavailable"}</strong><small className="review-scope">{objectScope(targetNode, nodes)}</small><small className={`review-suggestion issue-${item.issue}`}>{item.issue === "conflict" ? "Conflicting suggestions" : item.issue === "stale" ? "Outdated saved decision" : suggestionLabel(item)}</small>{targetNode ? <small className="review-type">{typeLabel(targetNode.type)}</small> : null}</span></Button>
-    <div className="review-evidence"><p>{readableText(reason, nodes)}</p>{evidence ? <small>{evidence}</small> : null}</div>
-    <div className={`review-score level-${level}`}><strong data-ui-number="">{score === null ? "-" : `${confidence(itemConfidence(item))}%`}</strong><span className="meter" aria-hidden="true"><i style={{ transform: `scaleX(${(score ?? 0) / 100})` }} /></span><small>{item.issue === "conflict" ? "Conflict" : item.issue === "stale" ? "Outdated" : "Suggested"}</small></div>
-    <div className="review-actions" data-ui-actions="">{item.issue === "stale" ? <Button variant="destructive" size="sm" disabled={pending || disabled || exiting} onClick={() => decide("remove")}>Remove decision</Button> : <><Button variant="outline" size="sm" className="approve-button" disabled={pending || disabled || exiting} onClick={() => decide("approve")}><Check aria-hidden="true" />Approve</Button><Button variant="ghost" size="sm" className="reject-button" disabled={pending || disabled || exiting} onClick={() => decide("reject")}><X aria-hidden="true" />Reject</Button></>}</div>
-    {error ? <p className="review-decision-error" role="alert">{error}</p> : null}
-  </div>;
+  const confidenceTip = explainConfidence(item, targetNode);
+  const expression = targetNode?.expression ?? targetNode?.properties?.expression;
+
+  return (
+    <div
+      ref={rowRef}
+      className={`review-item compact-row issue-${item.issue} ${exiting ? "is-exiting" : ""} ${expanded ? "is-expanded" : ""}`}
+      aria-busy={pending}
+    >
+      <div className="review-main-cell">
+        <Button
+          variant="ghost"
+          size="icon-xs"
+          className="row-expand-button"
+          aria-expanded={expanded}
+          aria-label={expanded ? "Hide evidence" : "Show evidence"}
+          onClick={() => setExpanded((prev) => !prev)}
+        >
+          <ChevronRight className={`size-3.5 transition-transform ${expanded ? "rotate-90" : ""}`} aria-hidden="true" />
+        </Button>
+        <ObjectContextPreview node={targetNode} nodes={nodes} edges={edges} colors={colors} onSelect={onSelect}>
+          <Button
+            variant="ghost"
+            className="review-target"
+            data-review-id={item.id || itemTarget(item)}
+            disabled={!targetNode}
+            onClick={() => targetNode && onSelect(targetNode.id, "inspector")}
+          >
+            {targetNode ? <TypeGlyph node={targetNode} colors={colors} size="sm" /> : <span className={`review-dot ${item.issue}`} />}
+            <span className="review-target-copy">
+              <strong>{targetNode ? labelFor(targetNode) : "Source object unavailable"}</strong>
+              <small className="review-scope">{objectScope(targetNode, nodes)}</small>
+            </span>
+          </Button>
+        </ObjectContextPreview>
+        <span className={`review-suggestion-chip review-suggestion issue-${item.issue}`}>
+          {item.issue === "conflict" ? "Conflicting suggestions" : item.issue === "stale" ? "Outdated saved decision" : suggestionLabel(item)}
+        </span>
+      </div>
+
+      <div className="review-evidence-summary">
+        <span>{readableText(reason, nodes)}</span>
+      </div>
+
+      <Tooltip content={confidenceTip}>
+        <div className={`review-score level-${level}`} tabIndex={0} role="group" aria-label={`Confidence ${score}%`}>
+          <strong data-ui-number="">{score === null ? "-" : `${confidence(itemConfidence(item))}%`}</strong>
+          <span className="meter" aria-hidden="true"><i style={{ transform: `scaleX(${(score ?? 0) / 100})` }} /></span>
+        </div>
+      </Tooltip>
+
+      <ReviewDecision
+        item={item}
+        onReview={onReview}
+        onDecide={decide}
+        disabled={disabled || pending || exiting}
+        isEditing={isEditing}
+        onStartEdit={onStartEdit}
+        onCancelEdit={onCancelEdit}
+        compact={true}
+      />
+
+      {error ? <p className="review-decision-error" role="alert">{error}</p> : null}
+
+      {expanded ? (
+        <div className="review-evidence-expanded" id={`evidence-${item.id || itemTarget(item)}`}>
+          <div className="evidence-reason">
+            <p>{readableText(reason, nodes)}</p>
+            {evidence ? <small className="evidence-detail">{evidence}</small> : null}
+          </div>
+          {expression ? (
+            <div className="evidence-formula">
+              <span className="code-lang">DAX</span>
+              <pre><code>{highlightDax(expression)}</code></pre>
+            </div>
+          ) : null}
+          {targetNode ? (
+            <div className="evidence-actions">
+              <Button variant="link" size="sm" onClick={() => onSelect(targetNode.id, "inspector")}>
+                View details in Inspector →
+              </Button>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
 }
 
 
-function CandidateActions({ item, onReview, disabled = false }) {
-  const [editingAction, setEditingAction] = useState("");
-  const [value, setValue] = useState(readableText(item.value || item.meaning));
-  const [pending, setPending] = useState(false);
-  const beginEdit = (action) => { setValue(readableText(item.value || item.meaning)); setEditingAction(action); };
-  const decide = async (action, nextValue) => {
-    if (pending || disabled) return;
-    setPending(true);
-    try { if (await onReview(action, item, nextValue)) setEditingAction(""); }
-    finally { setPending(false); }
-  };
+function CandidateActions({ item, node, onReview, disabled = false, isEditing = false, onStartEdit, onCancelEdit }) {
   const score = confidence(item.confidence ?? item.properties?.confidence);
-  return <fieldset className="candidate-actions" data-ui-actions="" disabled={pending || disabled}>
-    <div className="candidate-action-title"><span>{suggestionLabel(item)}</span><span className="count-pill">{score === null ? "" : `${score}%`}</span></div>
-    {editingAction ? <div className="edit-row"><Input value={value} onChange={(event) => setValue(event.target.value)} aria-label={`${editingAction} semantic value`} /><Button variant="outline" size="sm" disabled={!value.trim()} onClick={() => decide(editingAction, value)}>Save meaning</Button><Button variant="link" size="sm" onClick={() => setEditingAction("")}>Cancel</Button></div> : <div className="action-buttons"><Button variant="outline" size="sm" onClick={() => decide("approve")}>Approve</Button><Button variant="ghost" size="sm" onClick={() => beginEdit("edit")}>Edit</Button><Button variant="ghost" size="sm" onClick={() => decide("reject")}>Reject</Button><Button variant="link" size="sm" onClick={() => beginEdit("override")}>Set meaning</Button></div>}
-  </fieldset>;
+  return (
+    <fieldset className="candidate-actions" data-ui-actions="" disabled={disabled}>
+      <div className="candidate-action-title">
+        <span>{suggestionLabel(item)}</span>
+        <Tooltip content={explainConfidence(item, node)}>
+          <span className="count-pill" tabIndex={0} role="group" aria-label={`Confidence ${score}%`}>
+            {score === null ? "" : `${score}%`}
+          </span>
+        </Tooltip>
+      </div>
+      <ReviewDecision
+        item={item}
+        onReview={onReview}
+        disabled={disabled}
+        isEditing={isEditing}
+        onStartEdit={onStartEdit}
+        onCancelEdit={onCancelEdit}
+        compact={false}
+      />
+    </fieldset>
+  );
 }
 
 function EvidenceCard({ item }) {

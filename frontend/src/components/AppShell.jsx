@@ -116,7 +116,7 @@ export function StatusBar({ connection, projectName, counts, pending, onReview, 
 }
 
 export function ShortcutsDialog({ open, onOpenChange }) {
-  const groups = ["Go", "File", "View", "Help"].map((group) => [group, SHORTCUTS.filter((item) => item.group === group)]);
+  const groups = ["Go", "File", "View", "Review", "Help"].map((group) => [group, SHORTCUTS.filter((item) => item.group === group)]);
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent title="Keyboard shortcuts" description="Every command in the menu bar has a key. In lists, arrow keys move between rows and Enter opens one." className="shortcuts-dialog">

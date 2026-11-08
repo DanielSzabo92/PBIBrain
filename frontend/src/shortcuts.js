@@ -23,6 +23,10 @@ export const SHORTCUTS = [
   { id: "chat", keys: "Ctrl+J", label: "Open or close the chat", group: "View" },
   { id: "shortcuts", keys: "F1", label: "Keyboard shortcuts", group: "Help" },
   { id: "menu", keys: "Alt", label: "Focus the menu bar (or F10)", group: "Help", display: true },
+  { id: "review:next", keys: "J", label: "Next review item", group: "Review", display: true },
+  { id: "review:prev", keys: "K", label: "Previous review item", group: "Review", display: true },
+  { id: "review:approve", keys: "A", label: "Approve suggestion", group: "Review", display: true },
+  { id: "review:reject", keys: "R", label: "Reject suggestion", group: "Review", display: true },
 ];
 
 const BY_ID = Object.fromEntries(SHORTCUTS.map((item) => [item.id, item]));
