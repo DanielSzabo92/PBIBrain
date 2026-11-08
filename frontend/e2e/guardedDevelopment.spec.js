@@ -95,6 +95,7 @@ test("verified acceptance UX uses reviewed binding before applying (transport do
   await page.getByRole("button", { name: "Load candidate", exact: true }).click();
   await expect(page.getByText("Accept also approves the behavior differences shown in the regression results.")).toBeVisible();
   await page.getByRole("button", { name: "Accept changes", exact: true }).click();
+  await page.getByRole("button", { name: "Confirm and apply", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Changes applied and verified", exact: true })).toBeVisible();
   expect(requests).toEqual([{ action: "accept", body: { binding, approval_operations: ["HIGH_RISK_PROMOTION", "UNEXPECTED_BEHAVIOR", "PROMOTE"] } }, { action: "promote", body: { binding } }]);
   await expect(page.getByRole("button", { name: "Reject changes", exact: true })).toBeDisabled();
@@ -111,6 +112,7 @@ test("failed acceptance never issues promotion (transport double)", async ({ pag
   await page.getByLabel("Operation reference").fill("ui-failure");
   await page.getByRole("button", { name: "Load candidate", exact: true }).click();
   await page.getByRole("button", { name: "Accept changes", exact: true }).click();
+  await page.getByRole("button", { name: "Confirm and apply", exact: true }).click();
   await expect(page.getByRole("alert")).toContainText("Proposal changed; review again");
   expect(requests).toEqual(["review", "accept"]);
   await expect(page.getByRole("button", { name: "Accept changes", exact: true })).toHaveCount(0);
