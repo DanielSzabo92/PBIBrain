@@ -74,8 +74,7 @@
 .dc-impact-graph { display: flex; flex-direction: column; gap: var(--space-2); }
 .dc-impact-graph-bar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); font-size: var(--fs-meta); color: var(--text-2); }
 .dc-impact-legend { display: inline-flex; align-items: center; gap: 6px; }
-.dc-impact-legend-line { display: inline-block; width: 24px; height: 0; border: 0 solid var(--text-2); border-top-width: 2px; }
-.dc-impact-legend-line[data-certain="false"] { border-top-style: dashed; }
+
 .dc-impact-graph-zoom { display: inline-flex; align-items: center; gap: 2px; }
 .dc-impact-zoom-value { min-width: 40px; text-align: center; color: var(--text); }
 .dc-impact-graph-view { overflow: auto; height: 520px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }

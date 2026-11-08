@@ -28,5 +28,7 @@ test("visual titles and types are readable; an opaque ID is the final fallback",
   delete node.properties.visual_type;
   assert.equal(objectName(node), node.name);
   assert.equal(suggestionLabel({ assertion_type: "ALIAS", value: "Revenue" }), "Alias: Revenue");
-  assert.equal(suggestionLabel({ item: { properties: { assertion_type: "ROLE", meaning: "date" } } }), "Role: date");
+  assert.equal(suggestionLabel({ item: { properties: { assertion_type: "ROLE", meaning: "date" } } }), "Table role: date");
+  assert.equal(suggestionLabel({ item: { properties: { assertion_type: "ROLE", meaning: "fact" } } }), "Table role: Fact table");
 });
+

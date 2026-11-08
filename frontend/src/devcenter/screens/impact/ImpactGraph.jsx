@@ -8,6 +8,8 @@ import { NODE_HEIGHT, layoutGraph, routePath } from "../../../graphLayout.js";
 import { t } from "../../copy.js";
 import ImpactNode, { IMPACT_NODE_HEIGHT } from "../../components/ImpactNode.jsx";
 import { GRAPH_LIMIT, buildImpactGraph, graphKeyTarget, graphTabOrder } from "./impactModel.js";
+import ProvenanceLegend from "@/components/ProvenanceLegend";
+
 
 const ZOOMS = [0.5, 0.67, 0.8, 1, 1.25];
 
@@ -84,12 +86,7 @@ export default function ImpactGraph({ items, total, selectedItemId, onOpenItem, 
     <div className="dc-impact-graph">
       <div className="dc-impact-graph-bar">
         <span className="dc-impact-graph-count">{t("impact.graph.count", { n: graph.nodes.length, m: graph.edges.length })}</span>
-        <span className="dc-impact-legend">
-          <span className="dc-impact-legend-line" data-certain="true" aria-hidden="true" />
-          {t("impact.graph.certain")}
-          <span className="dc-impact-legend-line" data-certain="false" aria-hidden="true" />
-          {t("impact.graph.possible")}
-        </span>
+        <ProvenanceLegend className="dc-impact-legend" />
         <span className="dc-impact-graph-zoom">
           <Button variant="ghost" size="icon-sm" aria-label={t("impact.graph.zoom_in")} onClick={() => step(1)}><ZoomIn /></Button>
           <span className="dc-impact-zoom-value" aria-label={t("impact.graph.zoom", { n: Math.round(zoom * 100) })}>{Math.round(zoom * 100)}%</span>

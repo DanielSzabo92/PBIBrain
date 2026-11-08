@@ -327,9 +327,10 @@ export default function NamingRuleEditor({
 
         {rule?.support ? (
           <p className="dc-muted">
-            Support in {targetModelName || "target"}: {rule.support.count} of {rule.support.total}. Breaks: {rule.breaks ?? 0}.
+            Support in {targetModelName || "target"}: {rule.support.count} of {rule.support.total}. Names that break the rule: {rule.breaks ?? 0}.
           </p>
         ) : null}
+
 
         {isDuplicate ? (
           <div className="dc-duplicate-error" role="alert">

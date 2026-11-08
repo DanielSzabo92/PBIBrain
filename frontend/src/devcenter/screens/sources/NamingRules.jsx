@@ -339,7 +339,7 @@ export default function NamingRules({ session, changeDisabled, reasonId, onChang
                 <th scope="col">Scope</th>
                 <th scope="col">Origin</th>
                 <th scope="col">Support</th>
-                <th scope="col">Breaks</th>
+                <th scope="col">Names that break the rule</th>
                 <th scope="col">Status</th>
                 <th scope="col" className="dc-sticky-actions" data-ui-actions="">
                   <span className="sr-only">Actions</span>

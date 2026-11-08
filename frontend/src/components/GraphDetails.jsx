@@ -13,7 +13,7 @@ const valueText = (value) => readableText(value) || "—";
 
 // Provenance and decision glyphs (visual contract §4).
 const STATUS_ICONS = { factual: Check, candidate: CircleDashed, approved: BadgeCheck, rejected: CircleX, overridden: PenLine, stale: TriangleAlert };
-const EVIDENCE = { INFERRED: [CircleDashed, "Suggested"], OBSERVED: [Eye, "Observed"] };
+const EVIDENCE = { FACT: [Check, "Factual"], INFERRED: [CircleDashed, "Inferred"], OBSERVED: [Eye, "Observed"] };
 
 function Provenance({ status }) {
   const Icon = STATUS_ICONS[status] || Check;
@@ -86,7 +86,7 @@ export default function GraphDetails({ node, settled = false, colors, transport,
             <RelatedObjects title="Report usage" nodes={details.usage} colors={colors} onSelect={onSelect} />
             <RelatedObjects title="Related objects" nodes={details.relationships?.nodes} colors={colors} onSelect={onSelect} />
             <section className="detail-section"><h3>Relationships <span className="count-pill">{details.edges?.length || 0}</span></h3>{(details.edges || []).map((edge) => {
-              const [Icon, label] = EVIDENCE[String(edge.evidence_class || "").toUpperCase()] || [Check, "From source"];
+              const [Icon, label] = EVIDENCE[String(edge.evidence_class || "FACT").toUpperCase()] || [Check, "Factual"];
               return <div className="detail-edge" key={edge.id}><div><span>{typeLabel(edge.type)}</span><Badge variant="outline"><Icon aria-hidden="true" />{label}</Badge></div><small>{name(edge.from_id)} → {name(edge.to_id)}</small></div>;
             })}</section>
           </> : <p className="muted-copy compact">{error ? "Details unavailable." : "Loading lineage…"}</p>}

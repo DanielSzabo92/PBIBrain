@@ -44,7 +44,7 @@ export function visualType(node) {
   const value = node?.visual_type || node?.properties?.visual_type || node?.visualType || node?.properties?.visualType;
   return value ? String(value).replace(/([a-z\d])([A-Z])/g, "$1 $2").replaceAll("_", " ").replace(/^./, (letter) => letter.toUpperCase()) : "Visual";
 }
-export const statusLabel = (status) => ({ factual: "From source", candidate: "Suggested", approved: "Approved", rejected: "Rejected", overridden: "Edited", stale: "Needs attention" }[status] || "From source");
+export const statusLabel = (status) => ({ factual: "Factual", candidate: "Inferred", approved: "Approved", rejected: "Rejected", overridden: "Edited", stale: "Needs attention" }[status] || "Factual");
 
 export function objectScope(node, nodes = []) {
   if (!node) return "Source object unavailable";
@@ -89,9 +89,12 @@ export function publicProperties(node) {
 
 export function suggestionLabel(item) {
   const kind = item.assertion_type || item.properties?.assertion_type || item.item?.assertion_type || item.item?.properties?.assertion_type || item.type;
-  const label = { ROLE: "Role", BUSINESS_CONCEPT: "Meaning", BEHAVIOR: "Behavior", ALIAS: "Alias", SELECTOR: "Selector" }[kind] || "Suggestion";
-  return `${label}: ${readableText(item.value ?? item.meaning ?? item.properties?.meaning ?? item.item?.meaning ?? item.item?.properties?.meaning) || "Needs review"}`;
+  const label = { ROLE: "Table role", BUSINESS_CONCEPT: "Meaning", BEHAVIOR: "Behavior", ALIAS: "Alias", SELECTOR: "Selector" }[kind] || "Suggestion";
+  const rawValue = item.value ?? item.meaning ?? item.properties?.meaning ?? item.item?.meaning ?? item.item?.properties?.meaning;
+  const value = kind === "ROLE" && String(rawValue).toLowerCase() === "fact" ? "Fact table" : readableText(rawValue);
+  return `${label}: ${value || "Needs review"}`;
 }
+
 
 const NOT_CHECKED_REASONS = {
   model_not_in_project: "the semantic model is not a source of this project",

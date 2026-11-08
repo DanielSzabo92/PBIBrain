@@ -10,7 +10,7 @@ import { NativeSelect } from "./ui/native-select";
 import { Tabs, TabsList, TabsTrigger } from "./ui/tabs";
 import { Popover } from "./ui/filter";
 import GraphDetails from "./GraphDetails";
-import { LinkStyleGlyph } from "./LinkStyleGlyph";
+import ProvenanceLegend from "./ProvenanceLegend";
 import { TypeGlyph } from "./TypeGlyph";
 import { ARTIFACT_GROUPS, EDGE_TYPES, artifactColor, artifactGroup, middleEllipsis, typeLabel } from "../graphPresentation";
 import { buildExplorerGraph, layoutExplorerGraph, layoutArtifactGraph, layoutGraph, NODE_WIDTH, NODE_HEIGHT, GROUP_WIDTH, GROUP_HEIGHT } from "../graphLayout";
@@ -23,7 +23,7 @@ import { VersionBadge } from "./VersionBadge";
 import { OriginBadge } from "./OriginBadge";
 import { isTextEntry } from "../shortcuts";
 
-const EMPTY_FILTERS = { modelId: "", reportId: "", query: "", artifact: "", objectType: "", status: "factual", edgeType: "" };
+const EMPTY_FILTERS = { modelId: "", reportId: "", query: "", artifact: "", objectType: "", status: "", edgeType: "" };
 const scopeOptions = scopeChoices;
 const DEFAULT_LIMIT = 80;
 // Density rules (visual contract §11.8).
@@ -71,7 +71,7 @@ export function createGraphSession(selectedId = "") {
   const centerId = selectedId || "";
   return {
     revision: 0,
-    filters: { ...EMPTY_FILTERS, status: centerId ? "" : "factual" },
+    filters: { ...EMPTY_FILTERS },
     query: "",
     centerId,
     depth: 1,
@@ -134,8 +134,9 @@ function normalizeGraphSession(value, selectedId) {
  */
 function wholeScope(session) {
   const { filters } = session;
-  return !session.centerId && ["full", "matrix"].includes(session.viewMode) && filters.status === "factual" && !filters.artifact && !filters.objectType && !filters.edgeType;
+  return !session.centerId && ["full", "matrix"].includes(session.viewMode) && !filters.artifact && !filters.objectType && !filters.edgeType && (filters.status === "" || filters.status === "factual");
 }
+
 
 function graphRequestKey(session) {
   return wholeScope(session)
@@ -166,14 +167,6 @@ const ToolbarTrigger = React.forwardRef(function ToolbarTrigger({ icon: Icon, la
     <ChevronDown aria-hidden="true" className="graph-tool-chevron" />
   </button>;
 });
-
-function EvidenceKey() {
-  return <ul className="graph-evidence-key" aria-label="Link styles">
-    <li><LinkStyleGlyph kind="source" />From source</li>
-    <li><LinkStyleGlyph kind="suggested" />Suggested</li>
-    <li><LinkStyleGlyph kind="observed" />Observed</li>
-  </ul>;
-}
 
 function TypesPopover({ nodes, hiddenTypes, colors, onChange }) {
   const hidden = new Set(hiddenTypes);
@@ -209,9 +202,10 @@ function TypesPopover({ nodes, hiddenTypes, colors, onChange }) {
       </ul>
     </div>
     {hiddenHere ? <Button variant="ghost" size="sm" className="graph-popover-reset" onClick={() => onChange([])}>Show all types</Button> : null}
-    <div className="graph-popover-section"><span className="graph-popover-heading">Links</span><EvidenceKey /></div>
+    <div className="graph-popover-section"><span className="graph-popover-heading">Links</span><ProvenanceLegend /></div>
   </Popover>;
 }
+
 
 function DisplayPopover({ direction, showLabels, includeSuggestions, grouped, canGroup, versions, canVersion, onChange }) {
   return <Popover label="Display options" className="graph-popover graph-display-popover"
@@ -393,14 +387,15 @@ export default function GraphView({ transport, overview, snapshot, selectedId, c
   const error = graphError?.key === graphKey ? graphError.message : "";
   const edgeTypes = [...new Set([...EDGE_TYPES, ...edges.map((edge) => edge.type)])].sort();
   const warningIds = useMemo(() => new Set((snapshot.conflicts || []).flatMap((item) => [item.target?.id || item.target || item.target_id || item.object_id, item.id, item.conflict_id].filter(Boolean))), [snapshot.conflicts]);
-  const activeFilters = ["artifact", "modelId", "reportId", "edgeType", "objectType"].filter((key) => filters[key]).length + (filters.status && filters.status !== "factual" ? 1 : 0);
-  const hasFilters = Object.entries(filters).some(([key, value]) => value !== EMPTY_FILTERS[key]) || Boolean(query) || Boolean(centerId) || hiddenTypes.length > 0 || hiddenLanes.length > 0;
+  const activeFilters = ["artifact", "modelId", "reportId", "edgeType", "objectType", "status"].filter((key) => Boolean(filters[key])).length;
+  const hasFilters = Boolean(activeFilters || query || centerId || hiddenTypes.length > 0 || hiddenLanes.length > 0);
   const reset = () => { updateSession((current) => ({ ...current, filters: { ...EMPTY_FILTERS }, query: "", centerId: "", depth: 1, limit: DEFAULT_LIMIT, result: null, expandedIds: null, hiddenTypes: [], hiddenLanes: [] })); setFocusedNode(null); };
   const center = useCallback((node) => {
     if (!node) return;
-    updateSession((current) => ({ ...current, filters: { ...EMPTY_FILTERS, status: node.status === "factual" ? "factual" : "" }, query: "", centerId: node.id }));
+    updateSession((current) => ({ ...current, filters: { ...EMPTY_FILTERS }, query: "", centerId: node.id }));
     setFocusedNode(node);
   }, [updateSession]);
+
   const changeView = (mode) => {
     if (mode === "connections") { if (focusedNode) center(focusedNode); return; }
     updateSession({ viewMode: mode, centerId: "" });
@@ -503,7 +498,7 @@ export default function GraphView({ transport, overview, snapshot, selectedId, c
           </div> : overviewMode && graphSession.expandedIds != null && explorer.collapsedCount < explorer.nodes.filter((node) => node.explorerChildCount > 0).length ? <Button variant="outline" size="xs" className="graph-overlay-button" onClick={() => updateSession({ expandedIds: null })}><ChevronsDownUp />Collapse all</Button> : null}
           {graph?.truncated && viewMode !== "matrix" ? <div className="scope-notice">Showing {graph.nodes.length} of {graph.total_nodes} objects{limit < 1000 ? <> · <Button variant="link" size="xs" onClick={() => updateSession({ limit: Math.min(limit * 2, 1000) })}>Show more</Button></> : null}</div> : null}
         </div>
-        {evidenceShown && viewMode !== "matrix" ? <div className="graph-overlay graph-overlay-key"><EvidenceKey /></div> : null}
+        {evidenceShown && viewMode !== "matrix" ? <div className="graph-overlay graph-overlay-key"><ProvenanceLegend /></div> : null}
       </div>
       <GraphDetails node={focusedNode} settled={paneSettled} colors={colors} transport={transport} onClose={closeDetails} onSelect={setFocusedNode} onCenter={center} onInspect={inspect} />
     </div>

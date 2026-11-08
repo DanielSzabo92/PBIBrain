@@ -30,3 +30,18 @@ test("palettes are diverse defaults while explicit custom colors and group inher
   }
   assert.deepEqual(normalizeColors({ groups: { model: "#123456" }, types: {} }).types, {});
 });
+
+test("provenance statusLabel and suggestionLabel use canonical trio and table role", async () => {
+  const { statusLabel, suggestionLabel } = await import("../src/presentation.js");
+  assert.equal(statusLabel("factual"), "Factual");
+  assert.equal(statusLabel("candidate"), "Inferred");
+  assert.equal(statusLabel("approved"), "Approved");
+  assert.equal(statusLabel("rejected"), "Rejected");
+  assert.equal(statusLabel("overridden"), "Edited");
+  assert.equal(statusLabel("stale"), "Needs attention");
+
+  assert.equal(suggestionLabel({ assertion_type: "ROLE", value: "fact" }), "Table role: Fact table");
+  assert.equal(suggestionLabel({ item: { properties: { assertion_type: "ROLE", meaning: "date" } } }), "Table role: date");
+  assert.equal(suggestionLabel({ assertion_type: "BUSINESS_CONCEPT", value: "Sales Revenue" }), "Meaning: Sales Revenue");
+});
+

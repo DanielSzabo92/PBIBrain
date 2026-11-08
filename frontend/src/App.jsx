@@ -1122,7 +1122,7 @@ function Inspector({ node, details, loading, error, snapshot, snapshotLoaded, sn
 function UsageRoles({ profile }) {
   const facts = profile?.facts || [];
   if (!facts.length) return null;
-  return <details className="object-metadata object-usage-roles panel" open><summary><span>How it is used</span><span className="summary-count">Inferred</span></summary>
+  return <details className="object-metadata object-usage-roles panel" open><summary><span>How it is used</span><span className="summary-count">{facts.length}</span></summary>
     {facts.map((fact) => <div className="usage-row" key={`${fact.code}-${fact.text}`}><span>{fact.text}</span></div>)}
     <p className="footnote">{profile.basis}</p>
   </details>;

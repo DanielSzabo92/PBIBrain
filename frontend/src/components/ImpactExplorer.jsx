@@ -6,10 +6,11 @@ import { Button } from "./ui/button";
 import { NativeSelect } from "./ui/native-select";
 import { Input } from "./ui/input";
 import { Card } from "./ui/card";
+import ProvenanceLegend from "./ProvenanceLegend";
 import "../guard.css";
 
 const LABELS = { from_column_id: "Source column", to_column_id: "Target column", active: "Active relationship", cross_filter_direction: "Filter direction" };
-const CATEGORY = { DIRECT: "Direct change", STRUCTURAL: "Known reference", POTENTIAL_BEHAVIORAL: "Possible behavior change", CONDITIONAL: "Depends on context", UNKNOWN: "Unknown impact" };
+const CATEGORY = { DIRECT: "Direct change", STRUCTURAL: "Factual reference", POTENTIAL_BEHAVIORAL: "Inferred effect", CONDITIONAL: "Depends on context", UNKNOWN: "Unknown impact" };
 
 export default function ImpactExplorer({ node, nodes = [], onSelect, transport = brainTransport }) {
   const [open, setOpen] = useState(false);
@@ -35,8 +36,9 @@ export default function ImpactExplorer({ node, nodes = [], onSelect, transport =
         if (!ids.has(step.from_id)) ids.set(step.from_id, { label: name(step.from_id), level: index });
         if (!ids.has(step.to_id)) ids.set(step.to_id, { label: name(step.to_id), level: index + 1 });
         const key = `${step.from_id}:${step.to_id}:${step.edge_type}`;
-        edges.set(key, { id: key, source: step.from_id, target: step.to_id, label: step.direction === "analytical" ? "Possible effect" : "Known reference", style: { strokeDasharray: step.direction === "analytical" ? "5 4" : undefined } });
+        edges.set(key, { id: key, source: step.from_id, target: step.to_id, label: step.direction === "analytical" ? "Inferred" : "Factual", style: { strokeDasharray: step.direction === "analytical" ? "6 4" : undefined } });
       });
+
     });
     const counts = new Map();
     const flowNodes = [...ids.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([id, item]) => {
@@ -78,8 +80,9 @@ export default function ImpactExplorer({ node, nodes = [], onSelect, transport =
         <div className="guard-warning" role="status"><strong>{report.completeness?.status === "COMPLETE" ? "Static impact coverage complete" : "Impact coverage incomplete"}</strong><p>Runtime behavior has not been verified.</p>{report.completeness?.output_truncated ? <p>Displayed paths are truncated. Full impact remains in the analysis.</p> : null}</div>
         <div className="guard-fields"><label>Impact category<NativeSelect value={category} onChange={(event) => setCategory(event.target.value)}><option value="">All categories</option>{Object.entries(CATEGORY).map(([key, value]) => <option key={key} value={key}>{value}</option>)}</NativeSelect></label><label>Model or report<NativeSelect value={scope} onChange={(event) => setScope(event.target.value)}><option value="">All models and reports</option>{scopes.map((id) => <option key={id} value={id}>{name(id)}</option>)}</NativeSelect></label></div>
         {graph.nodes.length ? <div className="impact-flow" aria-label="Impact paths"><ReactFlow nodes={graph.nodes} edges={graph.edges} fitView nodesDraggable={false} onNodeClick={(_, item) => onSelect?.(item.id, "inspector")}><Background /><Controls showInteractive={false} /></ReactFlow></div> : <p>No displayed impacts match these filters.</p>}
-        <p>Solid lines: known references. Dashed lines: possible effects.</p>
-        <ul className="guard-records">{records.map((item, index) => <li key={`${item.object_id}:${item.analyzer_rule_id}:${index}`}><Button variant="link" onClick={() => onSelect?.(item.object_id, "inspector")}>{item.name || name(item.object_id)}</Button><span>{CATEGORY[item.impact_category]}</span><p>{item.reason}</p>{item.conditions?.length ? <p>{item.conditions.join(" · ")}</p> : null}<details><summary>Evidence path</summary><ol>{item.path.map((step, i) => <li key={i}>{name(step.from_id)} → {name(step.to_id)} · {step.edge_type.replaceAll("_", " ").toLowerCase()} · {step.direction === "analytical" ? "Possible influence" : "Source reference"}</li>)}</ol></details></li>)}</ul>
+        <ProvenanceLegend className="impact-explorer-legend" />
+        <ul className="guard-records">{records.map((item, index) => <li key={`${item.object_id}:${item.analyzer_rule_id}:${index}`}><Button variant="link" onClick={() => onSelect?.(item.object_id, "inspector")}>{item.name || name(item.object_id)}</Button><span>{CATEGORY[item.impact_category]}</span><p>{item.reason}</p>{item.conditions?.length ? <p>{item.conditions.join(" · ")}</p> : null}<details><summary>Evidence path</summary><ol>{item.path.map((step, i) => <li key={i}>{name(step.from_id)} → {name(step.to_id)} · {step.edge_type.replaceAll("_", " ").toLowerCase()} · {step.direction === "analytical" ? "Inferred" : "Factual"}</li>)}</ol></details></li>)}</ul>
+
         {report.unknown_impacts?.length ? <div role="alert"><h4>Unresolved impact</h4><ul>{report.unknown_impacts.map((item, i) => <li key={i}>{item.reason.replaceAll("_", " ")}</li>)}</ul></div> : null}
         <details><summary>Required regression contexts ({report.required_tests?.length || 0})</summary><ul>{report.required_tests?.map((item) => <li key={item.test_id}>{item.category.replaceAll("_", " ")} · Query required</li>)}</ul></details>
       </> : null}
