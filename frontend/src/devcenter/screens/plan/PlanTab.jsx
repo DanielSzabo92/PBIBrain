@@ -53,9 +53,20 @@ export default function PlanTab({ session, changeDisabled, reasonId, onTabs, onC
   const [domainFilter, setDomainFilter] = useState("all");
   const [query, setQuery] = useState("");
   const [expandedIds, setExpandedIds] = useState(() => new Set());
+  const [offersCount, setOffersCount] = useState(session?.offers?.length ?? null);
 
   const searchRef = useRef(null);
   const defaultExpandedRef = useRef(false);
+
+  useEffect(() => {
+    let active = true;
+    http.getImpact({ target: "plan", limit: 1 })
+      .then((reply) => {
+        if (active && reply?.offers) setOffersCount(reply.offers.length);
+      })
+      .catch(() => {});
+    return () => { active = false; };
+  }, [http, session?.revision]);
 
   useEffect(() => {
     if (session?.checked_at) {
@@ -446,6 +457,21 @@ export default function PlanTab({ session, changeDisabled, reasonId, onTabs, onC
                   ))}
                 </ul>
               )}
+            </section>
+
+            <section className="dc-card dc-plan-card dc-plan-offers-card" aria-labelledby="dc-plan-offers-title">
+              <div className="dc-plan-card-head">
+                <h2 id="dc-plan-offers-title" className="dc-section-title">Report items</h2>
+                <span className="dc-muted dc-num">{offersCount ?? 0}</span>
+              </div>
+              <p className="dc-muted dc-plan-card-empty text-xs">
+                {t("impact.offers.help")}
+              </p>
+              <div className="mt-2" data-ui-actions="">
+                <Button variant="outline" size="sm" onClick={() => onTabs({ tab: "impact", group: "offers" })}>
+                  Manage report items
+                </Button>
+              </div>
             </section>
           </div>
 

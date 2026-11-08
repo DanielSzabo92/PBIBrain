@@ -104,6 +104,10 @@ export default function ImpactTab({ session, tabState, onTabs, changeDisabled, r
     if (rowKey) setScope(rowKey);
   }, [rowKey]);
 
+  useEffect(() => {
+    if (tabState?.group) setGroup(tabState.group);
+  }, [tabState?.group]);
+
   // Debounced search.
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -539,28 +543,48 @@ export default function ImpactTab({ session, tabState, onTabs, changeDisabled, r
   return (
     <div className="dc-impact" data-view={view} data-group={group || undefined} data-impact-row={scope !== "plan" ? scope : undefined} data-impact-item={tabState?.impactItemId || undefined}>
       <div className="dc-impact-toolbar" data-ui-actions="">
-        <Select label={t("impact.scope.label")} value={scope} onValueChange={(value) => setScope(value)} options={scopeOptions} className="dc-impact-scope" />
-        <div className="dc-impact-field">
-          <span className="ui-field-label" id="dc-impact-group-label">{t("impact.group.label")}</span>
-          <div role="radiogroup" aria-labelledby="dc-impact-group-label" className="ui-segmented dc-impact-groups">
-            {groups.map((option) => (
-              <button
-                key={option.value}
-                type="button"
-                role="radio"
-                aria-checked={group === option.value}
-                data-state={group === option.value ? "on" : "off"}
-                className="ui-segment"
-                data-group-value={option.value}
-                onClick={() => setGroup(option.value)}>
-                <span>{option.label}</span>
-                {option.blocking > 0 ? <span className="dc-impact-group-blocking" data-tone="bad">{t("impact.group.blocking", { n: option.blocking })}</span> : null}
-              </button>
-            ))}
+        <Select label={t("impact.scope.label")} value={scope} onValueChange={(value) => setScope(value)} options={scopeOptions} className="dc-impact-scope" triggerClassName="h-8 text-xs" />
+        <div className="dc-impact-field dc-impact-group-tabs-wrap">
+          <span className="ui-field-label sr-only" id="dc-impact-group-label">{t("impact.group.label")}</span>
+          <div role="radiogroup" aria-labelledby="dc-impact-group-label" className="dc-impact-tabs-list">
+            <div className="dc-impact-main-groups">
+              {groups.filter((option) => option.value !== "offers").map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  role="radio"
+                  aria-checked={group === option.value}
+                  data-state={group === option.value ? "on" : "off"}
+                  className="dc-impact-tab ui-segment"
+                  data-group-value={option.value}
+                  onClick={() => setGroup(option.value)}>
+                  <span>{option.label}</span>
+                  {option.blocking > 0 ? <span className="dc-impact-group-blocking" data-tone="bad">{t("impact.group.blocking", { n: option.blocking })}</span> : null}
+                </button>
+              ))}
+            </div>
+            {groups.some((option) => option.value === "offers") ? (
+              <div className="dc-impact-offers-group">
+                <span className="dc-impact-group-divider" aria-hidden="true" />
+                {groups.filter((option) => option.value === "offers").map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    role="radio"
+                    aria-checked={group === option.value}
+                    data-state={group === option.value ? "on" : "off"}
+                    className="dc-impact-tab dc-impact-tab-offers ui-segment"
+                    data-group-value={option.value}
+                    onClick={() => setGroup(option.value)}>
+                    <span>{option.label}</span>
+                  </button>
+                ))}
+              </div>
+            ) : null}
           </div>
         </div>
-        <div className="dc-impact-field">
-          <span className="ui-field-label">{t("impact.view.label")}</span>
+        <div className="dc-impact-field dc-impact-view-field">
+          <span className="ui-field-label sr-only">{t("impact.view.label")}</span>
           <SegmentedControl
             mode="radio"
             aria-label={t("impact.view.label")}
@@ -577,22 +601,38 @@ export default function ImpactTab({ session, tabState, onTabs, changeDisabled, r
         ) : null}
       </div>
       {showRow2 ? (
-        <div className="dc-impact-filters" role="group" aria-label={t("impact.filters.label")}>
-          <Switch label={t("impact.filter.blocking")} checked={filters.blockingOnly} onCheckedChange={(value) => setFilter("blockingOnly", value === true)} />
-          <Select label={t("impact.filter.severity")} value={filters.severity} onValueChange={(value) => setFilter("severity", value)} options={severityOptions} />
+        <div className="dc-impact-filters dc-impact-filter-bar" role="group" aria-label={t("impact.filters.label")}>
+          <div className="dc-impact-search">
+            <label className="ui-field-label sr-only" htmlFor="dc-impact-search">{t("impact.filter.search")}</label>
+            <Input
+              id="dc-impact-search"
+              type="search"
+              placeholder={t("impact.filter.search") + " (/)"}
+              value={searchText}
+              aria-keyshortcuts="/"
+              onChange={(event) => setSearchText(event.target.value)}
+              className="h-8 text-xs"
+            />
+          </div>
+          <Select label={t("impact.filter.severity")} value={filters.severity} onValueChange={(value) => setFilter("severity", value)} options={severityOptions} className="dc-compact-filter" triggerClassName="h-8 text-xs" />
           <Select
             label={t("impact.filter.certainty")}
             value={filters.certainty}
             onValueChange={(value) => setFilter("certainty", value)}
             options={[{ value: "all", label: t("impact.filter.all") }, { value: "certain", label: t("impact.certainty.certain") }, { value: "possible", label: t("impact.certainty.possible") }]}
+            className="dc-compact-filter"
+            triggerClassName="h-8 text-xs"
           />
-          <Select label={t("impact.filter.side")} value={filters.source} onValueChange={(value) => setFilter("source", value)} options={sourceOptions} />
-          <Select label={t("impact.filter.type")} value={filters.type} onValueChange={(value) => setFilter("type", value)} options={typeOptions} />
-          <div className="dc-impact-search">
-            <label className="ui-field-label" htmlFor="dc-impact-search">{t("impact.filter.search")}</label>
-            <Input id="dc-impact-search" type="search" value={searchText} aria-keyshortcuts="/" onChange={(event) => setSearchText(event.target.value)} />
-          </div>
-          <Switch label={t("shared.include_proposals.switch")} checked={includeProposals} onCheckedChange={(value) => setIncludeProposals(value === true)} />
+          <Select label={t("impact.filter.side")} value={filters.source} onValueChange={(value) => setFilter("source", value)} options={sourceOptions} className="dc-compact-filter" triggerClassName="h-8 text-xs" />
+          <Select label={t("impact.filter.type")} value={filters.type} onValueChange={(value) => setFilter("type", value)} options={typeOptions} className="dc-compact-filter" triggerClassName="h-8 text-xs" />
+          <Switch label={t("impact.filter.blocking")} checked={filters.blockingOnly} onCheckedChange={(value) => setFilter("blockingOnly", value === true)} className="dc-compact-switch" />
+          <Switch label={t("shared.include_proposals.switch")} checked={includeProposals} onCheckedChange={(value) => setIncludeProposals(value === true)} className="dc-compact-switch" />
+          {filtered ? (
+            <Button variant="ghost" size="sm" onClick={clearFilters} className="h-8 text-xs px-2 dc-clear-filters-btn">
+              <X className="size-3" aria-hidden="true" />
+              {t("impact.empty.filter.action")}
+            </Button>
+          ) : null}
         </div>
       ) : null}
       {includeProposals ? (

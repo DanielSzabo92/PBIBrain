@@ -228,3 +228,29 @@ test("explorer ranks models before reports without changing USES_MODEL facts", (
   assert.ok(scope.points[0].x >= positions.get("report").x);
   assert.ok(scope.points.at(-1).x <= positions.get("model").x + NODE_WIDTH);
 });
+
+test("layoutGraph accepts custom nodeHeight options without overlapping tall nodes", () => {
+  const tallNodes = [
+    { id: "root" },
+    { id: "child_a" },
+    { id: "child_b" },
+  ];
+  const tallEdges = [
+    { id: "e1", from_id: "root", to_id: "child_a" },
+    { id: "e2", from_id: "root", to_id: "child_b" },
+  ];
+  const IMPACT_WIDTH = 224;
+  const IMPACT_HEIGHT = 76;
+  const layout = layoutGraph(tallNodes, tallEdges, "LR", { width: IMPACT_WIDTH, height: IMPACT_HEIGHT, nodeHeight: IMPACT_HEIGHT });
+  
+  assert.equal(layout.nodes.length, 3);
+  for (const item of layout.nodes) {
+    assert.equal(item.width, IMPACT_WIDTH);
+    assert.equal(item.height, IMPACT_HEIGHT);
+  }
+  // child_a and child_b are in the same rank: their vertical distance must be >= IMPACT_HEIGHT
+  const posA = layout.nodes.find((n) => n.node.id === "child_a").position;
+  const posB = layout.nodes.find((n) => n.node.id === "child_b").position;
+  assert.ok(Math.abs(posA.y - posB.y) >= IMPACT_HEIGHT, `Expected vertical gap >= ${IMPACT_HEIGHT}, got ${Math.abs(posA.y - posB.y)}`);
+});
+

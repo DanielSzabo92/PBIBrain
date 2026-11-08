@@ -17,8 +17,27 @@ export function leafSize() {
   return LEAF_SIZE;
 }
 function sized(sizeOf, node) {
-  const size = typeof sizeOf === "function" ? sizeOf(node) : null;
-  return size && Number.isFinite(size.width) && Number.isFinite(size.height) ? size : LEAF_SIZE;
+  if (typeof sizeOf === "function") {
+    const size = sizeOf(node);
+    if (size && Number.isFinite(size.width) && Number.isFinite(size.height)) return size;
+    if (size && (Number.isFinite(size.nodeHeight) || Number.isFinite(size.nodeWidth))) {
+      return {
+        width: Number.isFinite(size.nodeWidth) ? size.nodeWidth : NODE_WIDTH,
+        height: Number.isFinite(size.nodeHeight) ? size.nodeHeight : NODE_HEIGHT,
+      };
+    }
+  } else if (sizeOf && typeof sizeOf === "object") {
+    if (Number.isFinite(sizeOf.width) && Number.isFinite(sizeOf.height)) {
+      return sizeOf;
+    }
+    if (Number.isFinite(sizeOf.nodeHeight) || Number.isFinite(sizeOf.nodeWidth)) {
+      return {
+        width: Number.isFinite(sizeOf.nodeWidth) ? sizeOf.nodeWidth : (Number.isFinite(sizeOf.width) ? sizeOf.width : NODE_WIDTH),
+        height: Number.isFinite(sizeOf.nodeHeight) ? sizeOf.nodeHeight : (Number.isFinite(sizeOf.height) ? sizeOf.height : NODE_HEIGHT),
+      };
+    }
+  }
+  return LEAF_SIZE;
 }
 
 function idKey(value) {

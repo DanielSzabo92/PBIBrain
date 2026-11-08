@@ -17,7 +17,10 @@ export default function ImpactGraph({ items, total, selectedItemId, onOpenItem, 
   const tooMany = total > GRAPH_LIMIT;
   const graph = useMemo(() => (tooMany ? { nodes: [], edges: [] } : buildImpactGraph(items)), [items, tooMany]);
   const overLimit = tooMany || graph.nodes.length > GRAPH_LIMIT;
-  const layout = useMemo(() => (overLimit ? null : layoutGraph(graph.nodes, graph.edges, "LR")), [graph, overLimit]);
+  const layout = useMemo(
+    () => (overLimit ? null : layoutGraph(graph.nodes, graph.edges, "LR", { width: IMPACT_NODE_WIDTH, height: IMPACT_NODE_HEIGHT, nodeHeight: IMPACT_NODE_HEIGHT })),
+    [graph, overLimit]
+  );
   const ordered = useMemo(() => (layout ? graphTabOrder(layout.nodes) : []), [layout]);
   const [zoom, setZoom] = useState(1);
   const viewRef = useRef(null);
@@ -28,8 +31,8 @@ export default function ImpactGraph({ items, total, selectedItemId, onOpenItem, 
     let width = 0;
     let height = 0;
     for (const entry of layout.nodes) {
-      width = Math.max(width, entry.position.x + 224 + 32);
-      height = Math.max(height, entry.position.y + NODE_HEIGHT + 32);
+      width = Math.max(width, entry.position.x + (entry.width || IMPACT_NODE_WIDTH) + 32);
+      height = Math.max(height, entry.position.y + (entry.height || IMPACT_NODE_HEIGHT) + 32);
     }
     return { width, height };
   }, [layout]);
@@ -80,7 +83,7 @@ export default function ImpactGraph({ items, total, selectedItemId, onOpenItem, 
     const next = ZOOMS[Math.min(ZOOMS.length - 1, Math.max(0, (index < 0 ? ZOOMS.length - 1 : index) + direction))];
     setZoom(next);
   };
-  const offsetY = (NODE_HEIGHT - IMPACT_NODE_HEIGHT) / 2;
+  const offsetY = 0;
 
   return (
     <div className="dc-impact-graph">

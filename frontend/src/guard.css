@@ -15,3 +15,100 @@
 .guard-review th, .guard-review td { border-bottom: 1px solid var(--border); padding: .65rem; max-width: 25rem; overflow-wrap: anywhere; vertical-align: top; }
 .guard-review td small { display: block; color: var(--muted-foreground); }
 @media (max-width: 640px) { .guard-review { padding: 1rem; } .guard-fields { display: grid; } .impact-flow { height: 20rem; } }
+
+/* Impact Explorer Dialog & Themed React Flow Controls */
+.impact-explorer-dialog {
+  width: min(1200px, calc(100vw - 32px)) !important;
+  max-width: 1200px !important;
+  max-height: calc(100vh - 48px) !important;
+  box-sizing: border-box;
+}
+
+.impact-explorer-dialog .ui-dialog-body {
+  max-height: calc(100vh - 140px);
+  overflow-y: auto;
+}
+
+.impact-explorer-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.impact-explorer-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.impact-action-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.impact-filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+}
+
+.impact-filter-row label {
+  min-width: auto;
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.impact-report-body {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.impact-flow-container {
+  display: flex;
+  flex-direction: column;
+}
+
+/* React Flow Themed Controls (Dark & Light) */
+.react-flow__controls,
+.impact-flow-controls {
+  background: var(--card) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius) !important;
+  box-shadow: var(--shadow-sm) !important;
+  overflow: hidden;
+}
+
+.react-flow__controls-button,
+.impact-flow-controls button {
+  background: var(--card) !important;
+  border-bottom: 1px solid var(--border) !important;
+  color: var(--foreground) !important;
+  fill: var(--foreground) !important;
+}
+
+.react-flow__controls-button:last-child,
+.impact-flow-controls button:last-child {
+  border-bottom: none !important;
+}
+
+.react-flow__controls-button:hover,
+.impact-flow-controls button:hover {
+  background: var(--accent) !important;
+}
+
+.react-flow__controls-button svg,
+.impact-flow-controls svg {
+  fill: currentColor !important;
+  color: var(--foreground) !important;
+  max-width: 14px;
+  max-height: 14px;
+}
