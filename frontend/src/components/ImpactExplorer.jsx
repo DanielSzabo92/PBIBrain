@@ -112,7 +112,7 @@ export default function ImpactExplorer({ node, nodes = [], onSelect, transport =
 
   return (
     <>
-      <Card className="panel impact-explorer-card">
+      <div className="impact-explorer-section">
         <div className="impact-explorer-summary">
           <div className="impact-explorer-head">
             <GitFork className="size-4 text-primary shrink-0" aria-hidden="true" />
@@ -128,7 +128,7 @@ export default function ImpactExplorer({ node, nodes = [], onSelect, transport =
             <Maximize2 className="size-3.5 opacity-70" aria-hidden="true" />
           </Button>
         </div>
-      </Card>
+      </div>
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent

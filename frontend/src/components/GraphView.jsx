@@ -639,7 +639,9 @@ function edgeGeometry(source, target, direction, offset) {
   const start = anchor(source, sourcePosition);
   const end = anchor(target, targetPosition);
   const [path, labelX, labelY] = getSmoothStepPath({ sourceX: start.x, sourceY: start.y, sourcePosition, targetX: end.x, targetY: end.y, targetPosition, borderRadius: 8, offset: 20 + offset });
-  return { path, labelX, labelY };
+  const shiftY = horizontal && offset ? (offset % 2 === 0 ? 1 : -1) * (14 + offset * 1.5) : 0;
+  const shiftX = !horizontal && offset ? (offset % 2 === 0 ? 1 : -1) * (14 + offset * 1.5) : 0;
+  return { path, labelX: labelX + shiftX, labelY: labelY + shiftY };
 }
 
 function GraphCanvas({ rawById, apiRef, overview, full, grouped, onCenter, onInspect, nodes, edges, selectedId, docked, warningIds, direction, showLabels, colors, onSelect, onToggleGroup, viewport, onViewportChange, placements, onPlacementsChange }) {
@@ -680,8 +682,9 @@ function GraphCanvas({ rawById, apiRef, overview, full, grouped, onCenter, onIns
   const reduced = prefersReducedMotion();
   const fitDuration = reduced ? 0 : 320;
   const stepDuration = reduced ? 0 : 180;
-  const minFitZoom = full ? FULL_GRAPH_MIN_ZOOM : READABLE_ZOOM;
-  const fitOptions = useMemo(() => ({ padding: 0.12, minZoom: minFitZoom, maxZoom: 1 }), [minFitZoom]);
+  const nodeCount = layout.nodes?.length || nodes.length;
+  const minFitZoom = nodeCount <= 6 ? 1.0 : nodeCount <= 20 ? 0.85 : (full ? 0.75 : READABLE_ZOOM);
+  const fitOptions = useMemo(() => ({ padding: 0.15, minZoom: minFitZoom, maxZoom: 1 }), [minFitZoom]);
 
   // Pan just enough to bring a node into the visible canvas; zoom never changes.
   const reveal = useCallback((id, duration = fitDuration) => {
@@ -700,10 +703,13 @@ function GraphCanvas({ rawById, apiRef, overview, full, grouped, onCenter, onIns
     flow.setViewport({ x: x + dx, y: y + dy, zoom: scale }, travel(duration));
   }, [flow, rects, fitDuration]);
   useEffect(() => {
-    if (!docked || !selectedId) return undefined;
-    const timer = setTimeout(() => reveal(selectedId), 30);
+    if (!docked) return undefined;
+    const timer = setTimeout(() => {
+      if (selectedId) reveal(selectedId);
+      flow?.fitView({ ...fitOptions, ...travel(fitDuration) });
+    }, 40);
     return () => clearTimeout(timer);
-  }, [docked, selectedId, reveal]);
+  }, [docked, selectedId, reveal, flow, fitOptions, fitDuration]);
 
   // Lineage reads from the left: when the lanes cannot fit at a readable zoom, open at Models (top-left)
   // instead of the middle of the picture. Estimated from the window, since the canvas is not measured yet.
@@ -784,7 +790,7 @@ function GraphCanvas({ rawById, apiRef, overview, full, grouped, onCenter, onIns
         id: edge.id, source: from, target: to, type: "routed",
         label: typeLabel(edge.type),
         ariaLabel: `${objectName(source)} ${typeLabel(edge.type)} ${objectName(target)}`,
-        className: ["flow-edge", evidenceClass.toLowerCase(), structure ? "is-structure" : "", warning ? "warning" : "", onPath ? "on-path" : "", focusing && !onPath ? "is-dimmed" : "", showLabels || onPath && !structure ? "show-label" : ""].filter(Boolean).join(" "),
+        className: ["flow-edge", evidenceClass.toLowerCase(), structure ? "is-structure" : "", warning ? "warning" : "", onPath ? "on-path" : "", focusing && !onPath ? "is-dimmed" : "", (showLabels || (onPath && !structure && layout.edges.length <= 12)) ? "show-label" : ""].filter(Boolean).join(" "),
         markerEnd: structure && !onPath ? undefined : { type: MarkerType.ArrowClosed, color: tone, width: onPath ? 4 : 5.5, height: onPath ? 4 : 5.5 },
         zIndex: onPath ? 1 : 0,
         data: geometry,

@@ -1,9 +1,10 @@
 // Sources tab (UI design 4.8): the source list with "Find source" and "Remove", and the Target section.
 // Naming rules (U5) and the cloud dialogs (U11) come in later steps.
 import React, { useRef, useState } from "react";
-import { FolderSearch, Trash2 } from "lucide-react";
+import { FolderSearch, MoreHorizontal, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+import { Menu } from "@/components/ui/menu";
 import { Notice } from "@/components/ui/notice";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { useToast } from "@/components/ui/toast";
@@ -26,7 +27,7 @@ function sourceStatus(source) {
   return { tone: value.tone, label: t(value.key) };
 }
 
-export default function SourcesTab({ session, changeDisabled, reasonId }) {
+export default function SourcesTab({ session, changeDisabled, reasonId, onTabs }) {
   const toast = useToast();
   const remove = useAction("source_remove");
   const relink = useAction("source_relink");
@@ -101,14 +102,43 @@ export default function SourcesTab({ session, changeDisabled, reasonId }) {
                       <td><StatusBadge tone={state.tone} label={state.label} /></td>
                       <td className="ui-table-actions" data-ui-actions="">
                         <div className="dc-row-actions" data-ui-actions="">
-                          {source.status !== "ok" && !source.cloud ? (
-                            <Button variant="outline" size="sm" disabled={changeDisabled} aria-describedby={reasonId} aria-label={t("sources.find.label", { source: source.display_name })} onClick={() => find(source)}>
-                              <FolderSearch aria-hidden="true" />{t("sources.status.missing.find")}
-                            </Button>
-                          ) : null}
-                          <Button variant="destructive-outline" size="sm" disabled={changeDisabled} aria-describedby={reasonId} aria-label={t("sources.remove.label", { source: source.display_name })} onClick={(event) => { trigger.current = event.currentTarget; setRemoving(source); }}>
-                            <Trash2 aria-hidden="true" />{t("create.remove")}
-                          </Button>
+                          {(() => {
+                            const items = [];
+                            if (source.status !== "ok" && !source.cloud) {
+                              items.push({
+                                label: t("sources.status.missing.find"),
+                                icon: FolderSearch,
+                                onSelect: () => find(source),
+                              });
+                            }
+                            if (source.role !== "target") {
+                              items.push({
+                                label: t("create.remove"),
+                                icon: Trash2,
+                                destructive: true,
+                                onSelect: () => { setRemoving(source); },
+                              });
+                            }
+                            if (!items.length) return null;
+                            return (
+                              <Menu
+                                label={`Actions for ${source.display_name}`}
+                                align="end"
+                                trigger={
+                                  <Button
+                                    variant="ghost"
+                                    size="icon-sm"
+                                    disabled={changeDisabled}
+                                    aria-describedby={reasonId}
+                                    aria-label={`Actions for ${source.display_name}`}
+                                  >
+                                    <MoreHorizontal className="size-4" aria-hidden="true" />
+                                  </Button>
+                                }
+                                groups={[{ items }]}
+                              />
+                            );
+                          })()}
                         </div>
                       </td>
                     </tr>
@@ -131,12 +161,17 @@ export default function SourcesTab({ session, changeDisabled, reasonId }) {
         </dl>
       </section>
 
-      <NamingRules
-        session={session}
-        changeDisabled={changeDisabled}
-        reasonId={reasonId}
-        onChangeTarget={() => changeTargetRef.current?.click()}
-      />
+      <section className="dc-section" aria-labelledby="dc-rules-section-title">
+        <div className="dc-section-head">
+          <h2 id="dc-rules-section-title" className="dc-section-title">Naming rules</h2>
+          {onTabs ? (
+            <Button variant="outline" size="sm" onClick={() => onTabs({ tab: "rules" })}>
+              Open Naming rules tab →
+            </Button>
+          ) : null}
+        </div>
+        <p className="dc-muted">Rules for renaming and conflict resolution live in their own tab.</p>
+      </section>
 
       <AlertDialog open={Boolean(removing)} onOpenChange={(open) => { if (!open) setRemoving(null); }}>
         {removing ? (

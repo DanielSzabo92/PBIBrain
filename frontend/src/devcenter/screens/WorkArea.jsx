@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { errorCopy, longCallText, t, tn } from "../copy.js";
 import { useAction, useDevCenterState, useResource } from "../useDevCenter.js";
 import SourcesTab from "./SourcesTab.jsx";
+import NamingRules from "./sources/NamingRules.jsx";
 import PlanTab from "./plan/PlanTab.jsx";
 import ImpactTab from "./impact/ImpactTab.jsx";
 import AgentTab from "./agent/AgentTab.jsx";
@@ -20,7 +21,7 @@ import LogTab from "./log/LogTab.jsx";
 import CompareGrid from "../components/CompareGrid.jsx";
 import { agentCount, banners, deriveReadiness, planStatus, targetLine } from "./sessionModel.js";
 
-export const TABS = ["compare", "impact", "plan", "agent", "sources", "log"];
+export const TABS = ["compare", "impact", "plan", "agent", "sources", "rules", "log"];
 export const LOCKED_REASON_ID = "dc-locked-reason";
 export const BUSY_REASON_ID = "dc-busy-reason";
 
@@ -208,7 +209,9 @@ export default function WorkArea({ session, tabState, onTabs, onRetryLock, onClo
         {TABS.map((tab) => (
           <TabsContent key={tab} value={tab} className="dc-tab-panel">
             {tab === "sources" ? (
-              <SourcesTab session={session} changeDisabled={changeDisabled} reasonId={reasonId} />
+              <SourcesTab session={session} changeDisabled={changeDisabled} reasonId={reasonId} onTabs={onTabs} />
+            ) : tab === "rules" ? (
+              <NamingRules session={session} changeDisabled={changeDisabled} reasonId={reasonId} onChangeTarget={() => onTabs?.({ tab: "sources" })} />
             ) : tab === "compare" ? (
               <CompareGrid
                 session={session}

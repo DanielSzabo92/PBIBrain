@@ -24,6 +24,12 @@ import "../agent/agent.css";
 
 const SEARCH_ID = "dc-log-search";
 
+function formatLogCell(value) {
+  if (value === null || value === undefined || value === "") return "";
+  const str = valueText(value);
+  return str === "None" ? "" : str;
+}
+
 export default function LogTab({ onTabs, proposalId: initialProposal = null }) {
   const [author, setAuthor] = useState("all");
   const [action, setAction] = useState("all");
@@ -117,23 +123,27 @@ export default function LogTab({ onTabs, proposalId: initialProposal = null }) {
             <tbody>
               {entries.map((entry, index) => {
                 const rowKey = targetRowKey(entry.target);
+                const rawTarget = rowKey ? targetText(rowKey) : targetText(entry.target);
+                const targetDisplay = rawTarget === "None" || !rawTarget ? "" : rawTarget;
+                const beforeDisplay = formatLogCell(entry.before);
+                const afterDisplay = formatLogCell(entry.after);
                 return (
                   <tr key={`${entry.revision_after ?? "x"}-${index}`} className="dc-log-row" data-action={entry.action}>
                     <td className="dc-log-time">{timeText(entry.time_utc)}</td>
                     <td>{authorText(entry)}</td>
                     <td>{actionText(entry)}</td>
                     <td>
-                      {rowKey ? (
-                        <button type="button" className="dc-agent-link" onClick={() => openRow(rowKey)}>{targetText(rowKey)}</button>
-                      ) : targetText(entry.target)}
+                      {rowKey && targetDisplay ? (
+                        <button type="button" className="dc-agent-link" onClick={() => openRow(rowKey)}>{targetDisplay}</button>
+                      ) : targetDisplay}
                     </td>
-                    <td className="dc-log-code" data-col="before">{valueText(entry.before)}</td>
-                    <td className="dc-log-code" data-col="after">{valueText(entry.after)}</td>
-                    <td>{entry.reason || t("shared.empty_value")}</td>
+                    <td className="dc-log-code" data-col="before">{beforeDisplay}</td>
+                    <td className="dc-log-code" data-col="after">{afterDisplay}</td>
+                    <td>{entry.reason || ""}</td>
                     <td>
                       {entry.proposal_id ? (
                         <button type="button" className="dc-agent-link" onClick={() => setProposalId(entry.proposal_id)}>{entry.proposal_id}</button>
-                      ) : t("shared.empty_value")}
+                      ) : ""}
                     </td>
                   </tr>
                 );

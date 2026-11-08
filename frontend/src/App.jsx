@@ -4,7 +4,7 @@ import CommonObjects from "./components/CommonObjects";
 import PendingChanges from "./components/PendingChanges";
 import { hasComparableSources } from "./commonality";
 import React, { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, ArrowRight, ArrowUpRight, Boxes, Check, ChartColumn, ChevronDown, ChevronRight, CircleCheck, Cloud, Inbox, PanelLeft, ScanSearch, Copy, Bot, Database, FileText, FolderOpen, Moon, Plus, RefreshCw, RotateCcw, ScanLine, ShieldAlert, ShieldCheck, Sun, TriangleAlert, Waypoints, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, ArrowUpRight, Boxes, Calculator, Check, ChartColumn, ChevronDown, ChevronRight, CircleCheck, Clock, Cloud, Flame, Inbox, PanelLeft, ScanSearch, Copy, Bot, Database, FileText, FolderOpen, Moon, Plus, RefreshCw, RotateCcw, ScanLine, ShieldAlert, ShieldCheck, Sun, TriangleAlert, Waypoints, X } from "lucide-react";
 import { ToastProvider, useToast } from "./components/ui/toast";
 import { SegmentedControl } from "./components/ui/segmented-control";
 import { Tooltip } from "./components/ui/tooltip";
@@ -793,7 +793,7 @@ function AppInner({ transport = brainTransport }) {
           {counts.objects > 0 && view !== "devcenter" ? <PendingChanges transport={transport} scanning={scanning} onScan={applyScan} /> : null}
           <div className="view-frame" key={view}>
             <Suspense fallback={<div className="view-loading" role="status"><RefreshCw className="spin" aria-hidden="true" />Loading view…</div>}>
-            {view === "overview" ? <Overview onSelect={selectNode} overview={overview} config={config} counts={counts} colors={graphColors} loading={loading} projectName={projectName} onView={navigate} onBrowseType={(objectType) => { setSearchSession({ query: "", modelId: "", reportId: "", objectType, result: null }); setView("search"); }} onSources={() => { setSettingsTab("project"); setView("config"); }} onSummary={() => { setSettingsTab("summary"); setView("config"); }} onScan={applyScan} scanning={scanning} scanLabel={activeProject ? "Scan project" : "Scan sources"} onReview={() => navigate("review")} transport={transport} onMerge={(modelIds) => { const names = modelIds.map((id) => (overview.model_objects || []).find((item) => item.id === id)?.name || id); setNotice(`Start a merge session with ${names.join(", ")}`); navigate("devcenter"); }} error={error || configError} onRetry={load} /> : null}
+            {view === "overview" ? <Overview onSelect={selectNode} overview={overview} config={config} counts={counts} colors={graphColors} loading={loading} projectName={projectName} onView={navigate} onBrowseType={(objectType) => { setSearchSession({ query: "", modelId: "", reportId: "", objectType, result: null }); setView("search"); }} onSources={() => { setSettingsTab("project"); setView("config"); }} onSummary={() => { setSettingsTab("summary"); setView("config"); }} onScan={applyScan} scanning={scanning} scanLabel={activeProject ? "Scan project" : "Scan sources"} onReview={() => navigate("review")} transport={transport} onMerge={(modelIds) => { const names = modelIds.map((id) => (overview.model_objects || []).find((item) => item.id === id)?.name || id); setNotice(`Start a merge session with ${names.join(", ")}`); navigate("devcenter"); }} error={error || configError} onRetry={load} snapshot={snapshot} auditTrail={auditTrail} /> : null}
             {view === "search" ? <div className="page page-narrow" data-ui-stack=""><SearchView session={searchSession} onSession={setSearchSession} colors={graphColors} transport={transport} overview={overview} onSelect={selectNode} /></div> : null}
             {view === "graph" ? <GraphView session={graphSession} onSession={setGraphSession} colors={graphColors} transport={transport} overview={overview} snapshot={snapshot} selectedId={selectedId} onSelect={selectNode} /> : null}
             {view === "inspector" ? <div className="page page-wide" data-ui-stack="">{selectedId ? <><Button variant="ghost" size="sm" className="inspector-back" onClick={() => { if (inspectorOrigin === "inspector") { setSelectedId(null); setInspectedObject(null); } else setView(inspectorOrigin); }}><ArrowLeft aria-hidden="true" />{inspectorOrigin === "search" ? "Back to search results" : inspectorOrigin === "inspector" ? "Inspect another object" : `Back to ${VIEWS.find(([key]) => key === inspectorOrigin)?.[1]?.toLowerCase() || "overview"}`}</Button><Inspector key={selectedId} transport={transport} scanning={scanning} colors={graphColors} node={selected} details={inspectedDetails} loading={Boolean(selectedId && !inspectedDetails && !inspectorError)} error={inspectorError} snapshot={snapshot} snapshotLoaded={snapshotLoaded} snapshotError={snapshotError} onEvidenceRetry={() => loadSnapshot().catch(() => {})} overview={overview} onSelect={selectNode} onRetry={() => selectNode(selectedId)} onReview={review} onGraph={() => setView("graph")} /></> : <InspectorEmpty overview={overview} colors={graphColors} recentObjects={recentObjects} onSelect={(id) => { setInspectorOrigin("inspector"); selectNode(id); }} onOpenSearch={() => { setView("search"); focusSearchField(); }} onOpenPalette={() => setPaletteOpen(true)} onOpenGraph={() => setView("graph")} />}</div> : null}
@@ -980,7 +980,7 @@ function PageHeading({ kicker, title, description, action, children }) {
   );
 }
 
-function Overview({ overview, config, counts, colors, loading, projectName, onView, onBrowseType, onSources, onSummary, onScan, onReview, onSelect, onMerge, transport, scanning, scanLabel, error, onRetry }) {
+function Overview({ overview, config, counts, colors, loading, projectName, onView, onBrowseType, onSources, onSummary, onScan, onReview, onSelect, onMerge, transport, scanning, scanLabel, error, onRetry, snapshot, auditTrail }) {
   const hasObjects = counts.objects > 0;
   if (isBackendUnreachableError(error) && !hasObjects) {
     return (
@@ -1012,21 +1012,147 @@ function Overview({ overview, config, counts, colors, loading, projectName, onVi
   const pending = counts.review;
   const ValidationIcon = validationState === "valid" ? ShieldCheck : ShieldAlert;
   const validationTone = { valid: "ok", invalid: "bad", warning: "warn" }[validationState] || "idle";
-  const validation = <div className={`status-row tone-${validationTone}`} role={validationState === "invalid" ? "alert" : "status"}>
-    <ValidationIcon className="status-icon" aria-hidden="true" />
-    <div className="status-copy">
-      <h2>{validationLabel}</h2>
-      <p>{validationState === "not_run" ? "Scan sources to check graph validity." : validationState === "invalid" ? "Sources were extracted, but graph issues need attention." : "Graph validity is checked separately from source extraction and review decisions."}</p>
-      {issues.length ? <details className="validation-issues"><summary>View validation issues ({issues.length})</summary><ul>{issues.map((item, index) => <li key={`${item.code}-${index}`}><span className={`severity severity-${String(item.severity).toLowerCase()}`}>{item.severity}</span><span className="issue-message">{item.message}</span>{item.object_id || item.from_id || item.to_id ? <Button variant="link" size="sm" onClick={() => onSelect(item.object_id || item.from_id || item.to_id, "inspector")}>Inspect affected object</Button> : null}</li>)}</ul></details> : null}
-    </div>
-    {validationState === "not_run" && onScan ? (
-      <div className="status-actions" data-ui-actions="">
-        <Button variant="ghost" size="sm" onClick={onScan} disabled={scanning} tooltip={!hasSources ? "Add sources before running validation" : undefined}>
-          <ShieldCheck />Run validation
-        </Button>
+
+  const nodes = snapshot?.nodes || [];
+  const edges = snapshot?.edges || [];
+  const candidates = snapshot?.semantic_candidates || [];
+  const conflicts = snapshot?.conflicts || [];
+
+  const mostUsedMeasures = useMemo(() => {
+    const measures = nodes.filter((node) => node.type === "MEASURE" || node.type === "CALCULATION_ITEM");
+    if (!measures.length) return [];
+    const usageCounts = new Map();
+    for (const edge of edges) {
+      if (edge.type !== "CONTAINS" && edge.to_id) {
+        usageCounts.set(edge.to_id, (usageCounts.get(edge.to_id) || 0) + 1);
+      }
+    }
+    return measures
+      .map((m) => ({ node: m, count: usageCounts.get(m.id) || 0 }))
+      .sort((a, b) => b.count - a.count || a.node.name.localeCompare(b.node.name))
+      .slice(0, 5);
+  }, [nodes, edges]);
+
+  const unreviewedOnHot = useMemo(() => {
+    const unreviewed = [
+      ...candidates.filter((c) => !["approved", "rejected", "overridden"].includes(c.status)).map((c) => ({ ...c, kind: "candidate" })),
+      ...conflicts.map((c) => ({ ...c, kind: "conflict" })),
+    ];
+    if (!unreviewed.length) return [];
+    const degreeMap = new Map();
+    for (const edge of edges) {
+      if (edge.from_id) degreeMap.set(edge.from_id, (degreeMap.get(edge.from_id) || 0) + 1);
+      if (edge.to_id) degreeMap.set(edge.to_id, (degreeMap.get(edge.to_id) || 0) + 1);
+    }
+    const nodeMap = new Map(nodes.map((n) => [n.id, n]));
+    const scored = unreviewed.map((item) => {
+      const targetId = itemTarget(item);
+      const targetNode = nodeMap.get(targetId);
+      const degree = degreeMap.get(targetId) || 0;
+      return { item, targetNode, targetId, degree };
+    });
+    scored.sort((a, b) => b.degree - a.degree);
+    return scored.slice(0, 5);
+  }, [candidates, conflicts, edges, nodes]);
+
+  const recentChanges = useMemo(() => {
+    const list = [];
+    const seen = new Set();
+    const nodeMap = new Map(nodes.map((n) => [n.id, n]));
+    if (Array.isArray(auditTrail)) {
+      for (const entry of auditTrail) {
+        const id = entry.targetId || entry.reviewId || entry.id;
+        if (id && !seen.has(id)) {
+          seen.add(id);
+          const targetNode = nodeMap.get(entry.targetId);
+          list.push({
+            id,
+            targetId: entry.targetId,
+            name: targetNode ? targetNode.name : entry.targetId || "Item",
+            type: targetNode?.type || "OBJECT",
+            action: entry.action || "reviewed",
+            actor: entry.actor || "User",
+          });
+        }
+      }
+    }
+    if (list.length < 5 && Array.isArray(snapshot?.overrides)) {
+      for (const ov of snapshot.overrides) {
+        const id = ov.target_id || ov.id;
+        if (id && !seen.has(id)) {
+          seen.add(id);
+          const targetNode = nodeMap.get(ov.target_id);
+          list.push({
+            id,
+            targetId: ov.target_id,
+            name: targetNode ? targetNode.name : ov.target_id || "Item",
+            type: targetNode?.type || "OBJECT",
+            action: ov.status || "override",
+            actor: "Reviewer",
+          });
+        }
+      }
+    }
+    return list.slice(0, 5);
+  }, [auditTrail, snapshot?.overrides, nodes]);
+
+  const validationWidget = (
+    <Card className="overview-widget" role="region" aria-label="Validation summary">
+      <div className="widget-head">
+        <div className="widget-title">
+          <ValidationIcon className={`status-icon tone-${validationTone}`} aria-hidden="true" />
+          <h3>Validation summary</h3>
+        </div>
+        <span className={`status-badge-inline tone-${validationTone}`}>{validationLabel}</span>
       </div>
-    ) : null}
-  </div>;
+      <p className="widget-description">
+        {validationState === "not_run" ? "Scan sources to check graph validity." : validationState === "invalid" ? "Sources were extracted, but graph issues need attention." : "Graph validity is checked separately from source extraction and review decisions."}
+      </p>
+      {issues.length ? (
+        <div className="widget-issues-list">
+          {issues.slice(0, 3).map((item, index) => (
+            <div key={`${item.code}-${index}`} className="widget-issue-item">
+              <span className={`severity severity-${String(item.severity).toLowerCase()}`}>{item.severity}</span>
+              <span className="widget-issue-text" title={item.message}>{item.message}</span>
+              {item.object_id || item.from_id || item.to_id ? (
+                <Button variant="ghost" size="sm" onClick={() => onSelect(item.object_id || item.from_id || item.to_id, "inspector")}>
+                  Inspect
+                </Button>
+              ) : null}
+            </div>
+          ))}
+          {issues.length > 3 ? (
+            <details className="validation-issues">
+              <summary>View {issues.length - 3} more issues</summary>
+              <ul>
+                {issues.slice(3).map((item, index) => (
+                  <li key={`${item.code}-${index}`}>
+                    <span className={`severity severity-${String(item.severity).toLowerCase()}`}>{item.severity}</span>
+                    <span className="issue-message">{item.message}</span>
+                    {item.object_id || item.from_id || item.to_id ? (
+                      <Button variant="link" size="sm" onClick={() => onSelect(item.object_id || item.from_id || item.to_id, "inspector")}>
+                        Inspect affected object
+                      </Button>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            </details>
+          ) : null}
+        </div>
+      ) : (
+        <p className="widget-empty muted">No schema or dependency issues detected.</p>
+      )}
+      {validationState === "not_run" && onScan ? (
+        <div className="widget-foot">
+          <Button variant="ghost" size="sm" onClick={onScan} disabled={scanning} tooltip={!hasSources ? "Add sources before running validation" : undefined}>
+            <ShieldCheck />Run validation
+          </Button>
+        </div>
+      ) : null}
+    </Card>
+  );
+
   const sourcesRow = <div className="status-row tone-idle">
     <Database className="status-icon" aria-hidden="true" />
     <div className="status-copy">
@@ -1042,7 +1168,7 @@ function Overview({ overview, config, counts, colors, loading, projectName, onVi
       <Button variant="ghost" size="sm" onClick={onSources}>Manage sources</Button>
     </div>
   </div>;
-  // Models and reports the scan could not read (issue #9): they stay in the graph, marked "Not checked".
+
   const notCheckedRow = notChecked.length ? <div className="status-row tone-warn" role="status">
     <TriangleAlert className="status-icon" aria-hidden="true" />
     <div className="status-copy">
@@ -1050,32 +1176,22 @@ function Overview({ overview, config, counts, colors, loading, projectName, onVi
       <ul className="not-checked-list">{notChecked.map((item) => { const note = originNote(item); return <li key={item.id}><Button variant="link" size="sm" onClick={() => onSelect(item.id, "inspector")}>{item.name}</Button> <span className="muted">{note?.title || "Not checked"}</span></li>; })}</ul>
     </div>
   </div> : null;
+
   const PRIMARY = ["MODEL", "TABLE", "COLUMN", "MEASURE", "REPORT", "PAGE", "VISUAL"];
   const typeCounts = Object.entries(overview.object_counts || {}).filter(([, count]) => count > 0).sort(([a], [b]) => { const ia = PRIMARY.indexOf(a), ib = PRIMARY.indexOf(b); return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || a.localeCompare(b); });
-  const facts = [["object", "objects", counts.objects], ["relationship", "relationships", counts.edges]];
+
   return <div className="page page-overview" data-ui-stack="">
     <header className="overview-hero">
-      <h1>{projectName}</h1>
-      {loading ? (
-        <p className="hero-meta muted">{scanning ? "Scanning project…" : "Loading project…"}</p>
-      ) : hasObjects ? (
-        <dl className="project-counts" aria-label="Project counts">
-          {facts.map(([one, many, count]) => (
-            <div key={many}>
-              <dd>{count.toLocaleString()}</dd>
-              <dt>{count === 1 ? one : many}</dt>
-            </div>
-          ))}
-          {lastScan ? (
-            <div>
-              <dt>last scan</dt>
-              <dd className="fact-date">{formatDate(lastScan)}</dd>
-            </div>
-          ) : null}
-        </dl>
-      ) : (
-        <p className="hero-meta">Connect your Power BI sources to build the project brain.</p>
-      )}
+      <div className="overview-hero-copy">
+        <h1>Overview</h1>
+        {loading ? (
+          <p className="hero-meta muted">{scanning ? "Scanning project…" : "Loading project…"}</p>
+        ) : hasObjects ? (
+          <p className="hero-meta muted">{lastScan ? `Last scan ${formatDate(lastScan)}` : "Project indexed"}</p>
+        ) : (
+          <p className="hero-meta">Connect your Power BI sources to build the project brain.</p>
+        )}
+      </div>
     </header>
     {hasObjects && typeCounts.length ? <nav className="type-strip" aria-label="Objects by type">{typeCounts.map(([type, count]) => <button type="button" key={type} className="type-strip-item" onClick={() => onBrowseType(type)} title={`Browse ${count.toLocaleString()} ${typeLabel(type).toLowerCase()} objects`}><TypeGlyph type={type} colors={colors} size="sm" /><span className="type-strip-count" data-ui-number="">{count.toLocaleString()}</span><span className="type-strip-label">{typeLabel(type)}</span></button>)}</nav> : null}
     {loading && !hasObjects ? <div className="overview-loading"><div className="skeleton skeleton-search" /><div className="skeleton skeleton-panel" /><p role="status" className="sr-only">{scanning ? "Scanning sources…" : "Loading project…"}</p></div> : !hasObjects ?
@@ -1093,7 +1209,7 @@ function Overview({ overview, config, counts, colors, loading, projectName, onVi
             {hasSources ? scanLabel : "Add sources"}
           </Button>
         </Card>
-        <Card className="status-panel" role="region" aria-label="Project status">{validation}{sourcesRow}{notCheckedRow}</Card>
+        <Card className="status-panel" role="region" aria-label="Project status">{validationWidget}{sourcesRow}{notCheckedRow}</Card>
       </div> : <>
         <Card className="status-panel" role="region" aria-label="Project status">
           <div className={`status-row ${pending ? "tone-brand" : "tone-ok"}`}>
@@ -1104,10 +1220,100 @@ function Overview({ overview, config, counts, colors, loading, projectName, onVi
             </div>
             <div className="status-actions"><Button variant={pending ? "default" : "outline"} size="sm" onClick={onReview}>Open review queue <ArrowRight aria-hidden="true" /></Button></div>
           </div>
-          {validation}
           {sourcesRow}
           {notCheckedRow}
         </Card>
+
+        <div className="overview-widgets-grid">
+          {validationWidget}
+
+          <Card className="overview-widget" role="region" aria-label="Most-used measures">
+            <div className="widget-head">
+              <div className="widget-title">
+                <Calculator className="status-icon" aria-hidden="true" />
+                <h3>Most-used measures</h3>
+              </div>
+              <span className="widget-badge muted">{mostUsedMeasures.length ? `${mostUsedMeasures.length} shown` : "None"}</span>
+            </div>
+            {mostUsedMeasures.length ? (
+              <ul className="widget-list">
+                {mostUsedMeasures.map(({ node, count }) => (
+                  <li key={node.id} className="widget-list-row">
+                    <div className="widget-list-name">
+                      <TypeGlyph type="MEASURE" colors={colors} size="xs" />
+                      <Button variant="link" size="sm" className="widget-link" onClick={() => onSelect(node.id, "inspector")} title={node.name}>
+                        {node.name}
+                      </Button>
+                    </div>
+                    <span className="widget-metric">{count} {count === 1 ? "reference" : "references"}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="widget-empty muted">No measures defined in the loaded models.</p>
+            )}
+          </Card>
+
+          <Card className="overview-widget" role="region" aria-label="Unreviewed on hot objects">
+            <div className="widget-head">
+              <div className="widget-title">
+                <Flame className="status-icon tone-warn" aria-hidden="true" />
+                <h3>Unreviewed on hot objects</h3>
+              </div>
+              <span className="widget-badge muted">{unreviewedOnHot.length ? `${unreviewedOnHot.length} pending` : "Clean"}</span>
+            </div>
+            {unreviewedOnHot.length ? (
+              <ul className="widget-list">
+                {unreviewedOnHot.map(({ item, targetNode, targetId, degree }, idx) => (
+                  <li key={item.id || `${targetId}-${idx}`} className="widget-list-row">
+                    <div className="widget-list-name">
+                      <TypeGlyph type={targetNode?.type || "OBJECT"} colors={colors} size="xs" />
+                      <Button variant="link" size="sm" className="widget-link" onClick={() => onSelect(targetId, "inspector")} title={targetNode ? targetNode.name : targetId}>
+                        {targetNode ? targetNode.name : targetId}
+                      </Button>
+                      <span className="badge-tag">{item.kind === "conflict" ? "conflict" : item.meaning || "suggestion"}</span>
+                    </div>
+                    <div className="widget-row-actions">
+                      <span className="widget-metric">{degree} links</span>
+                      <Button variant="ghost" size="sm" onClick={onReview}>Review</Button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="widget-empty muted">No pending suggestions or conflicts on connected objects.</p>
+            )}
+          </Card>
+
+          <Card className="overview-widget" role="region" aria-label="Recently changed">
+            <div className="widget-head">
+              <div className="widget-title">
+                <Clock className="status-icon" aria-hidden="true" />
+                <h3>Recently changed</h3>
+              </div>
+              <span className="widget-badge muted">{recentChanges.length ? "Recent decisions" : "Idle"}</span>
+            </div>
+            {recentChanges.length ? (
+              <ul className="widget-list">
+                {recentChanges.map((entry) => (
+                  <li key={entry.id} className="widget-list-row">
+                    <div className="widget-list-name">
+                      <TypeGlyph type={entry.type} colors={colors} size="xs" />
+                      <Button variant="link" size="sm" className="widget-link" onClick={() => onSelect(entry.targetId, "inspector")} title={entry.name}>
+                        {entry.name}
+                      </Button>
+                      <span className={`badge-tag badge-status-${entry.action}`}>{entry.action}</span>
+                    </div>
+                    <span className="widget-metric muted">{entry.actor}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="widget-empty muted">No recent changes or review actions yet. Decisions will appear here as items are reviewed.</p>
+            )}
+          </Card>
+        </div>
+
         {transport && hasComparableSources(overview) && !scanning ? <CommonObjects transport={transport} colors={colors} onSelect={onSelect} onMerge={onMerge} refreshKey={overview.last_scan} /> : null}
       </>}
   </div>;
@@ -1298,21 +1504,21 @@ function Inspector({ node, details, loading, error, snapshot, snapshotLoaded, sn
       <div className="object-main">
         <Card className="panel object-summary">
           <h2 className="panel-title">Definition</h2>
-          {node.description ? <p className="description-copy">{formatValue(node.description)}</p> : null}
-          {expression ? <ExpressionBlock expression={formatValue(expression)} /> : !node.description ? <p className="muted-copy">No description recorded.</p> : null}
+          {node.description ? <p className="description-copy">{formatValue(node.description)}</p> : (!fields.length && !expression ? <p className="muted-copy">No description recorded.</p> : null)}
           {fields.length ? <dl className="metadata-grid">{fields.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl> : null}
         </Card>
+        {expression ? <ExpressionBlock expression={formatValue(expression)} /> : null}
         <UsageRoles profile={details?.usage_roles} />
         {candidates.length || warnings.length ? <details className="object-metadata object-review panel" open><summary><span>Review &amp; evidence</span><span className="summary-count">{candidates.length} suggestions{warnings.length ? ` · ${warnings.length} warnings` : ""}</span></summary>{candidates.map((item) => { const itemId = item.id || item.target || itemTarget(item); return <div className="object-review-item" key={itemId}><CandidateActions item={item} node={node} onReview={onReview} disabled={scanning} isEditing={activeEditId === itemId} onStartEdit={() => setActiveEditId(itemId)} onCancelEdit={() => setActiveEditId(null)} /><EvidenceCard item={item} /></div>; })}{warnings.map((warning) => <div className="warning-card" key={warning.id || formatEvidence(warning.reason)}><strong><TriangleAlert aria-hidden="true" />Conflict</strong><p>{formatEvidence(warning.reason || warning.message || warning.description || "Conflicting evidence needs review.")}</p></div>)}</details> : null}
         {snapshotError ? <div className="inline-error" role="alert"><p>{snapshotLoaded ? "Review evidence could not be refreshed. Showing last loaded evidence." : "Review evidence unavailable."} {readableText(snapshotError)}</p><Button variant="outline" size="sm" onClick={onEvidenceRetry}>Retry evidence</Button></div> : !snapshotLoaded ? <p className="muted-copy object-review" role="status">Loading review evidence…</p> : null}
-        {connected.some((edge) => !usageTypes.has(edge.type) && edge.type !== "OBSERVED_WITH") ? <details className="object-metadata object-other panel"><summary><span>Other relationships</span></summary><RelationshipGroup title="Connected objects" nodeId={node.id} edges={connected.filter((edge) => !usageTypes.has(edge.type) && edge.type !== "OBSERVED_WITH")} nodes={relatedNodes} onSelect={onSelect} empty="No other relationships." /></details> : null}
+        {connected.some((edge) => !usageTypes.has(edge.type) && edge.type !== "OBSERVED_WITH") ? <details className="object-metadata object-other panel"><summary><span>Other relationships</span></summary><RelationshipGroup title="Connected objects" nodeId={node.id} edges={connected.filter((edge) => !usageTypes.has(edge.type) && edge.type !== "OBSERVED_WITH")} nodes={relatedNodes} onSelect={onSelect} empty="No other relationships." colors={colors} /></details> : null}
         {observations.length ? <details className="object-metadata object-observed panel"><summary><span>Observed report usage</span><span className="summary-count">{observations.length}</span></summary>{observations.map((edge) => <div className="usage-row" key={edge.id}><span>{scopeName(edge.from_id === node.id ? edge.to_id : edge.from_id)}</span><strong>{formatValue(edge.properties?.count || edge.count || "observed")}</strong></div>)}<p className="footnote">Co-occurrence does not establish compatibility.</p></details> : null}
       </div>
       <Card className="panel object-lineage">
         <h2 className="panel-title">Lineage &amp; usage</h2>
         <VisualBindings bindings={details?.visual_bindings} onSelect={(item) => onSelect(item.id, "inspector")} />
-        <RelationshipGroup title="Used by" nodeId={node.id} edges={incoming.filter((edge) => usageTypes.has(edge.type))} nodes={relatedNodes} onSelect={onSelect} empty="No direct uses recorded." />
-        <RelationshipGroup title="Dependencies" nodeId={node.id} edges={outgoing.filter((edge) => usageTypes.has(edge.type))} nodes={relatedNodes} onSelect={onSelect} empty="No direct dependencies recorded." />
+        <RelationshipGroup title="Used by" nodeId={node.id} edges={incoming.filter((edge) => usageTypes.has(edge.type))} nodes={relatedNodes} onSelect={onSelect} empty="No direct uses recorded." colors={colors} />
+        <RelationshipGroup title="Dependencies" nodeId={node.id} edges={outgoing.filter((edge) => usageTypes.has(edge.type))} nodes={relatedNodes} onSelect={onSelect} empty="No direct dependencies recorded." colors={colors} />
         <p className="footnote">Direct links from the latest scan.</p>
         <ImpactExplorer node={node} nodes={relatedNodes} onSelect={onSelect} transport={transport} />
       </Card>
@@ -1344,11 +1550,11 @@ function ExpressionBlock({ expression }) {
   return <section className="object-expression" aria-label="DAX formula"><div className="code-head"><h3><span className="code-lang">DAX</span>formula</h3><Button variant="ghost" size="xs" onClick={copy} className={message === "Copied" ? "is-copied" : ""}>{message === "Copied" ? <Check /> : <Copy />}{message === "Copied" ? "Copied" : "Copy formula"}</Button></div><pre tabIndex={0}><code>{highlightDax(expression)}</code></pre>{message && message !== "Copied" ? <p role="status">{message}</p> : null}</section>;
 }
 
-function RelationshipGroup({ title, nodeId, edges, nodes, onSelect, empty }) {
+function RelationshipGroup({ title, nodeId, edges, nodes, onSelect, empty, colors }) {
   const [expanded, setExpanded] = useState(false);
   const unique = [...new Map(edges.map((edge) => [edge.from_id === nodeId ? edge.to_id : edge.from_id, edge])).values()];
   const shown = expanded ? unique : unique.slice(0, 10);
-  return <section className="relationship-group" aria-label={title}><h3 className="relationship-title">{title}<span className="count-pill">{unique.length}</span></h3>{unique.length ? <div className="relationship-list" onKeyDown={(event) => listKeys(event)}>{shown.map((edge) => { const targetId = edge.from_id === nodeId ? edge.to_id : edge.from_id; const resolved = nodes.find((node) => node.id === targetId); return <Button variant="ghost" className="relationship-row" key={targetId} onClick={() => onSelect(targetId, "inspector")}><span className="edge-chip" style={{ background: EDGE_COLORS[edge.type] || "#738294" }} /><span className="relationship-copy"><strong>{resolved ? labelFor(resolved) : "Related object"}</strong><small>{typeLabel(resolved?.type || edge.type)}</small></span><ChevronRight className="row-chevron" aria-hidden="true" /></Button>; })}</div> : <p className="muted-copy compact">{empty}</p>}{unique.length > 10 ? <Button variant="link" size="sm" className="relationship-more" onClick={() => setExpanded((current) => !current)}>{expanded ? "Show fewer" : `Show all ${unique.length}`}</Button> : null}</section>;
+  return <section className="relationship-group" aria-label={title}><h3 className="relationship-title">{title}<span className="count-pill">{unique.length}</span></h3>{unique.length ? <div className="relationship-list" onKeyDown={(event) => listKeys(event)}>{shown.map((edge) => { const targetId = edge.from_id === nodeId ? edge.to_id : edge.from_id; const resolved = nodes.find((node) => node.id === targetId); return <Button variant="ghost" className="relationship-row" key={targetId} onClick={() => onSelect(targetId, "inspector")}><TypeGlyph node={resolved} type={resolved?.type || edge.type} colors={colors} size="xs" /><span className="relationship-copy"><strong>{resolved ? labelFor(resolved) : "Related object"}</strong><small>{typeLabel(resolved?.type || edge.type)}</small></span><ChevronRight className="row-chevron" aria-hidden="true" /></Button>; })}</div> : <p className="muted-copy compact">{empty}</p>}{unique.length > 10 ? <Button variant="link" size="sm" className="relationship-more" onClick={() => setExpanded((current) => !current)}>{expanded ? "Show fewer" : `Show all ${unique.length}`}</Button> : null}</section>;
 }
 
 function reviewIssue(item) {

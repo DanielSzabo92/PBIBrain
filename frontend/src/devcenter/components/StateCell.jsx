@@ -53,7 +53,7 @@ export default function StateCell({ cell, sourceName, onOpenDiff, loading = fals
   const properties = cell.properties || cell.phrases || [];
   const notes = cell.notes || [];
   const propertyCount = properties.length;
-  const hasChanged = Boolean(cell.changed);
+  const hasChanged = Boolean(cell.changed) && state !== "same";
 
   const tooltipLines = [];
   if (sourceName) {
@@ -83,7 +83,7 @@ export default function StateCell({ cell, sourceName, onOpenDiff, loading = fals
       onDoubleClick={state !== "same" && onOpenDiff ? onOpenDiff : undefined}
     >
       <Icon aria-hidden="true" />
-      <span>{word}</span>
+      {state === "target" ? <span className="sr-only">{word}</span> : <span>{word}</span>}
       {propertyCount > 0 ? (
         <span className="dc-st-count" title={`${propertyCount} differences`}>
           ({propertyCount})

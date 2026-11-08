@@ -374,7 +374,8 @@
 }
 
 .dc-st-same {
-  color: var(--cmp-same);
+  color: var(--text-3);
+  opacity: 0.45;
 }
 
 .dc-st-target {

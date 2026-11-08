@@ -165,6 +165,7 @@ export const COPY = Object.freeze({
   "work.tab.plan": "Plan",
   "work.tab.agent": "Agent",
   "work.tab.sources": "Sources",
+  "work.tab.rules": "Naming rules",
   "work.tab.log": "Log",
   "work.target_model": "Target model: {name}",
   "work.target_report": "Target report: {name}",
