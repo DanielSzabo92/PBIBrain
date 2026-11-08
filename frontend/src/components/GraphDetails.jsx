@@ -70,7 +70,7 @@ export default function GraphDetails({ node, settled = false, colors, transport,
       {!details && !error ? <p role="status" className="detail-loading"><LoaderCircle className="size-4 spin" />Loading details…</p> : null}
       {error ? <div role="alert" className="detail-error">{error}<Button variant="outline" size="sm" onClick={() => setAttempt((value) => value + 1)}>Retry details</Button></div> : null}
       <Tabs key={node.id} defaultValue="properties">
-        <TabsList aria-label="Object details"><TabsTrigger value="properties">Properties</TabsTrigger><TabsTrigger value="lineage">Lineage</TabsTrigger><TabsTrigger value="evidence">Evidence</TabsTrigger></TabsList>
+        <TabsList aria-label="Object details"><TabsTrigger value="properties">Properties</TabsTrigger><TabsTrigger value="lineage">Dependencies</TabsTrigger><TabsTrigger value="evidence">Evidence</TabsTrigger></TabsList>
         <TabsContent value="properties">
           <p className="detail-description">{valueText(current?.description || "No description available.")}</p>
           <dl className="detail-fields">

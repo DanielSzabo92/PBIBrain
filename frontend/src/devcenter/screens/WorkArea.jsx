@@ -1,12 +1,15 @@
 // Work area frame of an open session (UI design 4.2): header, banner stack, and the six tabs.
 import React, { useEffect, useState } from "react";
-import { LoaderCircle, MoreHorizontal, RefreshCw, X } from "lucide-react";
+import { Copy, Edit3, FolderGit2, LoaderCircle, MoreHorizontal, RefreshCw, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Banner } from "@/components/ui/notice";
 import { Menu } from "@/components/ui/menu";
 import { EmptyState } from "@/components/ui/result-panel";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/components/ui/toast";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { errorCopy, longCallText, t, tn } from "../copy.js";
 import { useAction, useDevCenterState, useResource } from "../useDevCenter.js";
 import SourcesTab from "./SourcesTab.jsx";
@@ -24,7 +27,7 @@ export const BUSY_REASON_ID = "dc-busy-reason";
 // sources_check runs automatically once on each open of a session (UI design 4.2).
 const checkedOnOpen = new Set();
 
-export default function WorkArea({ session, tabState, onTabs, onRetryLock, onClose }) {
+export default function WorkArea({ session, tabState, onTabs, onRetryLock, onClose, onShowList, onRenameSession, onDuplicateSession, onDeleteSession }) {
   const toast = useToast();
   const busy = useDevCenterState((state) => state.busy);
   const running = useDevCenterState((state) => state.running);
@@ -45,6 +48,40 @@ export default function WorkArea({ session, tabState, onTabs, onRetryLock, onClo
   const busyText = longBusy && running ? longCallText(running) : null;
   // Step U10: after an apply, undo, or format with the target open in Power BI Desktop.
   const [desktopBanner, setDesktopBanner] = useState(false);
+  const [renameOpen, setRenameOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [renameDraft, setRenameDraft] = useState(session.display_name || "");
+
+  useEffect(() => {
+    setRenameDraft(session.display_name || "");
+  }, [session.display_name]);
+
+  const handleSaveRename = () => {
+    const trimmed = renameDraft.trim();
+    if (!trimmed) return;
+    setRenameOpen(false);
+    onRenameSession?.(session.session_id, trimmed);
+    toast.show({ tone: "ok", text: "Session renamed" });
+  };
+
+  const handleDuplicate = async () => {
+    await onDuplicateSession?.(session.session_id);
+    toast.show({ tone: "ok", text: "Session duplicated" });
+  };
+
+  const handleDelete = async () => {
+    setDeleteOpen(false);
+    await onDeleteSession?.(session.session_id);
+    toast.show({ tone: "ok", text: "Session deleted" });
+  };
+
+  const moreItems = [
+    ...(onShowList ? [{ label: t("work.more.sessions"), icon: FolderGit2, onSelect: onShowList }] : []),
+    { label: t("work.more.rename"), icon: Edit3, onSelect: () => setRenameOpen(true), disabled: changeDisabled },
+    { label: t("work.more.duplicate"), icon: Copy, onSelect: handleDuplicate, disabled: longBusy },
+    { label: t("work.more.close"), icon: X, onSelect: onClose, disabled: longBusy },
+    { label: t("work.more.delete"), icon: Trash2, onSelect: () => setDeleteOpen(true), disabled: changeDisabled },
+  ];
 
   useEffect(() => {
     if (readOnly || checkedOnOpen.has(session.session_id)) return;
@@ -84,7 +121,7 @@ export default function WorkArea({ session, tabState, onTabs, onRetryLock, onClo
             align="end"
             label={t("work.more")}
             trigger={<Button variant="outline" size="icon" aria-label={t("work.more")}><MoreHorizontal /></Button>}
-            groups={[{ items: [{ label: t("work.more.close"), icon: X, onSelect: onClose, disabled: longBusy }] }]}
+            groups={[{ items: moreItems }]}
           />
         </div>
       </header>
@@ -182,6 +219,50 @@ export default function WorkArea({ session, tabState, onTabs, onRetryLock, onClo
           </TabsContent>
         ))}
       </Tabs>
+      <Dialog open={renameOpen} onOpenChange={setRenameOpen}>
+        <DialogContent
+          title={t("work.rename.title")}
+          footer={
+            <>
+              <Button variant="outline" onClick={() => setRenameOpen(false)}>
+                {t("shared.cancel") || "Cancel"}
+              </Button>
+              <Button onClick={handleSaveRename} disabled={!renameDraft.trim()}>
+                {t("work.rename.save")}
+              </Button>
+            </>
+          }
+        >
+          <label className="dc-field">
+            <span>{t("work.rename.label")}</span>
+            <Input
+              value={renameDraft}
+              onChange={(e) => setRenameDraft(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") handleSaveRename(); }}
+              autoFocus
+            />
+          </label>
+        </DialogContent>
+      </Dialog>
+      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <AlertDialogContent
+          title={t("work.delete.title")}
+          description={t("work.delete.description")}
+          footer={
+            <>
+              <AlertDialogCancel asChild>
+                <Button variant="outline">{t("shared.cancel") || "Cancel"}</Button>
+              </AlertDialogCancel>
+              <AlertDialogAction asChild>
+                <Button variant="destructive" onClick={handleDelete}>
+                  <Trash2 aria-hidden="true" />
+                  {t("work.delete.confirm")}
+                </Button>
+              </AlertDialogAction>
+            </>
+          }
+        />
+      </AlertDialog>
     </div>
   );
 }

@@ -1,15 +1,30 @@
 // Session list and its empty states (UI design 4.1). Data: GET sessions.
 import React from "react";
-import { FolderOpen, Plus } from "lucide-react";
+import { ArrowRight, Copy, Edit3, FolderOpen, MoreHorizontal, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { EmptyState, Skeleton } from "@/components/ui/result-panel";
 import { Notice } from "@/components/ui/notice";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { Menu } from "@/components/ui/menu";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { errorCopy, t } from "../copy.js";
 import { useAction, useDevCenterState, useDevCenterStore, useResource } from "../useDevCenter.js";
 import { formatTime, listPlanLabel, listRowState, sortSessions } from "./sessionModel.js";
 
-export default function SessionList({ banner, onDismissBanner, onNew, onOpened, onOpenProject }) {
+export default function SessionList({
+  banner,
+  onDismissBanner,
+  onNew,
+  onOpened,
+  onOpenProject,
+  sessionOverrides = {},
+  deletedSessions = new Set(),
+  onRenameSession,
+  onDuplicateSession,
+  onDeleteSession,
+}) {
   const store = useDevCenterStore();
   const sessions = useResource("sessions");
   const openSession = useAction("session_open");
@@ -17,6 +32,28 @@ export default function SessionList({ banner, onDismissBanner, onNew, onOpened, 
   const current = useDevCenterState((state) => state.session);
   const busy = useDevCenterState((state) => state.busy);
   const [opening, setOpening] = React.useState(null);
+  const [renameTarget, setRenameTarget] = React.useState(null);
+  const [deleteTarget, setDeleteTarget] = React.useState(null);
+  const [renameDraft, setRenameDraft] = React.useState("");
+
+  const startRename = (row) => {
+    setRenameTarget(row);
+    setRenameDraft(sessionOverrides[row.session_id]?.display_name || row.display_name || "");
+  };
+
+  const handleSaveRename = () => {
+    if (!renameTarget) return;
+    const trimmed = renameDraft.trim();
+    if (!trimmed) return;
+    onRenameSession?.(renameTarget.session_id, trimmed);
+    setRenameTarget(null);
+  };
+
+  const handleSaveDelete = async () => {
+    if (!deleteTarget) return;
+    await onDeleteSession?.(deleteTarget.session_id);
+    setDeleteTarget(null);
+  };
 
   const open = async (row) => {
     if (current && current.session_id === row.session_id) {
@@ -42,7 +79,10 @@ export default function SessionList({ banner, onDismissBanner, onNew, onOpened, 
 
   const error = sessions.error;
   const noProject = error?.code === "action_not_allowed" && error?.details?.reason === "no_project";
-  const rows = sortSessions(sessions.data?.sessions ?? []);
+  const rawRows = (sessions.data?.sessions ?? [])
+    .filter((row) => !deletedSessions.has(row.session_id))
+    .map((row) => (sessionOverrides[row.session_id] ? { ...row, ...sessionOverrides[row.session_id] } : row));
+  const rows = sortSessions(rawRows);
   const actionError = openSession.error ?? closeSession.error;
 
   const sessionBanner = banner ? (
@@ -98,6 +138,18 @@ export default function SessionList({ banner, onDismissBanner, onNew, onOpened, 
         <Button onClick={onNew} disabled={busy === "long"}><Plus aria-hidden="true" />{t("list.new")}</Button>
       </header>
       {sessionBanner}
+      {current && !deletedSessions.has(current.session_id) ? (
+        <div className="dc-active-session-banner">
+          <div className="dc-active-session-copy">
+            <span className="dc-active-session-label">{t("list.resume.title")}</span>
+            <strong>{sessionOverrides[current.session_id]?.display_name || current.display_name}</strong>
+          </div>
+          <Button size="sm" onClick={onOpened}>
+            {t("list.resume.action")}
+            <ArrowRight aria-hidden="true" />
+          </Button>
+        </div>
+      ) : null}
       {actionError ? <Notice tone="bad">{errorCopy(actionError).body}</Notice> : null}
       {sessions.error ? <Notice tone="warn" actions={<Button variant="outline" size="sm" onClick={sessions.reload}>{t("shared.try_again")}</Button>}>{t("shared.not_current")}</Notice> : null}
       <div className="ui-table-scroll dc-list-scroll">
@@ -111,6 +163,7 @@ export default function SessionList({ banner, onDismissBanner, onNew, onOpened, 
               <th scope="col">{t("list.column.plan")}</th>
               <th scope="col">{t("list.column.updated")}</th>
               <th scope="col">{t("list.column.status")}</th>
+              <th scope="col"><span className="sr-only">Actions</span></th>
             </tr>
           </thead>
           <tbody>
@@ -140,12 +193,71 @@ export default function SessionList({ banner, onDismissBanner, onNew, onOpened, 
                   <td><StatusBadge tone={plan.tone} label={plan.label} /></td>
                   <td>{formatTime(row.updated_at)}</td>
                   <td><StatusBadge tone={state.tone} label={state.label} /></td>
+                  <td className="dc-cell-actions">
+                    <Menu
+                      align="end"
+                      label={t("work.more")}
+                      trigger={<Button variant="ghost" size="icon-sm" aria-label={`Actions for ${name}`} onClick={(e) => e.stopPropagation()}><MoreHorizontal /></Button>}
+                      groups={[{
+                        items: [
+                          state.openable ? { label: t("list.row.open"), icon: FolderOpen, onSelect: () => open(row) } : null,
+                          { label: t("list.row.rename"), icon: Edit3, onSelect: () => startRename(row) },
+                          { label: t("list.row.duplicate"), icon: Copy, onSelect: () => onDuplicateSession?.(row.session_id) },
+                          { label: t("list.row.delete"), icon: Trash2, onSelect: () => setDeleteTarget(row) },
+                        ].filter(Boolean),
+                      }]}
+                    />
+                  </td>
                 </tr>
               );
             })}
           </tbody>
         </table>
       </div>
+      <Dialog open={Boolean(renameTarget)} onOpenChange={(open) => { if (!open) setRenameTarget(null); }}>
+        <DialogContent
+          title={t("work.rename.title")}
+          footer={
+            <>
+              <Button variant="outline" onClick={() => setRenameTarget(null)}>
+                {t("shared.cancel") || "Cancel"}
+              </Button>
+              <Button onClick={handleSaveRename} disabled={!renameDraft.trim()}>
+                {t("work.rename.save")}
+              </Button>
+            </>
+          }
+        >
+          <label className="dc-field">
+            <span>{t("work.rename.label")}</span>
+            <Input
+              value={renameDraft}
+              onChange={(e) => setRenameDraft(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") handleSaveRename(); }}
+              autoFocus
+            />
+          </label>
+        </DialogContent>
+      </Dialog>
+      <AlertDialog open={Boolean(deleteTarget)} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
+        <AlertDialogContent
+          title={t("work.delete.title")}
+          description={t("work.delete.description")}
+          footer={
+            <>
+              <AlertDialogCancel asChild>
+                <Button variant="outline">{t("shared.cancel") || "Cancel"}</Button>
+              </AlertDialogCancel>
+              <AlertDialogAction asChild>
+                <Button variant="destructive" onClick={handleSaveDelete}>
+                  <Trash2 aria-hidden="true" />
+                  {t("work.delete.confirm")}
+                </Button>
+              </AlertDialogAction>
+            </>
+          }
+        />
+      </AlertDialog>
     </div>
   );
 }

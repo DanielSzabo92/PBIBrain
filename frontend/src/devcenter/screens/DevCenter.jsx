@@ -48,6 +48,65 @@ function DevCenterScreens({ onOpenProject }) {
   const closeAction = useAction("session_close");
   const openAction = useAction("session_open");
 
+  const [sessionOverrides, setSessionOverrides] = useState(() => {
+    try {
+      const saved = localStorage.getItem("pbibrain_session_overrides");
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
+
+  const [deletedSessions, setDeletedSessions] = useState(() => {
+    try {
+      const saved = localStorage.getItem("pbibrain_deleted_sessions");
+      return saved ? new Set(JSON.parse(saved)) : new Set();
+    } catch {
+      return new Set();
+    }
+  });
+
+  const handleRename = (id, newName) => {
+    setSessionOverrides((prev) => {
+      const next = { ...prev, [id]: { ...(prev[id] || {}), display_name: newName } };
+      try { localStorage.setItem("pbibrain_session_overrides", JSON.stringify(next)); } catch {}
+      return next;
+    });
+    if (session && session.session_id === id) {
+      session.display_name = newName;
+    }
+  };
+
+  const handleDuplicate = async (id) => {
+    const all = store.getState().resources?.sessions?.data?.sessions || [];
+    const target = all.find((s) => s.session_id === id) || session;
+    const baseName = sessionOverrides[id]?.display_name || target?.display_name || "Session";
+    const duplicateName = `${baseName} (copy)`;
+    try {
+      const created = await store.run("session_create", { display_name: duplicateName });
+      if (created) {
+        await store.load("sessions");
+        await store.load("session");
+        setView("work");
+      }
+    } catch (err) {
+      toast.show({ tone: "warn", text: err.message || "Could not duplicate session" });
+    }
+  };
+
+  const handleDelete = async (id) => {
+    setDeletedSessions((prev) => {
+      const next = new Set([...prev, id]);
+      try { localStorage.setItem("pbibrain_deleted_sessions", JSON.stringify([...next])); } catch {}
+      return next;
+    });
+    if (session && session.session_id === id) {
+      await closeAction.run({});
+    }
+    await store.load("sessions");
+    setView("list");
+  };
+
   const closeSession = () => closeAction.run({});
 
   // "Try again" on the locked banner: open the session again, so that PBIBrain asks for the lock again.
@@ -115,9 +174,11 @@ function DevCenterScreens({ onOpenProject }) {
 
   if (view === null) return <div className="dc-page"><Skeleton label={t("work.loading")} /></div>;
 
+  const activeSession = session ? (sessionOverrides[sessionId] ? { ...session, ...sessionOverrides[sessionId] } : session) : null;
+
   const crumbs = [{ label: t("list.breadcrumb"), onClick: view === "list" ? null : showList }];
-  if (view === "work" && session) {
-    crumbs.push({ label: session.display_name, onClick: null });
+  if (view === "work" && activeSession) {
+    crumbs.push({ label: activeSession.display_name, onClick: null });
     crumbs.push({ label: t(`work.tab.${tabState.tab}`), onClick: null });
   } else if (view === "create") {
     crumbs.push({ label: t("create.title"), onClick: null });
@@ -142,6 +203,11 @@ function DevCenterScreens({ onOpenProject }) {
           onNew={() => setView("create")}
           onOpened={() => { if (listBanner) store.dismissNotice(listBanner.id); showWork(); }}
           onOpenProject={onOpenProject}
+          sessionOverrides={sessionOverrides}
+          deletedSessions={deletedSessions}
+          onRenameSession={handleRename}
+          onDuplicateSession={handleDuplicate}
+          onDeleteSession={handleDelete}
         />
       ) : null}
       {view === "create" ? (
@@ -152,7 +218,21 @@ function DevCenterScreens({ onOpenProject }) {
         />
       ) : null}
       {view === "work" ? (
-        session ? <WorkArea session={session} tabState={tabState} onTabs={changeTabs} onRetryLock={retryLock} onClose={closeSession} /> :<div className="dc-page"><Skeleton label={t("work.loading")} /></div>
+        activeSession ? (
+          <WorkArea
+            session={activeSession}
+            tabState={tabState}
+            onTabs={changeTabs}
+            onRetryLock={retryLock}
+            onClose={closeSession}
+            onShowList={showList}
+            onRenameSession={handleRename}
+            onDuplicateSession={handleDuplicate}
+            onDeleteSession={handleDelete}
+          />
+        ) : (
+          <div className="dc-page"><Skeleton label={t("work.loading")} /></div>
+        )
       ) : null}
     </div>
   );

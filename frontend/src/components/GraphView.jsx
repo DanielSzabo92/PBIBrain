@@ -461,10 +461,10 @@ export default function GraphView({ transport, overview, snapshot, selectedId, c
       <div className="graph-search"><Search aria-hidden="true" /><Input type="search" aria-label="Filter graph objects" value={query} onChange={(event) => { updateSession({ query: event.target.value }); setFocusedNode(null); }} placeholder="Find an object…" spellCheck={false} autoComplete="off" /></div>
       <Tabs controls="graph-canvas" value={viewMode} onValueChange={changeView}>
         <TabsList aria-label="Graph view">
-          <TabsTrigger value="overview" title="Owners first: expand a group to see what is inside">Overview</TabsTrigger>
-          <TabsTrigger value="connections" disabled={!centerId && !focusedNode} title="One object and what it connects to (double-click an object)">Connections</TabsTrigger>
-          <TabsTrigger value="full" title="Every loaded object in lineage lanes: model › tables › columns › calculations › visuals › pages › reports">Lineage</TabsTrigger>
-          <TabsTrigger value="matrix" title="Which model objects each visual uses, directly or through other calculations">Matrix</TabsTrigger>
+          <TabsTrigger value="overview" title="Owners first: expand a group to see what is inside">Containers</TabsTrigger>
+          <TabsTrigger value="connections" disabled={!centerId && !focusedNode} title="One object and what it connects to (double-click an object)">Neighbourhood</TabsTrigger>
+          <TabsTrigger value="full" title="Every loaded object in lineage lanes: model › tables › columns › calculations › visuals › pages › reports">Lineage flow</TabsTrigger>
+          <TabsTrigger value="matrix" title="Which model objects each visual uses, directly or through other calculations">Field usage</TabsTrigger>
         </TabsList>
       </Tabs>
       <span className="toolbar-divider" aria-hidden="true" />

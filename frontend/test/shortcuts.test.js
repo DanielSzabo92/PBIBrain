@@ -15,6 +15,8 @@ test("function keys and modifiers map to shell commands", () => {
   assert.equal(commandFor(key("F5")), "reload");
   assert.equal(commandFor(key("F5", { ctrlKey: true })), "scan");
   assert.equal(commandFor(key("k", { metaKey: true })), "find");
+  assert.equal(commandFor(key("k", { ctrlKey: true })), "find");
+  assert.equal(SHORTCUTS.find((s) => s.id === "find")?.label, "Command palette");
   assert.equal(commandFor(key("L", { ctrlKey: true, shiftKey: true })), "theme");
   assert.equal(commandFor(key("b", { ctrlKey: true })), "sidebar");
   assert.equal(commandFor(key("F1")), "shortcuts");

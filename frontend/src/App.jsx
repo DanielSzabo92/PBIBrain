@@ -26,15 +26,18 @@ const GraphView = lazy(() => import("./components/GraphView"));
 const GraphColors = lazy(() => import("./components/GraphColors"));
 const ModelSummary = lazy(() => import("./components/ModelSummary"));
 const DocumentationExport = lazy(() => import("./components/DocumentationExport"));
-const DevCenter = lazy(() => import("./devcenter/screens/DevCenter.jsx"));
 const ChatPanel = lazy(() => import("./components/ChatPanel"));
 const AISettings = lazy(() => import("./components/AISettings"));
+import DevCenter, { devCenterStore } from "./devcenter/screens/DevCenter.jsx";
 import { Switch } from "./components/ui/switch";
 import { setSlashSearchEnabled, slashGoesToSearch, slashSearchEnabled } from "./devcenter/preferences.js";
 import { t as devCopy } from "./devcenter/copy.js";
 import { artifactColor, artifactStyle, normalizeColors, typeLabel } from "./graphPresentation";
 import { AppMenuBar, ShortcutsDialog, StatusBar } from "./components/AppShell";
 import { commandFor, displayKeys, shortcutKeys } from "./shortcuts";
+import CommandPalette from "./components/CommandPalette";
+import InspectorEmpty from "./components/InspectorEmpty";
+import ExportDialog from "./components/ExportDialog";
 
 const VIEWS = [
   ["overview", "Overview"],
@@ -188,6 +191,33 @@ function AppInner({ transport = brainTransport }) {
   const [theme, toggleTheme] = useTheme();
   const [sidebarCollapsed, toggleSidebar] = useSidebar();
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
+  const [exportTab, setExportTab] = useState("documentation");
+  const [recentObjects, setRecentObjects] = useState(() => {
+    try {
+      const saved = localStorage.getItem("pbibrain-recent-objects");
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const recordRecentObject = useCallback((node) => {
+    if (!node || !node.id) return;
+    setRecentObjects((current) => {
+      const filtered = current.filter((item) => item.id !== node.id);
+      const updated = [{
+        id: node.id,
+        name: labelFor(node) || node.name || node.id,
+        type: node.type,
+        model_id: node.model_id,
+        report_id: node.report_id,
+      }, ...filtered].slice(0, 10);
+      try { localStorage.setItem("pbibrain-recent-objects", JSON.stringify(updated)); } catch {}
+      return updated;
+    });
+  }, []);
   const [chatOpen, setChatOpen] = useState(false);
   const [snapshot, setSnapshot] = useState(() => normalizeSnapshot(null));
   const [snapshotLoaded, setSnapshotLoaded] = useState(false);
@@ -372,26 +402,29 @@ function AppInner({ transport = brainTransport }) {
     return { ...current, models: numberOr(overview.models, current.models), reports: numberOr(overview.reports, current.reports), objects: numberOr(overview.counts?.nodes ?? overview.objects, current.objects), edges: numberOr(overview.counts?.edges ?? overview.edges, current.edges), candidates: numberOr(overview.review_counts?.candidate ?? overview.candidate_count, current.candidates), warnings: numberOr(overview.review_counts?.conflict ?? overview.warning_count, current.warnings), stale: numberOr(overview.review_counts?.stale), review: numberOr(overview.review_count, numberOr(overview.candidate_count, current.candidates) + numberOr(overview.warning_count, current.warnings)) };
   }, [candidates, conflicts, edges, nodes, overview]);
 
-  const selectNode = useCallback(async (id, nextView = "inspector") => {
+  const selectNode = useCallback(async (id, nextView = "inspector", origin = null) => {
     const requestId = ++selectionRequest.current;
     setSelectedId(id);
     setInspectedObject(null);
     setInspectedDetails(null);
     setInspectorError("");
-    if (view !== "inspector") setInspectorOrigin(view);
+    if (origin) setInspectorOrigin(origin);
+    else if (view !== "inspector") setInspectorOrigin(view);
     if (nextView) setView(nextView);
     try {
       const result = await transport.getObject(id);
       if (requestId !== selectionRequest.current) return;
-      setInspectedObject(result?.object || result?.item || result);
+      const targetObj = result?.object || result?.item || result;
+      setInspectedObject(targetObj);
       setInspectedDetails(result);
+      if (targetObj) recordRecentObject(targetObj);
       loadSnapshot().catch(() => {});
     } catch (cause) {
       if (requestId !== selectionRequest.current) return;
       setInspectedObject(null);
       setInspectorError(cause.message || "Object could not be loaded");
     }
-  }, [loadSnapshot, transport, view]);
+  }, [loadSnapshot, recordRecentObject, transport, view]);
 
   const applyScan = useCallback(async () => {
     if (scanInFlight.current) return;
@@ -569,19 +602,19 @@ function AppInner({ transport = brainTransport }) {
   // Shell commands. Menus, toolbar buttons and keys all run through here (shortcuts.js holds the key map).
   const commands = useRef({});
   commands.current = {
-    find: () => { setView("search"); focusSearchField(); },
+    find: () => setPaletteOpen(true),
     back: goBack,
     sidebar: toggleSidebar,
     theme: toggleTheme,
     shortcuts: () => setShortcutsOpen(true),
     chat: () => setChatOpen((current) => !current),
   };
-  // "/" outside a text field also jumps to search; Settings can turn that key off (UI design 9.3, A24).
+  // "/" outside a text field jumps to search; Settings can turn that key off (UI design 9.3, A24).
   // Keys are ignored while a dialog or menu owns focus, so Escape and arrows stay with it.
   useEffect(() => {
     const onKey = (event) => {
       if (event.defaultPrevented) return;
-      if (slashGoesToSearch(event)) { event.preventDefault(); commands.current.find(); return; }
+      if (slashGoesToSearch(event)) { event.preventDefault(); setView("search"); focusSearchField(); return; }
       const command = commandFor(event);
       if (!command) return;
       if (document.querySelector("[role=dialog], [role=alertdialog]") && command !== "shortcuts") return;
@@ -593,6 +626,28 @@ function AppInner({ transport = brainTransport }) {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, []);
+
+  // Manage focus on view changes so focus moves to view heading or primary control instead of landing on <body>
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (view === "search") {
+        const searchInput = document.querySelector("#brain-search-query, .search-field input");
+        if (searchInput) { searchInput.focus({ preventScroll: true }); return; }
+      }
+      if (view === "graph") {
+        const canvas = document.querySelector(".graph-canvas, [tabindex='0'].react-flow, .graph-search input");
+        if (canvas) { canvas.focus({ preventScroll: true }); return; }
+      }
+      const heading = document.querySelector(".view-frame h1, .page-heading h1, [data-ui-stack] h1");
+      if (heading) {
+        if (!heading.hasAttribute("tabindex")) heading.setAttribute("tabindex", "-1");
+        heading.focus({ preventScroll: true });
+        return;
+      }
+      document.querySelector("#main-content")?.focus({ preventScroll: true });
+    }, 40);
+    return () => clearTimeout(timer);
+  }, [view]);
 
   if (desktopHost && desktopState !== "ready") {
     return <DesktopConnecting error={desktopError} onRetry={() => setBridgeAttempt((attempt) => attempt + 1)} />;
@@ -635,8 +690,8 @@ function AppInner({ transport = brainTransport }) {
       { label: "Scan sources", keys: shortcutKeys("scan"), onSelect: runScan, disabled: scanning || !hasSources },
       { separator: true },
       { label: "Project sources…", onSelect: () => openSettings("project") },
-      { label: "Export documentation…", onSelect: () => openSettings("documentation"), disabled: !counts.objects },
-      { label: "Export agent context…", onSelect: () => openSettings("summary") },
+      { label: "Export documentation…", onSelect: () => { setExportTab("documentation"); setExportOpen(true); }, disabled: !counts.objects },
+      { label: "Export model summary / agent context…", onSelect: () => { setExportTab("summary"); setExportOpen(true); } },
       { label: "Settings", keys: shortcutKeys("view:config"), onSelect: () => openSettings(settingsTab) },
     ] },
     { id: "view", label: "View", items: [
@@ -652,7 +707,7 @@ function AppInner({ transport = brainTransport }) {
     { id: "go", label: "Go", items: [
       ...VIEWS.filter(([key]) => key !== "config").map(([key, label]) => ({ label, keys: shortcutKeys(`view:${key}`), onSelect: () => commands.current.view(key) })),
       { separator: true },
-      { label: "Find object…", keys: shortcutKeys("find"), onSelect: commands.current.find },
+      { label: "Command palette…", keys: shortcutKeys("find"), onSelect: () => setPaletteOpen(true) },
       { label: "Back", keys: shortcutKeys("back"), onSelect: goBack, disabled: !(view === "inspector" && selectedId) },
     ] },
     { id: "help", label: "Help", items: [
@@ -663,8 +718,8 @@ function AppInner({ transport = brainTransport }) {
     <div className={`app-shell ${sidebarCollapsed ? "sidebar-collapsed" : ""} ${chatOpen ? "chat-open" : ""}`}>
       <a className="skip-link" href="#main-content">Skip to content</a>
       <AppMenuBar menus={menus} projectName={projectName}>
-        <button type="button" className="command-center" onClick={commands.current.find} title={`Find an object (${displayKeys("Ctrl+K")})`}>
-          <ScanSearch aria-hidden="true" /><span>Find measure, table, column or visual</span><kbd aria-hidden="true">{displayKeys("Ctrl+K")}</kbd>
+        <button type="button" className="command-center" onClick={() => setPaletteOpen(true)} title={`Command palette (${displayKeys("Ctrl+K")})`}>
+          <ScanSearch aria-hidden="true" /><span>Type a command or search objects…</span><kbd aria-hidden="true">{displayKeys("Ctrl+K")}</kbd>
         </button>
         <Button variant="ghost" size="sm" className="titlebar-chat" aria-pressed={chatOpen} onClick={commands.current.chat} title={`Chat (${displayKeys(shortcutKeys("chat"))})`}><Bot aria-hidden="true" /><span>Chat</span></Button>
       </AppMenuBar>
@@ -689,7 +744,29 @@ function AppInner({ transport = brainTransport }) {
         <header className="topbar view-toolbar">
           <div className="breadcrumb">
             <NavIcon name={view} />
-            <span className="breadcrumb-view">{viewLabel}</span>
+            {view === "inspector" && selected ? (
+              <>
+                <button
+                  type="button"
+                  className="breadcrumb-view breadcrumb-link"
+                  onClick={() => {
+                    if (inspectorOrigin === "inspector") {
+                      setSelectedId(null);
+                      setInspectedObject(null);
+                    } else {
+                      setView(inspectorOrigin);
+                    }
+                  }}
+                  title={inspectorOrigin === "inspector" ? "Inspector" : `Back to ${VIEWS.find(([k]) => k === inspectorOrigin)?.[1] || "overview"}`}
+                >
+                  {inspectorOrigin === "inspector" ? "Inspector" : VIEWS.find(([k]) => k === inspectorOrigin)?.[1] || "Inspector"}
+                </button>
+                <span className="breadcrumb-separator" aria-hidden="true">›</span>
+                <span className="breadcrumb-leaf" title={labelFor(selected)}>{labelFor(selected)}</span>
+              </>
+            ) : (
+              <span className="breadcrumb-view">{viewLabel}</span>
+            )}
           </div>
           <div className="topbar-actions" role="toolbar" aria-label={`${viewLabel} toolbar`} data-ui-actions="">
             {activeProject ? <Button variant="ghost" size="sm" className="project-switch" onClick={closeDesktopProject} disabled={scanning}><FolderOpen />Change project</Button> : null}
@@ -711,15 +788,16 @@ function AppInner({ transport = brainTransport }) {
             {view === "overview" ? <Overview onSelect={selectNode} overview={overview} config={config} counts={counts} colors={graphColors} loading={loading} projectName={projectName} onView={navigate} onBrowseType={(objectType) => { setSearchSession({ query: "", modelId: "", reportId: "", objectType, result: null }); setView("search"); }} onSources={() => { setSettingsTab("project"); setView("config"); }} onSummary={() => { setSettingsTab("summary"); setView("config"); }} onScan={applyScan} scanning={scanning} scanLabel={activeProject ? "Scan project" : "Scan sources"} onReview={() => navigate("review")} transport={transport} onMerge={(modelIds) => { const names = modelIds.map((id) => (overview.model_objects || []).find((item) => item.id === id)?.name || id); setNotice(`Start a merge session with ${names.join(", ")}`); navigate("devcenter"); }} /> : null}
             {view === "search" ? <div className="page page-narrow" data-ui-stack=""><SearchView session={searchSession} onSession={setSearchSession} colors={graphColors} transport={transport} overview={overview} onSelect={selectNode} /></div> : null}
             {view === "graph" ? <GraphView session={graphSession} onSession={setGraphSession} colors={graphColors} transport={transport} overview={overview} snapshot={snapshot} selectedId={selectedId} onSelect={selectNode} /> : null}
-            {view === "inspector" ? <div className="page page-wide" data-ui-stack="">{selectedId ? <><Button variant="ghost" size="sm" className="inspector-back" onClick={() => { if (inspectorOrigin === "inspector") { setSelectedId(null); setInspectedObject(null); } else setView(inspectorOrigin); }}><ArrowLeft aria-hidden="true" />{inspectorOrigin === "search" ? "Back to results" : inspectorOrigin === "inspector" ? "Browse objects" : `Back to ${VIEWS.find(([key]) => key === inspectorOrigin)?.[1]?.toLowerCase() || "overview"}`}</Button><Inspector key={selectedId} transport={transport} scanning={scanning} colors={graphColors} node={selected} details={inspectedDetails} loading={Boolean(selectedId && !inspectedDetails && !inspectorError)} error={inspectorError} snapshot={snapshot} snapshotLoaded={snapshotLoaded} snapshotError={snapshotError} onEvidenceRetry={() => loadSnapshot().catch(() => {})} overview={overview} onSelect={selectNode} onRetry={() => selectNode(selectedId)} onReview={review} onGraph={() => setView("graph")} /></> : <SearchView browse session={inspectorSession} onSession={setInspectorSession} colors={graphColors} transport={transport} overview={overview} onSelect={(id) => { setInspectorOrigin("inspector"); selectNode(id); }} />}</div> : null}
+            {view === "inspector" ? <div className="page page-wide" data-ui-stack="">{selectedId ? <><Button variant="ghost" size="sm" className="inspector-back" onClick={() => { if (inspectorOrigin === "inspector") { setSelectedId(null); setInspectedObject(null); } else setView(inspectorOrigin); }}><ArrowLeft aria-hidden="true" />{inspectorOrigin === "search" ? "Back to search results" : inspectorOrigin === "inspector" ? "Inspect another object" : `Back to ${VIEWS.find(([key]) => key === inspectorOrigin)?.[1]?.toLowerCase() || "overview"}`}</Button><Inspector key={selectedId} transport={transport} scanning={scanning} colors={graphColors} node={selected} details={inspectedDetails} loading={Boolean(selectedId && !inspectedDetails && !inspectorError)} error={inspectorError} snapshot={snapshot} snapshotLoaded={snapshotLoaded} snapshotError={snapshotError} onEvidenceRetry={() => loadSnapshot().catch(() => {})} overview={overview} onSelect={selectNode} onRetry={() => selectNode(selectedId)} onReview={review} onGraph={() => setView("graph")} /></> : <InspectorEmpty overview={overview} colors={graphColors} recentObjects={recentObjects} onSelect={(id) => { setInspectorOrigin("inspector"); selectNode(id); }} onOpenSearch={() => { setView("search"); focusSearchField(); }} onOpenPalette={() => setPaletteOpen(true)} onOpenGraph={() => setView("graph")} />}</div> : null}
             {view === "review" ? <div className="page page-wide" data-ui-stack=""><ReviewQueue colors={graphColors} scanning={scanning} session={reviewSession} onSession={setReviewSession} snapshot={snapshot} loaded={snapshotLoaded} loading={!snapshotLoaded && (snapshotLoading || !snapshotError)} error={snapshotError} onRetry={() => loadSnapshot().catch(() => {})} overview={overview} onSelect={selectNode} onReview={review} auditTrail={auditTrail} onUndoReview={handleUndoReview} /></div> : null}
             {view === "devcenter" ? <DevCenter onOpenProject={closeDesktopProject} /> : null}
-            {view === "config" ? <div className="page page-narrow" data-ui-stack=""><PageHeading title="Settings" description="Manage project sources, graph appearance, model context, documentation, and the AI provider of the chat." /><KeyboardSettings />{configError && !config ? <Card className="panel"><EmptyState icon={<TriangleAlert />} tone="bad" title="Project settings unavailable" detail="Retry to load your saved sources and appearance." action={<Button variant="outline" onClick={load}>Retry settings</Button>} /></Card> : <Tabs value={settingsTab} onValueChange={setSettingsTab} className="settings-tabs">
-              <TabsList aria-label="Settings sections"><TabsTrigger value="project">Project</TabsTrigger><TabsTrigger value="colors">Graph colors</TabsTrigger><TabsTrigger value="summary">Model summary</TabsTrigger><TabsTrigger value="documentation">Documentation</TabsTrigger><TabsTrigger value="ai">AI provider</TabsTrigger></TabsList>
+            {view === "config" ? <div className="page page-narrow" data-ui-stack=""><PageHeading title="Settings" description="Manage project sources, graph appearance, model context, documentation, and the AI provider of the chat." />{configError && !config ? <Card className="panel"><EmptyState icon={<TriangleAlert />} tone="bad" title="Project settings unavailable" detail="Retry to load your saved sources and appearance." action={<Button variant="outline" onClick={load}>Retry settings</Button>} /></Card> : <Tabs value={settingsTab} onValueChange={setSettingsTab} className="settings-tabs">
+              <TabsList aria-label="Settings sections"><TabsTrigger value="project">Project</TabsTrigger><TabsTrigger value="colors">Graph colors</TabsTrigger><TabsTrigger value="summary">Model summary / agent context</TabsTrigger><TabsTrigger value="documentation">Documentation export</TabsTrigger><TabsTrigger value="ai">AI provider</TabsTrigger><TabsTrigger value="keyboard">Keyboard</TabsTrigger></TabsList>
               <TabsContent value="ai"><Suspense fallback={<ViewLoading />}><AISettings transport={transport} /></Suspense></TabsContent>
               <TabsContent value="colors"><Suspense fallback={<ViewLoading />}><GraphColors config={config} transport={transport} overview={overview} onSaved={setConfig} /></Suspense></TabsContent>
               <TabsContent value="documentation"><Suspense fallback={<ViewLoading />}><DocumentationExport overview={overview} transport={transport} scanning={scanning} /></Suspense></TabsContent>
               <TabsContent value="summary"><Suspense fallback={<ViewLoading />}><ModelSummary overview={overview} transport={transport} scanning={scanning} /></Suspense></TabsContent>
+              <TabsContent value="keyboard"><KeyboardSettings /></TabsContent>
               <TabsContent value="project">{activeProject ? <DesktopProjectView api={desktopApi} project={activeProject} overview={overview} config={config} transport={transport} scanning={scanning} onScan={applyScan} onChange={closeDesktopProject} onRefresh={load} onSaved={setConfig} /> : <ConfigView transport={transport} config={config} onSaved={setConfig} onScan={applyScan} scanning={scanning} />}</TabsContent></Tabs>}</div> : null}
             </Suspense>
           </div>
@@ -727,12 +805,48 @@ function AppInner({ transport = brainTransport }) {
       </div>
       {chatOpen ? <Suspense fallback={<aside className="chat-panel" aria-label="Chat"><p role="status" className="loading-label">Loading chat…</p></aside>}>
         <ChatPanel open={chatOpen} onClose={() => setChatOpen(false)} transport={transport} view={{ id: view, label: viewLabel }} selection={chatSelection}
-          onObject={(id) => selectNode(id)} onGraph={(id) => { setGraphSession({ centerId: id, selectionId: id }); setView("graph"); }}
+          onObject={(id) => selectNode(id, "inspector", "inspector")} onGraph={(id) => { setGraphSession({ centerId: id, selectionId: id }); setView("graph"); }}
           onMerge={() => navigate("devcenter")} onSettings={() => openSettings("ai")} />
       </Suspense> : null}
       </div>
       <StatusBar connection={connection} projectName={projectName} counts={counts} pending={pending} onReview={() => navigate("review")} scanning={scanning} lastScan={lastScan} notice={notice} noticeFailed={failedNotice} theme={theme} onTheme={toggleTheme} onShortcuts={() => setShortcutsOpen(true)} />
       <ShortcutsDialog open={shortcutsOpen} onOpenChange={setShortcutsOpen} />
+      <CommandPalette
+        open={paletteOpen}
+        onOpenChange={setPaletteOpen}
+        onNavigate={navigate}
+        onSelectObject={(id) => {
+          setInspectorOrigin("search");
+          selectNode(id);
+        }}
+        overview={overview}
+        colors={graphColors}
+        transport={transport}
+        recentObjects={recentObjects}
+        onScan={runScan}
+        onReload={commands.current.reload}
+        onTheme={toggleTheme}
+        theme={theme}
+        onChat={commands.current.chat}
+        onShortcuts={() => setShortcutsOpen(true)}
+        onExportDocumentation={() => {
+          setExportTab("documentation");
+          setExportOpen(true);
+        }}
+        onExportSummary={() => {
+          setExportTab("summary");
+          setExportOpen(true);
+        }}
+        activeSession={typeof devCenterStore === "function" ? devCenterStore()?.getState?.()?.session : null}
+      />
+      <ExportDialog
+        open={exportOpen}
+        onOpenChange={setExportOpen}
+        defaultTab={exportTab}
+        overview={overview}
+        transport={transport}
+        scanning={scanning}
+      />
     </div>
   );
 }
@@ -1107,7 +1221,7 @@ function Inspector({ node, details, loading, error, snapshot, snapshotLoaded, sn
         {observations.length ? <details className="object-metadata object-observed panel"><summary><span>Observed report usage</span><span className="summary-count">{observations.length}</span></summary>{observations.map((edge) => <div className="usage-row" key={edge.id}><span>{scopeName(edge.from_id === node.id ? edge.to_id : edge.from_id)}</span><strong>{formatValue(edge.properties?.count || edge.count || "observed")}</strong></div>)}<p className="footnote">Co-occurrence does not establish compatibility.</p></details> : null}
       </div>
       <Card className="panel object-lineage">
-        <h2 className="panel-title">Lineage</h2>
+        <h2 className="panel-title">Lineage &amp; usage</h2>
         <VisualBindings bindings={details?.visual_bindings} onSelect={(item) => onSelect(item.id, "inspector")} />
         <RelationshipGroup title="Used by" nodeId={node.id} edges={incoming.filter((edge) => usageTypes.has(edge.type))} nodes={relatedNodes} onSelect={onSelect} empty="No direct uses recorded." />
         <RelationshipGroup title="Dependencies" nodeId={node.id} edges={outgoing.filter((edge) => usageTypes.has(edge.type))} nodes={relatedNodes} onSelect={onSelect} empty="No direct dependencies recorded." />
