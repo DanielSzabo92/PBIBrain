@@ -455,6 +455,11 @@ def reject(repository: GraphRepository, item_id: str) -> dict[str, Any]:
     return _set_status(repository, item_id, "rejected")
 
 
+def reopen(repository: GraphRepository, item_id: str) -> dict[str, Any]:
+    """Reopen an approved or rejected review item back to candidate status."""
+    return _set_status(repository, item_id, "candidate")
+
+
 def edit(
     repository: GraphRepository,
     item_id: str,
@@ -522,6 +527,7 @@ __all__ = [
     "get_review_queue",
     "override",
     "remove_override",
+    "reopen",
     "reject",
     "review_queue",
 ]

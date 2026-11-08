@@ -5,7 +5,7 @@ import unittest
 from pathlib import Path
 
 from backend.api.objects import inspect_object
-from backend.api.review import OverrideStore, approve, reject, edit, get_review_queue
+from backend.api.review import OverrideStore, approve, reject, reopen, edit, get_review_queue
 from backend.context.builder import build_context
 from backend.graph.repository import GraphRepository
 from backend.scanner.pipeline import Scanner
@@ -58,6 +58,10 @@ class SharedSemanticReviewTests(unittest.TestCase):
         self.assertEqual({r["status"] for r in assertions}, {"approved", "rejected"})
         self.assertEqual([n.to_dict() for n in self.repository.all_nodes() if n.status == "factual"], facts)
         self.assertEqual(len([n for n in self.repository.all_nodes() if n.name == "Revenue" and n.type == "BUSINESS_CONCEPT"]), 1)
+        reopen(self.repository, a["candidate_id"])
+        self.assertEqual(self.semantic(a["target_id"])["status"], "candidate")
+        reopened_queue = [r for r in get_review_queue(self.repository) if r["value"] == "Revenue"]
+        self.assertEqual([r["candidate_id"] for r in reopened_queue], [a["candidate_id"]])
 
     def test_edit_is_local_in_queue_inspector_and_agent_context(self):
         # Exercise the original primary ID and the additional ID separately.

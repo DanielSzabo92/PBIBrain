@@ -590,15 +590,22 @@ p.object-review { padding: 0 4px; }
 .review-keys kbd + kbd { margin-left: -1px; }
 .queue-toolbar { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px; margin-bottom: 12px; }
 .select-sort { margin-left: auto; }
+.queue-header-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 8px; }
 .queue-panel { overflow: hidden; }
 .queue-loading { display: flex; flex-direction: column; gap: 8px; padding: 12px; }
 .review-columns, .review-item { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1.5fr) 96px 196px; gap: 20px; align-items: start; }
 .review-columns { padding: 10px 18px; border-bottom: 1px solid var(--line); background: var(--surface-2); color: var(--text-2); font-size: var(--fs-meta); font-weight: 500; }
-.review-item { position: relative; padding: 16px 18px; transition: background-color var(--dur-fast); }
+.review-item { position: relative; max-height: 280px; padding: 16px 18px; transition: background-color var(--dur-fast), opacity 180ms var(--ease-out), max-height 180ms var(--ease-out), padding 180ms var(--ease-out); }
 .review-item + .review-item { border-top: 1px solid var(--line); }
+.review-item.is-exiting { opacity: 0; max-height: 0; padding-top: 0; padding-bottom: 0; overflow: hidden; pointer-events: none; }
 .review-item:hover { background: color-mix(in srgb, var(--surface-2) 70%, transparent); }
 .review-item[aria-busy="true"] { opacity: .55; transition: opacity var(--dur) var(--ease-out); }
 .review-item:focus-within { background: var(--surface-2); }
+.reviewed-actor-line { margin: 0; font-size: var(--fs-body); color: var(--text); }
+.reviewed-actor-line strong { font-weight: 600; }
+.reviewed-timestamp { display: block; margin-top: 2px; color: var(--text-3); font-size: var(--fs-meta); }
+.reopen-button { display: inline-flex; align-items: center; gap: 6px; }
+.reopen-button svg { width: 14px; height: 14px; }
 .review-target { display: flex; justify-content: flex-start; align-items: flex-start; gap: 10px; height: auto; margin: -6px -8px; padding: 6px 8px; color: var(--text); text-align: left; white-space: normal; }
 .review-target:hover { color: var(--text); }
 .review-dot { flex: none; width: 8px; height: 8px; margin-top: 6px; border-radius: 50%; background: var(--info); box-shadow: 0 0 0 3px var(--info-soft); }

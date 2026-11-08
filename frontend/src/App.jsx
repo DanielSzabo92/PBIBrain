@@ -4,7 +4,9 @@ import CommonObjects from "./components/CommonObjects";
 import PendingChanges from "./components/PendingChanges";
 import { hasComparableSources } from "./commonality";
 import React, { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, ArrowRight, ArrowUpRight, Boxes, Check, ChartColumn, ChevronRight, CircleCheck, Cloud, Inbox, PanelLeft, ScanSearch, Copy, Bot, Database, FileText, FolderOpen, Moon, Plus, RefreshCw, ScanLine, ShieldAlert, ShieldCheck, Sun, TriangleAlert, Waypoints, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, ArrowUpRight, Boxes, Check, ChartColumn, ChevronRight, CircleCheck, Cloud, Inbox, PanelLeft, ScanSearch, Copy, Bot, Database, FileText, FolderOpen, Moon, Plus, RefreshCw, RotateCcw, ScanLine, ShieldAlert, ShieldCheck, Sun, TriangleAlert, Waypoints, X } from "lucide-react";
+import { ToastProvider, useToast } from "./components/ui/toast";
+import { SegmentedControl } from "./components/ui/segmented-control";
 import { brainTransport, normalizeSnapshot } from "./transport";
 import { desktopRequest, subscribeToDesktopBridge } from "./desktop";
 import NavIcon from "./NavIcon";
@@ -178,7 +180,9 @@ function useCompactNav() {
   return compact;
 }
 
-function App({ transport = brainTransport }) {
+function AppInner({ transport = brainTransport }) {
+  const toast = useToast();
+  const [auditTrail, setAuditTrail] = useState([]);
   const compactNav = useCompactNav();
   const desktopHost = Boolean(globalThis.__PBIBRAIN_DESKTOP__);
   const [theme, toggleTheme] = useTheme();
@@ -466,16 +470,89 @@ function App({ transport = brainTransport }) {
             ),
           }));
         }
-        setNotice({ approve: "Suggestion approved", reject: "Suggestion rejected", edit: "Suggestion updated", override: "Meaning updated", remove: "Saved decision removed" }[action] || "Review updated");
+        const actionLabel = {
+          approve: "Suggestion approved",
+          reject: "Suggestion rejected",
+          edit: "Suggestion updated",
+          override: "Meaning updated",
+          remove: "Saved decision removed",
+        }[action] || "Review updated";
+
+        const auditEntry = {
+          id: `audit-${Date.now()}-${reviewId}`,
+          reviewId,
+          candidateId,
+          targetId: target,
+          action,
+          actor: "You",
+          timestamp: new Date().toISOString(),
+          label: suggestionLabel(item),
+          value: actionValue,
+          property,
+          item,
+          previousStatus: item.status || "candidate",
+        };
+        setAuditTrail((current) => [auditEntry, ...current]);
+
+        toast.show({
+          tone: "ok",
+          text: actionLabel,
+          action: {
+            label: "Undo",
+            onClick: async () => {
+              await handleUndoReview(auditEntry);
+            },
+          },
+        });
         await Promise.allSettled([loadSnapshot(), load()]);
         return true;
       } catch (cause) {
         if (generation !== projectGeneration.current) return false;
-        setNotice("Review failed. Try again.");
+        toast.show({ tone: "warn", text: "Review failed. Try again." });
         return false;
       }
     },
-    [transport, loadSnapshot, load],
+    [transport, loadSnapshot, load, toast],
+  );
+
+  const handleUndoReview = useCallback(
+    async (auditEntry) => {
+      const { item, reviewId, candidateId, targetId, property } = auditEntry;
+      const stale = item?.issue === "stale" || item?.issue_type === "stale" || item?.status === "stale";
+      const payload = {
+        target: targetId,
+        candidate_id: candidateId,
+        review_id: reviewId,
+        property,
+      };
+      if (stale) {
+        payload.override_id = reviewId;
+        payload.override_record = item?.item || item;
+      }
+      try {
+        const result = await transport.review("undo", payload);
+        const returned = result?.snapshot || result?.brain;
+        if (returned) {
+          setSnapshot(normalizeSnapshot(returned));
+          setSnapshotLoaded(true);
+        } else {
+          setSnapshot((current) => ({
+            ...current,
+            semantic_candidates: current.semantic_candidates.map((candidate) =>
+              candidate.id === (candidateId || reviewId) ? { ...candidate, status: "candidate" } : candidate
+            ),
+          }));
+        }
+        setAuditTrail((current) => current.filter((entry) => entry.id !== auditEntry.id));
+        toast.show({ tone: "ok", text: "Decision undone" });
+        await Promise.allSettled([loadSnapshot(), load()]);
+        return true;
+      } catch {
+        toast.show({ tone: "warn", text: "Could not undo decision. Try again." });
+        return false;
+      }
+    },
+    [transport, loadSnapshot, load, toast],
   );
 
   const navigate = useCallback((key) => {
@@ -635,7 +712,7 @@ function App({ transport = brainTransport }) {
             {view === "search" ? <div className="page page-narrow" data-ui-stack=""><SearchView session={searchSession} onSession={setSearchSession} colors={graphColors} transport={transport} overview={overview} onSelect={selectNode} /></div> : null}
             {view === "graph" ? <GraphView session={graphSession} onSession={setGraphSession} colors={graphColors} transport={transport} overview={overview} snapshot={snapshot} selectedId={selectedId} onSelect={selectNode} /> : null}
             {view === "inspector" ? <div className="page page-wide" data-ui-stack="">{selectedId ? <><Button variant="ghost" size="sm" className="inspector-back" onClick={() => { if (inspectorOrigin === "inspector") { setSelectedId(null); setInspectedObject(null); } else setView(inspectorOrigin); }}><ArrowLeft aria-hidden="true" />{inspectorOrigin === "search" ? "Back to results" : inspectorOrigin === "inspector" ? "Browse objects" : `Back to ${VIEWS.find(([key]) => key === inspectorOrigin)?.[1]?.toLowerCase() || "overview"}`}</Button><Inspector key={selectedId} transport={transport} scanning={scanning} colors={graphColors} node={selected} details={inspectedDetails} loading={Boolean(selectedId && !inspectedDetails && !inspectorError)} error={inspectorError} snapshot={snapshot} snapshotLoaded={snapshotLoaded} snapshotError={snapshotError} onEvidenceRetry={() => loadSnapshot().catch(() => {})} overview={overview} onSelect={selectNode} onRetry={() => selectNode(selectedId)} onReview={review} onGraph={() => setView("graph")} /></> : <SearchView browse session={inspectorSession} onSession={setInspectorSession} colors={graphColors} transport={transport} overview={overview} onSelect={(id) => { setInspectorOrigin("inspector"); selectNode(id); }} />}</div> : null}
-            {view === "review" ? <div className="page page-wide" data-ui-stack=""><ReviewQueue colors={graphColors} scanning={scanning} session={reviewSession} onSession={setReviewSession} snapshot={snapshot} loaded={snapshotLoaded} loading={!snapshotLoaded && (snapshotLoading || !snapshotError)} error={snapshotError} onRetry={() => loadSnapshot().catch(() => {})} overview={overview} onSelect={selectNode} onReview={review} /></div> : null}
+            {view === "review" ? <div className="page page-wide" data-ui-stack=""><ReviewQueue colors={graphColors} scanning={scanning} session={reviewSession} onSession={setReviewSession} snapshot={snapshot} loaded={snapshotLoaded} loading={!snapshotLoaded && (snapshotLoading || !snapshotError)} error={snapshotError} onRetry={() => loadSnapshot().catch(() => {})} overview={overview} onSelect={selectNode} onReview={review} auditTrail={auditTrail} onUndoReview={handleUndoReview} /></div> : null}
             {view === "devcenter" ? <DevCenter onOpenProject={closeDesktopProject} /> : null}
             {view === "config" ? <div className="page page-narrow" data-ui-stack=""><PageHeading title="Settings" description="Manage project sources, graph appearance, model context, documentation, and the AI provider of the chat." /><KeyboardSettings />{configError && !config ? <Card className="panel"><EmptyState icon={<TriangleAlert />} tone="bad" title="Project settings unavailable" detail="Retry to load your saved sources and appearance." action={<Button variant="outline" onClick={load}>Retry settings</Button>} /></Card> : <Tabs value={settingsTab} onValueChange={setSettingsTab} className="settings-tabs">
               <TabsList aria-label="Settings sections"><TabsTrigger value="project">Project</TabsTrigger><TabsTrigger value="colors">Graph colors</TabsTrigger><TabsTrigger value="summary">Model summary</TabsTrigger><TabsTrigger value="documentation">Documentation</TabsTrigger><TabsTrigger value="ai">AI provider</TabsTrigger></TabsList>
@@ -1112,8 +1189,8 @@ function reviewKeys(event) {
   }
 }
 
-function ReviewQueue({ session, onSession, snapshot, loaded, loading, error, onRetry, overview, onSelect, onReview, scanning, colors }) {
-  const { issue, objectType, modelId, reportId, sort } = session;
+function ReviewQueue({ session, onSession, snapshot, loaded, loading, error, onRetry, overview, onSelect, onReview, scanning, colors, auditTrail = [], onUndoReview }) {
+  const { issue, objectType, modelId, reportId, sort, tab = "queue" } = session;
   const change = (values) => onSession((current) => ({ ...current, ...values }));
   const panel = useRef(null);
   useEffect(() => {
@@ -1144,46 +1221,247 @@ function ReviewQueue({ session, onSession, snapshot, loaded, loading, error, onR
     if (sort === "impact-low") return itemImpact(a) - itemImpact(b);
     return itemConfidence(b) - itemConfidence(a);
   });
+
+  const candidatesReviewed = (snapshot?.semantic_candidates || []).filter(
+    (item) => ["approved", "rejected", "overridden"].includes(item.status)
+  );
+  const overridesReviewed = (snapshot?.overrides || []).filter((item) => item.status !== "stale");
+  const seenReviewed = new Set();
+  const allReviewed = [];
+  for (const entry of auditTrail) {
+    const key = entry.reviewId || entry.candidateId || entry.targetId;
+    if (key && !seenReviewed.has(key)) {
+      seenReviewed.add(key);
+      allReviewed.push(entry);
+    }
+  }
+  for (const item of candidatesReviewed) {
+    const key = item.candidate_id || item.id;
+    if (key && !seenReviewed.has(key)) {
+      seenReviewed.add(key);
+      allReviewed.push({
+        id: `snap-${key}`,
+        reviewId: key,
+        candidateId: key,
+        targetId: itemTarget(item),
+        action: item.status,
+        actor: "Reviewer",
+        timestamp: snapshot?.scan?.last_scan || new Date().toISOString(),
+        label: suggestionLabel(item),
+        value: item.value,
+        property: item.property,
+        item,
+        confidence: itemConfidence(item),
+      });
+    }
+  }
+  for (const item of overridesReviewed) {
+    const key = `override:${item.target}:${item.property}`;
+    if (!seenReviewed.has(key)) {
+      seenReviewed.add(key);
+      allReviewed.push({
+        id: `snap-${key}`,
+        reviewId: key,
+        candidateId: key,
+        targetId: item.target,
+        action: "overridden",
+        actor: "Reviewer",
+        timestamp: snapshot?.scan?.last_scan || new Date().toISOString(),
+        label: suggestionLabel(item),
+        value: item.value,
+        property: item.property,
+        item,
+        confidence: itemConfidence(item),
+      });
+    }
+  }
+
   const scopes = [...scopeOptions(overview, "model"), ...scopeOptions(overview, "report"), ...snapshot.nodes];
   const scopeName = (id, kind, index) => scopes.find((node) => node.id === id)?.name || `${kind} ${index + 1}`;
   const hasFilters = issue !== "ALL" || objectType !== "ALL" || modelId !== "ALL" || reportId !== "ALL";
   return <div ref={panel}>
-    <PageHeading title="Review queue" description="Confirm suggested meanings with the evidence behind each one." />
+    <div className="queue-header-row">
+      <PageHeading title="Review queue" description="Confirm suggested meanings with the evidence behind each one." />
+      <SegmentedControl
+        options={[
+          { value: "queue", label: `To review (${filtered.length})` },
+          { value: "reviewed", label: `Reviewed (${allReviewed.length})` },
+        ]}
+        value={tab}
+        onValueChange={(val) => change({ tab: val })}
+        aria-label="Review views"
+      />
+    </div>
     {error && !loaded ? <Card className="panel" role="alert"><EmptyState icon={<TriangleAlert />} tone="bad" title="Review queue unavailable" detail={readableText(error)} action={<Button variant="outline" onClick={onRetry}><RefreshCw />Retry review queue</Button>} /></Card> : <>
     {error ? <Card className="panel" role="alert"><EmptyState icon={<TriangleAlert />} tone="bad" title="Review refresh failed" detail={`Showing last loaded reviews. ${readableText(error)}`} action={<Button variant="outline" onClick={onRetry}><RefreshCw />Retry review queue</Button>} /></Card> : null}
-    <p className="review-purpose"><span className="queue-count"><strong data-ui-number="">{loading ? "…" : filtered.length}</strong>{loading ? "Loading…" : " to review"}</span><span className="review-purpose-copy">Approval saves a trusted label for search and context; rejection excludes it. Power BI files stay unchanged.</span><span className="review-keys" aria-hidden="true"><kbd>J</kbd><kbd>K</kbd> move <kbd>A</kbd> approve <kbd>R</kbd> reject</span></p>
-    <div className="queue-toolbar" data-ui-actions="">
-      <Label className="select-field"><span>Issue</span><NativeSelect aria-label="Issue" value={issue} onChange={(event) => change({ issue: event.target.value })}><option value="ALL">All issues</option><option value="candidate">Suggestions</option><option value="conflict">Conflicts</option><option value="stale">Outdated decisions</option></NativeSelect></Label>
-      <Label className="select-field"><span>Object</span><NativeSelect aria-label="Object" value={objectType} onChange={(event) => change({ objectType: event.target.value })}><option value="ALL">All types</option>{types.map((type) => <option key={type} value={type}>{typeLabel(type)}</option>)}</NativeSelect></Label>
-      {models.length > 1 ? <Label className="select-field"><span>Model</span><NativeSelect aria-label="Model" value={modelId} onChange={(event) => change({ modelId: event.target.value, reportId: "ALL" })}><option value="ALL">All models</option>{models.map((value, index) => <option key={value} value={value}>{scopeName(value, "Model", index)}</option>)}</NativeSelect></Label> : null}
-      {reports.length > 1 ? <Label className="select-field"><span>Report</span><NativeSelect aria-label="Report" value={reportId} onChange={(event) => change({ reportId: event.target.value, modelId: "ALL" })}><option value="ALL">All reports</option>{reports.map((value, index) => <option key={value} value={value}>{scopeName(value, "Report", index)}</option>)}</NativeSelect></Label> : null}
-      {hasFilters ? <Button variant="ghost" size="sm" onClick={() => change({ issue: "ALL", objectType: "ALL", modelId: "ALL", reportId: "ALL" })}><X />Clear filters</Button> : null}
-      <Label className="select-field select-sort"><span>Sort</span><NativeSelect aria-label="Sort" value={sort} onChange={(event) => change({ sort: event.target.value })}><option value="confidence-high">Most certain first</option><option value="confidence-low">Least certain first</option><option value="impact-high">Highest impact first</option><option value="impact-low">Lowest impact first</option></NativeSelect></Label>
-    </div>
-    <Card className="panel queue-panel" aria-busy={loading}>
-      {loading ? <div className="queue-loading">{[0, 1, 2].map((index) => <div className="skeleton skeleton-row-item" key={index} />)}<p className="sr-only" role="status">Loading suggestions…</p></div> : filtered.length ? <>
-        <div className="review-columns" aria-hidden="true"><span>Object &amp; suggestion</span><span>Why review this?</span><span>Confidence</span><span>Decision</span></div>
-        <div className="queue-list" onKeyDown={reviewKeys}>{filtered.map((item) => <ReviewItem colors={colors} key={item.id || `${item.issue}-${itemTarget(item)}`} item={item} nodes={snapshot.nodes} disabled={scanning} onSelect={(id, nextView) => { change({ selectedId: item.id || itemTarget(item), scrollY: contentScroller().scrollTop }); onSelect(id, nextView); }} onReview={onReview} />)}</div>
-      </> : <EmptyState icon={hasFilters ? <ShieldCheck /> : <CircleCheck />} tone={hasFilters ? undefined : "ok"} title={hasFilters ? "No matching reviews" : "Queue is clear"} detail={hasFilters ? "Choose different filters to see the remaining reviews." : "All suggestions have been reviewed."} action={hasFilters ? <Button variant="outline" onClick={() => change({ issue: "ALL", objectType: "ALL", modelId: "ALL", reportId: "ALL" })}>Clear filters</Button> : null} />}
-    </Card>
+    {tab === "reviewed" ? (
+      <>
+        <p className="review-purpose">
+          <span className="queue-count"><strong data-ui-number="">{allReviewed.length}</strong> reviewed</span>
+          <span className="review-purpose-copy">Audit trail of reviewed decisions. Use Reopen to return a suggestion to the queue.</span>
+        </p>
+        <Card className="panel queue-panel">
+          {allReviewed.length ? (
+            <>
+              <div className="review-columns" aria-hidden="true">
+                <span>Object &amp; suggestion</span>
+                <span>Decision &amp; reviewer</span>
+                <span>Status</span>
+                <span>Action</span>
+              </div>
+              <div className="queue-list">
+                {allReviewed.map((entry) => (
+                  <ReviewedItem
+                    colors={colors}
+                    key={entry.id || entry.reviewId}
+                    entry={entry}
+                    nodes={snapshot.nodes}
+                    disabled={scanning}
+                    onSelect={onSelect}
+                    onUndo={onUndoReview}
+                  />
+                ))}
+              </div>
+            </>
+          ) : (
+            <EmptyState
+              icon={<CircleCheck />}
+              tone="ok"
+              title="No reviewed items yet"
+              detail="Suggestions you approve or reject will appear here as an audit trail."
+            />
+          )}
+        </Card>
+      </>
+    ) : (
+      <>
+        <p className="review-purpose"><span className="queue-count"><strong data-ui-number="">{loading ? "…" : filtered.length}</strong>{loading ? "Loading…" : " to review"}</span><span className="review-purpose-copy">Approval saves a trusted label for search and context; rejection excludes it. Power BI files stay unchanged.</span><span className="review-keys" aria-hidden="true"><kbd>J</kbd><kbd>K</kbd> move <kbd>A</kbd> approve <kbd>R</kbd> reject</span></p>
+        <div className="queue-toolbar" data-ui-actions="">
+          <Label className="select-field"><span>Issue</span><NativeSelect aria-label="Issue" value={issue} onChange={(event) => change({ issue: event.target.value })}><option value="ALL">All issues</option><option value="candidate">Suggestions</option><option value="conflict">Conflicts</option><option value="stale">Outdated decisions</option></NativeSelect></Label>
+          <Label className="select-field"><span>Object</span><NativeSelect aria-label="Object" value={objectType} onChange={(event) => change({ objectType: event.target.value })}><option value="ALL">All types</option>{types.map((type) => <option key={type} value={type}>{typeLabel(type)}</option>)}</NativeSelect></Label>
+          {models.length > 1 ? <Label className="select-field"><span>Model</span><NativeSelect aria-label="Model" value={modelId} onChange={(event) => change({ modelId: event.target.value, reportId: "ALL" })}><option value="ALL">All models</option>{models.map((value, index) => <option key={value} value={value}>{scopeName(value, "Model", index)}</option>)}</NativeSelect></Label> : null}
+          {reports.length > 1 ? <Label className="select-field"><span>Report</span><NativeSelect aria-label="Report" value={reportId} onChange={(event) => change({ reportId: event.target.value, modelId: "ALL" })}><option value="ALL">All reports</option>{reports.map((value, index) => <option key={value} value={value}>{scopeName(value, "Report", index)}</option>)}</NativeSelect></Label> : null}
+          {hasFilters ? <Button variant="ghost" size="sm" onClick={() => change({ issue: "ALL", objectType: "ALL", modelId: "ALL", reportId: "ALL" })}><X />Clear filters</Button> : null}
+          <Label className="select-field select-sort"><span>Sort</span><NativeSelect aria-label="Sort" value={sort} onChange={(event) => change({ sort: event.target.value })}><option value="confidence-high">Most certain first</option><option value="confidence-low">Least certain first</option><option value="impact-high">Highest impact first</option><option value="impact-low">Lowest impact first</option></NativeSelect></Label>
+        </div>
+        <Card className="panel queue-panel" aria-busy={loading}>
+          {loading ? <div className="queue-loading">{[0, 1, 2].map((index) => <div className="skeleton skeleton-row-item" key={index} />)}<p className="sr-only" role="status">Loading suggestions…</p></div> : filtered.length ? <>
+            <div className="review-columns" aria-hidden="true"><span>Object &amp; suggestion</span><span>Why review this?</span><span>Confidence</span><span>Decision</span></div>
+            <div className="queue-list" onKeyDown={reviewKeys}>{filtered.map((item) => <ReviewItem colors={colors} key={item.id || `${item.issue}-${itemTarget(item)}`} item={item} nodes={snapshot.nodes} disabled={scanning} onSelect={(id, nextView) => { change({ selectedId: item.id || itemTarget(item), scrollY: contentScroller().scrollTop }); onSelect(id, nextView); }} onReview={onReview} />)}</div>
+          </> : <EmptyState icon={hasFilters ? <ShieldCheck /> : <CircleCheck />} tone={hasFilters ? undefined : "ok"} title={hasFilters ? "No matching reviews" : "Queue is clear"} detail={hasFilters ? "Choose different filters to see the remaining reviews." : "All suggestions have been reviewed."} action={hasFilters ? <Button variant="outline" onClick={() => change({ issue: "ALL", objectType: "ALL", modelId: "ALL", reportId: "ALL" })}>Clear filters</Button> : null} />}
+        </Card>
+      </>
+    )}
     </>}
   </div>;
+}
+
+function ReviewedItem({ entry, nodes, colors, onSelect, onUndo, disabled = false }) {
+  const targetNode = nodes.find((node) => node.id === entry.targetId);
+  const [pending, setPending] = useState(false);
+  const status = entry.action === "approve" ? "approved" : entry.action === "reject" ? "rejected" : entry.action === "remove" ? "stale" : entry.action || "approved";
+  const actionText = status === "approved" ? "Approved" : status === "rejected" ? "Rejected" : status === "overridden" ? "Edited" : "Decision removed";
+  const score = confidence(entry.confidence);
+  const dateStr = formatDate(entry.timestamp);
+
+  const handleReopen = async () => {
+    if (pending || disabled) return;
+    setPending(true);
+    try {
+      await onUndo(entry);
+    } finally {
+      setPending(false);
+    }
+  };
+
+  return (
+    <div className={`review-item issue-${status}`} aria-busy={pending}>
+      <Button
+        variant="ghost"
+        className="review-target"
+        data-review-id={entry.reviewId || entry.targetId}
+        disabled={!targetNode}
+        onClick={() => targetNode && onSelect(targetNode.id, "inspector")}>
+        {targetNode ? <TypeGlyph node={targetNode} colors={colors} size="sm" /> : <span className={`review-dot ${status}`} />}
+        <span className="review-target-copy">
+          <strong>{targetNode ? labelFor(targetNode) : "Source object"}</strong>
+          <small className="review-scope">{objectScope(targetNode, nodes)}</small>
+          <small className={`review-suggestion issue-${status}`}>{entry.label || formatValue(entry.value)}</small>
+          {targetNode ? <small className="review-type">{typeLabel(targetNode.type)}</small> : null}
+        </span>
+      </Button>
+      <div className="review-evidence">
+        <p className="reviewed-actor-line">
+          <strong>{entry.actor || "You"}</strong> &bull; <span>{actionText}</span>
+        </p>
+        <small className="reviewed-timestamp">{dateStr}</small>
+      </div>
+      <div className="review-score">
+        <StatusBadge value={status} />
+        {score !== null ? <strong data-ui-number="">{score}%</strong> : null}
+      </div>
+      <div className="review-actions" data-ui-actions="">
+        <Button
+          variant="outline"
+          size="sm"
+          className="reopen-button"
+          disabled={pending || disabled}
+          onClick={handleReopen}>
+          <RotateCcw aria-hidden="true" />
+          Reopen
+        </Button>
+      </div>
+    </div>
+  );
 }
 
 function ReviewItem({ item, nodes, onSelect, onReview, colors, disabled = false }) {
   const targetNode = nodes.find((node) => node.id === itemTarget(item));
   const [pending, setPending] = useState(false);
+  const [exiting, setExiting] = useState(false);
   const [error, setError] = useState("");
-  const decide = async (action) => { if (pending || disabled) return; setPending(true); setError(""); try { if (!await onReview(action, item)) setError("Decision could not be saved. Try again."); } finally { setPending(false); } };
+  const rowRef = useRef(null);
+
+  const decide = async (action) => {
+    if (pending || disabled || exiting) return;
+    setError("");
+
+    const currentRow = rowRef.current;
+    const parentList = currentRow?.closest(".queue-list");
+    const allRows = parentList ? [...parentList.querySelectorAll(".review-item:not(.is-exiting)")] : [];
+    const currentIndex = allRows.indexOf(currentRow);
+    const nextRow = allRows[currentIndex + 1] || allRows[currentIndex - 1];
+    const nextNameTarget = nextRow?.querySelector(".review-target:not(:disabled)");
+
+    setExiting(true);
+    if (nextNameTarget) {
+      nextNameTarget.focus({ preventScroll: true });
+    }
+
+    setPending(true);
+    await new Promise((resolve) => setTimeout(resolve, 180));
+    try {
+      if (!await onReview(action, item)) {
+        setExiting(false);
+        setError("Decision could not be saved. Try again.");
+      }
+    } catch {
+      setExiting(false);
+      setError("Decision could not be saved. Try again.");
+    } finally {
+      setPending(false);
+    }
+  };
+
   const evidence = readableText(item.evidence?.length ? item.evidence : item.item?.evidence, nodes);
   const reason = item.reason || (item.source === "object_name" ? "Only the object name supports this meaning; no description confirms it." : item.source === "description" ? "The source description suggests this meaning. Confirm that the label fits." : "An inference rule proposed this meaning. Confirm it using the recorded evidence.");
   const score = confidence(item.confidence ?? item.properties?.confidence);
   const level = score === null ? "none" : score >= 80 ? "high" : score >= 50 ? "mid" : "low";
-  return <div className={`review-item issue-${item.issue}`} aria-busy={pending}>
+  return <div ref={rowRef} className={`review-item issue-${item.issue} ${exiting ? "is-exiting" : ""}`} aria-busy={pending}>
     <Button variant="ghost" className="review-target" data-review-id={item.id || itemTarget(item)} disabled={!targetNode} onClick={() => onSelect(targetNode.id, "inspector")}>{targetNode ? <TypeGlyph node={targetNode} colors={colors} size="sm" /> : <span className={`review-dot ${item.issue}`} />}<span className="review-target-copy"><strong>{targetNode ? labelFor(targetNode) : "Source object unavailable"}</strong><small className="review-scope">{objectScope(targetNode, nodes)}</small><small className={`review-suggestion issue-${item.issue}`}>{item.issue === "conflict" ? "Conflicting suggestions" : item.issue === "stale" ? "Outdated saved decision" : suggestionLabel(item)}</small>{targetNode ? <small className="review-type">{typeLabel(targetNode.type)}</small> : null}</span></Button>
     <div className="review-evidence"><p>{readableText(reason, nodes)}</p>{evidence ? <small>{evidence}</small> : null}</div>
-    <div className={`review-score level-${level}`}><strong data-ui-number="">{score === null ? "—" : `${confidence(itemConfidence(item))}%`}</strong><span className="meter" aria-hidden="true"><i style={{ transform: `scaleX(${(score ?? 0) / 100})` }} /></span><small>{item.issue === "conflict" ? "Conflict" : item.issue === "stale" ? "Outdated" : "Suggested"}</small></div>
-    <div className="review-actions" data-ui-actions="">{item.issue === "stale" ? <Button variant="destructive" size="sm" disabled={pending || disabled} onClick={() => decide("remove")}>Remove decision</Button> : <><Button variant="outline" size="sm" className="approve-button" disabled={pending || disabled} onClick={() => decide("approve")}><Check aria-hidden="true" />Approve</Button><Button variant="ghost" size="sm" className="reject-button" disabled={pending || disabled} onClick={() => decide("reject")}><X aria-hidden="true" />Reject</Button></>}</div>
+    <div className={`review-score level-${level}`}><strong data-ui-number="">{score === null ? "-" : `${confidence(itemConfidence(item))}%`}</strong><span className="meter" aria-hidden="true"><i style={{ transform: `scaleX(${(score ?? 0) / 100})` }} /></span><small>{item.issue === "conflict" ? "Conflict" : item.issue === "stale" ? "Outdated" : "Suggested"}</small></div>
+    <div className="review-actions" data-ui-actions="">{item.issue === "stale" ? <Button variant="destructive" size="sm" disabled={pending || disabled || exiting} onClick={() => decide("remove")}>Remove decision</Button> : <><Button variant="outline" size="sm" className="approve-button" disabled={pending || disabled || exiting} onClick={() => decide("approve")}><Check aria-hidden="true" />Approve</Button><Button variant="ghost" size="sm" className="reject-button" disabled={pending || disabled || exiting} onClick={() => decide("reject")}><X aria-hidden="true" />Reject</Button></>}</div>
     {error ? <p className="review-decision-error" role="alert">{error}</p> : null}
   </div>;
 }
@@ -1216,4 +1494,10 @@ function EmptyState({ title, detail, action, icon, tone }) { return <div classNa
 function formatDate(value) { if (!value || value === "Not scanned") return value || "Not scanned"; const date = new Date(value); return Number.isNaN(date.valueOf()) ? String(value) : date.toLocaleString([], { dateStyle: "medium", timeStyle: "short" }); }
 function formatValue(value) { return readableText(value) || "—"; }
 
-export default App;
+export default function App(props) {
+  return (
+    <ToastProvider>
+      <AppInner {...props} />
+    </ToastProvider>
+  );
+}

@@ -36,6 +36,7 @@ from .review import (
     override,
     reject,
     remove_override,
+    reopen,
 )
 
 
@@ -362,6 +363,15 @@ class BrainAPI:
             if action == "resolve":
                 result["status"] = "resolved"
             return {"result": result, "snapshot": self.get_snapshot()}
+        if item_id.startswith("override:") and action in {"reopen", "undo"}:
+            target = payload.get("target") or (item_id.split(":", 2)[1] if item_id.count(":") >= 1 else "")
+            prop = payload.get("override_property") or payload.get("property") or (item_id.split(":", 2)[2] if item_id.count(":") >= 2 else "")
+            if payload.get("override_record"):
+                rec = payload["override_record"]
+                result = self.overrides.put(target, prop, rec.get("value"), status=rec.get("status", "overridden"), evidence=rec.get("evidence"))
+            else:
+                result = self.remove_override(item_id, prop)
+            return {"result": result, "snapshot": self.get_snapshot()}
         if action in {"remove", "resolve"}:
             result = self.remove_override(item_id, payload.get("override_property") or payload.get("property"))
             if action == "resolve":
@@ -372,6 +382,20 @@ class BrainAPI:
             return {"result": result, "snapshot": self.get_snapshot()}
         if action == "reject":
             result = reject(self.repository, item_id)
+            return {"result": result, "snapshot": self.get_snapshot()}
+        if action in {"reopen", "undo"}:
+            if self.overrides and payload.get("previous_override"):
+                prev = payload["previous_override"]
+                self.overrides.put(
+                    payload.get("target") or item_id,
+                    payload.get("property") or "",
+                    prev.get("value"),
+                    status=prev.get("status", "overridden"),
+                    evidence=prev.get("evidence"),
+                )
+            elif self.overrides and payload.get("remove_override"):
+                self.overrides.remove(item_id, payload.get("property"))
+            result = reopen(self.repository, item_id)
             return {"result": result, "snapshot": self.get_snapshot()}
         if action == "edit":
             changes = payload.get("changes")

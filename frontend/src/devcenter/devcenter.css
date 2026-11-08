@@ -191,15 +191,18 @@
 .ui-notice-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
 
 /* ---------- Toast ------------------------------------------------------- */
-@keyframes ui-toast-in { from { transform: translateY(10px) scale(0.98); } to { transform: none; } }
+@keyframes ui-toast-in { from { transform: translateY(10px) scale(0.98); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes ui-toast-out { from { transform: none; opacity: 1; } to { transform: translateY(8px) scale(0.96); opacity: 0; } }
 .ui-toast-region { position: fixed; right: var(--space-4); bottom: var(--space-4); z-index: 80; display: flex; flex-direction: column; gap: var(--space-2); width: min(380px, calc(100vw - 32px)); pointer-events: none; }
 .ui-toast { display: grid; grid-template-columns: auto 1fr auto auto; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-2) var(--space-2) var(--space-3); border: 1px solid var(--line-strong); border-radius: var(--r-md); background: var(--surface-3); color: var(--text); font-size: var(--fs-body); box-shadow: var(--shadow-lg); pointer-events: auto; animation: ui-toast-in var(--dur) var(--ease-out); }
+.ui-toast.ui-toast-out { animation: ui-toast-out 180ms var(--ease-out) forwards; }
 .ui-toast-icon { width: 16px; height: 16px; color: var(--ok); }
 .ui-toast[data-tone="warn"] .ui-toast-icon { color: var(--warn); }
 .ui-toast[data-tone="info"] .ui-toast-icon { color: var(--info); }
 .ui-toast-text { margin: 0; color: var(--text); }
 .ui-toast-action { min-height: var(--target-min); padding: 0 var(--space-2); border: 1px solid var(--control-border); border-radius: var(--r-sm); background: var(--surface-2); color: var(--text); font: inherit; font-size: var(--fs-meta); cursor: pointer; }
 .ui-toast-action:hover, .ui-toast-close:hover { background: var(--surface-hover); }
+.ui-toast-action:focus-visible, .ui-toast-close:focus-visible { outline: 2px solid var(--brand); outline-offset: 1px; }
 .ui-toast-close { display: inline-grid; place-items: center; width: 28px; height: 28px; padding: 0; border: 0; border-radius: var(--r-sm); background: transparent; color: var(--text-2); cursor: pointer; }
 .ui-toast-close svg { width: 14px; height: 14px; }
 
