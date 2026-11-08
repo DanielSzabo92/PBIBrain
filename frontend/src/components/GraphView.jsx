@@ -7,7 +7,7 @@ import { Checkbox } from "./ui/checkbox";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { NativeSelect } from "./ui/native-select";
-import { Tabs, TabsList, TabsTrigger } from "./ui/tabs";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "./ui/tabs";
 import { Popover } from "./ui/filter";
 import GraphDetails from "./GraphDetails";
 import ProvenanceLegend from "./ProvenanceLegend";
@@ -168,7 +168,7 @@ const ToolbarTrigger = React.forwardRef(function ToolbarTrigger({ icon: Icon, la
   </button>;
 });
 
-function TypesPopover({ nodes, hiddenTypes, colors, onChange }) {
+function TypesPopoverContent({ nodes, hiddenTypes, colors, onChange }) {
   const hidden = new Set(hiddenTypes);
   const rows = useMemo(() => {
     const byType = new Map();
@@ -184,8 +184,8 @@ function TypesPopover({ nodes, hiddenTypes, colors, onChange }) {
   }, [nodes, hiddenTypes]);
   const hiddenHere = rows.filter((row) => hidden.has(row.type)).length;
   const toggle = (type, visible) => onChange(visible ? hiddenTypes.filter((item) => item !== type) : [...new Set([...hiddenTypes, type])]);
-  return <Popover label="Object types" className="graph-popover graph-types-popover"
-    trigger={<ToolbarTrigger icon={Shapes} label="Types" active={hiddenHere > 0} count={hiddenHere ? `${rows.length - hiddenHere}/${rows.length}` : ""} countLabel={`${rows.length - hiddenHere} of ${rows.length} types shown`} title="Object types: colour key and visibility" />}>
+
+  return <>
     <div role="group" aria-label="Graph color legend">
       <ul className="graph-type-list">
         {rows.map((row) => {
@@ -203,26 +203,37 @@ function TypesPopover({ nodes, hiddenTypes, colors, onChange }) {
     </div>
     {hiddenHere ? <Button variant="ghost" size="sm" className="graph-popover-reset" onClick={() => onChange([])}>Show all types</Button> : null}
     <div className="graph-popover-section"><span className="graph-popover-heading">Links</span><ProvenanceLegend /></div>
+  </>;
+}
+
+function TypesPopover({ nodes, hiddenTypes, colors, onChange }) {
+  const hidden = new Set(hiddenTypes);
+  const hiddenHere = nodes.filter((node) => hidden.has(node.type)).length;
+  return <Popover label="Object types" className="graph-popover graph-types-popover"
+    trigger={<ToolbarTrigger icon={Shapes} label="Types" active={hiddenTypes.length > 0} count={hiddenTypes.length ? `${nodes.length - hiddenHere}/${nodes.length}` : ""} countLabel={`${nodes.length - hiddenHere} of ${nodes.length} types shown`} title="Object types: colour key and visibility" />}>
+    <TypesPopoverContent nodes={nodes} hiddenTypes={hiddenTypes} colors={colors} onChange={onChange} />
   </Popover>;
 }
 
+function DisplayPopoverContent({ direction, showLabels, includeSuggestions, grouped, canGroup, versions, canVersion, onChange }) {
+  return <div className="graph-popover-stack">
+    <SelectField label="Layout" value={direction} onChange={(value) => onChange({ direction: value })}><option value="LR">Left to right</option><option value="TB">Top to bottom</option></SelectField>
+    <Label className="graph-label-control"><Checkbox checked={showLabels} onCheckedChange={(checked) => onChange({ showLabels: checked === true })} />Relationship labels</Label>
+    <Label className="graph-label-control"><Checkbox checked={includeSuggestions} onCheckedChange={(checked) => onChange({ includeSuggestions: checked === true })} />Include suggestions</Label>
+    {canGroup ? <Label className="graph-label-control"><Checkbox checked={grouped} onCheckedChange={(checked) => onChange({ grouped: checked === true })} />Group by ownership</Label> : null}
+    {canVersion ? <Label className="graph-label-control" title="Show an object once when it is in several versions of a model or report (same table and name, same page and visual IDs)"><Checkbox checked={versions} onCheckedChange={(checked) => onChange({ groupVersions: checked === true })} />Group versions</Label> : null}
+  </div>;
+}
 
 function DisplayPopover({ direction, showLabels, includeSuggestions, grouped, canGroup, versions, canVersion, onChange }) {
   return <Popover label="Display options" className="graph-popover graph-display-popover"
     trigger={<ToolbarTrigger icon={SlidersHorizontal} label="Display" title="Layout direction and labels" />}>
-    <div className="graph-popover-stack">
-      <SelectField label="Layout" value={direction} onChange={(value) => onChange({ direction: value })}><option value="LR">Left to right</option><option value="TB">Top to bottom</option></SelectField>
-      <Label className="graph-label-control"><Checkbox checked={showLabels} onCheckedChange={(checked) => onChange({ showLabels: checked === true })} />Relationship labels</Label>
-      <Label className="graph-label-control"><Checkbox checked={includeSuggestions} onCheckedChange={(checked) => onChange({ includeSuggestions: checked === true })} />Include suggestions</Label>
-      {canGroup ? <Label className="graph-label-control"><Checkbox checked={grouped} onCheckedChange={(checked) => onChange({ grouped: checked === true })} />Group by ownership</Label> : null}
-      {canVersion ? <Label className="graph-label-control" title="Show an object once when it is in several versions of a model or report (same table and name, same page and visual IDs)"><Checkbox checked={versions} onCheckedChange={(checked) => onChange({ groupVersions: checked === true })} />Group versions</Label> : null}
-    </div>
+    <DisplayPopoverContent direction={direction} showLabels={showLabels} includeSuggestions={includeSuggestions} grouped={grouped} canGroup={canGroup} versions={versions} canVersion={canVersion} onChange={onChange} />
   </Popover>;
 }
 
-function FiltersPopover({ filters, depth, centerId, overview, edgeTypes, activeCount, hasFilters, onFilters, onScope, onDepth, onReset }) {
-  return <Popover label="Graph filters" className="graph-popover graph-filters-popover"
-    trigger={<ToolbarTrigger icon={ListFilter} label="Filters" active={activeCount > 0} count={activeCount || ""} countLabel={`${activeCount} active`} title="Filter by model, report, status or relationship" />}>
+function FiltersPopoverContent({ filters, depth, centerId, overview, edgeTypes, hasFilters, onFilters, onScope, onDepth, onReset }) {
+  return <>
     <div className="graph-popover-grid">
       <SelectField label="Objects" value={filters.artifact} onChange={(artifact) => onFilters({ artifact })}><option value="">All objects</option>{Object.entries(ARTIFACT_GROUPS).map(([key, group]) => <option key={key} value={key}>{group.label.replace(" artifacts", " objects")}</option>)}</SelectField>
       <SelectField label="Model" value={filters.modelId} onChange={(modelId) => onScope({ modelId, reportId: "" })}><option value="">All models</option>{scopeOptions(overview, "model").map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</SelectField>
@@ -232,10 +243,60 @@ function FiltersPopover({ filters, depth, centerId, overview, edgeTypes, activeC
       <SelectField label="Distance" value={depth} disabled={!centerId} onChange={(value) => onDepth(Number(value))}>{[1, 2, 3, 4].map((value) => <option key={value} value={value}>{value} {value === 1 ? "connection away" : "connections away"}</option>)}</SelectField>
     </div>
     <Button variant="ghost" size="sm" className="graph-popover-reset" disabled={!hasFilters} onClick={onReset}><FilterX />Clear filters</Button>
+  </>;
+}
+
+function FiltersPopover({ filters, depth, centerId, overview, edgeTypes, activeCount, hasFilters, onFilters, onScope, onDepth, onReset }) {
+  return <Popover label="Graph filters" className="graph-popover graph-filters-popover"
+    trigger={<ToolbarTrigger icon={ListFilter} label="Filters" active={activeCount > 0} count={activeCount || ""} countLabel={`${activeCount} active`} title="Filter by model, report, status or relationship" />}>
+    <FiltersPopoverContent filters={filters} depth={depth} centerId={centerId} overview={overview} edgeTypes={edgeTypes} hasFilters={hasFilters} onFilters={onFilters} onScope={onScope} onDepth={onDepth} onReset={onReset} />
   </Popover>;
 }
 
+function ViewPopover({
+  nodes, hiddenTypes, colors, onTypesChange,
+  direction, showLabels, includeSuggestions, grouped, canGroup, versions, canVersion, onDisplayChange,
+  filters, depth, centerId, overview, edgeTypes, activeCount, hasFilters, onFilters, onScope, onDepth, onResetFilters
+}) {
+  const hiddenCount = hiddenTypes.length;
+  const activeTotal = (activeCount || 0) + (hiddenCount ? 1 : 0);
+  const [activeTab, setActiveTab] = useState("display");
+  return <Popover label="View options and filters" className="graph-popover graph-view-popover"
+    trigger={<ToolbarTrigger icon={SlidersHorizontal} label="View" active={activeTotal > 0} count={activeTotal ? String(activeTotal) : ""} countLabel={`${activeTotal} view options active`} title="View, display and filter options" />}>
+    <Tabs value={activeTab} onValueChange={setActiveTab} className="graph-view-tabs">
+      <TabsList aria-label="View options categories">
+        <TabsTrigger value="display">Display</TabsTrigger>
+        <TabsTrigger value="filters" count={activeCount ? activeCount : undefined}>Filters</TabsTrigger>
+        <TabsTrigger value="types" count={hiddenCount ? `${nodes.length - hiddenCount}/${nodes.length}` : undefined}>Types</TabsTrigger>
+      </TabsList>
+      <TabsContent value="display">
+        <DisplayPopoverContent direction={direction} showLabels={showLabels} includeSuggestions={includeSuggestions} grouped={grouped} canGroup={canGroup} versions={versions} canVersion={canVersion} onChange={onDisplayChange} />
+      </TabsContent>
+      <TabsContent value="filters">
+        <FiltersPopoverContent filters={filters} depth={depth} centerId={centerId} overview={overview} edgeTypes={edgeTypes} hasFilters={hasFilters} onFilters={onFilters} onScope={onScope} onDepth={onDepth} onReset={onResetFilters} />
+      </TabsContent>
+      <TabsContent value="types">
+        <TypesPopoverContent nodes={nodes} hiddenTypes={hiddenTypes} colors={colors} onChange={onTypesChange} />
+      </TabsContent>
+    </Tabs>
+  </Popover>;
+}
+
+function useNarrowView(breakpoint = 1200) {
+  const query = `(max-width: ${breakpoint}px)`;
+  const [isNarrow, setIsNarrow] = useState(() => Boolean(globalThis.matchMedia?.(query).matches));
+  useEffect(() => {
+    const list = globalThis.matchMedia?.(query);
+    if (!list) return undefined;
+    const update = () => setIsNarrow(list.matches);
+    list.addEventListener("change", update);
+    return () => list.removeEventListener("change", update);
+  }, [query]);
+  return isNarrow;
+}
+
 export default function GraphView({ transport, overview, snapshot, selectedId, colors, onSelect, session = null, onSession }) {
+  const isNarrow = useNarrowView(1200);
   const [uncontrolledSession, setUncontrolledSession] = useState(() => createGraphSession(selectedId));
   const [graphError, setGraphError] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -468,13 +529,35 @@ export default function GraphView({ transport, overview, snapshot, selectedId, c
         </TabsList>
       </Tabs>
       <span className="toolbar-divider" aria-hidden="true" />
-      <TypesPopover nodes={nodes} hiddenTypes={hiddenTypes} colors={colors} onChange={(next) => { updateSession({ hiddenTypes: next }); }} />
-      <DisplayPopover direction={direction} showLabels={showLabels} includeSuggestions={filters.status !== "factual"} grouped={grouped} canGroup={!overviewMode} versions={graphSession.groupVersions} canVersion={lanesView} onChange={changeDisplay} />
-      <FiltersPopover filters={filters} depth={depth} centerId={centerId} overview={overview} edgeTypes={edgeTypes} activeCount={activeFilters} hasFilters={hasFilters}
-        onFilters={updateFilters}
-        onScope={(change) => { updateSession((current) => ({ ...current, centerId: "", filters: { ...current.filters, ...change } })); setFocusedNode(null); }}
-        onDepth={(value) => { updateSession({ depth: value }); setFocusedNode(null); }}
-        onReset={reset} />
+      {isNarrow ? (
+        <ViewPopover
+          nodes={nodes} hiddenTypes={hiddenTypes} colors={colors} onTypesChange={(next) => updateSession({ hiddenTypes: next })}
+          direction={direction} showLabels={showLabels} includeSuggestions={filters.status !== "factual"} grouped={grouped} canGroup={!overviewMode} versions={graphSession.groupVersions} canVersion={lanesView} onDisplayChange={changeDisplay}
+          filters={filters} depth={depth} centerId={centerId} overview={overview} edgeTypes={edgeTypes} activeCount={activeFilters} hasFilters={hasFilters}
+          onFilters={updateFilters}
+          onScope={(change) => { updateSession((current) => ({ ...current, centerId: "", filters: { ...current.filters, ...change } })); setFocusedNode(null); }}
+          onDepth={(value) => { updateSession({ depth: value }); setFocusedNode(null); }}
+          onResetFilters={reset}
+        />
+      ) : (
+        <>
+          <TypesPopover nodes={nodes} hiddenTypes={hiddenTypes} colors={colors} onChange={(next) => { updateSession({ hiddenTypes: next }); }} />
+          <DisplayPopover direction={direction} showLabels={showLabels} includeSuggestions={filters.status !== "factual"} grouped={grouped} canGroup={!overviewMode} versions={graphSession.groupVersions} canVersion={lanesView} onChange={changeDisplay} />
+          <FiltersPopover filters={filters} depth={depth} centerId={centerId} overview={overview} edgeTypes={edgeTypes} activeCount={activeFilters} hasFilters={hasFilters}
+            onFilters={updateFilters}
+            onScope={(change) => { updateSession((current) => ({ ...current, centerId: "", filters: { ...current.filters, ...change } })); setFocusedNode(null); }}
+            onDepth={(value) => { updateSession({ depth: value }); setFocusedNode(null); }}
+            onReset={reset} />
+        </>
+      )}
+      {centerNode ? <div className="graph-center" data-slot="focus-chip">
+        <Crosshair aria-hidden="true" /><span className="graph-center-label">Focused view</span>
+        <span className="graph-center-name" translate="no" title={objectName(centerNode)}>{objectName(centerNode)}</span>
+        <span className="graph-center-actions">
+          <Button variant="ghost" size="xs" disabled={loading || depth >= 4} onClick={() => updateSession({ depth: Math.min(depth + 1, 4) })} title={`Showing ${depth} ${depth === 1 ? "step" : "steps"} away`}><Plus />Expand connections</Button>
+          <Button variant="ghost" size="xs" onClick={() => { updateSession({ centerId: "" }); setFocusedNode(null); }}>Back to project</Button>
+        </span>
+      </div> : null}
       <span className="graph-toolbar-spacer" />
       <span className="graph-summary" role="status" aria-live="polite" data-ui-number="" title={summaryDetail}>{summary}<span className="sr-only">{summaryDetail ? `. ${summaryDetail}` : ""}</span></span>
       <Button variant="ghost" size="sm" aria-label="Fit view" tooltip="Fit view (F)" disabled={!canvasNodes.length} onClick={() => canvasApi.current?.fit()}><Maximize />Fit</Button>
@@ -488,14 +571,7 @@ export default function GraphView({ transport, overview, snapshot, selectedId, c
           : canvasNodes.length ? <GraphCanvas key={canvasKey} rawById={rawById} apiRef={canvasApi} overview={overviewMode} full={viewMode === "full"} grouped={!overviewMode && grouped} onCenter={center} onInspect={inspect} nodes={canvasNodes} edges={canvasEdges} selectedId={focusedNode?.id || centerId} docked={docked} warningIds={warningIds} direction={direction} showLabels={showLabels} colors={colors} onSelect={setFocusedNode} onToggleGroup={toggleGroup} viewport={graphSession.viewports[canvasKey]} onViewportChange={saveViewport} placements={graphSession.placements[canvasKey]} onPlacementsChange={savePlacements} />
           : <div className="graph-empty"><span className="empty-icon" aria-hidden="true"><Search /></span><h3>No matching objects</h3><p>{hasFilters ? "Try another filter or clear the filters." : "Scan project sources to see their relationships."}</p>{hasFilters ? <Button variant="outline" onClick={reset}>Clear filters</Button> : null}</div>}
         <div className="graph-overlay graph-overlay-top" data-ui-actions="">
-          {centerId ? <div className="graph-center">
-            <Crosshair aria-hidden="true" /><span className="graph-center-label">Focused view</span>
-            <span className="graph-center-name" translate="no" title={objectName(centerNode)}>{objectName(centerNode)}</span>
-            <span className="graph-center-actions">
-              <Button variant="ghost" size="xs" disabled={loading || depth >= 4} onClick={() => updateSession({ depth: Math.min(depth + 1, 4) })} title={`Showing ${depth} ${depth === 1 ? "step" : "steps"} away`}><Plus />Expand connections</Button>
-              <Button variant="ghost" size="xs" onClick={() => { updateSession({ centerId: "" }); setFocusedNode(null); }}>Back to project</Button>
-            </span>
-          </div> : overviewMode && graphSession.expandedIds != null && explorer.collapsedCount < explorer.nodes.filter((node) => node.explorerChildCount > 0).length ? <Button variant="outline" size="xs" className="graph-overlay-button" onClick={() => updateSession({ expandedIds: null })}><ChevronsDownUp />Collapse all</Button> : null}
+          {overviewMode && graphSession.expandedIds != null && explorer.collapsedCount < explorer.nodes.filter((node) => node.explorerChildCount > 0).length ? <Button variant="outline" size="xs" className="graph-overlay-button" onClick={() => updateSession({ expandedIds: null })}><ChevronsDownUp />Collapse all</Button> : null}
           {graph?.truncated && viewMode !== "matrix" ? <div className="scope-notice">Showing {graph.nodes.length} of {graph.total_nodes} objects{limit < 1000 ? <> · <Button variant="link" size="xs" onClick={() => updateSession({ limit: Math.min(limit * 2, 1000) })}>Show more</Button></> : null}</div> : null}
         </div>
         {evidenceShown && viewMode !== "matrix" ? <div className="graph-overlay graph-overlay-key"><ProvenanceLegend /></div> : null}

@@ -401,43 +401,45 @@ export default function PlanTab({ session, changeDisabled, reasonId, onTabs, onC
               <div className="dc-plan-card-head">
                 <h2 id="dc-plan-summary-title" className="dc-section-title">{t("plan.summary")}</h2>
               </div>
-              <table className="dc-table dc-plan-summary-table">
-                <thead>
-                  <tr>
-                    <th scope="col">Type</th>
-                    <th scope="col" className="dc-num">Created</th>
-                    <th scope="col" className="dc-num">Deleted</th>
-                    <th scope="col" className="dc-num">Modified</th>
-                    <th scope="col" className="dc-num">Renamed</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr className="dc-plan-group-row">
-                    <th colSpan={5} scope="colgroup">Model</th>
-                  </tr>
-                  {summary.modelRows.map((row) => (
-                    <tr key={`model-${row.key}`}>
-                      <td>{row.label}</td>
-                      <td className={row.created === 0 ? "dc-num dc-plan-zero" : "dc-num"}>{row.created}</td>
-                      <td className={row.deleted > 0 ? "dc-num dc-plan-del" : "dc-num dc-plan-zero"}>{row.deleted}</td>
-                      <td className={row.modified === 0 ? "dc-num dc-plan-zero" : "dc-num"}>{row.modified}</td>
-                      <td className={row.renamed === 0 ? "dc-num dc-plan-zero" : "dc-num"}>{row.renamed}</td>
+              <div className="dc-plan-table-wrap">
+                <table className="dc-table dc-plan-summary-table">
+                  <thead>
+                    <tr>
+                      <th scope="col">Type</th>
+                      <th scope="col" className="dc-num">Created</th>
+                      <th scope="col" className="dc-num">Deleted</th>
+                      <th scope="col" className="dc-num">Modified</th>
+                      <th scope="col" className="dc-num">Renamed</th>
                     </tr>
-                  ))}
-                  <tr className="dc-plan-group-row">
-                    <th colSpan={5} scope="colgroup">Report</th>
-                  </tr>
-                  {summary.reportRows.map((row) => (
-                    <tr key={`report-${row.key}`}>
-                      <td>{row.label}</td>
-                      <td className={row.created === 0 ? "dc-num dc-plan-zero" : "dc-num"}>{row.created}</td>
-                      <td className={row.deleted > 0 ? "dc-num dc-plan-del" : "dc-num dc-plan-zero"}>{row.deleted}</td>
-                      <td className={row.modified === 0 ? "dc-num dc-plan-zero" : "dc-num"}>{row.modified}</td>
-                      <td className={row.renamed === 0 ? "dc-num dc-plan-zero" : "dc-num"}>{row.renamed}</td>
+                  </thead>
+                  <tbody>
+                    <tr className="dc-plan-group-row">
+                      <th colSpan={5} scope="colgroup">Model</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                    {summary.modelRows.map((row) => (
+                      <tr key={`model-${row.key}`}>
+                        <td>{row.label}</td>
+                        <td className={row.created === 0 ? "dc-num dc-plan-zero" : "dc-num"}>{row.created}</td>
+                        <td className={row.deleted > 0 ? "dc-num dc-plan-del" : "dc-num dc-plan-zero"}>{row.deleted}</td>
+                        <td className={row.modified === 0 ? "dc-num dc-plan-zero" : "dc-num"}>{row.modified}</td>
+                        <td className={row.renamed === 0 ? "dc-num dc-plan-zero" : "dc-num"}>{row.renamed}</td>
+                      </tr>
+                    ))}
+                    <tr className="dc-plan-group-row">
+                      <th colSpan={5} scope="colgroup">Report</th>
+                    </tr>
+                    {summary.reportRows.map((row) => (
+                      <tr key={`report-${row.key}`}>
+                        <td>{row.label}</td>
+                        <td className={row.created === 0 ? "dc-num dc-plan-zero" : "dc-num"}>{row.created}</td>
+                        <td className={row.deleted > 0 ? "dc-num dc-plan-del" : "dc-num dc-plan-zero"}>{row.deleted}</td>
+                        <td className={row.modified === 0 ? "dc-num dc-plan-zero" : "dc-num"}>{row.modified}</td>
+                        <td className={row.renamed === 0 ? "dc-num dc-plan-zero" : "dc-num"}>{row.renamed}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </section>
 
             <section className="dc-card dc-plan-card" aria-labelledby="dc-plan-warnings-title">

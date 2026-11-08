@@ -1,9 +1,41 @@
 import { test, expect } from "@playwright/test";
 
-// The toolbar keeps display options and filters in popovers (visual contract §11.1).
-const openDisplay = (page) => page.getByRole("button", { name: /^Display/ }).click();
-const openFilters = (page) => page.getByRole("button", { name: /^Filters/ }).click();
-const openTypes = (page) => page.getByRole("button", { name: /^Types/ }).click();
+const openDisplay = async (page) => {
+  const btn = page.getByRole("button", { name: /^Display/ });
+  if (await btn.isVisible().catch(() => false)) {
+    await btn.click();
+    return;
+  }
+  const viewBtn = page.getByRole("button", { name: /^View/ });
+  if (await viewBtn.isVisible().catch(() => false)) {
+    await viewBtn.click();
+    await page.getByRole("tab", { name: "Display", exact: true }).click();
+  }
+};
+const openFilters = async (page) => {
+  const btn = page.getByRole("button", { name: /^Filters/ });
+  if (await btn.isVisible().catch(() => false)) {
+    await btn.click();
+    return;
+  }
+  const viewBtn = page.getByRole("button", { name: /^View/ });
+  if (await viewBtn.isVisible().catch(() => false)) {
+    await viewBtn.click();
+    await page.getByRole("tab", { name: "Filters", exact: true }).click();
+  }
+};
+const openTypes = async (page) => {
+  const btn = page.getByRole("button", { name: /^Types/ });
+  if (await btn.isVisible().catch(() => false)) {
+    await btn.click();
+    return;
+  }
+  const viewBtn = page.getByRole("button", { name: /^View/ });
+  if (await viewBtn.isVisible().catch(() => false)) {
+    await viewBtn.click();
+    await page.getByRole("tab", { name: "Types", exact: true }).click();
+  }
+};
 // The details pane docks beside the canvas: a complementary region, not a dialog.
 const detailsPane = (page) => page.locator(".graph-detail-pane");
 async function chooseObjects(page, value) {
@@ -138,6 +170,12 @@ test("project color mapping persists through reload and drives nodes, minimap, a
 test("keyboard selection opens details and narrow layouts stay within the viewport", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await openGraph(page);
+  const canvasCard = page.locator(".graph-canvas-card");
+  await expect(canvasCard).toBeVisible();
+  const initialCanvasBox = await canvasCard.boundingBox();
+  expect(initialCanvasBox.width).toBeGreaterThanOrEqual(200);
+  const flowBox = await page.locator(".flow-wrap").boundingBox();
+  expect(flowBox.width).toBeGreaterThanOrEqual(200);
   const node = page.locator(".react-flow__node-brain").first();
   await expect(node).toHaveAttribute("role", "button");
   await expect(node).toHaveAttribute("tabindex", "0");
@@ -146,6 +184,8 @@ test("keyboard selection opens details and narrow layouts stay within the viewpo
   const details = detailsPane(page);
   await expect(details).toBeVisible();
   expect((await details.boundingBox()).width).toBeLessThanOrEqual(390);
+  const canvasWithDetailsBox = await canvasCard.boundingBox();
+  expect(canvasWithDetailsBox.width).toBeGreaterThanOrEqual(200);
   await details.getByRole("button", { name: "Close", exact: true }).click();
   await expect(details).toHaveCount(0);
   await node.focus();

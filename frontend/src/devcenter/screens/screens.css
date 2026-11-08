@@ -147,6 +147,21 @@
 .dc-plan-card { border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface-2); overflow: hidden; min-width: 0; }
 .dc-plan-card-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); padding: var(--space-2) var(--space-4); border: 0 solid var(--line); border-bottom-width: 1px; background: var(--surface-3); }
 .dc-plan-card-empty { margin: 0; padding: var(--space-4); }
+.dc-plan-table-wrap {
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+  position: relative;
+  background:
+    linear-gradient(to right, var(--surface-2) 30%, rgba(255, 255, 255, 0)),
+    linear-gradient(to right, rgba(255, 255, 255, 0), var(--surface-2) 70%) 100% 0,
+    radial-gradient(farthest-side at 0 50%, rgba(0, 0, 0, 0.2), rgba(0, 0, 0, 0)),
+    radial-gradient(farthest-side at 100% 50%, rgba(0, 0, 0, 0.2), rgba(0, 0, 0, 0)) 100% 0;
+  background-repeat: no-repeat;
+  background-size: 40px 100%, 40px 100%, 14px 100%, 14px 100%;
+  background-attachment: local, local, scroll, scroll;
+}
+.dc-plan-summary-table { width: 100%; min-width: 380px; }
 .dc-plan-summary-table th, .dc-plan-summary-table td { padding: 6px var(--space-3); font-size: var(--fs-meta); }
 .dc-plan-group-row th { background: var(--surface-3); color: var(--text-2); font-size: var(--fs-meta); font-weight: 600; padding: 4px var(--space-3); }
 .dc-plan-del { color: var(--bad); font-weight: 600; }
@@ -180,7 +195,7 @@
 .dc-plan-diff-old { color: var(--bad); }
 .dc-plan-diff-new { color: var(--ok); }
 
-@media (max-width: 960px) {
+@media (max-width: 1200px) {
   .dc-plan-grid { grid-template-columns: 1fr; }
 }
 
