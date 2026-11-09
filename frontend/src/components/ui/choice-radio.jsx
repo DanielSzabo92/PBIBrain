@@ -17,7 +17,13 @@ function ChoiceRadio({ legend, items = [], value, onValueChange, disabled = fals
           const reasonId = item.reason ? `${itemId}-reason` : undefined
           const selected = item.value === value
           return (
-            <div key={item.value} className="ui-choice-item" data-selected={selected || undefined} data-disabled={item.disabled || disabled || undefined}>
+            <div
+              key={item.value}
+              className={cn("ui-choice-item", item.className, item.tone && `ui-choice-item-${item.tone}`)}
+              data-selected={selected || undefined}
+              data-disabled={item.disabled || disabled || undefined}
+              data-tone={item.tone || undefined}
+            >
               <div className="ui-choice-row">
                 <RadioPrimitive.Item id={itemId} value={item.value} disabled={item.disabled} className="ui-radio" aria-describedby={reasonId}>
                   <RadioPrimitive.Indicator className="ui-radio-dot" />

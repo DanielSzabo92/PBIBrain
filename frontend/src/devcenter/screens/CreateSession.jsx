@@ -11,7 +11,7 @@ import { desktopRequest } from "../../desktop.js";
 import { errorCopy, t, tn } from "../copy.js";
 import { useDevCenterState, useDevCenterStore } from "../useDevCenter.js";
 import TargetChoice from "./TargetChoice.jsx";
-import { defaultSessionName, draftHasModel, draftSource, runCreateFlow } from "./sessionModel.js";
+import { createStepError, defaultSessionName, draftHasModel, draftSource, isModelSource, runCreateFlow } from "./sessionModel.js";
 
 // Local source kinds of the "Add source" menu and the native picker of each one.
 // The cloud items are not in this version (user scope cut 2026-11-01: cloud UI is a future feature).
@@ -74,13 +74,33 @@ export default function CreateSession({ onCancel, onDone, onOpenPartial }) {
       }
       added.push({ ...value, key: String(nextKey.current++) });
     }
-    if (added.length > 0) update({ sources: [...draft.sources, ...added] });
+    if (added.length > 0) {
+      const nextSources = [...draft.sources, ...added];
+      const patch = { sources: nextSources };
+      if (!draft.targetModel) {
+        const firstModel = nextSources.find(isModelSource);
+        if (firstModel) patch.targetModel = `copy:${firstModel.key}`;
+      }
+      update(patch);
+    }
   };
 
   const removeSource = (key) => {
     const sources = draft.sources.filter((source) => source.key !== key);
     const patch = { sources };
-    if (draft.targetModel?.endsWith(`:${key}`)) Object.assign(patch, { targetModel: null, copyFolder: null });
+    let targetModel = draft.targetModel;
+    let copyFolder = draft.copyFolder;
+    if (targetModel?.endsWith(`:${key}`)) {
+      targetModel = null;
+      copyFolder = null;
+    }
+    if (!targetModel || !sources.some((source) => targetModel.endsWith(`:${source.key}`))) {
+      const firstModel = sources.find(isModelSource);
+      targetModel = firstModel ? `copy:${firstModel.key}` : null;
+      if (!targetModel) copyFolder = null;
+    }
+    patch.targetModel = targetModel;
+    patch.copyFolder = copyFolder;
     if (draft.targetReport?.endsWith(`:${key}`)) patch.targetReport = "new_empty";
     update(patch);
   };
@@ -91,10 +111,12 @@ export default function CreateSession({ onCancel, onDone, onOpenPartial }) {
     requestAnimationFrame(() => headingRef.current?.focus());
   };
 
+  const stepValidationError = createStepError(step, { ...draft, name: sessionName });
+
   const next = () => {
-    if (step === 0 && !draftHasModel(draft.sources)) return setStepError(t("create.sources.need_model"));
-    if (step === 1 && !draft.targetModel) return setStepError(t("create.target.need_model"));
-    if (step === 1 && !draft.targetModel.startsWith("existing:") && !draft.copyFolder) return setStepError(t("create.target.folder_needed"));
+    const error = createStepError(step, { ...draft, name: sessionName });
+    if (error) return setStepError(error);
+    setStepError(null);
     goTo(step + 1);
   };
 
@@ -136,6 +158,36 @@ export default function CreateSession({ onCancel, onDone, onOpenPartial }) {
 
         {step === 0 ? (
           <>
+            <div className="dc-merge-explainer" role="region" aria-label={t("create.explainer.title")}>
+              <div className="dc-explainer-header">
+                <span className="dc-explainer-tag">{t("create.explainer.tag")}</span>
+                <h3 className="dc-explainer-title">{t("create.explainer.title")}</h3>
+              </div>
+              <ol className="dc-explainer-list">
+                <li className="dc-explainer-item">
+                  <span className="dc-explainer-badge" aria-hidden="true">1</span>
+                  <div className="dc-explainer-content">
+                    <strong className="dc-explainer-term">{t("create.explainer.target.term")}</strong>
+                    <p className="dc-explainer-desc">{t("create.explainer.target.desc")}</p>
+                  </div>
+                </li>
+                <li className="dc-explainer-item">
+                  <span className="dc-explainer-badge" aria-hidden="true">2</span>
+                  <div className="dc-explainer-content">
+                    <strong className="dc-explainer-term">{t("create.explainer.donors.term")}</strong>
+                    <p className="dc-explainer-desc">{t("create.explainer.donors.desc")}</p>
+                  </div>
+                </li>
+                <li className="dc-explainer-item">
+                  <span className="dc-explainer-badge" aria-hidden="true">3</span>
+                  <div className="dc-explainer-content">
+                    <strong className="dc-explainer-term">{t("create.explainer.alignment.term")}</strong>
+                    <p className="dc-explainer-desc">{t("create.explainer.alignment.desc")}</p>
+                  </div>
+                </li>
+              </ol>
+            </div>
+
             <p className="dc-subtitle">{t("create.sources.body")}</p>
             <div className="dc-toolbar" data-ui-actions="">
               <Menu
@@ -201,10 +253,25 @@ export default function CreateSession({ onCancel, onDone, onOpenPartial }) {
 
       <footer className="dc-create-foot">
         <Button variant="ghost" onClick={onCancel} disabled={running || Boolean(result?.created)}>{t("shared.cancel")}</Button>
-        <div className="dc-create-nav">
-          {step > 0 ? <Button variant="outline" onClick={() => goTo(step - 1)} disabled={running || Boolean(result?.created)}><ArrowLeft aria-hidden="true" />{t("create.back")}</Button> : null}
-          {step < 2 ? <Button onClick={next}>{t("create.next")}<ArrowRight aria-hidden="true" /></Button> : null}
-          {step === 2 && !result?.created ? <Button onClick={create} loading={running} loadingText={t("work.long.session_create")} disabled={locked && !running}>{t("create.run")}</Button> : null}
+        <div className="dc-create-nav-group">
+          {stepValidationError && step < 2 ? (
+            <span className="dc-create-nav-hint" role="status">
+              {stepValidationError}
+            </span>
+          ) : null}
+          <div className="dc-create-nav">
+            {step > 0 ? <Button variant="outline" onClick={() => goTo(step - 1)} disabled={running || Boolean(result?.created)}><ArrowLeft aria-hidden="true" />{t("create.back")}</Button> : null}
+            {step < 2 ? (
+              <Button
+                onClick={next}
+                disabled={Boolean(stepValidationError) || running || Boolean(result?.created)}
+                tooltip={stepValidationError || undefined}
+              >
+                {t("create.next")}<ArrowRight aria-hidden="true" />
+              </Button>
+            ) : null}
+            {step === 2 && !result?.created ? <Button onClick={create} loading={running} loadingText={t("work.long.session_create")} disabled={locked && !running}>{t("create.run")}</Button> : null}
+          </div>
         </div>
       </footer>
     </div>

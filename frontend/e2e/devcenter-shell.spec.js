@@ -176,9 +176,9 @@ test.describe("create flow", () => {
     await scenario(request, "no-sessions");
     await openDevCenter(page);
     await page.getByRole("button", { name: "New merge session" }).click();
-    // Next needs at least one model source.
-    await page.getByRole("button", { name: "Next" }).click();
-    await expect(page.getByRole("alert")).toHaveText("Add at least 1 model source to go to the next step.");
+    // Next is disabled until valid sources are added (Issue #50).
+    await expect(page.getByRole("button", { name: "Next" })).toBeDisabled();
+    await expect(page.locator(".dc-create-nav-hint")).toHaveText("Add at least 2 sources to compare and merge.");
     await page.getByRole("button", { name: "Add source" }).click();
     await expect(page.getByRole("menu")).toBeVisible();
     expect(await axeViolations(page, { include: "[role=menu]" })).toEqual([]);

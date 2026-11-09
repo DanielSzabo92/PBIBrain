@@ -5,7 +5,7 @@ import test from "node:test";
 import { DevCenterError } from "../src/devcenter/errors.js";
 import { setSlashSearchEnabled, slashGoesToSearch, slashSearchEnabled } from "../src/devcenter/preferences.js";
 import {
-  agentCount, banners, defaultSessionName, deriveReadiness, draftHasModel, draftSource, listRowState, planStatus, runCreateFlow,
+  agentCount, banners, createStepError, defaultSessionName, deriveReadiness, draftHasModel, draftSource, listRowState, planStatus, runCreateFlow,
   sortSessions, targetLine, targetModelItems, targetNames, targetPayload, targetReportItems,
 } from "../src/devcenter/screens/sessionModel.js";
 
@@ -103,14 +103,64 @@ test("target choices show the fixed refusals, and the default name uses the targ
     { key: "3", name: "Board", kind: "pbir_legacy_report" },
   ];
   const models = targetModelItems(sources);
-  assert.deepEqual(models.map((item) => item.value), ["existing:1", "copy:1", "existing:2", "copy:2", "empty"]);
-  assert.equal(models[2].reason, "Save as TMDL in Power BI Desktop first.");
-  assert.equal(models[1].label, "Copy of Sales");
+  assert.deepEqual(models.map((item) => item.value), ["copy:1", "copy:2", "empty", "existing:1", "existing:2"]);
+  assert.equal(models[4].reason, "Save as TMDL in Power BI Desktop first.");
+  assert.equal(models[0].label, "(Recommended) Copy of Sales");
+  assert.equal(models[1].label, "Copy of Old");
   const reports = targetReportItems(sources);
   assert.deepEqual(reports.map((item) => [item.value, Boolean(item.disabled)]), [["new_empty", false], ["existing:3", true]]);
   assert.equal(reports[1].reason, "Convert to PBIR in Power BI Desktop first.");
   assert.equal(defaultSessionName({ sources, targetModel: "copy:1" }), "Sales merge");
   assert.equal(defaultSessionName({ sources, targetModel: null }), "");
+});
+
+test("Issue #50: targetModelItems orders safe copies first with recommended badge and in-place writes at bottom with warn styling", () => {
+  const sources = [
+    { key: "1", name: "Sales", kind: "tmdl_folder" },
+    { key: "2", name: "Finance", kind: "tmdl_folder" },
+  ];
+  const models = targetModelItems(sources);
+  // Safe copy options first, then empty, then in-place writes
+  assert.deepEqual(models.map((m) => m.value), ["copy:1", "copy:2", "empty", "existing:1", "existing:2"]);
+  // First copy is recommended
+  assert.equal(models[0].label, "(Recommended) Copy of Sales");
+  assert.equal(models[0].recommended, true);
+  assert.equal(models[0].badgeLabel, "Recommended");
+  // Second copy is standard
+  assert.equal(models[1].label, "Copy of Finance");
+  assert.equal(models[1].recommended, false);
+  // Empty is present
+  assert.equal(models[2].value, "empty");
+  assert.equal(models[2].label, "Empty");
+  // In-place writes are warn-tinted and state caution in help
+  assert.equal(models[3].value, "existing:1");
+  assert.equal(models[3].tone, "warn");
+  assert.equal(models[3].badgeLabel, "In-place write");
+  assert.equal(models[3].help, "Caution: writes directly into files of Sales.");
+  assert.equal(models[4].value, "existing:2");
+  assert.equal(models[4].tone, "warn");
+  assert.equal(models[4].badgeLabel, "In-place write");
+  assert.equal(models[4].help, "Caution: writes directly into files of Finance.");
+});
+
+test("Issue #50: createStepError enforces minimum 2 sources, model presence, folder selection, and name", () => {
+  // Step 0: requires at least 2 sources and at least 1 model
+  assert.equal(createStepError(0, { sources: [] }), "Add at least 2 sources to compare and merge.");
+  assert.equal(createStepError(0, { sources: [{ key: "1", kind: "tmdl_folder" }] }), "Add at least 2 sources to compare and merge.");
+  assert.equal(createStepError(0, { sources: [{ key: "1", kind: "pbir_report" }, { key: "2", kind: "pbir_report" }] }), "Add at least 1 model source to go to the next step.");
+  assert.equal(createStepError(0, { sources: [{ key: "1", kind: "tmdl_folder" }, { key: "2", kind: "pbir_report" }] }), null);
+
+  // Step 1: requires targetModel and folder for copy/empty
+  assert.equal(createStepError(1, { targetModel: null }), "Select a target model to go to the next step.");
+  assert.equal(createStepError(1, { targetModel: "copy:1", copyFolder: null }), "Select a folder for the new target model.");
+  assert.equal(createStepError(1, { targetModel: "empty", copyFolder: null }), "Select a folder for the new target model.");
+  assert.equal(createStepError(1, { targetModel: "copy:1", copyFolder: "/target/folder" }), null);
+  assert.equal(createStepError(1, { targetModel: "existing:1" }), null);
+
+  // Step 2: requires non-empty name
+  assert.equal(createStepError(2, { name: "" }), "Type a session name.");
+  assert.equal(createStepError(2, { name: "   " }), "Type a session name.");
+  assert.equal(createStepError(2, { name: "Sales merge" }), null);
 });
 
 test("the target_set payload uses the source IDs of the source_add replies", () => {

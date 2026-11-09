@@ -42,6 +42,8 @@
 .dc-create { max-width: 880px; }
 .dc-create-body { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-5); border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface); }
 .dc-create-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-2); }
+.dc-create-nav-group { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; justify-content: flex-end; }
+.dc-create-nav-hint { color: var(--text-2); font-size: var(--fs-meta); line-height: 1.35; text-align: right; }
 .dc-create-nav { display: flex; flex-wrap: wrap; gap: var(--space-2); }
 .dc-draft-list { display: flex; flex-direction: column; gap: var(--space-1); margin: 0; padding: 0; list-style: none; }
 .dc-draft-item { display: grid; grid-template-columns: minmax(120px, 1fr) auto minmax(0, 2fr) auto; align-items: center; gap: var(--space-3); min-height: var(--row-h); padding: 2px var(--space-2) 2px var(--space-3); border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface-2); font-size: var(--fs-body); }
@@ -54,6 +56,127 @@
 .dc-summary > div { display: grid; grid-template-columns: 160px minmax(0, 1fr); gap: var(--space-3); }
 .dc-summary dt { color: var(--text-2); }
 .dc-summary dd { margin: 0; color: var(--text); overflow-wrap: anywhere; }
+
+/* ---------- Merge Mental Model Explainer (Issue #50) --------------------- */
+.dc-merge-explainer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+}
+.dc-explainer-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.dc-explainer-tag {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: var(--r-xs);
+  background: var(--surface-3);
+  border: 1px solid var(--line-strong);
+  color: var(--text-2);
+  font-size: var(--fs-micro);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.dc-explainer-title {
+  margin: 0;
+  color: var(--text);
+  font-size: var(--fs-body);
+  font-weight: 600;
+}
+.dc-explainer-list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+@media (max-width: 760px) {
+  .dc-explainer-list {
+    grid-template-columns: 1fr;
+  }
+}
+.dc-explainer-item {
+  display: flex;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+.dc-explainer-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  flex: none;
+  border-radius: var(--r-full);
+  background: var(--surface-3);
+  border: 1px solid var(--line-strong);
+  color: var(--text);
+  font-size: var(--fs-meta);
+  font-weight: 600;
+}
+.dc-explainer-item:first-child .dc-explainer-badge {
+  background: var(--ok-soft);
+  color: var(--ok);
+  border-color: var(--ok);
+}
+.dc-explainer-item:nth-child(2) .dc-explainer-badge {
+  background: var(--info-soft);
+  color: var(--info);
+  border-color: var(--info);
+}
+.dc-explainer-item:nth-child(3) .dc-explainer-badge {
+  background: var(--brand-soft);
+  color: var(--brand);
+  border-color: var(--line-strong);
+}
+.dc-explainer-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.dc-explainer-term {
+  color: var(--text);
+  font-size: var(--fs-body);
+  font-weight: 600;
+}
+.dc-explainer-desc {
+  margin: 0;
+  color: var(--text-2);
+  font-size: var(--fs-meta);
+  line-height: 1.35;
+}
+
+/* In-place target warning styling (Issue #50) */
+.ui-choice-item[data-tone="warn"] {
+  border: 1px dashed var(--warn);
+  background: var(--warn-soft);
+  margin-top: var(--space-1);
+}
+.ui-choice-item[data-tone="warn"]:hover {
+  background: var(--surface-hover);
+}
+.ui-choice-item[data-tone="warn"][data-selected] {
+  border-style: solid;
+  border-color: var(--warn);
+  background: var(--warn-soft);
+}
+.ui-choice-item[data-tone="warn"] .ui-choice-reason {
+  color: var(--warn);
+}
 
 /* ---------- Work area ---------------------------------------------------- */
 .dc-work { display: flex; flex-direction: column; gap: var(--space-3); min-width: 0; flex: 1; min-height: 0; height: 100%; }

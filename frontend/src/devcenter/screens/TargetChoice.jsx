@@ -1,8 +1,7 @@
-// Target model and target report radio lists (UI design 4.1 step 2, 4.8 "Change target").
-// "Copy of <source>" and "Empty" open the native folder picker. A cancel of the picker keeps the old choice.
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { ChoiceRadio } from "@/components/ui/choice-radio";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { t } from "../copy.js";
 import { targetModelItems, targetReportItems } from "./sessionModel.js";
 
@@ -18,23 +17,38 @@ export default function TargetChoice({ sources, model, report, folder, onModel, 
     setPicking(true);
     try {
       const picked = await pickFolder();
-      if (picked) onModel(value, picked);
+      if (picked) {
+        onModel(value, picked);
+      } else if (value !== model) {
+        onModel(value, null);
+      }
     } finally {
       setPicking(false);
     }
   };
 
-  const folderLine = folder ? (
+  const folderLine = (
     <div className="dc-folder-line">
-      <span>{t("create.target.copy.folder", { path: folder })}</span>
-      <Button variant="outline" size="sm" disabled={disabled || picking} onClick={() => chooseModel(model, true)}>{t("create.target.copy.change")}</Button>
+      {folder ? (
+        <>
+          <span>{t("create.target.copy.folder", { path: folder })}</span>
+          <Button variant="outline" size="sm" disabled={disabled || picking} onClick={() => chooseModel(model, true)}>{t("create.target.copy.change")}</Button>
+        </>
+      ) : (
+        <>
+          <span className="text-[var(--text-2)]">{t("create.target.copy.select_folder")}</span>
+          <Button variant="outline" size="sm" disabled={disabled || picking} onClick={() => chooseModel(model, true)}>{t("create.target.copy.choose")}</Button>
+        </>
+      )}
     </div>
-  ) : null;
+  );
 
   const modelItems = targetModelItems(sources).map((item) => ({
     value: item.value,
     label: item.label,
     disabled: item.disabled,
+    tone: item.tone,
+    badge: item.badgeLabel ? <StatusBadge tone={item.tone || (item.recommended ? "ok" : "plain")} label={item.badgeLabel} /> : null,
     reason: item.reason ?? item.help,
     children: item.value.startsWith("existing:") ? null : folderLine,
   }));
@@ -42,6 +56,8 @@ export default function TargetChoice({ sources, model, report, folder, onModel, 
     value: item.value,
     label: item.label,
     disabled: item.disabled,
+    tone: item.tone,
+    badge: item.badgeLabel ? <StatusBadge tone={item.tone || "plain"} label={item.badgeLabel} /> : null,
     reason: item.reason ?? item.help,
   }));
 

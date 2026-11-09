@@ -313,20 +313,77 @@ export function draftHasModel(sources = []) {
   return sources.some((source) => MODEL_KINDS.has(source.kind));
 }
 
-// The target model choices of step 2 (UI design 4.1). value: "existing:<key>", "copy:<key>", or "empty".
+// Validation helper for CreateSession wizard (Issue #50).
+// Returns an error message string when the step is not valid to advance, else null.
+export function createStepError(step, draft) {
+  if (step === 0) {
+    if (!draft?.sources || draft.sources.length < 2) {
+      return t("create.sources.need_two_sources");
+    }
+    if (!draftHasModel(draft.sources)) {
+      return t("create.sources.need_model");
+    }
+    return null;
+  }
+  if (step === 1) {
+    if (!draft?.targetModel) {
+      return t("create.target.need_model");
+    }
+    if (!draft.targetModel.startsWith("existing:") && !draft.copyFolder) {
+      return t("create.target.folder_needed");
+    }
+    return null;
+  }
+  if (step === 2) {
+    const name = String(draft?.name ?? "").trim();
+    if (!name) {
+      return t("create.name.required");
+    }
+    return null;
+  }
+  return null;
+}
+
+// The target model choices of step 2 (UI design 4.1, Issue #50).
+// Safe copies are listed first with "(Recommended)" on the first source, followed by Empty,
+// and risky in-place writes are placed at the bottom with warning tone and badge.
 export function targetModelItems(sources = []) {
-  const items = [];
-  for (const source of sources) {
-    if (!MODEL_KINDS.has(source.kind)) continue;
-    // Issue #16: a cloud model with Read/Write access is a target; the apply writes it through XMLA.
+  const modelSources = sources.filter((source) => MODEL_KINDS.has(source.kind));
+  const copyItems = [];
+  const existingItems = [];
+
+  modelSources.forEach((source, index) => {
+    const isRecommended = index === 0;
+    copyItems.push({
+      value: `copy:${source.key}`,
+      label: isRecommended ? t("create.target.copy_recommended", { source: source.name }) : t("create.target.copy", { source: source.name }),
+      help: t("create.target.copy.help", { source: source.name }),
+      recommended: isRecommended,
+      badgeLabel: isRecommended ? t("create.target.recommended_badge") : undefined,
+    });
+
     const cloud = source.kind === "cloud_model" && source.access_type !== "Read/Write";
     const tmsl = source.kind === "model_bim";
     const reason = cloud ? t("refuse.cloud_target") : tmsl ? t("refuse.tmsl_target") : null;
-    items.push({ value: `existing:${source.key}`, label: source.name, help: t("create.target.existing.help", { source: source.name }), disabled: Boolean(reason), reason });
-    items.push({ value: `copy:${source.key}`, label: t("create.target.copy", { source: source.name }), help: t("create.target.copy.help", { source: source.name }) });
-  }
-  items.push({ value: "empty", label: t("create.target.empty"), help: t("create.target.empty.help") });
-  return items;
+    const inplaceHelp = t("create.target.existing.help", { source: source.name });
+    existingItems.push({
+      value: `existing:${source.key}`,
+      label: source.name,
+      help: inplaceHelp,
+      disabled: Boolean(reason),
+      reason: reason ?? inplaceHelp,
+      tone: "warn",
+      badgeLabel: t("create.target.inplace_badge"),
+    });
+  });
+
+  const emptyItem = {
+    value: "empty",
+    label: t("create.target.empty"),
+    help: t("create.target.empty.help"),
+  };
+
+  return [...copyItems, emptyItem, ...existingItems];
 }
 
 export function targetReportItems(sources = []) {
@@ -336,7 +393,16 @@ export function targetReportItems(sources = []) {
     const legacy = source.kind === "pbir_legacy_report";
     const cloud = source.kind === "cloud_report" && source.access_type !== "Read/Write";
     const reason = legacy ? t("refuse.legacy_target") : cloud ? t("refuse.cloud_target") : null;
-    items.push({ value: `existing:${source.key}`, label: source.name, disabled: Boolean(reason), reason });
+    const inplaceHelp = t("create.target.existing_report.help", { report: source.name });
+    items.push({
+      value: `existing:${source.key}`,
+      label: source.name,
+      disabled: Boolean(reason),
+      reason: reason ?? inplaceHelp,
+      help: inplaceHelp,
+      tone: "warn",
+      badgeLabel: t("create.target.inplace_badge"),
+    });
   }
   return items;
 }
