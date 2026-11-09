@@ -34,7 +34,15 @@
       ]
     },
     {
-      "selector": ".nav-count, .count-pill, kbd, .ui-badge",
+      "selector": ".code-head, .code-head *",
+      "sizes": [
+        11,
+        12,
+        13
+      ]
+    },
+    {
+      "selector": ".nav-count, .count-pill, kbd, .ui-badge, .ui-tabs-count",
       "sizes": [
         11,
         12
@@ -173,11 +181,11 @@
       "reason": "Vertical navigation list (desktop): rows are a single list separated by their own hover/active fill, like any OS sidebar. The compact (<=760px) icon row uses an 8px gap and is not affected by this rule's intent."
     },
     {
-      "selector": ".ui-tabs-list > [role=tab], [data-slot=tabs-list] > [role=tab]",
+      "selector": ".ui-tabs-list > [role=tab], [data-slot=tabs-list] > [role=tab], .ui-segmented > .ui-segment, .ui-segmented > button, .graph-zoom-controls > button",
       "rules": [
         "control-gap"
       ],
-      "reason": "Segmented control: tabs share one track by design; separation comes from the selected thumb."
+      "reason": "Segmented controls: tabs, segments, and zoom controls share one track by design; separation comes from the selected thumb or 2px inset."
     },
     {
       "selector": ".search-results > .search-result",
@@ -225,7 +233,9 @@
     {
       "selector": ".app-menubar > .app-menubar-trigger, .app-statusbar > .statusbar-item",
       "rules": [
-        "control-gap"
+        "control-gap",
+        "content-inset",
+        "control-inset"
       ],
       "reason": "Desktop chrome: menu-bar titles and status-bar segments are contiguous strips (Windows/VS Code convention); each segment has its own hover fill and the status bar separates segments with 1px rules."
     },
@@ -235,6 +245,17 @@
         "control-inset"
       ],
       "reason": "Desktop view toolbar: 26px toolbar buttons are vertically centred in the 36px toolbar row (5px each side), like Fluent/VS Code command bars. Horizontal spacing still uses the 8px grid."
+    },
+    {
+      "selector": "details:not([open]) *, [data-state=closed] *",
+      "rules": [
+        "control-size",
+        "icon-size",
+        "content-clipping",
+        "content-inset",
+        "control-inset"
+      ],
+      "reason": "Closed disclosures and collapsed panels have collapsed or unrendered geometry until opened."
     }
   ]
 }

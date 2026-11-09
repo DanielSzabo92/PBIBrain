@@ -29,6 +29,18 @@ colors:
   warn-light: "#8a540d"
   bad-light: "#bd3030"
   info-light: "#216a9f"
+  dax-fn-dark: "#7cb8ff"
+  dax-keyword-dark: "#c792ea"
+  dax-string-dark: "#a5d6a7"
+  dax-table-dark: "#f0c27b"
+  dax-ref-dark: "#ffcb8b"
+  dax-number-dark: "#f78c6c"
+  dax-fn-light: "#1f63c6"
+  dax-keyword-light: "#8a2fb8"
+  dax-string-light: "#2b7a34"
+  dax-table-light: "#a45d00"
+  dax-ref-light: "#b15a00"
+  dax-number-light: "#c2410c"
 typography:
   display:
     fontFamily: "Segoe UI Variable Text, Segoe UI Variable, Inter Variable, Segoe UI, system-ui, sans-serif"
@@ -73,6 +85,8 @@ typography:
     fontWeight: 400
     lineHeight: 1.6
 rounded:
+  "2xs": "2px"
+  "3xs": "3px"
   xs: "4px"
   sm: "6px"
   md: "8px"
@@ -159,6 +173,16 @@ accent and four status hues that are always paired with a text label.
 - **Rule** (#1f2228 / #e6e5e1): dividers between rows; the main grouping device.
 - **Ink** (#ededf0 / #16171b), **Ink 2** (#a3a7b1 / #5c5f68): primary and secondary text.
 
+### DAX Syntax Palette
+Syntax tokens re-map across dark and light themes:
+- **Function** (`--dax-fn`): `#7cb8ff` dark / `#1f63c6` light.
+- **Keyword** (`--dax-keyword`): `#c792ea` dark / `#8a2fb8` light.
+- **String** (`--dax-string`): `#a5d6a7` dark / `#2b7a34` light.
+- **Table** (`--dax-table`): `#f0c27b` dark / `#a45d00` light.
+- **Column / Ref** (`--dax-ref`): `#ffcb8b` dark / `#b15a00` light.
+- **Number** (`--dax-number`): `#f78c6c` dark / `#c2410c` light.
+- **Comment** (`--dax-comment`): `var(--text-3)`.
+
 ### Named Rules
 **The Data Owns Colour Rule.** Artifact colours (user-editable in Settings),
 provenance line styles and status hues are the only saturated colour on a
@@ -224,9 +248,10 @@ reserved for things that float over content.
 
 ## Shapes
 
-Three radii: 4px (controls, buttons, chips' inner parts, checkboxes), 6px
-(inputs, inline evidence blocks), 8px (panels, cards, popovers). Pills
-(999px) only for count badges and status chips. No coloured one-sided borders.
+Primary radii: 4px (controls, buttons, chips' inner parts, checkboxes), 6px
+(inputs, inline evidence blocks), 8px (panels, cards, popovers). Micro-radii:
+2px (`--r-2xs`) and 3px (`--r-3xs`) for glyph badges, progress track caps, and micro-swatches.
+Pills (999px) only for count badges and status chips. No coloured one-sided borders.
 
 ## Components
 

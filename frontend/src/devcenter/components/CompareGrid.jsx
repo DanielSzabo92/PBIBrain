@@ -272,7 +272,7 @@ export default function CompareGrid({
   // Col 0: chk, Col 1: obj, Col 2: rs, Col 3: mc (pinned), Col 4: tg, Col 5..: donors, Col N-1: mk
   const totalCols = 6 + donors.length;
   const colWidths = useMemo(() => {
-    const list = [40, 260, 116, 220, 132];
+    const list = [40, 260, 136, 220, 132];
     for (let i = 0; i < donors.length; i++) list.push(132);
     list.push(112);
     return list;

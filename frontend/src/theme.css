@@ -57,6 +57,8 @@
   --font-code: "JetBrains Mono Variable", "Cascadia Code", Consolas, ui-monospace, monospace;
   --radius: 0.375rem;
   /* Shape: three radii. Controls and rows are near-square; panels are 8px; pills stay pills. */
+  --r-2xs: 2px;
+  --r-3xs: 3px;
   --r-xs: 4px;
   --r-sm: 6px;
   --r-md: 8px;
@@ -77,6 +79,7 @@
   --fs-micro: 11px;
   --fs-meta: 12px;
   --fs-body: 13px;
+  --fs-code: var(--fs-body);
   --fs-emphasis: 14px;
   --fs-title: 16px;
   --fs-heading: 20px;
@@ -177,6 +180,15 @@
   --edge-uses: #e8b879;
   --edge-controlled-by: #de9cff;
   --edge-observed-with: #8997a7;
+
+  /* DAX syntax palette */
+  --dax-fn: #7cb8ff;
+  --dax-keyword: #c792ea;
+  --dax-string: #a5d6a7;
+  --dax-table: #f0c27b;
+  --dax-ref: #ffcb8b;
+  --dax-number: #f78c6c;
+  --dax-comment: var(--text-3);
 
   /* Controls */
   --switch-track: var(--surface-3);
@@ -296,6 +308,16 @@
   --edge-uses: #a45d00;
   --edge-controlled-by: #7c4fc4;
   --edge-observed-with: #5d6b80;
+
+  /* DAX syntax palette */
+  --dax-fn: #1f63c6;
+  --dax-keyword: #8a2fb8;
+  --dax-string: #2b7a34;
+  --dax-table: #a45d00;
+  --dax-ref: #b15a00;
+  --dax-number: #c2410c;
+  --dax-comment: var(--text-3);
+
   --switch-track: #e2e2dd;
   --switch-thumb-off: #ffffff;
   --switch-thumb-on: var(--brand-ink);

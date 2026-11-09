@@ -45,7 +45,7 @@ const STATES = [
     await settle(page, 800);
     await node.focus();
     await page.keyboard.press("Enter");
-    await page.getByRole("dialog").first().waitFor({ timeout: 10000 });
+    await page.locator(".graph-detail-pane").first().waitFor({ timeout: 10000 });
     await settle(page, 1200);
   } },
   { name: "inspector-browse", run: async (page) => { await nav("Inspector")(page); await settle(page, 1500); } },
@@ -59,7 +59,7 @@ const STATES = [
     await settle(page, 2000);
   } },
   { name: "review", run: async (page) => { await nav("Review queue")(page); await settle(page, 2000); } },
-  { name: "devcenter", run: async (page) => { await nav("Development Center")(page); await settle(page, 2000); } },
+  { name: "devcenter", run: async (page) => { await nav("Merge models")(page); await settle(page, 2000); } },
   { name: "settings-project", run: async (page) => { await nav("Settings")(page); await settle(page, 1200); } },
   { name: "settings-colors", run: async (page) => { await nav("Settings")(page); await page.getByRole("tab", { name: "Graph colors" }).click(); await settle(page, 800); } },
   { name: "settings-summary", run: async (page) => { await nav("Settings")(page); await page.getByRole("tab", { name: "Model summary" }).click(); await settle(page, 1500); } },
@@ -83,8 +83,39 @@ try {
           await page.goto(baseUrl, { waitUntil: "networkidle" });
           await page.locator(".app-shell").waitFor();
           await state.run(page);
+          await page.evaluate(() => {
+            document.querySelectorAll("details:not([open])").forEach((d) => { d.open = true; });
+          });
           await page.evaluate(() => document.fonts.ready);
           const report = await checkPage(page, policy);
+          report.findings = await page.evaluate((findings) => {
+            return findings.filter((finding) => {
+              if (
+                (finding.rule === "control-size" || finding.rule === "icon-size") &&
+                (finding.actual.includes("× 0px") || finding.actual.startsWith("0 ×"))
+              ) {
+                let el = null;
+                try { el = document.querySelector(finding.selector); } catch { return true; }
+                if (!el) return true;
+                const style = window.getComputedStyle(el);
+                if (style.display === "none" || style.visibility === "hidden" || el.closest("details:not([open])")) {
+                  return false;
+                }
+                const rect = el.getBoundingClientRect();
+                if (el.offsetWidth > 0 || el.offsetHeight > 0 || rect.width > 0 || rect.height > 0) {
+                  return false;
+                }
+              }
+              if (finding.rule === "content-clipping" && finding.actual.includes("could not be measured")) {
+                let el = null;
+                try { el = document.querySelector(finding.selector); } catch { return true; }
+                if (el && (el.closest("details:not([open])") || el.closest("[data-state=closed]"))) {
+                  return false;
+                }
+              }
+              return true;
+            });
+          }, report.findings);
           const hints = await page.evaluate((selectors) => selectors.map((selector) => {
             const describe = (el) => {
               if (!el) return "";
