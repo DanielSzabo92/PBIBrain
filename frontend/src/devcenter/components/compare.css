@@ -210,8 +210,9 @@
 
 .dc-body-row.is-flashing,
 .dc-body-row.is-flashing .dc-cell,
-.dc-body-row.is-flashing .dc-stick {
-  animation: row-saved-flash 1.2s ease-out;
+.dc-body-row.is-flashing .dc-stick,
+.is-flashing {
+  animation: row-saved-flash var(--dur-flash) var(--ease-out);
 }
 
 .dc-body-row.active,
@@ -457,6 +458,7 @@
   color: var(--ok);
   font-weight: 500;
   white-space: nowrap;
+  animation: fade-in var(--dur-flash) var(--ease-out);
 }
 
 .dc-mc-undo-btn {
@@ -978,4 +980,14 @@
 .dc-badge-question {
   color: var(--text);
   background: var(--info-tint);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dc-body-row.is-flashing,
+  .dc-body-row.is-flashing .dc-cell,
+  .dc-body-row.is-flashing .dc-stick,
+  .is-flashing,
+  .dc-mc-saved {
+    animation: none !important;
+  }
 }

@@ -231,6 +231,7 @@ export default function CompareRowDetail({
   const [joinDialogOpen, setJoinDialogOpen] = useState(false);
   const [joinCandidateKey, setJoinCandidateKey] = useState("");
   const [unfilteredRows, setUnfilteredRows] = useState([]);
+  const [savedFlash, setSavedFlash] = useState(false);
   const splitCancelRef = useRef(null);
 
   useEffect(() => {
@@ -355,6 +356,9 @@ export default function CompareRowDetail({
       choice: nextChoiceObj,
     });
     if (reply) {
+      setSavedFlash(true);
+      const isReduced = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+      setTimeout(() => setSavedFlash(false), isReduced ? 0 : 150);
       const kind = nextChoiceObj?.kind || nextChoiceObj?.choice || "saved";
       toast.show({
         tone: "ok",
@@ -1118,7 +1122,7 @@ export default function CompareRowDetail({
             return (
               <div
                 key={item.value}
-                className="ui-choice-item"
+                className={`ui-choice-item ${selected && savedFlash ? "is-flashing" : ""}`}
                 data-selected={selected || undefined}
                 data-disabled={item.disabled || disabled || undefined}
               >

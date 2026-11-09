@@ -21,7 +21,11 @@
 .ui-field-hint.is-error { color: var(--bad); }
 
 /* ---------- Tabs count pill --------------------------------------------- */
-.ui-tabs-count { display: inline-flex; align-items: center; min-width: 18px; height: 18px; padding: 0 6px; border: 1px solid var(--control-border); border-radius: 99px; background: var(--surface-2); color: var(--text-2); font-size: var(--fs-micro); font-weight: 600; }
+.ui-tabs-count {
+  display: inline-flex; align-items: center; min-width: 18px; height: 18px; padding: 0 6px; border: 1px solid var(--control-border); border-radius: 99px; background: var(--surface-2); color: var(--text-2); font-size: var(--fs-micro); font-weight: 600;
+  transition: transform var(--dur-fast) var(--ease-out), background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out);
+  animation: count-pop var(--dur-fast) var(--ease-out);
+}
 .ui-tabs-count[data-tone="ok"] { background: var(--ok-tint); color: var(--ok); border-color: var(--ok); }
 .ui-tabs-count[data-tone="warn"] { background: var(--warn-tint); color: var(--warn); border-color: var(--warn); }
 .ui-tabs-count[data-tone="bad"] { background: var(--bad-tint); color: var(--bad); border-color: var(--bad); }
@@ -296,3 +300,9 @@
 .ui-table-expand svg { width: 16px; height: 16px; transition: transform var(--dur-fast) var(--ease-out); }
 .ui-table-expand[aria-expanded="true"] svg { transform: rotate(90deg); }
 .ui-table-detail > td { color: var(--text-2); }
+@media (prefers-reduced-motion: reduce) {
+  .ui-tabs-count {
+    animation: none !important;
+    transition: none !important;
+  }
+}

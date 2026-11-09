@@ -76,7 +76,7 @@ function TabsTrigger({
       {...(controls ? { "aria-controls": controls } : {})}
       {...props}>
       {children}
-      {count !== undefined && count !== null ? <span className="ui-tabs-count" data-tone={countTone || undefined}>{count}{countLabel ? <span className="sr-only"> {countLabel}</span> : null}</span> : null}
+      {count !== undefined && count !== null ? <span key={count} className="ui-tabs-count" data-tone={countTone || undefined}>{count}{countLabel ? <span className="sr-only"> {countLabel}</span> : null}</span> : null}
     </TabsPrimitive.Trigger>
   );
 }

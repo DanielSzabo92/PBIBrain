@@ -1993,7 +1993,10 @@ function ReviewItem({
     }
 
     setPending(true);
-    await new Promise((resolve) => setTimeout(resolve, 180));
+    const isReduced = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    if (!isReduced) {
+      await new Promise((resolve) => setTimeout(resolve, 180));
+    }
     try {
       if (!await onReview(action, item, valueOverride)) {
         setExiting(false);
@@ -2102,9 +2105,25 @@ function ReviewItem({
 
 
 function CandidateActions({ item, node, onReview, disabled = false, isEditing = false, onStartEdit, onCancelEdit }) {
+  const [exiting, setExiting] = useState(false);
+  const decide = async (action, candidateItem, valueOverride) => {
+    const isReduced = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    setExiting(true);
+    if (!isReduced) {
+      await new Promise((resolve) => setTimeout(resolve, 180));
+    }
+    try {
+      const ok = await onReview(action, candidateItem, valueOverride);
+      if (!ok) setExiting(false);
+      return ok;
+    } catch (err) {
+      setExiting(false);
+      throw err;
+    }
+  };
   const score = confidence(item.confidence ?? item.properties?.confidence);
   return (
-    <fieldset className="candidate-actions" data-ui-actions="" disabled={disabled}>
+    <fieldset className={`candidate-actions ${exiting ? "is-exiting" : ""}`} data-ui-actions="" disabled={disabled || exiting}>
       <div className="candidate-action-title">
         <span>{suggestionLabel(item)}</span>
         <Tooltip content={explainConfidence(item, node)}>
@@ -2116,7 +2135,8 @@ function CandidateActions({ item, node, onReview, disabled = false, isEditing = 
       <ReviewDecision
         item={item}
         onReview={onReview}
-        disabled={disabled}
+        onDecide={decide}
+        disabled={disabled || exiting}
         isEditing={isEditing}
         onStartEdit={onStartEdit}
         onCancelEdit={onCancelEdit}

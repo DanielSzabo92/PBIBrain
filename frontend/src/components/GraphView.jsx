@@ -440,11 +440,16 @@ export default function GraphView({ transport, overview, snapshot, selectedId, c
     const recent = Object.entries(current.placements || {}).filter(([key]) => key !== canvasKey).slice(-11);
     return { ...current, placements: { ...Object.fromEntries(recent), [canvasKey]: positions } };
   }), [canvasKey, updateSession]);
-  const toggleGroup = useCallback((id) => updateSession((current) => {
-    const expanded = new Set(current.expandedIds ?? defaultExpanded);
-    if (expanded.has(id)) expanded.delete(id); else expanded.add(id);
-    return { ...current, expandedIds: [...expanded] };
-  }), [defaultExpanded, updateSession]);
+  const toggleGroup = useCallback((id) => {
+    updateSession((current) => {
+      const expanded = new Set(current.expandedIds ?? defaultExpanded);
+      if (expanded.has(id)) expanded.delete(id); else expanded.add(id);
+      return { ...current, expandedIds: [...expanded] };
+    });
+    setTimeout(() => {
+      canvasApi.current?.fit();
+    }, 60);
+  }, [defaultExpanded, updateSession]);
   const error = graphError?.key === graphKey ? graphError.message : "";
   const edgeTypes = [...new Set([...EDGE_TYPES, ...edges.map((edge) => edge.type)])].sort();
   const warningIds = useMemo(() => new Set((snapshot.conflicts || []).flatMap((item) => [item.target?.id || item.target || item.target_id || item.object_id, item.id, item.conflict_id].filter(Boolean))), [snapshot.conflicts]);
@@ -702,13 +707,17 @@ function GraphCanvas({ rawById, apiRef, overview, full, grouped, onCenter, onIns
     if (!dx && !dy) return;
     flow.setViewport({ x: x + dx, y: y + dy, zoom: scale }, travel(duration));
   }, [flow, rects, fitDuration]);
+  const wasDocked = useRef(docked);
   useEffect(() => {
-    if (!docked) return undefined;
-    const timer = setTimeout(() => {
-      if (selectedId) reveal(selectedId);
-      flow?.fitView({ ...fitOptions, ...travel(fitDuration) });
-    }, 40);
-    return () => clearTimeout(timer);
+    const changed = wasDocked.current !== docked;
+    wasDocked.current = docked;
+    if (docked || changed) {
+      const timer = setTimeout(() => {
+        if (selectedId && docked) reveal(selectedId);
+        flow?.fitView({ ...fitOptions, ...travel(fitDuration) });
+      }, 40);
+      return () => clearTimeout(timer);
+    }
   }, [docked, selectedId, reveal, flow, fitOptions, fitDuration]);
 
   // Lineage reads from the left: when the lanes cannot fit at a readable zoom, open at Models (top-left)

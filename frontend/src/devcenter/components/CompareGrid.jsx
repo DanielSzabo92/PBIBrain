@@ -169,13 +169,14 @@ export default function CompareGrid({
 
   const triggerRowFlash = useCallback((key) => {
     setFlashingRowKeys((prev) => new Set(prev).add(key));
+    const isReduced = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
     setTimeout(() => {
       setFlashingRowKeys((prev) => {
         const next = new Set(prev);
         next.delete(key);
         return next;
       });
-    }, 1200);
+    }, isReduced ? 0 : 150);
   }, []);
 
   useEffect(() => {

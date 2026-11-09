@@ -87,7 +87,7 @@
   --space-5: 20px;
   --space-6: 24px;
   --space-8: 32px;
-  /* Motion (visual contract §7): transform/opacity only, colour ≤ --dur-fast, no loops. */
+  /* Motion (visual contract §7): transform/opacity only, colour ≤ --dur-fast, no ambient/decorative loops; bounded progress indicators run only while active and obey prefers-reduced-motion. */
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-in: cubic-bezier(0.4, 0, 1, 1);
   --ease-move: cubic-bezier(0.65, 0, 0.35, 1);
@@ -95,7 +95,10 @@
   --ease-spring: var(--ease-out);
   --dur-press: 90ms;
   --dur-fast: 120ms;
+  --dur-flash: 150ms;
   --dur: 180ms;
+  --dur-enter: 180ms;
+  --dur-exit: 180ms;
   --dur-pane: 240ms;
   --dur-slow: 280ms;
   --dur-fit: 320ms;
@@ -106,7 +109,7 @@
   --surface: #151517;
   --surface-2: #1a1a1d;
   --surface-3: #212124;
-  --surface-hover: #1d1d20;
+  --surface-hover: #222226;
   --line: #26262a;
   --line-strong: #333338;
   --line-focus: #45454b;
@@ -219,7 +222,7 @@
   --surface: #ffffff;
   --surface-2: #fafaf8;
   --surface-3: #f1f1ee;
-  --surface-hover: #f3f3f0;
+  --surface-hover: #ebebe7;
   --line: #e5e4df;
   --line-strong: #d4d3cd;
   --line-focus: #bdbcb6;
