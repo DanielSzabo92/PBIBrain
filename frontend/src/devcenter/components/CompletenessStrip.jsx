@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { Tooltip } from "@/components/ui/tooltip";
 import { t } from "../copy.js";
 import { AREA_STEP, completenessState, visibleEntries } from "../screens/impact/impactModel.js";
 
@@ -15,7 +16,9 @@ export default function CompletenessStrip({ completeness, open, onOpenChange }) 
     <section className="dc-complete" data-complete={state.complete ? "true" : "false"} aria-label={state.label}>
       <div className="dc-complete-main">
         <StatusBadge tone={state.tone} label={state.label} />
-        <p className="dc-complete-help" title={t("impact.completeness.safe_superset.tooltip")}>{state.help}</p>
+        <Tooltip content={t("impact.completeness.safe_superset.tooltip")}>
+          <p className="dc-complete-help">{state.help}</p>
+        </Tooltip>
         {state.entries.length > 0 ? (
           <Button variant="outline" size="sm" aria-expanded={open} aria-controls={listId} onClick={() => onOpenChange(!open)}>
             {open ? t("impact.completeness.hide") : t("impact.completeness.show")}

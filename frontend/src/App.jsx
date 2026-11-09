@@ -26,6 +26,9 @@ import { Badge } from "./components/ui/badge";
 import { Card } from "./components/ui/card";
 import { Label } from "./components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./components/ui/tabs";
+import { Disclosure } from "./components/ui/collapsible";
+import { Breadcrumb, BreadcrumbList, BreadcrumbItem, BreadcrumbLink, BreadcrumbPage, BreadcrumbSeparator } from "./components/ui/breadcrumb";
+import { Skeleton } from "./components/ui/skeleton";
 const GraphView = lazy(() => import("./components/GraphView"));
 const GraphColors = lazy(() => import("./components/GraphColors"));
 const ModelSummary = lazy(() => import("./components/ModelSummary"));
@@ -54,11 +57,11 @@ const VIEWS = [
 ];
 
 const EDGE_COLORS = {
-  DEPENDS_ON: "#8cb9ff",
-  REFERENCES: "#83d7bd",
-  USES: "#e8b879",
-  CONTROLLED_BY: "#de9cff",
-  OBSERVED_WITH: "#8997a7",
+  DEPENDS_ON: "var(--edge-depends-on, #8cb9ff)",
+  REFERENCES: "var(--edge-references, #83d7bd)",
+  USES: "var(--edge-uses, #e8b879)",
+  CONTROLLED_BY: "var(--edge-controlled-by, #de9cff)",
+  OBSERVED_WITH: "var(--edge-observed-with, #8997a7)",
 };
 
 
@@ -746,32 +749,42 @@ function AppInner({ transport = brainTransport }) {
 
       <div className="main-column">
         <header className="topbar view-toolbar">
-          <div className="breadcrumb">
-            <NavIcon name={view} />
-            {view === "inspector" && selected ? (
-              <>
-                <button
-                  type="button"
-                  className="breadcrumb-view breadcrumb-link"
-                  onClick={() => {
-                    if (inspectorOrigin === "inspector") {
-                      setSelectedId(null);
-                      setInspectedObject(null);
-                    } else {
-                      setView(inspectorOrigin);
-                    }
-                  }}
-                  title={inspectorOrigin === "inspector" ? "Inspector" : `Back to ${VIEWS.find(([k]) => k === inspectorOrigin)?.[1] || "overview"}`}
-                >
-                  {inspectorOrigin === "inspector" ? "Inspector" : VIEWS.find(([k]) => k === inspectorOrigin)?.[1] || "Inspector"}
-                </button>
-                <span className="breadcrumb-separator" aria-hidden="true">›</span>
-                <span className="breadcrumb-leaf" title={labelFor(selected)}>{labelFor(selected)}</span>
-              </>
-            ) : (
-              <span className="breadcrumb-view">{viewLabel}</span>
-            )}
-          </div>
+          <Breadcrumb className="breadcrumb">
+            <BreadcrumbList>
+              <NavIcon name={view} />
+              {view === "inspector" && selected ? (
+                <>
+                  <BreadcrumbItem>
+                    <BreadcrumbLink asChild>
+                      <button
+                        type="button"
+                        className="breadcrumb-view breadcrumb-link"
+                        onClick={() => {
+                          if (inspectorOrigin === "inspector") {
+                            setSelectedId(null);
+                            setInspectedObject(null);
+                          } else {
+                            setView(inspectorOrigin);
+                          }
+                        }}
+                        title={inspectorOrigin === "inspector" ? "Inspector" : `Back to ${VIEWS.find(([k]) => k === inspectorOrigin)?.[1] || "overview"}`}
+                      >
+                        {inspectorOrigin === "inspector" ? "Inspector" : VIEWS.find(([k]) => k === inspectorOrigin)?.[1] || "Inspector"}
+                      </button>
+                    </BreadcrumbLink>
+                  </BreadcrumbItem>
+                  <BreadcrumbSeparator />
+                  <BreadcrumbItem>
+                    <BreadcrumbPage className="breadcrumb-leaf" title={labelFor(selected)}>{labelFor(selected)}</BreadcrumbPage>
+                  </BreadcrumbItem>
+                </>
+              ) : (
+                <BreadcrumbItem>
+                  <BreadcrumbPage className="breadcrumb-view">{viewLabel}</BreadcrumbPage>
+                </BreadcrumbItem>
+              )}
+            </BreadcrumbList>
+          </Breadcrumb>
           <div className="topbar-actions" role="toolbar" aria-label={`${viewLabel} toolbar`} data-ui-actions="">
             {activeProject ? <Button variant="ghost" size="sm" className="project-switch" onClick={closeDesktopProject} disabled={scanning}><FolderOpen />Change project</Button> : null}
             {counts.objects > 0 ? <Button variant="ghost" size="sm" onClick={runScan} disabled={scanning || !hasSources} title={hasSources ? `Re-read every source and rebuild the brain (${displayKeys("Ctrl+F5")})` : "Add sources in Settings first"}><ScanLine aria-hidden="true" />{scanning ? "Scanning…" : "Scan sources"}</Button> : null}
@@ -1122,8 +1135,7 @@ function Overview({ overview, config, counts, colors, loading, projectName, onVi
             </div>
           ))}
           {issues.length > 3 ? (
-            <details className="validation-issues">
-              <summary>View {issues.length - 3} more issues</summary>
+            <Disclosure title={`View ${issues.length - 3} more issues`} className="validation-issues">
               <ul>
                 {issues.slice(3).map((item, index) => (
                   <li key={`${item.code}-${index}`}>
@@ -1137,7 +1149,7 @@ function Overview({ overview, config, counts, colors, loading, projectName, onVi
                   </li>
                 ))}
               </ul>
-            </details>
+            </Disclosure>
           ) : null}
         </div>
       ) : (
@@ -1193,8 +1205,8 @@ function Overview({ overview, config, counts, colors, loading, projectName, onVi
         )}
       </div>
     </header>
-    {hasObjects && typeCounts.length ? <nav className="type-strip" aria-label="Objects by type">{typeCounts.map(([type, count]) => <button type="button" key={type} className="type-strip-item" onClick={() => onBrowseType(type)} title={`Browse ${count.toLocaleString()} ${typeLabel(type).toLowerCase()} objects`}><TypeGlyph type={type} colors={colors} size="sm" /><span className="type-strip-count" data-ui-number="">{count.toLocaleString()}</span><span className="type-strip-label">{typeLabel(type)}</span></button>)}</nav> : null}
-    {loading && !hasObjects ? <div className="overview-loading"><div className="skeleton skeleton-search" /><div className="skeleton skeleton-panel" /><p role="status" className="sr-only">{scanning ? "Scanning sources…" : "Loading project…"}</p></div> : !hasObjects ?
+    {hasObjects && typeCounts.length ? <nav className="type-strip" aria-label="Objects by type">{typeCounts.map(([type, count]) => <Tooltip key={type} content={`Browse ${count.toLocaleString()} ${typeLabel(type).toLowerCase()} objects`}><button type="button" className="type-strip-item" onClick={() => onBrowseType(type)}><TypeGlyph type={type} colors={colors} size="sm" /><span className="type-strip-count" data-ui-number="">{count.toLocaleString()}</span><span className="type-strip-label">{typeLabel(type)}</span></button></Tooltip>)}</nav> : null}
+    {loading && !hasObjects ? <div className="overview-loading"><Skeleton className="skeleton-search" /><Skeleton className="skeleton-panel" /><p role="status" className="sr-only">{scanning ? "Scanning sources…" : "Loading project…"}</p></div> : !hasObjects ?
       <div className="overview-grid">
         <Card className="project-start" role="region" aria-labelledby="project-start-title">
           <h2 id="project-start-title">{hasSources ? "Ready for the first scan" : "Add your project sources"}</h2>
@@ -1241,7 +1253,7 @@ function Overview({ overview, config, counts, colors, loading, projectName, onVi
                   <li key={node.id} className="widget-list-row">
                     <div className="widget-list-name">
                       <TypeGlyph type="MEASURE" colors={colors} size="xs" />
-                      <Button variant="link" size="sm" className="widget-link" onClick={() => onSelect(node.id, "inspector")} title={node.name}>
+                      <Button variant="link" size="sm" className="widget-link" onClick={() => onSelect(node.id, "inspector")} tooltip={node.name}>
                         {node.name}
                       </Button>
                     </div>
@@ -1268,7 +1280,7 @@ function Overview({ overview, config, counts, colors, loading, projectName, onVi
                   <li key={item.id || `${targetId}-${idx}`} className="widget-list-row">
                     <div className="widget-list-name">
                       <TypeGlyph type={targetNode?.type || "OBJECT"} colors={colors} size="xs" />
-                      <Button variant="link" size="sm" className="widget-link" onClick={() => onSelect(targetId, "inspector")} title={targetNode ? targetNode.name : targetId}>
+                      <Button variant="link" size="sm" className="widget-link" onClick={() => onSelect(targetId, "inspector")} tooltip={targetNode ? targetNode.name : targetId}>
                         {targetNode ? targetNode.name : targetId}
                       </Button>
                       <span className="badge-tag">{item.kind === "conflict" ? "conflict" : item.meaning || "suggestion"}</span>
@@ -1299,7 +1311,7 @@ function Overview({ overview, config, counts, colors, loading, projectName, onVi
                   <li key={entry.id} className="widget-list-row">
                     <div className="widget-list-name">
                       <TypeGlyph type={entry.type} colors={colors} size="xs" />
-                      <Button variant="link" size="sm" className="widget-link" onClick={() => onSelect(entry.targetId, "inspector")} title={entry.name}>
+                      <Button variant="link" size="sm" className="widget-link" onClick={() => onSelect(entry.targetId, "inspector")} tooltip={entry.name}>
                         {entry.name}
                       </Button>
                       <span className={`badge-tag badge-status-${entry.action}`}>{entry.action}</span>
@@ -1479,7 +1491,7 @@ function ConfigView({ transport, config, onSaved, onScan, scanning }) {
 function Inspector({ node, details, loading, error, snapshot, snapshotLoaded, snapshotError, overview, onSelect, onRetry, onEvidenceRetry, onReview, onGraph, colors, scanning, transport }) {
   const [activeEditId, setActiveEditId] = useState(null);
   if (error) return <Card className="panel inspector-state"><div className="empty-state tone-bad"><span className="empty-icon" aria-hidden="true"><TriangleAlert /></span><h2>Object unavailable</h2><p>{readableText(error)}</p><Button variant="outline" onClick={onRetry}><RefreshCw />Retry object</Button></div></Card>;
-  if (loading) return <div className="inspector-loading"><div className="skeleton skeleton-title" /><div className="skeleton-grid"><div className="skeleton skeleton-block" /><div className="skeleton skeleton-block" /></div><p role="status" className="loading-label">Loading object details…</p></div>;
+  if (loading) return <div className="inspector-loading"><Skeleton className="skeleton-title" /><div className="skeleton-grid"><Skeleton className="skeleton-block" /><Skeleton className="skeleton-block" /></div><p role="status" className="loading-label">Loading object details…</p></div>;
   if (!node) return <><PageHeading title="Select an object" description="Choose an object from Search or the graph." action={<Button onClick={onGraph}>Open graph</Button>} /></>;
   const connected = details?.edges || [];
   const outgoing = connected.filter((edge) => edge.from_id === node.id);
@@ -1509,10 +1521,10 @@ function Inspector({ node, details, loading, error, snapshot, snapshotLoaded, sn
         </Card>
         {expression ? <ExpressionBlock expression={formatValue(expression)} /> : null}
         <UsageRoles profile={details?.usage_roles} />
-        {candidates.length || warnings.length ? <details className="object-metadata object-review panel" open><summary><span>Review &amp; evidence</span><span className="summary-count">{candidates.length} suggestions{warnings.length ? ` · ${warnings.length} warnings` : ""}</span></summary>{candidates.map((item) => { const itemId = item.id || item.target || itemTarget(item); return <div className="object-review-item" key={itemId}><CandidateActions item={item} node={node} onReview={onReview} disabled={scanning} isEditing={activeEditId === itemId} onStartEdit={() => setActiveEditId(itemId)} onCancelEdit={() => setActiveEditId(null)} /><EvidenceCard item={item} /></div>; })}{warnings.map((warning) => <div className="warning-card" key={warning.id || formatEvidence(warning.reason)}><strong><TriangleAlert aria-hidden="true" />Conflict</strong><p>{formatEvidence(warning.reason || warning.message || warning.description || "Conflicting evidence needs review.")}</p></div>)}</details> : null}
+        {candidates.length || warnings.length ? <Disclosure title="Review & evidence" badge={`${candidates.length} suggestions${warnings.length ? ` · ${warnings.length} warnings` : ""}`} className="object-metadata object-review panel" defaultOpen>{candidates.map((item) => { const itemId = item.id || item.target || itemTarget(item); return <div className="object-review-item" key={itemId}><CandidateActions item={item} node={node} onReview={onReview} disabled={scanning} isEditing={activeEditId === itemId} onStartEdit={() => setActiveEditId(itemId)} onCancelEdit={() => setActiveEditId(null)} /><EvidenceCard item={item} /></div>; })}{warnings.map((warning) => <div className="warning-card" key={warning.id || formatEvidence(warning.reason)}><strong><TriangleAlert aria-hidden="true" />Conflict</strong><p>{formatEvidence(warning.reason || warning.message || warning.description || "Conflicting evidence needs review.")}</p></div>)}</Disclosure> : null}
         {snapshotError ? <div className="inline-error" role="alert"><p>{snapshotLoaded ? "Review evidence could not be refreshed. Showing last loaded evidence." : "Review evidence unavailable."} {readableText(snapshotError)}</p><Button variant="outline" size="sm" onClick={onEvidenceRetry}>Retry evidence</Button></div> : !snapshotLoaded ? <p className="muted-copy object-review" role="status">Loading review evidence…</p> : null}
-        {connected.some((edge) => !usageTypes.has(edge.type) && edge.type !== "OBSERVED_WITH") ? <details className="object-metadata object-other panel"><summary><span>Other relationships</span></summary><RelationshipGroup title="Connected objects" nodeId={node.id} edges={connected.filter((edge) => !usageTypes.has(edge.type) && edge.type !== "OBSERVED_WITH")} nodes={relatedNodes} onSelect={onSelect} empty="No other relationships." colors={colors} /></details> : null}
-        {observations.length ? <details className="object-metadata object-observed panel"><summary><span>Observed report usage</span><span className="summary-count">{observations.length}</span></summary>{observations.map((edge) => <div className="usage-row" key={edge.id}><span>{scopeName(edge.from_id === node.id ? edge.to_id : edge.from_id)}</span><strong>{formatValue(edge.properties?.count || edge.count || "observed")}</strong></div>)}<p className="footnote">Co-occurrence does not establish compatibility.</p></details> : null}
+        {connected.some((edge) => !usageTypes.has(edge.type) && edge.type !== "OBSERVED_WITH") ? <Disclosure title="Other relationships" className="object-metadata object-other panel"><RelationshipGroup title="Connected objects" nodeId={node.id} edges={connected.filter((edge) => !usageTypes.has(edge.type) && edge.type !== "OBSERVED_WITH")} nodes={relatedNodes} onSelect={onSelect} empty="No other relationships." colors={colors} /></Disclosure> : null}
+        {observations.length ? <Disclosure title="Observed report usage" badge={observations.length} className="object-metadata object-observed panel">{observations.map((edge) => <div className="usage-row" key={edge.id}><span>{scopeName(edge.from_id === node.id ? edge.to_id : edge.from_id)}</span><strong>{formatValue(edge.properties?.count || edge.count || "observed")}</strong></div>)}<p className="footnote">Co-occurrence does not establish compatibility.</p></Disclosure> : null}
       </div>
       <Card className="panel object-lineage">
         <h2 className="panel-title">Lineage &amp; usage</h2>
@@ -1530,10 +1542,10 @@ function Inspector({ node, details, loading, error, snapshot, snapshotLoaded, sn
 function UsageRoles({ profile }) {
   const facts = profile?.facts || [];
   if (!facts.length) return null;
-  return <details className="object-metadata object-usage-roles panel" open><summary><span>How it is used</span><span className="summary-count">{facts.length}</span></summary>
+  return <Disclosure title="How it is used" badge={facts.length} className="object-metadata object-usage-roles panel" defaultOpen>
     {facts.map((fact) => <div className="usage-row" key={`${fact.code}-${fact.text}`}><span>{fact.text}</span></div>)}
     <p className="footnote">{readableText(profile.basis)}</p>
-  </details>;
+  </Disclosure>;
 }
 
 function ExpressionBlock({ expression }) {
@@ -1788,7 +1800,7 @@ function ReviewQueue({ session, onSession, snapshot, loaded, loading, error, onR
           <Label className="select-field select-sort"><span>Sort</span><NativeSelect aria-label="Sort" value={sort} onChange={(event) => change({ sort: event.target.value })}><option value="confidence-high">Most certain first</option><option value="confidence-low">Least certain first</option><option value="impact-high">Highest impact first</option><option value="impact-low">Lowest impact first</option></NativeSelect></Label>
         </div>
         <Card className="panel queue-panel" aria-busy={loading}>
-          {loading ? <div className="queue-loading">{[0, 1, 2].map((index) => <div className="skeleton skeleton-row-item" key={index} />)}<p className="sr-only" role="status">Loading suggestions…</p></div> : filtered.length ? <>
+          {loading ? <div className="queue-loading">{[0, 1, 2].map((index) => <Skeleton className="skeleton-row-item" key={index} />)}<p className="sr-only" role="status">Loading suggestions…</p></div> : filtered.length ? <>
             <div className="review-columns" aria-hidden="true"><span>Object &amp; suggestion</span><span>Why review this?</span><span>Confidence</span><span>Decision</span></div>
             {issue === "low-evidence" ? (
               <div className="low-evidence-group" role="region" aria-label="Low evidence suggestions">

@@ -9,6 +9,7 @@ import { Menu } from "@/components/ui/menu";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Tooltip } from "@/components/ui/tooltip";
 import { useToast } from "@/components/ui/toast";
 import { errorCopy, t } from "../copy.js";
 import { useAction, useDevCenterState, useDevCenterStore, useResource } from "../useDevCenter.js";
@@ -201,7 +202,9 @@ export default function SessionList({
                     ) : null}
                     {row.schema_state !== "ok" && sessionPath ? (
                       <div className="dc-row-damaged-meta text-xs text-muted-foreground mt-0.5">
-                        <p className="dc-row-path font-mono text-xs truncate max-w-sm" title={sessionPath}>{sessionPath}</p>
+                        <Tooltip content={sessionPath}>
+                          <p className="dc-row-path font-mono text-xs truncate max-w-sm">{sessionPath}</p>
+                        </Tooltip>
                         <div className="dc-row-recovery-actions flex items-center gap-2 mt-1">
                           <button type="button" className="dc-link text-xs" onClick={(e) => { e.stopPropagation(); copyPath(sessionPath); }}>Copy path</button>
                           <span>·</span>

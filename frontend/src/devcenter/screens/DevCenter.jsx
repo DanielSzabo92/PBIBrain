@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { ChevronRight } from "lucide-react";
 import { ToastProvider, useToast } from "@/components/ui/toast";
 import { Skeleton } from "@/components/ui/result-panel";
+import { Breadcrumb, BreadcrumbList, BreadcrumbItem, BreadcrumbLink, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
 import { t } from "../copy.js";
 import { createDevCenterHttp } from "../httpClient.js";
 import { createDevCenterStore } from "../store.js";
@@ -186,16 +187,24 @@ function DevCenterScreens({ onOpenProject }) {
 
   return (
     <div className="dc-root">
-      <nav className="dc-breadcrumb" aria-label={t("work.breadcrumb")}>
-        <ol>
+      <Breadcrumb className="dc-breadcrumb" aria-label={t("work.breadcrumb")}>
+        <BreadcrumbList>
           {crumbs.map((crumb, index) => (
-            <li key={crumb.label + index}>
-              {index > 0 ? <ChevronRight aria-hidden="true" /> : null}
-              {crumb.onClick ? <button type="button" className="dc-link" onClick={crumb.onClick}>{crumb.label}</button> : <span aria-current={index === crumbs.length - 1 ? "page" : undefined}>{crumb.label}</span>}
-            </li>
+            <React.Fragment key={crumb.label + index}>
+              {index > 0 ? <BreadcrumbSeparator /> : null}
+              <BreadcrumbItem>
+                {crumb.onClick ? (
+                  <BreadcrumbLink asChild>
+                    <button type="button" className="dc-link" onClick={crumb.onClick}>{crumb.label}</button>
+                  </BreadcrumbLink>
+                ) : (
+                  <BreadcrumbPage>{crumb.label}</BreadcrumbPage>
+                )}
+              </BreadcrumbItem>
+            </React.Fragment>
           ))}
-        </ol>
-      </nav>
+        </BreadcrumbList>
+      </Breadcrumb>
       {view === "list" ? (
         <SessionList
           banner={listBanner}

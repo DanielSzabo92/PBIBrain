@@ -6,6 +6,7 @@ import { Notice } from "@/components/ui/notice";
 import { EmptyState, Skeleton } from "@/components/ui/result-panel";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { Tooltip } from "@/components/ui/tooltip";
 import { useToast } from "@/components/ui/toast";
 import { errorCopy, t } from "../../copy.js";
 import { normalizeError } from "../../errors.js";
@@ -306,7 +307,9 @@ export default function PlanTab({ session, changeDisabled, reasonId, onTabs, onC
       <section className="dc-plan-strip" aria-label="Plan status">
         <div className="dc-plan-strip-main">
           <StatusBadge tone={strip.badgeTone} label={strip.badgeLabel} />
-          <span className="dc-plan-strip-body" title={t("plan.strip.full_check.tooltip")}>{strip.body}</span>
+          <Tooltip content={t("plan.strip.full_check.tooltip")}>
+            <span className="dc-plan-strip-body">{strip.body}</span>
+          </Tooltip>
         </div>
         <div className="dc-plan-strip-actions" data-ui-actions="">
           {strip.reason ? (

@@ -1,5 +1,6 @@
 import * as React from "react"
-import { CircleCheck, Info, TriangleAlert, X } from "lucide-react"
+import { CircleCheck, Info, TriangleAlert } from "lucide-react"
+import { Toaster as SonnerToaster, toast as sonnerToast } from "sonner"
 import { cn } from "@/lib/utils"
 
 const ICONS = { ok: CircleCheck, info: Info, warn: TriangleAlert }
@@ -8,8 +9,7 @@ export const TOAST_MIN_MS = 8000
 
 const ToastContext = React.createContext(null)
 
-// Toast (UI design 6.1, A11, A23): one polite live region for all toasts. A toast never takes
-// focus by itself, and it never holds the only copy of a needed action or of a blocking error.
+// Toast (UI design 6.1, A11, A23): unified on single Sonner toaster.
 function ToastProvider({ children, duration = TOAST_MIN_MS }) {
   const existing = React.useContext(ToastContext)
   if (existing) {
@@ -18,76 +18,55 @@ function ToastProvider({ children, duration = TOAST_MIN_MS }) {
   return <ToastRoot duration={duration}>{children}</ToastRoot>
 }
 
-function ToastRoot({ children, duration }) {
-  const [toasts, setToasts] = React.useState([])
-  const next = React.useRef(0)
-  const dismiss = React.useCallback((id) => setToasts((list) => list.filter((toast) => toast.id !== id)), [])
-  const show = React.useCallback((toast) => {
-    next.current += 1
-    const id = next.current
-    setToasts((list) => [...list, { tone: "ok", ...toast, id }])
-    return id
+function ToastRoot({ children, duration = TOAST_MIN_MS }) {
+  const dismiss = React.useCallback((id) => {
+    sonnerToast.dismiss(id)
   }, [])
+
+  const show = React.useCallback((t) => {
+    const tone = t.tone || "ok"
+    const text = t.text || t.title || ""
+    const opts = {
+      duration: Math.max(t.duration || duration, TOAST_MIN_MS),
+      action: t.action ? {
+        label: t.action.label,
+        onClick: (event) => t.action.onClick?.(event),
+      } : undefined,
+    }
+    if (tone === "bad" || tone === "error") {
+      return sonnerToast.error(text, opts)
+    }
+    if (tone === "warn" || tone === "warning") {
+      return sonnerToast.warning(text, opts)
+    }
+    if (tone === "info") {
+      return sonnerToast.info(text, opts)
+    }
+    return sonnerToast.success(text, opts)
+  }, [duration])
+
   const value = React.useMemo(() => ({ show, dismiss }), [show, dismiss])
+
   return (
     <ToastContext.Provider value={value}>
       {children}
-      <div className="ui-toast-region" role="status" aria-live="polite" aria-label="Notifications">
-        {toasts.map((toast) => <ToastItem key={toast.id} toast={toast} duration={Math.max(duration, TOAST_MIN_MS)} dismiss={dismiss} />)}
-      </div>
+      <SonnerToaster
+        className="toaster group"
+        richColors
+        duration={duration}
+        toastOptions={{
+          classNames: {
+            toast:
+              "group toast group-[.toaster]:bg-[var(--surface-3)] group-[.toaster]:text-[var(--text)] group-[.toaster]:border-[var(--line-strong)] group-[.toaster]:shadow-lg group-[.toaster]:rounded-md",
+            description: "group-[.toast]:text-[var(--text-2)]",
+            actionButton:
+              "group-[.toast]:bg-[var(--surface-2)] group-[.toast]:text-[var(--text)] group-[.toast]:border group-[.toast]:border-[var(--control-border)]",
+            cancelButton:
+              "group-[.toast]:bg-[var(--surface-2)] group-[.toast]:text-[var(--text-2)]",
+          },
+        }}
+      />
     </ToastContext.Provider>
-  )
-}
-
-function ToastItem({ toast, duration, dismiss }) {
-  const [held, setHeld] = React.useState(false)
-  const [exiting, setExiting] = React.useState(false)
-  const remaining = React.useRef(duration)
-
-  const onDismiss = React.useCallback(() => {
-    setExiting(true)
-    const timer = setTimeout(() => {
-      dismiss(toast.id)
-    }, 180)
-    return () => clearTimeout(timer)
-  }, [dismiss, toast.id])
-
-  React.useEffect(() => {
-    if (held || exiting) return undefined
-    const started = Date.now()
-    const timer = setTimeout(onDismiss, remaining.current)
-    return () => {
-      clearTimeout(timer)
-      remaining.current = Math.max(remaining.current - (Date.now() - started), 0)
-    }
-  }, [held, exiting, onDismiss])
-
-  const Icon = ICONS[toast.tone] || Info
-  return (
-    <div
-      className={cn("ui-toast", exiting && "ui-toast-out")}
-      data-tone={toast.tone}
-      onPointerEnter={() => setHeld(true)}
-      onPointerLeave={() => setHeld(false)}
-      onFocus={() => setHeld(true)}
-      onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setHeld(false) }}>
-      <Icon className="ui-toast-icon" aria-hidden="true" />
-      <p className="ui-toast-text">{toast.text}</p>
-      {toast.action ? (
-        <button
-          type="button"
-          className="ui-toast-action"
-          onClick={() => {
-            toast.action.onClick?.()
-            onDismiss()
-          }}>
-          {toast.action.label}
-        </button>
-      ) : null}
-      <button type="button" className="ui-toast-close" aria-label="Close notification" onClick={onDismiss}>
-        <X aria-hidden="true" />
-      </button>
-    </div>
   )
 }
 
@@ -97,5 +76,6 @@ function useToast() {
   return context
 }
 
+export const toast = sonnerToast
 export const Toaster = ToastProvider
 export { ToastProvider, useToast }

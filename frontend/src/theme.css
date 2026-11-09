@@ -59,6 +59,8 @@
   --r-xs: 4px;
   --r-sm: 6px;
   --r-md: 8px;
+  --r-full: 9999px;
+  --radius-full: 9999px;
 
   /*
    * Type scale (dense desktop data tool). Seven steps, every font-size in the app uses one of them;
@@ -162,6 +164,22 @@
   --graph-structure: #4a4d55;
   --minimap-mask: rgb(14 14 16 / 0.78);
   --code-bg: #121214;
+  --artifact-report: #a78bfa;
+  --artifact-model: #60a5fa;
+  --artifact-other: #94a3b8;
+  --group-report: var(--artifact-report);
+  --group-model: var(--artifact-model);
+  --group-other: var(--artifact-other);
+  --edge-depends-on: #8cb9ff;
+  --edge-references: #83d7bd;
+  --edge-uses: #e8b879;
+  --edge-controlled-by: #de9cff;
+  --edge-observed-with: #8997a7;
+
+  /* Controls */
+  --switch-track: var(--surface-3);
+  --switch-thumb-off: var(--text-2);
+  --switch-thumb-on: var(--brand-ink);
 
   /* shadcn primitives map onto the tokens above */
   --background: var(--bg);
@@ -267,6 +285,17 @@
   --graph-structure: #c2c3c6;
   --minimap-mask: rgb(247 247 245 / 0.75);
   --code-bg: #fafaf8;
+  --artifact-report: #7c4fc4;
+  --artifact-model: #2563c9;
+  --artifact-other: #7a7163;
+  --edge-depends-on: #2563c9;
+  --edge-references: #0e8273;
+  --edge-uses: #a45d00;
+  --edge-controlled-by: #7c4fc4;
+  --edge-observed-with: #5d6b80;
+  --switch-track: #e2e2dd;
+  --switch-thumb-off: #ffffff;
+  --switch-thumb-on: var(--brand-ink);
 
   color-scheme: light;
 }

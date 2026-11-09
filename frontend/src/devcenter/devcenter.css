@@ -76,8 +76,8 @@
 .ui-option-warn svg { width: 12px; height: 12px; }
 
 /* ---------- Combobox ---------------------------------------------------- */
-.ui-combobox { position: relative; min-width: 220px; }
-.ui-combobox-input { height: var(--control-h); padding-right: 28px; }
+.ui-combobox { position: relative; min-width: 220px; width: 100%; }
+.ui-combobox-input { width: 100%; height: var(--control-h); padding-right: 28px; }
 .ui-combobox-input:hover { border-color: var(--text-3); }
 .ui-combobox-input[aria-invalid="true"] { border-color: var(--bad); }
 .ui-combobox-chevron { position: absolute; top: 9px; right: 8px; width: 16px; height: 16px; color: var(--text-2); pointer-events: none; }
@@ -136,12 +136,17 @@
 .ui-switch-field { display: flex; align-items: flex-start; gap: 10px; }
 .ui-switch-text { display: flex; flex-direction: column; gap: 2px; font-size: var(--fs-body); }
 .ui-switch-text small { color: var(--text-2); font-size: var(--fs-meta); }
-.ui-switch { position: relative; flex: none; width: 40px; height: 24px; margin-top: 0; padding: 0; border: 1px solid var(--control-border); border-radius: 99px; background: var(--surface-3); cursor: pointer; }
+.ui-switch { position: relative; flex: none; width: 40px; height: 24px; margin-top: 0; padding: 0; border: 1px solid var(--control-border); border-radius: var(--radius-full, 99px); background: var(--switch-track, var(--surface-3)); cursor: pointer; transition: background-color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out); }
 .ui-switch:hover { border-color: var(--text-2); }
 .ui-switch[data-state="checked"] { background: var(--brand); border-color: var(--brand); }
 .ui-switch:disabled { opacity: var(--disabled-opacity); cursor: not-allowed; }
-.ui-switch-thumb { display: block; width: 18px; height: 18px; border-radius: 99px; background: var(--text-2); transform: translateX(2px); transition: transform var(--dur-fast) var(--ease-out); }
-.ui-switch[data-state="checked"] .ui-switch-thumb { background: var(--brand-ink); transform: translateX(18px); }
+.ui-switch-thumb { display: block; width: 18px; height: 18px; border-radius: var(--radius-full, 99px); background: var(--switch-thumb-off, var(--text-2)); box-shadow: var(--shadow-sm); transform: translateX(2px); transition: transform var(--dur-fast) var(--ease-out), background-color var(--dur-fast) var(--ease-out); }
+.ui-switch[data-state="checked"] .ui-switch-thumb { background: var(--switch-thumb-on, var(--brand-ink)); transform: translateX(18px); }
+:root[data-theme="light"] .ui-switch:not([data-state="checked"]) .ui-switch-thumb,
+.light .ui-switch:not([data-state="checked"]) .ui-switch-thumb {
+  background: var(--surface);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15), 0 0 1px rgba(0, 0, 0, 0.1);
+}
 
 /* ---------- ChoiceRadio ------------------------------------------------- */
 .ui-choice { min-width: 0; margin: 0; padding: 0; border: 0; }

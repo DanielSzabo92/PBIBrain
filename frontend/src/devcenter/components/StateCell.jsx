@@ -4,6 +4,7 @@ import React from "react";
 import { ArrowRightLeft, Circle, CircleDashed, Equal, EqualNot, OctagonAlert, PenLine, Target } from "lucide-react";
 import { t } from "../copy.js";
 import { phraseText } from "../phrases.js";
+import { Tooltip } from "../../components/ui/tooltip.jsx";
 
 export const STATE_ICONS = {
   conflict: OctagonAlert,
@@ -29,6 +30,17 @@ export function stateWord(state) {
   return t(`compare.state.${key}`) || (key === "not_checked" ? "Not checked" : key);
 }
 
+// Consistent tone mapping across grid and row pane (UI design 7.2)
+export function stateTone(state) {
+  const key = normalizeState(state);
+  if (key === "conflict" || key === "type_conflict") return "bad";
+  if (key === "same") return "ok";
+  if (key === "renamed" || key === "moved") return "info";
+  if (key === "different") return "warn";
+  if (key === "missing" || key === "not_checked") return "plain";
+  return "warn";
+}
+
 export default function StateCell({ cell, sourceName, onOpenDiff, loading = false }) {
   if (loading) {
     return <span className="dc-skel-line" aria-hidden="true" />;
@@ -38,10 +50,12 @@ export default function StateCell({ cell, sourceName, onOpenDiff, loading = fals
     const word = stateWord("not_checked");
     const Icon = STATE_ICONS.not_checked || CircleDashed;
     return (
-      <span className="dc-st dc-st-not-checked" title={sourceName ? `${sourceName}: ${word}` : word}>
-        <Icon aria-hidden="true" />
-        <span>{word}</span>
-      </span>
+      <Tooltip content={sourceName ? `${sourceName}: ${word}` : word}>
+        <span className="dc-st dc-st-not-checked">
+          <Icon aria-hidden="true" />
+          <span>{word}</span>
+        </span>
+      </Tooltip>
     );
   }
 
@@ -76,25 +90,33 @@ export default function StateCell({ cell, sourceName, onOpenDiff, loading = fals
   }
   const tooltipText = tooltipLines.join("\n");
 
-  return (
+  const cellContent = (
     <span
       className={`dc-st dc-st-${state}`}
-      title={tooltipText || undefined}
       onDoubleClick={state !== "same" && onOpenDiff ? onOpenDiff : undefined}
     >
       <Icon aria-hidden="true" />
       {state === "target" ? <span className="sr-only">{word}</span> : <span>{word}</span>}
       {propertyCount > 0 ? (
-        <span className="dc-st-count" title={`${propertyCount} differences`}>
-          ({propertyCount})
-        </span>
+        <Tooltip content={`${propertyCount} differences`}>
+          <span className="dc-st-count">
+            ({propertyCount})
+          </span>
+        </Tooltip>
       ) : null}
       {hasChanged ? (
-        <span className="dc-st-changed" title={t("compare.changed.title")}>
-          <Circle aria-hidden="true" />
-          <span className="sr-only">{t("compare.changed")}</span>
-        </span>
+        <Tooltip content={t("compare.changed.title")}>
+          <span className="dc-st-changed">
+            <Circle aria-hidden="true" />
+            <span className="sr-only">{t("compare.changed")}</span>
+          </span>
+        </Tooltip>
       ) : null}
     </span>
   );
+
+  if (tooltipText) {
+    return <Tooltip content={<span style={{ whiteSpace: "pre-line" }}>{tooltipText}</span>}>{cellContent}</Tooltip>;
+  }
+  return cellContent;
 }

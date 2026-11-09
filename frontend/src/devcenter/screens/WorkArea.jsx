@@ -111,12 +111,12 @@ export default function WorkArea({ session, tabState, onTabs, onRetryLock, onClo
       <div className="dc-banner-actions-group flex items-center gap-2">
         <Button variant="outline" size="sm" onClick={onRetryLock} disabled={longBusy}>{t("shared.locked.action")}</Button>
         {sessionPath ? (
-          <Button variant="outline" size="sm" onClick={handleCopyPath} title="Copy session path">
+          <Button variant="outline" size="sm" onClick={handleCopyPath} tooltip="Copy session path">
             <Copy className="size-3.5" aria-hidden="true" />
             <span>Copy path</span>
           </Button>
         ) : null}
-        <Button variant="outline" size="sm" onClick={() => setDeleteOpen(true)} title="Delete session">
+        <Button variant="outline" size="sm" onClick={() => setDeleteOpen(true)} tooltip="Delete session">
           <Trash2 className="size-3.5" aria-hidden="true" />
           <span>Delete session</span>
         </Button>

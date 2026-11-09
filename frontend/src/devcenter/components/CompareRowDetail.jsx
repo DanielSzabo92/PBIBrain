@@ -25,6 +25,7 @@ import {
 import { Notice } from "@/components/ui/notice";
 import { Select } from "@/components/ui/select";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { Tooltip } from "@/components/ui/tooltip";
 import { useToast } from "@/components/ui/toast";
 import { errorCopy, t } from "../copy.js";
 import { formatDaxName, formatObjectRef, phraseText } from "../phrases.js";
@@ -33,7 +34,7 @@ import { useAction, useResource } from "../useDevCenter.js";
 import NameField from "./NameField.jsx";
 import ProposalCard from "./ProposalCard.jsx";
 import QuestionCard from "./QuestionCard.jsx";
-import { STATE_ICONS, normalizeState, stateWord } from "./StateCell.jsx";
+import { STATE_ICONS, normalizeState, stateTone, stateWord } from "./StateCell.jsx";
 import {
   buildMergeChoiceSpec,
   buildPropertyPickerItems,
@@ -315,7 +316,6 @@ export default function CompareRowDetail({
             size="icon"
             onClick={onClose}
             aria-label={t("row.close")}
-            title={t("row.close")}
           >
             <X className="w-4 h-4" />
           </Button>
@@ -928,13 +928,7 @@ export default function CompareRowDetail({
             </span>
             {row.display_folder ? <span>({row.display_folder})</span> : null}
             <StatusBadge
-              tone={
-                row.row_state === "conflict" || row.row_state === "type_conflict"
-                  ? "bad"
-                  : row.row_state === "same"
-                    ? "ok"
-                    : "warn"
-              }
+              tone={stateTone(row.row_state)}
               label={stateWord(row.row_state)}
               description={
                 row.row_state === "conflict" || row.row_state === "type_conflict"
@@ -951,7 +945,6 @@ export default function CompareRowDetail({
             size="icon-sm"
             disabled={!canPrevious}
             aria-label={t("row.previous")}
-            title={t("row.previous")}
             onClick={onPreviousRow}
           >
             <ChevronLeft className="w-4 h-4" />
@@ -962,7 +955,6 @@ export default function CompareRowDetail({
             size="icon-sm"
             disabled={!canNext}
             aria-label={t("row.next")}
-            title={t("row.next")}
             onClick={onNextRow}
           >
             <ChevronRight className="w-4 h-4" />
@@ -974,7 +966,6 @@ export default function CompareRowDetail({
             size="icon-sm"
             onClick={onClose}
             aria-label={t("row.close")}
-            title={t("row.close")}
           >
             <X className="w-4 h-4" />
           </Button>
@@ -1347,10 +1338,12 @@ export default function CompareRowDetail({
                   <Icon aria-hidden="true" />
                   <span>{word}</span>
                   {cell?.changed ? (
-                    <span className="dc-st-changed" title={t("compare.changed.title")}>
-                      <Circle aria-hidden="true" />
-                      <span className="sr-only">{t("compare.changed")}</span>
-                    </span>
+                    <Tooltip content={t("compare.changed.title")}>
+                      <span className="dc-st-changed">
+                        <Circle aria-hidden="true" />
+                        <span className="sr-only">{t("compare.changed")}</span>
+                      </span>
+                    </Tooltip>
                   ) : null}
                 </span>
               </div>

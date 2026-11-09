@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { FilterButton, FilterChip } from "@/components/ui/filter";
 import { EmptyState } from "@/components/ui/result-panel";
 import { SegmentedControl } from "@/components/ui/segmented-control";
+import { Tooltip } from "@/components/ui/tooltip";
 import { useToast } from "@/components/ui/toast";
 import { t, tn } from "../copy.js";
 import { createDevCenterHttp } from "../httpClient.js";
@@ -1139,17 +1140,18 @@ export default function CompareGrid({
           onFocus={() => handleCellFocus(rowIndex, 2)}
           onClick={() => openPaneByClick(row.row_key)}
         >
-          <span
-            className={`dc-st dc-st-${state}`}
-            title={state === "type_conflict" ? t("compare.state.type_conflict.help") : undefined}
-          >
-            <StateIcon aria-hidden="true" />
-            <span>{label}</span>
-          </span>
-          {extraCount > 0 ? (
-            <span className="dc-st-count" title="More states in this row">
-              +{extraCount}
+          <Tooltip content={state === "type_conflict" ? t("compare.state.type_conflict.help") : null}>
+            <span className={`dc-st dc-st-${state}`}>
+              <StateIcon aria-hidden="true" />
+              <span>{label}</span>
             </span>
+          </Tooltip>
+          {extraCount > 0 ? (
+            <Tooltip content="More states in this row">
+              <span className="dc-st-count">
+                +{extraCount}
+              </span>
+            </Tooltip>
           ) : null}
         </div>
       );
@@ -1228,13 +1230,17 @@ export default function CompareGrid({
                 Saved · <button type="button" className="dc-link dc-mc-undo-btn" onClick={(e) => { e.stopPropagation(); handleUndoSingle(row.row_key); }}>Undo</button>
               </span>
             ) : choiceKind && !["keep", "take", "skip"].includes(choiceKind) ? (
-              <span className="dc-mc-custom-label" title={mc}>{mc}</span>
+              <Tooltip content={mc}>
+                <span className="dc-mc-custom-label">{mc}</span>
+              </Tooltip>
             ) : null}
             {badge ? (
-              <span className={`dc-badge ${badge.className}`} title={badge.tooltip} data-badge={badge.kind}>
-                {badge.kind === "mark" ? <Flag aria-hidden="true" /> : null}
-                <span>{badge.label}</span>
-              </span>
+              <Tooltip content={badge.tooltip}>
+                <span className={`dc-badge ${badge.className}`} data-badge={badge.kind}>
+                  {badge.kind === "mark" ? <Flag aria-hidden="true" /> : null}
+                  <span>{badge.label}</span>
+                </span>
+              </Tooltip>
             ) : null}
           </div>
         </div>
@@ -1260,10 +1266,12 @@ export default function CompareGrid({
           onClick={isMissing ? undefined : () => openPaneByClick(row.row_key)}
         >
           {isMissing ? (
-            <span className="dc-st dc-st-missing" title={`${targetSource?.display_name || "Target"}: Not found`}>
-              <CircleDashed aria-hidden="true" />
-              <span>Not found</span>
-            </span>
+            <Tooltip content={`${targetSource?.display_name || "Target"}: Not found`}>
+              <span className="dc-st dc-st-missing">
+                <CircleDashed aria-hidden="true" />
+                <span>Not found</span>
+              </span>
+            </Tooltip>
           ) : (
             <StateCell cell={targetCell} sourceName={targetSource?.display_name || "Target"} />
           )}
@@ -1297,10 +1305,12 @@ export default function CompareGrid({
           onClick={isMissing ? undefined : () => openPaneByClick(row.row_key)}
         >
           {isMissing ? (
-            <span className="dc-st dc-st-missing" title={`${donor.display_name || donor.name}: Not found`}>
-              <CircleDashed aria-hidden="true" />
-              <span>Not found</span>
-            </span>
+            <Tooltip content={`${donor.display_name || donor.name}: Not found`}>
+              <span className="dc-st dc-st-missing">
+                <CircleDashed aria-hidden="true" />
+                <span>Not found</span>
+              </span>
+            </Tooltip>
           ) : (
             <StateCell
               cell={cell}
@@ -1404,20 +1414,22 @@ export default function CompareGrid({
         />
       ) : (
         <div className="dc-toolbar" data-ui-actions="" role="toolbar" aria-label="Filters">
-          <label className="dc-search" title="Search names (/)">
-            <Search className="dc-search-icon" aria-hidden="true" />
-            <input
-              ref={searchInputRef}
-              id="q"
-              type="search"
-              className="dc-search-input"
-              placeholder={t("compare.search")}
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              aria-keyshortcuts="/"
-              aria-label={t("compare.search")}
-            />
-          </label>
+          <Tooltip content="Search names (/)">
+            <label className="dc-search">
+              <Search className="dc-search-icon" aria-hidden="true" />
+              <input
+                ref={searchInputRef}
+                id="q"
+                type="search"
+                className="dc-search-input"
+                placeholder={t("compare.search")}
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                aria-keyshortcuts="/"
+                aria-label={t("compare.search")}
+              />
+            </label>
+          </Tooltip>
 
           <FilterButton
             label={t("compare.filter.state")}
@@ -1464,7 +1476,7 @@ export default function CompareGrid({
             data-active={changedFilter || undefined}
             onClick={() => setChangedFilter((v) => !v)}
             aria-pressed={changedFilter}
-            title={t("compare.filter.changed.help")}
+            tooltip={t("compare.filter.changed.help")}
           >
             {t("compare.filter.changed")}
           </Button>
@@ -1671,15 +1683,15 @@ export default function CompareGrid({
                     {donors.map((donor, dIdx) => {
                       const isMissing = donor?.status === "missing";
                       return (
-                        <div
-                          key={donor.source_id}
-                          className={`dc-hcell ${isMissing ? "dc-hcell-missing" : ""}`}
-                          role="columnheader"
-                          aria-colindex={6 + dIdx}
-                          title={isMissing ? `${donor.display_name || donor.name}: Not found` : undefined}
-                        >
-                          <span>{donor.display_name || donor.name}{isMissing ? " (Not found)" : ""}</span>
-                        </div>
+                        <Tooltip key={donor.source_id} content={isMissing ? `${donor.display_name || donor.name}: Not found` : null}>
+                          <div
+                            className={`dc-hcell ${isMissing ? "dc-hcell-missing" : ""}`}
+                            role="columnheader"
+                            aria-colindex={6 + dIdx}
+                          >
+                            <span>{donor.display_name || donor.name}{isMissing ? " (Not found)" : ""}</span>
+                          </div>
+                        </Tooltip>
                       );
                     })}
 

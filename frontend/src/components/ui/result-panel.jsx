@@ -38,14 +38,6 @@ function EmptyState({ icon: Icon = Inbox, title, children, action, variant = "de
   )
 }
 
-// Skeleton (UI design 6.1): surface-3 bars. The region has aria-busy and a visible status text.
-function Skeleton({ lines = 3, label = "Loading", className }) {
-  return (
-    <div data-slot="skeleton" aria-busy="true" className={cn("ui-skeleton", className)}>
-      <p className="ui-skeleton-status" role="status">{label}</p>
-      {Array.from({ length: lines }, (_, index) => <span key={index} className="ui-skeleton-bar" aria-hidden="true" />)}
-    </div>
-  )
-}
+import { Skeleton } from "./skeleton"
 
 export { ResultPanel, EmptyState, Skeleton }

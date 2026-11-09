@@ -10,6 +10,7 @@ import { Notice } from "@/components/ui/notice";
 import { EmptyState } from "@/components/ui/result-panel";
 import { Select } from "@/components/ui/select";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { Tooltip } from "@/components/ui/tooltip";
 import { useToast } from "@/components/ui/toast";
 import { errorCopy, t } from "../../copy.js";
 import { normalizeError } from "../../errors.js";
@@ -314,15 +315,16 @@ function ProposalRow({ proposal, checked, onCheck, failedError, disabled, reason
       <td className="dc-agent-change">{proposal.summary}</td>
       <td className="dc-agent-col-conf">{confidenceText(proposal.confidence)}</td>
       <td>
-        <button
-          type="button"
-          className="dc-agent-reason"
-          data-expanded={expanded || undefined}
-          aria-expanded={expanded}
-          title={expanded ? undefined : t("agent.reason.show")}
-          onClick={() => setExpanded((value) => !value)}>
-          {proposal.reason}
-        </button>
+        <Tooltip content={expanded ? null : t("agent.reason.show")}>
+          <button
+            type="button"
+            className="dc-agent-reason"
+            data-expanded={expanded || undefined}
+            aria-expanded={expanded}
+            onClick={() => setExpanded((value) => !value)}>
+            {proposal.reason}
+          </button>
+        </Tooltip>
       </td>
       <td className="dc-agent-from">{fromText(proposal)}</td>
       <td>

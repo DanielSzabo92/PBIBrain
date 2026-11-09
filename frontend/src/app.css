@@ -1433,7 +1433,7 @@ td:hover > .mx-mark { transform: scale(1.2); }
 /* Lane chips: the lineage lanes in dependency order, each a toggle (Lineage and Matrix). */
 .lane-chips { display: flex; flex: none; flex-wrap: wrap; align-items: center; gap: 2px 2px; min-width: 0; padding: 0 2px; }
 .lane-chip {
-  display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 8px 0 5px; border: 1px solid var(--line); border-radius: 13px;
+  display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 8px 0 5px; border: 1px solid var(--line); border-radius: var(--radius-full);
   background: var(--surface); color: var(--text); font-size: var(--fs-meta); font-weight: 500; cursor: pointer;
   transition: background-color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out), opacity var(--dur-fast) var(--ease-out);
 }

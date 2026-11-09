@@ -1,7 +1,7 @@
 export const ARTIFACT_GROUPS = {
-  report: { label: "Report objects", color: "#a78bfa", types: ["REPORT", "PAGE", "VISUAL", "VISUAL_CALCULATION", "VISUAL_FILTER", "PAGE_FILTER", "REPORT_FILTER"] },
-  model: { label: "Model objects", color: "#60a5fa", types: ["MODEL", "TABLE", "COLUMN", "MEASURE", "RELATIONSHIP", "FIELD_PARAMETER", "SHARED_EXPRESSION", "USER_DEFINED_FUNCTION", "CALCULATION_GROUP", "CALCULATION_ITEM", "PARTITION"] },
-  other: { label: "Other objects", color: "#94a3b8", types: ["DATA_SOURCE", "WORKSPACE", "BUSINESS_CONCEPT", "SELECTOR", "SELECTOR_OPTION", "CONFLICT", "SEMANTIC_ASSERTION", "ALIAS", "ROLE", "BEHAVIOR"] },
+  report: { label: "Report objects", color: "var(--artifact-report, #a78bfa)", types: ["REPORT", "PAGE", "VISUAL", "VISUAL_CALCULATION", "VISUAL_FILTER", "PAGE_FILTER", "REPORT_FILTER"] },
+  model: { label: "Model objects", color: "var(--artifact-model, #60a5fa)", types: ["MODEL", "TABLE", "COLUMN", "MEASURE", "RELATIONSHIP", "FIELD_PARAMETER", "SHARED_EXPRESSION", "USER_DEFINED_FUNCTION", "CALCULATION_GROUP", "CALCULATION_ITEM", "PARTITION"] },
+  other: { label: "Other objects", color: "var(--artifact-other, #94a3b8)", types: ["DATA_SOURCE", "WORKSPACE", "BUSINESS_CONCEPT", "SELECTOR", "SELECTOR_OPTION", "CONFLICT", "SEMANTIC_ASSERTION", "ALIAS", "ROLE", "BEHAVIOR"] },
 };
 
 
@@ -62,7 +62,8 @@ export function normalizeColors(value) {
       if (typeof color === "string" && /^#[0-9a-f]{6}$/i.test(color)) target[key] = color.toLowerCase();
     }
   }
-  const legacy = ["#a78bfa", "#60a5fa", "#94a3b8"].every((color, index) => Object.values(groups)[index] === color);
+  const legacy = ["#a78bfa", "#60a5fa", "#94a3b8"].every((color, index) => Object.values(groups)[index] === color)
+    || ["var(--artifact-report, #a78bfa)", "var(--artifact-model, #60a5fa)", "var(--artifact-other, #94a3b8)"].every((color, index) => Object.values(groups)[index] === color);
   if ((!Object.keys(types).length && legacy)) return { groups: { ...DEFAULT_PALETTE.groups }, types: { ...DEFAULT_PALETTE.types } };
   return { groups, types };
 }

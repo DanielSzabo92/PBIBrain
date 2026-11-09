@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Check, ChevronRight, RotateCcw } from "lucide-react";
 import { Button } from "./ui/button";
+import { Disclosure } from "./ui/collapsible";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
@@ -63,7 +64,7 @@ export default function GraphColors({ config, transport, overview, onSaved }) {
         <div className="color-preview" role="img" aria-label="Graph color preview">
           {["TABLE", "COLUMN", "MEASURE", "REPORT", "PAGE", "VISUAL"].map((type, index, list) => <React.Fragment key={type}><div className="color-preview-node" style={{ "--artifact-color": typeColor(type) }}><span className="artifact-dot" /><span>{typeLabel(type)}</span></div>{index < list.length - 1 ? <ChevronRight className="preview-arrow" aria-hidden="true" /> : null}</React.Fragment>)}
         </div>
-        <details className="customize-colors"><summary>Customize colors</summary>
+        <Disclosure title="Customize colors" className="customize-colors">
         <Tabs defaultValue="report">
           <TabsList aria-label="Object color groups" className="color-tabs">
             {Object.entries(ARTIFACT_GROUPS).map(([key, group]) => <TabsTrigger key={key} value={key}><span className="artifact-dot" style={{ backgroundColor: draft.groups[key] }} />{group.label.replace(/ (?:artifacts|objects)/, "")}</TabsTrigger>)}
@@ -77,12 +78,12 @@ export default function GraphColors({ config, transport, overview, onSaved }) {
               {[...group.types, ...(key === "other" ? extraTypes : [])].map((type) => <div className="type-color-row" key={type}>
                 <div><Label>{typeLabel(type)}</Label><span className={`color-inheritance ${draft.types[type] ? "is-custom" : ""}`}>{draft.types[type] ? "Custom color" : "Group color"}</span></div>
                 <ColorInput label={typeLabel(type)} color={draft.types[type] || draft.groups[key]} onChange={(color) => change("types", type, color)} />
-                <Button variant="ghost" size="icon-sm" aria-label={`Reset ${typeLabel(type)} color`} title="Use group color" disabled={!draft.types[type]} onClick={() => resetType(type)}><RotateCcw /></Button>
+                <Button variant="ghost" size="icon-sm" aria-label={`Reset ${typeLabel(type)} color`} tooltip="Use group color" disabled={!draft.types[type]} onClick={() => resetType(type)}><RotateCcw /></Button>
               </div>)}
             </div>
           </TabsContent>)}
         </Tabs>
-        </details>
+        </Disclosure>
         <div className="settings-actions" data-ui-actions="">
           <Button
             onClick={save}

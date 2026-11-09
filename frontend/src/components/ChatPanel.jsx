@@ -18,8 +18,12 @@ function Inline({ tokens, onObject, onGraph }) {
     if (token.type === "object") {
       return (
         <span key={index} className="chat-object">
-          <button type="button" className="chat-object-link" title={`Open ${token.id} in the Inspector`} onClick={() => onObject(token.id)}>{token.text}</button>
-          <button type="button" className="chat-object-graph" aria-label={`Show ${token.text} in the graph`} title="Show its lineage in the graph" onClick={() => onGraph(token.id)}><GitBranch aria-hidden="true" /></button>
+          <Tooltip content={`Open ${token.id} in the Inspector`}>
+            <button type="button" className="chat-object-link" onClick={() => onObject(token.id)}>{token.text}</button>
+          </Tooltip>
+          <Tooltip content="Show its lineage in the graph">
+            <button type="button" className="chat-object-graph" aria-label={`Show ${token.text} in the graph`} onClick={() => onGraph(token.id)}><GitBranch aria-hidden="true" /></button>
+          </Tooltip>
         </span>
       );
     }

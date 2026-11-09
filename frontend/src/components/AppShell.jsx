@@ -81,7 +81,7 @@ export function AppMenuBar({ menus, projectName, children }) {
         ))}
       </MenubarPrimitive.Root>
       <div className="app-titlebar-center">{children}</div>
-      <span className="app-titlebar-project" title={projectName}>{projectName}</span>
+      <Tooltip content={projectName}><span className="app-titlebar-project">{projectName}</span></Tooltip>
     </header>
   );
 }
@@ -96,14 +96,16 @@ export function StatusBar({ connection, projectName, counts, pending, onReview, 
   const isScanUnknown = lastScan === "Last scan time unknown" || lastScan === "Not scanned";
   return (
     <footer className="app-statusbar" aria-label="Status bar">
-      <span className={`statusbar-item connection connection-${connection}`} title={label}><i />{label}</span>
+      <Tooltip content={label}><span className={`statusbar-item connection connection-${connection}`}><i />{label}</span></Tooltip>
       {scanning ? <span className="statusbar-item topbar-scanning"><span className="statusbar-progress" aria-hidden="true" />Scanning sources…</span> : null}
       <span className={`statusbar-item statusbar-counts ${connection === "loading" ? "statusbar-loading" : ""}`}>{countsText}</span>
-      {pending > 0 ? <button type="button" className="statusbar-item statusbar-button statusbar-review" onClick={onReview} title="Open the review queue (Ctrl+5)">{pending.toLocaleString()} to review</button> : null}
+      {pending > 0 ? <Tooltip content="Open the review queue (Ctrl+5)"><button type="button" className="statusbar-item statusbar-button statusbar-review" onClick={onReview}>{pending.toLocaleString()} to review</button></Tooltip> : null}
       {isScanUnknown && onScan ? (
-        <button type="button" className="statusbar-item statusbar-button statusbar-scan-now" onClick={onScan} disabled={scanning} title="Scan sources now">
-          {lastScan} · <strong>Scan now</strong>
-        </button>
+        <Tooltip content="Scan sources now">
+          <button type="button" className="statusbar-item statusbar-button statusbar-scan-now" onClick={onScan} disabled={scanning}>
+            {lastScan} · <strong>Scan now</strong>
+          </button>
+        </Tooltip>
       ) : (
         <span className="statusbar-item statusbar-scan">{lastScan}</span>
       )}

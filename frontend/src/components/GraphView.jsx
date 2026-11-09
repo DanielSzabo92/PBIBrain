@@ -1,13 +1,16 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Background, BaseEdge, Handle, MarkerType, MiniMap, Position, ReactFlow, getSmoothStepPath, useViewport } from "@xyflow/react";
-import { BadgeCheck, ChevronDown, ChevronRight, ChevronsDownUp, CircleX, Crosshair, FilterX, ListFilter, Maximize, Minus, PenLine, Plus, Search, Shapes, SlidersHorizontal, TriangleAlert } from "lucide-react";
+import { BadgeCheck, ChevronDown, ChevronRight, ChevronsDownUp, CircleX, Code, Copy, Crosshair, FilterX, ListFilter, Maximize, Minus, PenLine, Plus, Search, Shapes, SlidersHorizontal, TriangleAlert } from "lucide-react";
 import "@xyflow/react/dist/style.css";
 import { Button } from "./ui/button";
+import { ContextMenu, ContextMenuTrigger, ContextMenuContent, ContextMenuItem, ContextMenuSeparator } from "./ui/context-menu";
+import { toast } from "./ui/toast";
 import { Checkbox } from "./ui/checkbox";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { NativeSelect } from "./ui/native-select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "./ui/tabs";
+import { Tooltip } from "./ui/tooltip";
 import { Popover } from "./ui/filter";
 import GraphDetails from "./GraphDetails";
 import ProvenanceLegend from "./ProvenanceLegend";
@@ -774,10 +777,10 @@ function GraphCanvas({ rawById, apiRef, overview, full, grouped, onCenter, onIns
         measured: { width: rect.width, height: rect.height },
         className: focusing && !connected.has(node.id) ? "is-dimmed" : "",
         // Two-line names are shortened to what two lines hold, with a little slack for word wrapping.
-        data: { node, direction, isGroup, onToggleGroup, warning, twoLine, versions: versionNote(node, rawById), color: artifactColor(node, colors), colors, displayName: middleEllipsis(objectName(node), (twoLine ? 1.8 : 1) * (nameRoom(rect.width, isGroup, statusGlyph) - versionRoom(node)) / scale, measureName) },
+        data: { node, direction, isGroup, onToggleGroup, onCenter, onInspect, warning, twoLine, versions: versionNote(node, rawById), color: artifactColor(node, colors), colors, displayName: middleEllipsis(objectName(node), (twoLine ? 1.8 : 1) * (nameRoom(rect.width, isGroup, statusGlyph) - versionRoom(node)) / scale, measureName) },
       };
     }),
-  ], [layout, rects, warningIds, overview, selectedId, focusing, connected, direction, onToggleGroup, colors, fontsReady, scale, rawById]);
+  ], [layout, rects, warningIds, overview, selectedId, focusing, connected, direction, onToggleGroup, onCenter, onInspect, colors, fontsReady, scale, rawById]);
   const laneCount = layout.lanes?.length || 0;
 
   const flowEdges = useMemo(() => {
@@ -866,11 +869,13 @@ function GraphCanvas({ rawById, apiRef, overview, full, grouped, onCenter, onIns
       nodesDraggable={false} nodesConnectable={false} edgesFocusable={false} disableKeyboardA11y deleteKeyCode={null} selectionKeyCode={null} multiSelectionKeyCode={null} proOptions={{ hideAttribution: true }}>
       <Background gap={20} size={1.2} color="var(--grid-dot)" />
       {farLabels.length ? <FarLabels items={farLabels} /> : null}
-      {showMinimap ? <MiniMap pannable zoomable bgColor="var(--surface)" nodeColor={(node) => node.type === "lane" ? "transparent" : node.data?.color || "#94a3b8"} nodeStrokeColor={(node) => node.type === "lane" ? "transparent" : node.data?.color || "#94a3b8"} nodeBorderRadius={4} nodeClassName={(node) => node.type === "artifactGroup" ? "minimap-artifact-group" : ""} maskColor="var(--minimap-mask)" style={{ width: 168, height: 112 }} /> : null}
+      {showMinimap ? <MiniMap pannable zoomable bgColor="var(--surface)" nodeColor={(node) => node.type === "lane" ? "transparent" : node.data?.color || "var(--artifact-other, #94a3b8)"} nodeStrokeColor={(node) => node.type === "lane" ? "transparent" : node.data?.color || "var(--artifact-other, #94a3b8)"} nodeBorderRadius={4} nodeClassName={(node) => node.type === "artifactGroup" ? "minimap-artifact-group" : ""} maskColor="var(--minimap-mask)" style={{ width: 168, height: 112 }} /> : null}
     </ReactFlow>
     <div className="graph-zoom-controls" data-ui-actions="">
       <Button variant="ghost" size="icon-sm" aria-label="Zoom out" tooltip="Zoom out (−)" onClick={() => flow?.zoomOut(travel(stepDuration))}><Minus /></Button>
-      <button type="button" className="graph-zoom-value" data-ui-number="" aria-label={`Zoom ${Math.round(zoom * 100)} percent. Reset to 100 percent`} title="Reset zoom (0)" onClick={() => flow?.zoomTo(1, travel(stepDuration))}>{Math.round(zoom * 100)}%</button>
+      <Tooltip content="Reset zoom (0)">
+        <button type="button" className="graph-zoom-value" data-ui-number="" aria-label={`Zoom ${Math.round(zoom * 100)} percent. Reset to 100 percent`} onClick={() => flow?.zoomTo(1, travel(stepDuration))}>{Math.round(zoom * 100)}%</button>
+      </Tooltip>
       <Button variant="ghost" size="icon-sm" aria-label="Zoom in" tooltip="Zoom in (+)" onClick={() => flow?.zoomIn(travel(stepDuration))}><Plus /></Button>
     </div>
   </div>;
@@ -895,23 +900,77 @@ function BrainFlowNode({ data, selected }) {
   const vertical = data.direction === "TB";
   const count = node.explorerDescendantCount || 0;
   const stacked = node.familySize > 1 && node.versionCount > 1;
-  return <div className={`flow-node artifact-node ${data.isGroup ? "explorer-group-node" : ""} ${selected ? "selected" : ""} ${suggested ? "is-suggested" : ""} ${data.warning ? "has-warning" : ""} ${data.twoLine ? "is-two-line" : ""} ${stacked ? "is-stack" : ""}`} style={{ "--artifact-color": data.color }} title={`${kindLabel(node)} · ${name}${data.isGroup ? ` · ${count} inside` : ""}${data.versions ? `\n${data.versions}` : ""}`} data-type={node.type}>
-    <Handle type="target" position={vertical ? Position.Top : Position.Left} className="flow-handle" isConnectable={false} />
-    <TypeGlyph node={node} colors={data.colors} />
-    <span className="flow-node-text">
-      <span className="flow-node-name" translate="no" aria-hidden={data.displayName !== name || undefined}>{data.displayName}</span>
-      {/* The shortened name is for the eye; the full name stays in the text for find-in-page and tests. */}
-      {data.displayName !== name ? <span className="sr-only" translate="no">{name}</span> : null}
-      {data.isGroup ? <span className="flow-node-meta" data-ui-number="">{count} inside</span> : null}
-    </span>
-    <VersionBadge node={node} note={data.versions} />
-    {node.type === "MODEL" || node.type === "REPORT" ? <OriginBadge node={node} /> : null}
-    {StatusIcon ? <span className={`flow-node-status ${data.warning ? "warning" : node.status}`} aria-hidden="true"><StatusIcon /></span> : null}
-    {data.isGroup ? <button type="button" className="graph-group-toggle nodrag nopan" aria-label={`${node.explorerExpanded ? "Collapse" : "Expand"} ${name}`} aria-expanded={node.explorerExpanded} title={`${count} loaded objects inside`} onMouseDown={(event) => event.stopPropagation()} onDoubleClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()} onClick={(event) => { event.stopPropagation(); data.onToggleGroup(node.id); }}>
-      <ChevronRight aria-hidden="true" />
-    </button> : null}
-    <Handle type="source" position={vertical ? Position.Bottom : Position.Right} className="flow-handle" isConnectable={false} />
-  </div>;
+
+  const daxFormula = node.expression || node.properties?.expression || null;
+
+  const handleCopyName = useCallback((event) => {
+    event?.stopPropagation?.();
+    if (navigator?.clipboard?.writeText) {
+      navigator.clipboard.writeText(name);
+      toast.success?.(`Copied name "${name}"`);
+    }
+  }, [name]);
+
+  const handleCopyDax = useCallback((event) => {
+    event?.stopPropagation?.();
+    if (daxFormula && navigator?.clipboard?.writeText) {
+      navigator.clipboard.writeText(daxFormula);
+      toast.success?.(`Copied DAX formula for "${name}"`);
+    }
+  }, [daxFormula, name]);
+
+  const handleInspect = useCallback((event) => {
+    event?.stopPropagation?.();
+    data.onInspect?.(node.id);
+  }, [data, node.id]);
+
+  const handleFocus = useCallback((event) => {
+    event?.stopPropagation?.();
+    data.onCenter?.(node);
+  }, [data, node]);
+
+  return (
+    <ContextMenu>
+      <ContextMenuTrigger asChild>
+        <div className={`flow-node artifact-node ${data.isGroup ? "explorer-group-node" : ""} ${selected ? "selected" : ""} ${suggested ? "is-suggested" : ""} ${data.warning ? "has-warning" : ""} ${data.twoLine ? "is-two-line" : ""} ${stacked ? "is-stack" : ""}`} style={{ "--artifact-color": data.color }} title={`${kindLabel(node)} · ${name}${data.isGroup ? ` · ${count} inside` : ""}${data.versions ? `\n${data.versions}` : ""}`} data-type={node.type}>
+          <Handle type="target" position={vertical ? Position.Top : Position.Left} className="flow-handle" isConnectable={false} />
+          <TypeGlyph node={node} colors={data.colors} />
+          <span className="flow-node-text">
+            <span className="flow-node-name" translate="no" aria-hidden={data.displayName !== name || undefined}>{data.displayName}</span>
+            {/* The shortened name is for the eye; the full name stays in the text for find-in-page and tests. */}
+            {data.displayName !== name ? <span className="sr-only" translate="no">{name}</span> : null}
+            {data.isGroup ? <span className="flow-node-meta" data-ui-number="">{count} inside</span> : null}
+          </span>
+          <VersionBadge node={node} note={data.versions} />
+          {node.type === "MODEL" || node.type === "REPORT" ? <OriginBadge node={node} /> : null}
+          {StatusIcon ? <span className={`flow-node-status ${data.warning ? "warning" : node.status}`} aria-hidden="true"><StatusIcon /></span> : null}
+          {data.isGroup ? <button type="button" className="graph-group-toggle nodrag nopan" aria-label={`${node.explorerExpanded ? "Collapse" : "Expand"} ${name}`} aria-expanded={node.explorerExpanded} title={`${count} loaded objects inside`} onMouseDown={(event) => event.stopPropagation()} onDoubleClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()} onClick={(event) => { event.stopPropagation(); data.onToggleGroup(node.id); }}>
+            <ChevronRight aria-hidden="true" />
+          </button> : null}
+          <Handle type="source" position={vertical ? Position.Bottom : Position.Right} className="flow-handle" isConnectable={false} />
+        </div>
+      </ContextMenuTrigger>
+      <ContextMenuContent>
+        <ContextMenuItem onClick={handleInspect}>
+          <Search className="size-3.5" aria-hidden="true" />
+          <span>Open in Inspector</span>
+        </ContextMenuItem>
+        <ContextMenuItem onClick={handleFocus}>
+          <Crosshair className="size-3.5" aria-hidden="true" />
+          <span>Focus</span>
+        </ContextMenuItem>
+        <ContextMenuSeparator />
+        <ContextMenuItem onClick={handleCopyName}>
+          <Copy className="size-3.5" aria-hidden="true" />
+          <span>Copy name</span>
+        </ContextMenuItem>
+        <ContextMenuItem disabled={!daxFormula} onClick={handleCopyDax}>
+          <Code className="size-3.5" aria-hidden="true" />
+          <span>Copy DAX</span>
+        </ContextMenuItem>
+      </ContextMenuContent>
+    </ContextMenu>
+  );
 }
 
 function RoutedEdge({ id, data, markerEnd, style, label, interactionWidth }) {
