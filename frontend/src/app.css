@@ -1530,6 +1530,15 @@ td:hover > .mx-mark { transform: scale(1.2); }
 .chat-chip svg { width: 12px; height: 12px; }
 .chat-messages { display: flex; flex: 1; flex-direction: column; gap: 12px; min-height: 0; padding: 12px 14px; overflow-y: auto; }
 .chat-empty { margin: 0; }
+.chat-empty-state { display: flex; flex-direction: column; gap: 14px; }
+.chat-starters { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
+.chat-starters-label { font-size: var(--fs-meta); font-weight: 600; color: var(--text-2); }
+.chat-starters-list { display: flex; flex-direction: column; gap: 6px; }
+.chat-starter-chip { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; padding: 8px 10px; border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--surface-2); color: var(--text); font: inherit; font-size: var(--fs-meta); cursor: pointer; transition: background var(--dur-hover) var(--ease-standard), border-color var(--dur-hover) var(--ease-standard), color var(--dur-hover) var(--ease-standard); }
+.chat-starter-chip:hover { background: var(--surface-hover); border-color: var(--line-strong); color: var(--foreground); }
+.chat-starter-chip:focus-visible { outline: 2px solid var(--line-focus); outline-offset: 1px; }
+.chat-starter-icon { width: 14px; height: 14px; flex-shrink: 0; color: var(--brand); }
+.chat-starter-chip span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .chat-message { display: grid; gap: 8px; font-size: var(--fs-body); line-height: 1.5; }
 .chat-message p { margin: 0; }
 .chat-message.is-user { justify-self: end; max-width: 88%; padding: 8px 12px; border-radius: var(--r-md); background: var(--surface-2); white-space: pre-wrap; overflow-wrap: anywhere; }

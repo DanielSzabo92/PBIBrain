@@ -1,29 +1,78 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { answerText, applyEvents, chatContext, contextChips, emptyAnswer, parseInline, parseMarkdown, toolLabel, transcriptMarkdown } from "../src/chat.js";
+import { answerText, applyEvents, chatContext, contextChips, emptyAnswer, parseInline, parseMarkdown, starterPrompts, toolLabel, transcriptMarkdown } from "../src/chat.js";
 import { createBrainTransport } from "../src/transport.js";
 import { commandFor, shortcutKeys } from "../src/shortcuts.js";
 
 const VIEW = { id: "graph", label: "Graph" };
+const MERGE_VIEW = { id: "devcenter", label: "Merge models" };
 const SELECTION = { id: "measure:Sales/Net Sales", name: "Net Sales", type: "MEASURE" };
 const SESSION = { session_id: "s1", display_name: "Q3 merge" };
 
-test("context chips show the view, the selection and the merge session, and each can be removed", () => {
-  const chips = contextChips({ view: VIEW, selection: SELECTION, session: SESSION });
+test("context chips show the view, the selection and the merge session on merge view, and each can be removed", () => {
+  const chips = contextChips({ view: MERGE_VIEW, selection: SELECTION, session: SESSION });
   assert.deepEqual(chips.map((chip) => chip.kind), ["view", "selection", "session"]);
   assert.equal(chips[1].label, "Net Sales");
-  const fewer = contextChips({ view: VIEW, selection: SELECTION, session: SESSION }, new Set(["view:graph", "session:s1"]));
+  const fewer = contextChips({ view: MERGE_VIEW, selection: SELECTION, session: SESSION }, new Set(["view:devcenter", "session:s1"]));
   assert.deepEqual(fewer.map((chip) => chip.kind), ["selection"]);
   assert.equal(contextChips({ view: { id: "inspector", label: "Inspector" } }, new Set(["view:graph"])).length, 1);
   // A removed selection chip comes back for a different selection.
-  const other = contextChips({ view: VIEW, selection: { id: "column:x" }, session: null }, new Set([`selection:${SELECTION.id}`]));
+  const other = contextChips({ view: MERGE_VIEW, selection: { id: "column:x" }, session: null }, new Set([`selection:${SELECTION.id}`]));
   assert.deepEqual(other.map((chip) => chip.kind), ["view", "selection"]);
 });
 
+test("context chips isolate merge session context so merge does not leak into inspector, graph, or other views", () => {
+  const inspectorChips = contextChips({ view: { id: "inspector", label: "Inspector" }, selection: SELECTION, session: SESSION });
+  assert.deepEqual(inspectorChips.map((c) => c.kind), ["view", "selection"]);
+  assert.ok(!inspectorChips.some((c) => c.kind === "session"), "merge session must not leak into inspector");
+
+  const graphChips = contextChips({ view: VIEW, selection: SELECTION, session: SESSION });
+  assert.deepEqual(graphChips.map((c) => c.kind), ["view", "selection"]);
+  assert.ok(!graphChips.some((c) => c.kind === "session"), "merge session must not leak into graph");
+
+  const overviewChips = contextChips({ view: { id: "overview", label: "Overview" }, session: SESSION });
+  assert.deepEqual(overviewChips.map((c) => c.kind), ["view"]);
+  assert.ok(!overviewChips.some((c) => c.kind === "session"), "merge session must not leak into overview");
+
+  const mergeChips = contextChips({ view: { id: "merge", label: "Merge models" }, session: SESSION });
+  assert.deepEqual(mergeChips.map((c) => c.kind), ["view", "session"]);
+});
+
+test("context chips include descriptive tooltips explaining what context is shared with the AI", () => {
+  const chips = contextChips({
+    view: { id: "inspector", label: "Inspector" },
+    selection: { id: "measure:1", name: "Total Sales", type: "MEASURE" },
+    session: SESSION,
+  });
+  assert.ok(chips[0].title.startsWith("Shared with AI: Current view context"));
+  assert.ok(chips[1].title.startsWith("Shared with AI: Selected measure"));
+
+  const mergeChips = contextChips({ view: MERGE_VIEW, session: SESSION });
+  assert.ok(mergeChips[1].title.startsWith("Shared with AI: Active Merge models session"));
+});
+
+test("starter prompts are context-aware based on active view and selection", () => {
+  const overviewPrompts = starterPrompts({ view: { id: "overview" } });
+  assert.ok(overviewPrompts.length >= 3);
+  assert.ok(overviewPrompts.some((p) => p.includes("model")));
+
+  const inspectorNamed = starterPrompts({ view: { id: "inspector" }, selection: { name: "Profit Margin" } });
+  assert.ok(inspectorNamed.some((p) => p.includes("Profit Margin")));
+
+  const inspectorEmpty = starterPrompts({ view: { id: "inspector" } });
+  assert.ok(inspectorEmpty.some((p) => p.includes("Explain the calculation")));
+
+  const graphPrompts = starterPrompts({ view: { id: "graph" } });
+  assert.ok(graphPrompts.some((p) => p.includes("graph") || p.includes("dependencies")));
+
+  const mergePrompts = starterPrompts({ view: MERGE_VIEW, session: { display_name: "Sprint 42" } });
+  assert.ok(mergePrompts.some((p) => p.includes("Sprint 42")));
+});
+
 test("the start context carries only the chips that are still on", () => {
-  const all = { view: VIEW, selection: SELECTION, session: SESSION };
+  const all = { view: MERGE_VIEW, selection: SELECTION, session: SESSION };
   assert.deepEqual(chatContext(contextChips(all), all), {
-    view: VIEW, selection: { id: SELECTION.id, name: "Net Sales", type: "MEASURE" }, session: true, session_name: "Q3 merge",
+    view: MERGE_VIEW, selection: { id: SELECTION.id, name: "Net Sales", type: "MEASURE" }, session: true, session_name: "Q3 merge",
   });
   const none = chatContext([], all);
   assert.deepEqual(none, { view: null, selection: null, session: false, session_name: "" });

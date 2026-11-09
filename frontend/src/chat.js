@@ -12,14 +12,87 @@ export const OBJECT_SCHEME = "object:";
 export function contextChips({ view = null, selection = null, session = null } = {}, removed = new Set()) {
   const chips = [];
   // A removed chip stays removed only for what it named: another view or selection brings a new chip.
-  if (view?.id && !removed.has(`view:${view.id}`)) chips.push({ id: `view:${view.id}`, kind: "view", label: view.label || view.id, title: `Current view: ${view.label || view.id}` });
-  if (selection?.id && !removed.has(`selection:${selection.id}`)) {
-    chips.push({ id: `selection:${selection.id}`, kind: "selection", label: selection.name || selection.id, title: `Selected ${selection.type ? String(selection.type).toLowerCase() : "object"}: ${selection.id}` });
+  if (view?.id && !removed.has(`view:${view.id}`)) {
+    chips.push({
+      id: `view:${view.id}`,
+      kind: "view",
+      label: view.label || view.id,
+      title: `Shared with AI: Current view context (${view.label || view.id}). The AI knows which view you are working in.`,
+    });
   }
-  if (session?.session_id && !removed.has(`session:${session.session_id}`)) {
-    chips.push({ id: `session:${session.session_id}`, kind: "session", label: session.display_name || "Merge session", title: "The open Merge models session. The chat can read it and make proposals." });
+  if (selection?.id && !removed.has(`selection:${selection.id}`)) {
+    const selType = selection.type ? String(selection.type).toLowerCase() : "object";
+    chips.push({
+      id: `selection:${selection.id}`,
+      kind: "selection",
+      label: selection.name || selection.id,
+      title: `Shared with AI: Selected ${selType} "${selection.name || selection.id}". The AI sees its definition, lineage, and related model objects.`,
+    });
+  }
+  // Isolate merge session chip: only show when on the Merge view (devcenter / merge)
+  const isMergeView = view?.id === "devcenter" || view?.id === "merge";
+  if (isMergeView && session?.session_id && !removed.has(`session:${session.session_id}`)) {
+    chips.push({
+      id: `session:${session.session_id}`,
+      kind: "session",
+      label: session.display_name || "Merge session",
+      title: `Shared with AI: Active Merge models session "${session.display_name || "Merge session"}". The AI can read session alignments and propose changes.`,
+    });
   }
   return chips;
+}
+
+/** Suggested starter prompts tailored to the active view and selection. */
+export function starterPrompts({ view = null, selection = null, session = null } = {}) {
+  const viewId = view?.id || (typeof view === "string" ? view : "overview");
+  const name = selection?.name || selection?.id || "";
+
+  if (viewId === "inspector") {
+    if (name) {
+      return [
+        `What depends on ${name}?`,
+        `Explain the calculation and logic for ${name}`,
+        `Which visuals or report pages use ${name}?`,
+      ];
+    }
+    return [
+      "Explain the calculation and logic for this object",
+      "What are the upstream dependencies of this object?",
+      "Which visuals or report pages use this object?",
+    ];
+  }
+
+  if (viewId === "graph") {
+    return [
+      "Explain the relationships and flow in this graph",
+      "Which tables have the highest incoming dependencies?",
+      "Identify potential bottlenecks or unused paths",
+    ];
+  }
+
+  if (viewId === "devcenter" || viewId === "merge") {
+    const sessionName = session?.display_name ? ` for "${session.display_name}"` : "";
+    return [
+      `Summarize the merge session changes${sessionName}`,
+      "Check for naming conflicts or breaking changes",
+      "Propose descriptions for undocumented measures",
+    ];
+  }
+
+  if (viewId === "review") {
+    return [
+      "Help me prioritize items in the review queue",
+      "Explain why these changes were flagged for review",
+      "Are any of these candidate changes breaking?",
+    ];
+  }
+
+  return [
+    "Summarize this Power BI model and key metrics",
+    "Which measures have the most dependencies?",
+    "Find measures or columns without descriptions",
+    "Explain the primary data sources in this project",
+  ];
 }
 
 /** The context payload of POST /api/chat/start for the chips that are still on. */
@@ -170,4 +243,23 @@ export function transcriptMarkdown(messages) {
     }).filter(Boolean).join("\n\n");
     return `**PBIBrain:** ${body}`;
   }).join("\n\n");
+}
+
+// ---- AI Settings status ----------------------------------------------------------------
+
+/** Pure helper to compute reactive status message and readiness for AI provider settings. */
+export function getAIStatus({ draft, settings, provider, apiKey = "", keySaved = false } = {}) {
+  if (!draft) return { ready: false, message: "Loading AI settings…" };
+  if (!draft.enabled) {
+    return { ready: false, message: "Chat is off. Turn it on in Settings, AI provider." };
+  }
+  if (!draft.model?.trim()) {
+    return { ready: false, message: "Choose a model in Settings, AI provider." };
+  }
+  const needsKey = provider ? provider.needs_key : true;
+  const hasKey = keySaved || Boolean(apiKey?.trim());
+  if (needsKey && !hasKey) {
+    return { ready: false, message: "Turned on. Add an API key to finish." };
+  }
+  return { ready: true, message: "The chat is ready." };
 }

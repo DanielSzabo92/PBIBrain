@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Bot, Copy, GitBranch, MessageSquarePlus, Send, Settings, Square, TriangleAlert, Wrench, X } from "lucide-react";
+import { Bot, Copy, GitBranch, MessageSquarePlus, Send, Settings, Sparkles, Square, TriangleAlert, Wrench, X } from "lucide-react";
 import { Button } from "./ui/button";
+import { Tooltip } from "./ui/tooltip";
 import {
-  POLL_MS, answerText, applyEvents, chatContext, contextChips, emptyAnswer, parseMarkdown, toolLabel, transcriptMarkdown,
+  POLL_MS, answerText, applyEvents, chatContext, contextChips, emptyAnswer, parseMarkdown, starterPrompts, toolLabel, transcriptMarkdown,
 } from "../chat";
 
 // The docked chat panel (issue #7). Ctrl+J or the title bar button opens it on every view.
@@ -122,9 +123,10 @@ export default function ChatPanel({ open, onClose, transport, view, selection, o
   }, [messages]);
 
   const chips = contextChips({ view, selection, session }, removed);
-  const send = useCallback(async (event) => {
+  const prompts = starterPrompts({ view, selection, session });
+  const send = useCallback(async (event, textOverride) => {
     event?.preventDefault();
-    const value = text.trim();
+    const value = (typeof textOverride === "string" ? textOverride : text).trim();
     if (!value || runRef.current) return;
     setError("");
     try {
@@ -137,6 +139,11 @@ export default function ChatPanel({ open, onClose, transport, view, selection, o
       setError(cause.message || "The message could not be sent.");
     }
   }, [chips, conversationId, selection, session, text, transport, view]);
+
+  const handleStarter = (promptText) => {
+    setText(promptText);
+    send(undefined, promptText);
+  };
 
   const stop = async () => {
     if (!runId) return;
@@ -160,9 +167,9 @@ export default function ChatPanel({ open, onClose, transport, view, selection, o
       <header className="chat-head">
         <h2><Bot aria-hidden="true" />Chat</h2>
         <div className="chat-head-actions" role="toolbar" aria-label="Chat actions">
-          <Button variant="ghost" size="icon-sm" onClick={copy} disabled={!messages.length} aria-label="Copy as Markdown" title={copied ? "Copied" : "Copy as Markdown"}><Copy aria-hidden="true" /></Button>
-          <Button variant="ghost" size="icon-sm" onClick={fresh} disabled={Boolean(runId) || !messages.length} aria-label="New chat" title="New chat"><MessageSquarePlus aria-hidden="true" /></Button>
-          <Button variant="ghost" size="icon-sm" onClick={onClose} aria-label="Close chat" title="Close chat (Ctrl+J)"><X aria-hidden="true" /></Button>
+          <Button variant="ghost" size="icon-sm" onClick={copy} disabled={!messages.length} aria-label="Copy transcript" tooltip={copied ? "Copied" : "Copy transcript as Markdown"}><Copy aria-hidden="true" /></Button>
+          <Button variant="ghost" size="icon-sm" onClick={fresh} disabled={Boolean(runId) || !messages.length} aria-label="New chat" tooltip="Start a new chat"><MessageSquarePlus aria-hidden="true" /></Button>
+          <Button variant="ghost" size="icon-sm" onClick={onClose} aria-label="Close chat" tooltip="Close chat (Ctrl+J)"><X aria-hidden="true" /></Button>
         </div>
       </header>
       {copied ? <p role="status" className="sr-only">Copied as Markdown</p> : null}
@@ -177,15 +184,41 @@ export default function ChatPanel({ open, onClose, transport, view, selection, o
       {ready ? <>
         <ul className="chat-chips" aria-label="What the chat can see">
           {chips.map((chip) => (
-            <li key={chip.id} className={`chat-chip is-${chip.kind}`} title={chip.title}>
-              <span>{chip.kind === "view" ? "View" : chip.kind === "selection" ? "Selected" : "Merge"}: {chip.label}</span>
-              <button type="button" aria-label={`Remove ${chip.label} from the chat context`} onClick={() => setRemoved((current) => new Set([...current, chip.id]))}><X aria-hidden="true" /></button>
-            </li>
+            <Tooltip key={chip.id} content={chip.title} side="bottom">
+              <li className={`chat-chip is-${chip.kind}`} data-testid={`context-chip-${chip.kind}`}>
+                <span>{chip.kind === "view" ? "View" : chip.kind === "selection" ? "Selected" : "Merge"}: {chip.label}</span>
+                <button type="button" aria-label={`Remove ${chip.label} from the chat context`} onClick={() => setRemoved((current) => new Set([...current, chip.id]))}><X aria-hidden="true" /></button>
+              </li>
+            </Tooltip>
           ))}
           {!chips.length ? <li className="muted-copy compact">No context. The chat sees only what you type and what its tools read.</li> : null}
         </ul>
         <div className="chat-messages" ref={list} aria-live="polite" aria-busy={Boolean(runId)}>
-          {!messages.length ? <p className="muted-copy chat-empty">Ask about measures, lineage, report usage or the open merge session. The chat reads the project with the same tools as the MCP server and can only propose changes.</p> : null}
+          {!messages.length ? (
+            <div className="chat-empty-state">
+              <p className="muted-copy chat-empty">Ask about measures, lineage, report usage or the open merge session. The chat reads the project with the same tools as the MCP server and can only propose changes.</p>
+              {prompts.length ? (
+                <div className="chat-starters" data-testid="chat-starters" aria-label="Suggested starter prompts">
+                  <span className="chat-starters-label">Suggested prompts</span>
+                  <div className="chat-starters-list">
+                    {prompts.map((promptText, index) => (
+                      <button
+                        key={index}
+                        type="button"
+                        className="chat-starter-chip"
+                        data-testid="chat-starter-prompt"
+                        onClick={() => handleStarter(promptText)}
+                        title={`Ask: "${promptText}"`}
+                      >
+                        <Sparkles aria-hidden="true" className="chat-starter-icon" />
+                        <span>{promptText}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
           {messages.map((message) => message.role === "user" ? (
             <div key={message.id} className="chat-message is-user"><p>{message.text}</p></div>
           ) : (

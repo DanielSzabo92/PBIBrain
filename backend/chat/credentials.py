@@ -36,7 +36,7 @@ class CredentialStore(Protocol):
 
 
 class MemoryStore:
-    label = "memory (until PBIBrain closes)"
+    label = "memory"
     persistent = False
 
     def __init__(self) -> None:
