@@ -851,7 +851,7 @@ class FakeDevCenter:
         return reply
 
     def _record_last(self, reply: dict[str, Any], kind: str) -> None:
-        finished = reply.get("finished_utc") or datetime.now(timezone.utc).isoformat()
+        finished = reply.get("finished_utc") or datetime.now(timezone.utc).replace(microsecond=0).strftime("%Y-%m-%dT%H:%M:%SZ")
         self.files["apply-last"] = {"apply_id": reply["apply_id"], "kind": kind, "finished_utc": finished,
                                     "file_count": reply["file_count"], "backup_present": True, "target_changed": False,
                                     "changed_files": [], "rescan_differences": reply["rescan_differences"], "undone": False}
