@@ -687,6 +687,73 @@ export default function CompareGrid({
     }
   }, [focusedCell]);
 
+  const handleUndoSingle = useCallback(
+    async (rowKey, fallbackChoice) => {
+      let prev = fallbackChoice;
+      if (prev === undefined) {
+        const item = [...undoHistory].reverse().find((h) => h.type === "single" && h.rowKey === rowKey);
+        prev = item ? item.previousChoice : null;
+      }
+      const reply = await singleChoiceAction.run({
+        row_key: rowKey,
+        choice: prev || null,
+      });
+      if (reply) {
+        setLastSavedRowKey(null);
+        triggerRowFlash(rowKey);
+        toast.show({ tone: "ok", text: "Merge choice undone" });
+        reloadLoadedPages();
+        store.load("session");
+        store.load("plan");
+      }
+    },
+    [singleChoiceAction, reloadLoadedPages, store, toast, triggerRowFlash, undoHistory]
+  );
+
+  const handleSingleRowChoice = useCallback(
+    async (row, kind) => {
+      if (!row || changeDisabled) return;
+      const previousChoice = row.merge_choice ? { ...row.merge_choice } : null;
+      let choicePayload = { choice: kind };
+      if (kind === "take") {
+        const availableDonor =
+          donors.find((d) => {
+            const cell = Array.isArray(row.cells)
+              ? row.cells.find((c) => c.source_id === d.source_id)
+              : row.cells?.[d.source_id];
+            return cell && cell.state !== "missing";
+          }) || donors[0];
+        if (availableDonor) {
+          choicePayload = { choice: "take", source: availableDonor.source_id };
+        }
+      }
+
+      setUndoHistory((h) => [...h, { type: "single", rowKey: row.row_key, previousChoice }]);
+      setLastSavedRowKey(row.row_key);
+      triggerRowFlash(row.row_key);
+
+      const reply = await singleChoiceAction.run({
+        row_key: row.row_key,
+        choice: choicePayload,
+      });
+
+      if (reply) {
+        toast.show({
+          tone: "ok",
+          text: `Merge choice saved: ${kind}`,
+          action: {
+            label: "Undo",
+            onClick: () => handleUndoSingle(row.row_key, previousChoice),
+          },
+        });
+        reloadLoadedPages();
+        store.load("session");
+        store.load("plan");
+      }
+    },
+    [changeDisabled, donors, singleChoiceAction, reloadLoadedPages, store, toast, triggerRowFlash, handleUndoSingle]
+  );
+
   // Keyboard navigation on grid.
   const onGridKeyDown = useCallback(
     (e) => {
@@ -921,73 +988,6 @@ export default function CompareGrid({
       store.load("plan");
     }
   };
-
-  const handleSingleRowChoice = useCallback(
-    async (row, kind) => {
-      if (!row || changeDisabled) return;
-      const previousChoice = row.merge_choice ? { ...row.merge_choice } : null;
-      let choicePayload = { choice: kind };
-      if (kind === "take") {
-        const availableDonor =
-          donors.find((d) => {
-            const cell = Array.isArray(row.cells)
-              ? row.cells.find((c) => c.source_id === d.source_id)
-              : row.cells?.[d.source_id];
-            return cell && cell.state !== "missing";
-          }) || donors[0];
-        if (availableDonor) {
-          choicePayload = { choice: "take", source: availableDonor.source_id };
-        }
-      }
-
-      setUndoHistory((h) => [...h, { type: "single", rowKey: row.row_key, previousChoice }]);
-      setLastSavedRowKey(row.row_key);
-      triggerRowFlash(row.row_key);
-
-      const reply = await singleChoiceAction.run({
-        row_key: row.row_key,
-        choice: choicePayload,
-      });
-
-      if (reply) {
-        toast.show({
-          tone: "ok",
-          text: `Merge choice saved: ${kind}`,
-          action: {
-            label: "Undo",
-            onClick: () => handleUndoSingle(row.row_key, previousChoice),
-          },
-        });
-        reloadLoadedPages();
-        store.load("session");
-        store.load("plan");
-      }
-    },
-    [changeDisabled, donors, singleChoiceAction, reloadLoadedPages, store, toast, triggerRowFlash]
-  );
-
-  const handleUndoSingle = useCallback(
-    async (rowKey, fallbackChoice) => {
-      let prev = fallbackChoice;
-      if (prev === undefined) {
-        const item = [...undoHistory].reverse().find((h) => h.type === "single" && h.rowKey === rowKey);
-        prev = item ? item.previousChoice : null;
-      }
-      const reply = await singleChoiceAction.run({
-        row_key: rowKey,
-        choice: prev || null,
-      });
-      if (reply) {
-        setLastSavedRowKey(null);
-        triggerRowFlash(rowKey);
-        toast.show({ tone: "ok", text: "Merge choice undone" });
-        reloadLoadedPages();
-        store.load("session");
-        store.load("plan");
-      }
-    },
-    [singleChoiceAction, reloadLoadedPages, store, toast, triggerRowFlash, undoHistory]
-  );
 
   // Bulk Confirm Rows.
   const handleConfirmRows = async () => {

@@ -29,6 +29,8 @@ data/*-identity.json
 *.jpg
 *.jpeg
 *.gif
+!docs/screenshots/*.png
+!docs/ui-audit/**/*.png
 *.zip
 *.7z
 *.rar
