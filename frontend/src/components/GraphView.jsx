@@ -152,10 +152,12 @@ function kindLabel(node) {
   return node?.type === "VISUAL" ? visualType(node) : typeLabel(node?.type);
 }
 
-/** Accessible name of a graph node, e.g. "Measure Net Sales" or "Table Sales, needs review". */
-function nodeLabel(node, warning) {
+/** Accessible name of a graph node, e.g. "Measure Net Sales" or "Table Sales, 5 inside, needs review". */
+function nodeLabel(node, warning, isGroup) {
+  const count = node?.explorerDescendantCount || node?.explorerChildCount || 0;
+  const inside = isGroup && count ? `, ${count} inside` : "";
   const state = warning ? ", needs review" : node.status && node.status !== "factual" ? `, ${statusLabel(node.status).toLowerCase()}` : "";
-  return `${kindLabel(node)} ${objectName(node)}${state}`;
+  return `${kindLabel(node)} ${objectName(node)}${inside}${state}`;
 }
 
 function SelectField({ label, value, onChange, children, disabled }) {
@@ -527,7 +529,7 @@ export default function GraphView({ transport, overview, snapshot, selectedId, c
 
   return <div className="graph-page">
     <div className="graph-toolbar" data-ui-actions="">
-      <div className="graph-search"><Search aria-hidden="true" /><Input type="search" aria-label="Filter graph objects" value={query} onChange={(event) => { updateSession({ query: event.target.value }); setFocusedNode(null); }} placeholder="Find an object…" spellCheck={false} autoComplete="off" /></div>
+      <div className="graph-search"><Search aria-hidden="true" /><Input type="search" aria-label="Filter graph objects" value={query} onChange={(event) => { updateSession({ query: event.target.value }); setFocusedNode(null); }} onKeyDown={(event) => { if (event.key === "Escape") { event.preventDefault(); if (query) { updateSession({ query: "" }); setFocusedNode(null); } else { event.target.blur(); } } }} placeholder="Find an object…" spellCheck={false} autoComplete="off" /></div>
       <Tabs controls="graph-canvas" value={viewMode} onValueChange={changeView}>
         <TabsList aria-label="Graph view">
           <TabsTrigger value="overview" title="Owners first: expand a group to see what is inside">Containers</TabsTrigger>
@@ -771,7 +773,9 @@ function GraphCanvas({ rawById, apiRef, overview, full, grouped, onCenter, onIns
       const statusGlyph = warning || Boolean(STATUS_GLYPHS[node.status]);
       return {
         id: node.id, type: "brain", position: { x: rect.x, y: rect.y }, selected: node.id === selectedId,
-        width: rect.width, height: rect.height, ariaRole: "button", ariaLabel: nodeLabel(node, warning),
+        width: rect.width, height: rect.height,
+        // Default node ariaRole: "button"; group nodes use role="group" to avoid nested-interactive violations with toggle button.
+        ariaRole: isGroup ? "group" : "button", ariaLabel: nodeLabel(node, warning, isGroup),
         // Cards have fixed dimensions. Preserve React Flow's measured/handle
         // state when controlled nodes are replaced after saving the session.
         measured: { width: rect.width, height: rect.height },
@@ -944,9 +948,25 @@ function BrainFlowNode({ data, selected }) {
           <VersionBadge node={node} note={data.versions} />
           {node.type === "MODEL" || node.type === "REPORT" ? <OriginBadge node={node} /> : null}
           {StatusIcon ? <span className={`flow-node-status ${data.warning ? "warning" : node.status}`} aria-hidden="true"><StatusIcon /></span> : null}
-          {data.isGroup ? <button type="button" className="graph-group-toggle nodrag nopan" aria-label={`${node.explorerExpanded ? "Collapse" : "Expand"} ${name}`} aria-expanded={node.explorerExpanded} title={`${count} loaded objects inside`} onMouseDown={(event) => event.stopPropagation()} onDoubleClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()} onClick={(event) => { event.stopPropagation(); data.onToggleGroup(node.id); }}>
-            <ChevronRight aria-hidden="true" />
-          </button> : null}
+          {data.isGroup ? (
+            <Tooltip content={`${count} loaded objects inside`}>
+              <button
+                type="button"
+                className="graph-group-toggle nodrag nopan"
+                aria-label={`${node.explorerExpanded ? "Collapse" : "Expand"} ${name}`}
+                aria-expanded={node.explorerExpanded}
+                onMouseDown={(event) => event.stopPropagation()}
+                onDoubleClick={(event) => event.stopPropagation()}
+                onKeyDown={(event) => event.stopPropagation()}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  data.onToggleGroup(node.id);
+                }}
+              >
+                <ChevronRight aria-hidden="true" />
+              </button>
+            </Tooltip>
+          ) : null}
           <Handle type="source" position={vertical ? Position.Bottom : Position.Right} className="flow-handle" isConnectable={false} />
         </div>
       </ContextMenuTrigger>

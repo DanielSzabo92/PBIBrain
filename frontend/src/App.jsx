@@ -728,7 +728,7 @@ function AppInner({ transport = brainTransport }) {
         <button type="button" className="command-center" onClick={() => setPaletteOpen(true)} title={`Command palette (${displayKeys("Ctrl+K")})`}>
           <ScanSearch aria-hidden="true" /><span>Type a command or search objects…</span><kbd aria-hidden="true">{displayKeys("Ctrl+K")}</kbd>
         </button>
-        <Button variant="ghost" size="sm" className="titlebar-chat" aria-pressed={chatOpen} onClick={commands.current.chat} title={`Chat (${displayKeys(shortcutKeys("chat"))})`}><Bot aria-hidden="true" /><span>Chat</span></Button>
+        <Button variant="ghost" size="sm" className="titlebar-chat" aria-pressed={chatOpen} onClick={commands.current.chat} tooltip={`Chat (${displayKeys(shortcutKeys("chat"))})`} aria-label={`Chat (${displayKeys(shortcutKeys("chat"))})`}><Bot aria-hidden="true" /><span>Chat</span></Button>
       </AppMenuBar>
       <div className="workbench">
         <aside className="sidebar" aria-label="Views">
@@ -736,7 +736,7 @@ function AppInner({ transport = brainTransport }) {
             {VIEWS.map(([key, label]) => {
               const keys = displayKeys(shortcutKeys(`view:${key}`));
               return (
-                <Button variant="ghost" key={key} aria-current={view === key ? "page" : undefined} className={`nav-button ${view === key ? "active" : ""} ${key === "config" ? "nav-settings" : ""}`} tooltip={compactNav || sidebarCollapsed ? `${label} (${keys})` : undefined} onClick={() => navigate(key)} title={compactNav || sidebarCollapsed ? undefined : `${label} (${keys})`}>
+                <Button variant="ghost" key={key} aria-current={view === key ? "page" : undefined} className={`nav-button ${view === key ? "active" : ""} ${key === "config" ? "nav-settings" : ""}`} tooltip={`${label} (${keys})`} onClick={() => navigate(key)} title={compactNav || sidebarCollapsed ? undefined : `${label} (${keys})`}>
                   <NavIcon name={key} />
                   <span className="nav-label">{label}</span>
                   {key === "review" && pending > 0 ? <span className="nav-count" data-ui-number="">{pending > 99 ? "99+" : pending}</span> : null}
@@ -744,7 +744,7 @@ function AppInner({ transport = brainTransport }) {
               );
             })}
           </nav>
-          <Button variant="ghost" size="icon-sm" className="sidebar-collapse" onClick={toggleSidebar} aria-label={sidebarCollapsed ? "Expand side bar" : "Collapse side bar"} aria-expanded={!sidebarCollapsed} title={`${sidebarCollapsed ? "Expand" : "Collapse"} side bar (${displayKeys("Ctrl+B")})`}><PanelLeft aria-hidden="true" /></Button>
+          <Button variant="ghost" size="icon-sm" className="sidebar-collapse" onClick={toggleSidebar} aria-label={sidebarCollapsed ? "Expand side bar" : "Collapse side bar"} aria-expanded={!sidebarCollapsed} tooltip={`${sidebarCollapsed ? "Expand" : "Collapse"} side bar (${displayKeys("Ctrl+B")})`}><PanelLeft aria-hidden="true" /></Button>
         </aside>
 
       <div className="main-column">
@@ -1393,7 +1393,7 @@ function SearchView({ transport, overview, onSelect, colors, session, onSession,
     <Card className="panel search-panel" aria-busy={loading}>
       <div className="search-toolbar" data-ui-actions="">
         <Label htmlFor={inputId} className="search-query-label">{browse ? "Filter by name or formula" : "Name or formula"}</Label>
-        <div className="search-field"><NavIcon name="search" size={18} /><Input id={inputId} type="search" value={query} onChange={(event) => change({ query: event.target.value })} onKeyDown={(event) => { if (event.key === "Enter") runSearch(); else if (event.key === "ArrowDown" && moveInList(panel.current?.querySelector(".search-results"), "first")) event.preventDefault(); }} placeholder={browse ? "Filter objects by name…" : "Measure, table, column, or visual…"} aria-label="Search objects" />{loading && active ? <RefreshCw className="search-spinner spin" aria-hidden="true" /> : null}</div>
+        <div className="search-field"><NavIcon name="search" size={18} /><Input id={inputId} type="search" value={query} onChange={(event) => change({ query: event.target.value })} onKeyDown={(event) => { if (event.key === "Escape") { event.preventDefault(); if (query) change({ query: "" }); else event.target.blur(); } else if (event.key === "Enter") runSearch(); else if (event.key === "ArrowDown" && moveInList(panel.current?.querySelector(".search-results"), "first")) event.preventDefault(); }} placeholder={browse ? "Filter objects by name…" : "Measure, table, column, or visual…"} aria-label="Search objects" />{loading && active ? <RefreshCw className="search-spinner spin" aria-hidden="true" /> : null}</div>
         <div className="search-filters">
           <Label className="select-field"><span>Model</span><NativeSelect aria-label="Model" value={modelId} onChange={(event) => change({ modelId: event.target.value, reportId: "" })}><option value="">All models</option>{models.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</NativeSelect></Label>
           <Label className="select-field"><span>Report</span><NativeSelect aria-label="Report" value={reportId} onChange={(event) => change({ reportId: event.target.value, modelId: "" })}><option value="">All reports</option>{reports.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</NativeSelect></Label>

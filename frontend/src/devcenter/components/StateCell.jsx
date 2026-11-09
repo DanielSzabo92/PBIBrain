@@ -94,6 +94,7 @@ export default function StateCell({ cell, sourceName, onOpenDiff, loading = fals
     <span
       className={`dc-st dc-st-${state}`}
       onDoubleClick={state !== "same" && onOpenDiff ? onOpenDiff : undefined}
+      aria-keyshortcuts={state !== "same" && onOpenDiff ? "d" : undefined}
     >
       <Icon aria-hidden="true" />
       {state === "target" ? <span className="sr-only">{word}</span> : <span>{word}</span>}

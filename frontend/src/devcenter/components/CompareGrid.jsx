@@ -8,6 +8,7 @@ import {
   CircleDashed,
   Columns2,
   Flag,
+  Keyboard,
   Layers,
   Link2,
   Network,
@@ -16,7 +17,7 @@ import {
   Target,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { FilterButton, FilterChip } from "@/components/ui/filter";
+import { FilterButton, FilterChip, Popover } from "@/components/ui/filter";
 import { EmptyState } from "@/components/ui/result-panel";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { Tooltip } from "@/components/ui/tooltip";
@@ -86,6 +87,55 @@ export function mergeChoiceBadge(row, session, donors = []) {
     return { kind: "proposal", className: "dc-badge-prop", label: t("compare.badge.proposed"), tooltip: t("shared.proposed.tooltip", { choice }) };
   }
   return null;
+}
+
+export function GridShortcutsHelp() {
+  const [open, setOpen] = useState(false);
+  const shortcuts = [
+    { key: "D", desc: "Open code diff for selected cell (or double-click cell)" },
+    { key: "M", desc: "Open bulk merge choices menu" },
+    { key: "Space", desc: "Toggle row selection (Shift for range)" },
+    { key: "Enter", desc: "Open row details pane" },
+    { key: "/", desc: "Focus search filter" },
+    { key: "Esc", desc: "Clear selection, close pane, or clear search" },
+    { key: "Ctrl+A", desc: "Select or deselect all loaded rows" },
+    { key: "K / T / S", desc: "Quick-set Keep, Take, or Skip on active row" },
+    { key: "Arrows", desc: "Navigate between rows and columns" },
+    { key: "F5", desc: "Reload project data" },
+  ];
+
+  return (
+    <Popover
+      open={open}
+      onOpenChange={setOpen}
+      label="Compare grid keyboard shortcuts"
+      trigger={
+        <Button
+          variant="outline"
+          size="sm"
+          aria-label="Grid keyboard shortcuts"
+          tooltip="Keyboard shortcuts"
+          className="dc-shortcuts-help-btn"
+        >
+          <Keyboard className="dc-search-icon" aria-hidden="true" />
+          <span className="sr-only">Keyboard shortcuts</span>
+        </Button>
+      }
+      className="dc-shortcuts-popover p-3 text-xs"
+    >
+      <div className="dc-shortcuts-content">
+        <div className="font-semibold text-sm mb-2" style={{ color: "var(--text)" }}>Grid keyboard shortcuts</div>
+        <dl className="dc-shortcuts-list">
+          {shortcuts.map(({ key, desc }) => (
+            <React.Fragment key={key}>
+              <dt><kbd>{key}</kbd></dt>
+              <dd>{desc}</dd>
+            </React.Fragment>
+          ))}
+        </dl>
+      </div>
+    </Popover>
+  );
 }
 
 export default function CompareGrid({
@@ -1073,9 +1123,10 @@ export default function CompareGrid({
         >
           <input
             type="checkbox"
-            tabIndex={-1}
+            tabIndex={0}
             checked={isSelected}
             aria-label={t("compare.select_row", { name: row.name })}
+            aria-keyshortcuts="Space"
             onChange={() => {}}
           />
         </div>
@@ -1197,6 +1248,7 @@ export default function CompareGrid({
                   handleSingleRowChoice(row, "keep");
                 }}
                 title="Keep target (K)"
+                aria-keyshortcuts="k"
               >
                 Keep
               </button>
@@ -1209,6 +1261,7 @@ export default function CompareGrid({
                   handleSingleRowChoice(row, "take");
                 }}
                 title={hasDonor ? "Take from donor (T)" : "No donor available"}
+                aria-keyshortcuts="t"
               >
                 Take
               </button>
@@ -1221,6 +1274,7 @@ export default function CompareGrid({
                   handleSingleRowChoice(row, "skip");
                 }}
                 title="Skip (S)"
+                aria-keyshortcuts="s"
               >
                 Skip
               </button>
@@ -1425,6 +1479,18 @@ export default function CompareGrid({
                 placeholder={t("compare.search")}
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Escape") {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (q) {
+                      setQ("");
+                      setDebouncedQ("");
+                    } else {
+                      e.target.blur();
+                    }
+                  }
+                }}
                 aria-keyshortcuts="/"
                 aria-label={t("compare.search")}
               />
@@ -1482,6 +1548,8 @@ export default function CompareGrid({
           </Button>
 
           <span className="dc-spacer" />
+
+          <GridShortcutsHelp />
 
           {modeControl}
         </div>
@@ -1619,8 +1687,9 @@ export default function CompareGrid({
                       <input
                         id="hchk"
                         type="checkbox"
-                        tabIndex={-1}
+                        tabIndex={0}
                         aria-label={t("compare.select_loaded")}
+                        aria-keyshortcuts="Control+A"
                         checked={selectedKeys.size > 0 || allMatching}
                         onChange={toggleSelectLoaded}
                       />

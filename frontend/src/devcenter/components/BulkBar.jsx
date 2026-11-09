@@ -209,6 +209,8 @@ export default function BulkBar({
           size="sm"
           onClick={onClearSelection}
           aria-label={t("shared.clear_selection")}
+          aria-keyshortcuts="Escape"
+          tooltip={`${t("shared.clear_selection")} (Esc)`}
         >
           <X className="dc-search-icon" aria-hidden="true" />
           {t("shared.clear_selection")}

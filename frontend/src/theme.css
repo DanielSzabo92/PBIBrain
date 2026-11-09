@@ -26,6 +26,7 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+  --color-placeholder: var(--placeholder);
   --radius-sm: calc(var(--radius) - 3px);
   --radius-md: calc(var(--radius) - 1px);
   --radius-lg: var(--radius);
@@ -121,6 +122,7 @@
   --text: #ececee;
   --text-2: #b4b4bb;
   --text-3: #8e8e97;
+  --placeholder: #9e9ea7;
   --text-inverse: #0e0e10;
 
   /* Accent: ink only (visual contract §1.2). Hue is reserved for object type and status. */
@@ -249,6 +251,7 @@
   --text: #18181a;
   --text-2: #4d4d55;
   --text-3: #66666e;
+  --placeholder: #595961;
   --text-inverse: #ffffff;
 
   --brand: #18181a;

@@ -96,6 +96,7 @@ html { scroll-padding-top: 12px; }
   border-color: var(--brand); outline: 2px solid var(--brand); outline-offset: -1px; box-shadow: none; background: var(--surface);
 }
 .ui-input[type="search"]::-webkit-search-cancel-button { filter: grayscale(1); opacity: .5; cursor: pointer; }
+.ui-input::placeholder, input::placeholder, textarea::placeholder { color: var(--placeholder); }
 .ui-select { cursor: pointer; }
 .ui-select option { background: var(--surface-2); color: var(--text); }
 

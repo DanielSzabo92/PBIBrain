@@ -151,6 +151,19 @@ export function ShortcutsDialog({ open, onOpenChange }) {
               <div className="shortcuts-row"><dt>Pan / zoom</dt><dd>Drag / scroll</dd></div>
             </dl>
           </section>
+          <section aria-label="Compare grid">
+            <h3>Compare grid</h3>
+            <dl>
+              <div className="shortcuts-row"><dt>Move between cells</dt><dd><kbd>←</kbd> <kbd>↑</kbd> <kbd>→</kbd> <kbd>↓</kbd></dd></div>
+              <div className="shortcuts-row"><dt>Open row details</dt><dd><kbd>Enter</kbd></dd></div>
+              <div className="shortcuts-row"><dt>Select row (toggle)</dt><dd><kbd>Space</kbd></dd></div>
+              <div className="shortcuts-row"><dt>Open code diff</dt><dd><kbd>D</kbd> or double-click</dd></div>
+              <div className="shortcuts-row"><dt>Bulk merge choices</dt><dd><kbd>M</kbd></dd></div>
+              <div className="shortcuts-row"><dt>Search names</dt><dd><kbd>/</kbd></dd></div>
+              <div className="shortcuts-row"><dt>Clear selection or close</dt><dd><kbd>Esc</kbd></dd></div>
+              <div className="shortcuts-row"><dt>Reload project data</dt><dd><kbd>F5</kbd></dd></div>
+            </dl>
+          </section>
         </div>
       </DialogContent>
     </Dialog>
