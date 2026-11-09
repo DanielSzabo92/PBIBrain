@@ -29,7 +29,14 @@ function Menu({ trigger, groups = [], align = "start", label, contentClassName, 
 
 function MenuItem({ item }) {
   const Icon = item.icon
-  const body = <>{Icon ? <Icon aria-hidden="true" /> : null}<span>{item.label}</span></>
+  const keys = item.keys
+  const body = (
+    <>
+      {Icon ? <Icon aria-hidden="true" /> : null}
+      <span>{item.label}</span>
+      {keys ? <span className="ml-auto pl-4 font-mono text-xs tabular-nums text-[var(--text-3)]" aria-hidden="true">{keys}</span> : null}
+    </>
+  )
   if (item.checked !== undefined) {
     return (
       <MenuPrimitive.CheckboxItem className="ui-menu-item" checked={item.checked} disabled={item.disabled} onCheckedChange={item.onCheckedChange} onSelect={item.onSelect}>

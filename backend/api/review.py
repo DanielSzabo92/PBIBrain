@@ -271,7 +271,8 @@ def _queue_item(
     elif source == "object_name":
         result["reason"] = f'Only the name “{target.get("name", "") if target else ""}” supports this meaning; no description confirms it.'
     elif source == "description":
-        result["reason"] = f'The source description says “{target.get("description", "") if target else ""}”. Confirm that the suggested label captures its meaning.'
+        desc = (target.get("description", "") if target else "").strip().rstrip(".")
+        result["reason"] = f'The source description says “{desc}”. Confirm that the suggested label captures its meaning.'
     elif source in {"dax_ast", "dax_analysis"}:
         result["reason"] = "DAX analysis suggests this behavior. Confirm that it describes the object's intended use."
     else:

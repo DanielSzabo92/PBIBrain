@@ -20,7 +20,7 @@ function MenuItem({ item }) {
       <MenubarPrimitive.CheckboxItem className="ui-menu-item app-menu-item" checked={item.checked} disabled={item.disabled} onSelect={item.onSelect}>
         <span className="ui-menu-check" aria-hidden="true"><MenubarPrimitive.ItemIndicator><Check /></MenubarPrimitive.ItemIndicator></span>
         <span className="app-menu-label">{item.label}</span>
-        {keys ? <span className="app-menu-keys" aria-hidden="true">{keys}</span> : null}
+        {keys ? <span className="app-menu-keys ml-auto pl-4 font-mono text-xs tabular-nums" aria-hidden="true">{keys}</span> : null}
       </MenubarPrimitive.CheckboxItem>
     );
   }
@@ -28,7 +28,7 @@ function MenuItem({ item }) {
     <MenubarPrimitive.Item className="ui-menu-item app-menu-item" disabled={item.disabled} onSelect={item.onSelect} aria-keyshortcuts={item.keys ? item.keys.replace("Ctrl", "Control").replace("Left", "ArrowLeft") : undefined}>
       <span className="ui-menu-check" aria-hidden="true" />
       <span className="app-menu-label">{item.label}</span>
-      {keys ? <span className="app-menu-keys" aria-hidden="true">{keys}</span> : null}
+      {keys ? <span className="app-menu-keys ml-auto pl-4 font-mono text-xs tabular-nums" aria-hidden="true">{keys}</span> : null}
     </MenubarPrimitive.Item>
   );
 }

@@ -22,7 +22,7 @@ export default function RemovalPolicyDialog({ open, onOpenChange, ...props }) {
 }
 
 // The content mounts on each open, so the policy state starts from initialPolicy before the initial focus.
-function PolicyContent({ onOpenChange, object, objectName, objectType, initialPolicy = "block", returnFocusRef, onSaved }) {
+function PolicyContent({ onOpenChange, object, objectName, objectType, effectName, initialPolicy = "block", returnFocusRef, onSaved }) {
   const removal = useResource("removal", { object: object || "none" });
   const save = useAction("removal_policy_set");
   const [policy, setPolicy] = useState(initialPolicy || "block");
@@ -35,7 +35,7 @@ function PolicyContent({ onOpenChange, object, objectName, objectType, initialPo
   const candidates = data?.repoint_candidates ?? [];
   const chosen = candidates.find((candidate) => candidate.object_id === target);
   const confirm = policyConfirm(policy, cascadeCount);
-  const type = objectType || t("shared.not_known");
+  const type = (objectType || "measure").toLowerCase();
 
   const submit = async () => {
     const reply = await save.run({ row_key: object, policy, repoint_target: policy === "repoint" ? target : null });
@@ -86,7 +86,7 @@ function PolicyContent({ onOpenChange, object, objectName, objectType, initialPo
 
   return (
     <DialogContent
-      title={t("row.policy.title", { object: objectName || object })}
+      title={effectName ? t("row.policy.title.effect", { object: objectName || object, effect: effectName }) : t("row.policy.title", { object: objectName || object })}
       className="dc-policy-dialog"
       onOpenAutoFocus={(event) => {
         event.preventDefault();
@@ -129,7 +129,7 @@ function PolicyContent({ onOpenChange, object, objectName, objectType, initialPo
         items={[
           { value: "block", label: t("row.policy.block"), reason: t("row.policy.block.help") },
           { value: "cascade", label: t("row.policy.cascade"), reason: t("row.policy.cascade.help"), children: cascadeTable },
-          { value: "repoint", label: t("row.policy.repoint"), reason: t("row.policy.repoint.help"), children: repointField },
+          { value: "repoint", label: t("row.policy.repoint"), reason: t("row.policy.repoint.help", { type }), children: repointField },
         ]}
       />
       {save.error ? <Notice tone="bad" role="alert">{t("row.policy.fail")}</Notice> : null}

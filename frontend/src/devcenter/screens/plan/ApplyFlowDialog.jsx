@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { AlertDialog, AlertDialogCancel, AlertDialogContent } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/toast";
-import { t } from "../../copy.js";
+import { t, tn } from "../../copy.js";
 import { normalizeError } from "../../errors.js";
 import { useDevCenterState, useDevCenterStore } from "../../useDevCenter.js";
 import ApplyProgressList from "./ApplyProgressList.jsx";
@@ -51,7 +51,7 @@ function ApplyConfirmBody({ preview, plan, session, approvals, approved, onAppro
         <div className="dc-apply-deletes-box" data-apply="deletes">
           <div className="dc-apply-deletes-header">
             <TriangleAlert className="dc-apply-deletes-icon" aria-hidden="true" />
-            <span>{t("apply.deletes.heading", { n: deletes.length })}</span>
+            <span>{tn("apply.deletes.heading", deletes.length)}</span>
           </div>
           <ul className="dc-apply-deletes-list">
             {deletes.map((name) => (

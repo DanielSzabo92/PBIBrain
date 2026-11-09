@@ -103,6 +103,18 @@ function sanitizePhrases(text) {
   return cleaned;
 }
 
+export function sanitizeDoublePunctuation(text) {
+  if (typeof text !== "string") return text;
+  return text
+    .replace(/[.?!]+([”"'])\s*([.?!])/g, "$1$2")
+    .replace(/\.{2,}/g, ".");
+}
+
+export function formatPlural(n, singular, plural = `${singular}s`) {
+  return `${n} ${n === 1 ? singular : plural}`;
+}
+export const plural = formatPlural;
+
 export function readableText(value, nodes = []) {
   if (value == null || value === "") return "";
   if (typeof value === "string") {
@@ -112,7 +124,7 @@ export function readableText(value, nodes = []) {
     const named = nodes.find((node) => node.id === value);
     if (named?.name && named.name !== value) return readableText(named.name);
     const replaced = value.replace(identity, (id) => nodes.find((node) => node.id === id)?.name || "Referenced object");
-    return sanitizePhrases(replaced);
+    return sanitizeDoublePunctuation(sanitizePhrases(replaced));
   }
   if (Array.isArray(value)) return [...new Set(value.map((item) => readableText(item, nodes)).filter(Boolean))].join(" · ");
   if (typeof value === "object") {

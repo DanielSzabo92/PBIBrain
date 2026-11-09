@@ -539,6 +539,7 @@ export const COPY = Object.freeze({
   "row.removal.fail": "Cannot find the objects that use this. Try again.",
   "row.removal.fail.action": "Try again",
   "row.policy.title": "Removal policy for {object}",
+  "row.policy.title.effect": "Removal policy for {object} (affects {effect})",
   "row.policy.body": "{n} objects use this {type}. Select what happens to them when you remove it.",
   "row.policy.legend": "Policy",
   "row.policy.block": "Block",
@@ -554,7 +555,7 @@ export const COPY = Object.freeze({
   "row.policy.cascade.own_choice": "Keeps its own Merge Choice: {choice}",
   "row.policy.cascade.confirm": "Use Cascade (remove {n} objects)",
   "row.policy.repoint": "Repoint",
-  "row.policy.repoint.help": "Replace each reference with one other measure.",
+  "row.policy.repoint.help": "Replace each reference with one other {type}.",
   "row.policy.repoint.with": "Replace each reference with",
   "row.policy.repoint.type": "Data type is different: {candidate_type}, not {object_type}",
   "row.policy.repoint.confirm": "Use Repoint",
@@ -1060,6 +1061,8 @@ export const COPY = Object.freeze({
   "plan.proposals.action": "Open Agent",
   "plan.before_apply": "Before you apply",
   "plan.before_apply.count": "{n} items stop the apply",
+  "plan.before_apply.count.one": "1 item stops the apply",
+  "plan.before_apply.count.other": "{n} items stop the apply",
   "plan.summary": "Summary",
   "plan.steps": "Plan steps",
   "plan.warnings": "Warnings",
@@ -1102,7 +1105,11 @@ export const COPY = Object.freeze({
   "apply.summary.modified": "{n} Modified",
   "apply.summary.renamed": "{n} Renamed",
   "apply.deletes": "Deletes {n} objects: {list}.",
+  "apply.deletes.one": "Deletes 1 object: {list}.",
+  "apply.deletes.other": "Deletes {n} objects: {list}.",
   "apply.deletes.heading": "Deletes {n} objects:",
+  "apply.deletes.heading.one": "Deletes 1 object:",
+  "apply.deletes.heading.other": "Deletes {n} objects:",
   "apply.target_files": "Files to write ({n})",
   "apply.prechecks.title": "Pre-checks",
   "apply.export_report": "Export report",
@@ -1141,7 +1148,7 @@ export const COPY = Object.freeze({
   "apply.fail.failed_step": "Failed step: {step}.",
   "apply.open_log": "Open Log",
   "apply.write_report": "Write change report",
-  "apply.desktop_after": 'In Power BI Desktop, select "Apply external changes" to load the new files.',
+  "apply.desktop_after": "Click Apply changes in Power BI Desktop to load modifications.",
 
   // Apply step names (technical design section 13). The step IDs are the details.step values.
   "apply.step.source_check": "Sources are the same as at the last check",
@@ -1150,6 +1157,9 @@ export const COPY = Object.freeze({
   "apply.step.canonical_check": "Target files are in the Power BI Desktop format",
   "apply.step.full_validation": "Full check passed",
   "apply.step.approval": "You approved {n} items",
+  "apply.step.approval.zero": "No items required approval",
+  "apply.step.approval.one": "You approved 1 item",
+  "apply.step.approval.other": "You approved {n} items",
   "apply.step.candidate_write": "Write a candidate copy",
   "apply.step.guard": "Guard check",
   "apply.step.promotion": "Write the files",
@@ -1235,6 +1245,12 @@ export const COPY = Object.freeze({
   "report.confirm": "Save change report",
 });
 
+// Pluralization helper: formatPlural(n, singular, plural)
+export function formatPlural(n, singular, plural = `${singular}s`) {
+  return `${n} ${n === 1 ? singular : plural}`;
+}
+export const plural = formatPlural;
+
 const PLACEHOLDER = /\{([a-z_]+)\}/g;
 
 // The text for a key, with each {placeholder} replaced. A missing key gives the key itself.
@@ -1244,12 +1260,13 @@ export function t(key, params = {}) {
   return text.replace(PLACEHOLDER, (match, name) => (params[name] === undefined || params[name] === null ? match : String(params[name])));
 }
 
-// The count text for a key: "<key>.one" for 1, "<key>.zero" for 0 when it exists, else "<key>.other".
+// The count text for a key: "<key>.zero" for 0 when it exists, "<key>.one" for 1, else "<key>.other" (falling back to "<key>").
 export function tn(key, n, params = {}) {
   const values = { n, ...params };
   if (n === 0 && COPY[`${key}.zero`] !== undefined) return t(`${key}.zero`, values);
   if (n === 1 && COPY[`${key}.one`] !== undefined) return t(`${key}.one`, values);
-  return t(`${key}.other`, values);
+  if (COPY[`${key}.other`] !== undefined) return t(`${key}.other`, values);
+  return t(key, values);
 }
 
 // The copy key of an error code. Codes with no key use error.unknown.

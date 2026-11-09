@@ -119,6 +119,7 @@ export default function ImpactExplorer({ node, nodes = [], onSelect, transport =
             <h3 className="panel-title font-semibold text-sm">Impact Explorer</h3>
           </div>
           <p className="muted-copy compact">What breaks if I change this object? Explore downstream blast radius.</p>
+          <p className="text-xs text-muted-foreground mt-1">Read-only view · Changes can be made in Dev Center or Power BI Desktop.</p>
           <Button
             variant="outline"
             className="w-full justify-between mt-2"
@@ -139,6 +140,9 @@ export default function ImpactExplorer({ node, nodes = [], onSelect, transport =
             <div className="impact-explorer-toolbar">
               {node.type === "RELATIONSHIP" ? (
                 <div className="guard-fields impact-proposal-fields">
+                  <p className="text-xs text-muted-foreground w-full mb-1">
+                    Read-only view · Changes can be made in Dev Center or Power BI Desktop.
+                  </p>
                   <label className="text-xs font-medium">
                     Proposed property
                     <NativeSelect value={property} onChange={(event) => { invalidate(); setProperty(event.target.value); setNewValue(""); }}>

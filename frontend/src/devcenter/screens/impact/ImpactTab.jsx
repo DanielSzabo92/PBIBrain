@@ -17,6 +17,7 @@ import { createDevCenterHttp } from "../../httpClient.js";
 import { slashGoesToSearch } from "../../preferences.js";
 import { useAction, useDevCenterState } from "../../useDevCenter.js";
 import { targetNames } from "../sessionModel.js";
+import { formatDaxName, formatObjectRef } from "../../phrases.js";
 import CompletenessStrip from "../../components/CompletenessStrip.jsx";
 import ImpactItemRow, { IMPACT_ROW_HEIGHT } from "../../components/ImpactItemRow.jsx";
 import RemovalPolicyDialog from "../../components/RemovalPolicyDialog.jsx";
@@ -317,7 +318,11 @@ export default function ImpactTab({ session, tabState, onTabs, changeDisabled, r
     const policy = policyFromAction(action);
     if (policy && policy !== "block") {
       dialogTriggerRef.current = trigger || document.activeElement;
-      setDialog({ object: item.cause, name: item.path?.[0]?.name ?? item.cause, type: item.path?.[0]?.type, policy });
+      const obj = item?.impacted_object;
+      const effectName = obj?.table && obj?.name && obj?.object_type !== "table"
+        ? formatDaxName(obj.table, obj.name)
+        : formatObjectRef(obj?.name ?? item?.id);
+      setDialog({ object: item.cause, name: item.path?.[0]?.name ?? item.cause, type: item.path?.[0]?.type, policy, effectName });
       return;
     }
     if (action === "map_to_target" && !payload) {
@@ -346,7 +351,11 @@ export default function ImpactTab({ session, tabState, onTabs, changeDisabled, r
 
   const openPolicy = (item, policy, trigger) => {
     dialogTriggerRef.current = trigger;
-    setDialog({ object: item.cause, name: item.path?.[0]?.name ?? item.cause, type: item.path?.[0]?.type, policy: policy || policies[item.cause] || "block" });
+    const obj = item?.impacted_object;
+    const effectName = obj?.table && obj?.name && obj?.object_type !== "table"
+      ? formatDaxName(obj.table, obj.name)
+      : formatObjectRef(obj?.name ?? item?.id);
+    setDialog({ object: item.cause, name: item.path?.[0]?.name ?? item.cause, type: item.path?.[0]?.type, policy: policy || policies[item.cause] || "block", effectName });
   };
 
   const policySaved = async (reply) => {
@@ -696,6 +705,7 @@ export default function ImpactTab({ session, tabState, onTabs, changeDisabled, r
         object={dialog?.object}
         objectName={dialog?.name}
         objectType={dialog?.type}
+        effectName={dialog?.effectName}
         initialPolicy={dialog?.policy}
         returnFocusRef={dialogTriggerRef}
         onSaved={policySaved}

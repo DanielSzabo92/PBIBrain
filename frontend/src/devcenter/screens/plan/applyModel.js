@@ -1,6 +1,6 @@
 // Pure logic of the Apply, Undo, format only, and change report flows (UI design 5.5, 5.6, step U10).
 // Plain JS with no React import, so that node --test can test it.
-import { t } from "../../copy.js";
+import { t, tn } from "../../copy.js";
 
 export const KINDS = Object.freeze(["apply", "format", "undo"]);
 
@@ -51,7 +51,7 @@ const STEP_COPY = { validation: "full_validation", write: "candidate_write", fin
 
 function rowLabel(kind, row, approvalCount) {
   if (kind === "undo") return t(`undo.step.${row.id}`);
-  if (row.id === "approval") return t("apply.step.approval", { n: approvalCount });
+  if (row.id === "approval") return tn("apply.step.approval", approvalCount);
   return t(`apply.step.${row.id}`);
 }
 

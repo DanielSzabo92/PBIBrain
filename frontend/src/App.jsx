@@ -18,7 +18,7 @@ import BrandMark from "./components/BrandMark";
 import { TypeGlyph, TypeIcon } from "./components/TypeGlyph";
 import { CloudSourcePicker } from "./components/CloudSourcePicker";
 import { highlightDax } from "./dax";
-import { objectName, objectScope, originNote, readableText, publicProperties, scopeChoices, statusLabel, suggestionLabel, isBackendUnreachableError } from "./presentation";
+import { objectName, objectScope, originNote, readableText, publicProperties, scopeChoices, statusLabel, suggestionLabel, isBackendUnreachableError, sanitizeDoublePunctuation } from "./presentation";
 import { Button } from "./components/ui/button";
 import { Input } from "./components/ui/input";
 import { NativeSelect } from "./components/ui/native-select";
@@ -1401,7 +1401,13 @@ function SearchView({ transport, overview, onSelect, colors, session, onSession,
           {modelId || reportId || objectType ? <Button variant="ghost" size="sm" className="clear-filters" onClick={() => change({ modelId: "", reportId: "", objectType: "" })}><X />Clear filters</Button> : null}
         </div>
       </div>
-      <div className="search-status" role="status" aria-live="polite">{active ? loading ? "Searching…" : result ? `${result.items.length} of ${result.total} ${!query.trim() ? "objects" : "matches"}` : "" : "Search by name, paste part of a formula, or choose a filter."}</div>
+      <div className="search-status" role="status" aria-live="polite">
+        {active ? loading ? "Searching…" : result ? (
+          (result.total === 0 || result.items.length === 0)
+            ? (!query.trim() ? "No objects" : "No matches")
+            : `${result.items.length} of ${result.total} ${!query.trim() ? (result.total === 1 ? "object" : "objects") : (result.total === 1 ? "match" : "matches")}`
+        ) : "" : "Search by name, paste part of a formula, or choose a filter."}
+      </div>
       {error ? <div className="search-error" role="alert"><TriangleAlert aria-hidden="true" /><span>{readableText(error.message)}</span><Button variant="outline" size="sm" onClick={() => runSearch(error.offset)}>Retry search</Button></div> : null}
       {!active ? <EmptyState icon={<NavIcon name="search" size={20} />} title="What are you looking for?" detail="Find a measure to inspect its formula and dependencies." action={<p className="empty-hint"><kbd>Ctrl</kbd><kbd>K</kbd> jumps here from anywhere</p>} /> : null}
       {active && !loading && !result?.items?.length && !error ? <EmptyState icon={<NavIcon name="search" size={20} />} title="No matches" detail="Try a shorter name or clear the filters." /> : null}
@@ -2023,7 +2029,8 @@ function ReviewItem({
   };
 
   const evidence = readableText(item.evidence?.length ? item.evidence : item.item?.evidence, nodes);
-  const reason = item.reason || (item.source === "object_name" ? "Only the object name supports this meaning; no description confirms it." : item.source === "description" ? "The source description suggests this meaning. Confirm that the label fits." : "An inference rule proposed this meaning. Confirm it using the recorded evidence.");
+  const rawReason = item.reason || (item.source === "object_name" ? "Only the object name supports this meaning; no description confirms it." : item.source === "description" ? "The source description suggests this meaning. Confirm that the label fits." : "An inference rule proposed this meaning. Confirm it using the recorded evidence.");
+  const reason = sanitizeDoublePunctuation(rawReason);
   const score = confidence(item.confidence ?? item.properties?.confidence);
   const level = score === null ? "none" : score >= 80 ? "high" : score >= 50 ? "mid" : "low";
   const confidenceTip = explainConfidence(item, targetNode);

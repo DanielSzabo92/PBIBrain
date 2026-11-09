@@ -74,7 +74,7 @@ test.describe("Apply preview and confirm dialog", () => {
     await openApplyDialog(page);
     await expect(dialog(page).getByRole("checkbox")).toHaveCount(0);
     await expect(dialog(page).getByRole("button", { name: "Cancel" })).toBeFocused();
-    await expect(dialog(page).locator('[data-apply="deletes"]')).toHaveText("Deletes 1 objects: Region.");
+    await expect(dialog(page).locator('[data-apply="deletes"]')).toHaveText("Deletes 1 object: Region.");
     const confirm = dialog(page).locator('[data-confirm="apply"]');
     await expect(confirm).toBeEnabled();
     await expect(confirm).toHaveAttribute("data-variant", "destructive");
