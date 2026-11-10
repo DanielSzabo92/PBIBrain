@@ -400,12 +400,25 @@ def _reject_path_aliases(config: Mapping[str, Any], config_path: Path) -> None:
 
 
 def _read_project_source(path: Path) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
-    if not path.is_file():
+    if not path.is_file() and not path.is_dir():
         raise ProjectSourceError(f"Project source not found: {path}")
     try:
         if is_pbip_source(path):
             bundle = read_pbip_project(path)
             return list(bundle["models"]), list(bundle["reports"])
+        if path.is_dir():
+            if (path / "definition").is_dir() or (path / "model.bim").is_file():
+                if (
+                    path.suffix.casefold() == ".report"
+                    or (path / "definition" / "report.json").is_file()
+                    or (path / "definition" / "pages").is_dir()
+                    or (path / "definition.pbir").is_file()
+                ):
+                    return [], [read_report_folder(path)]
+                return [read_model_folder(path)], []
+            if (path / "report.json").is_file() or (path / "definition.pbir").is_file():
+                return [], [read_report_folder(path)]
+            raise ProjectSourceError(f"Project source directory is not a recognized model or report: {path}")
         payload = load_metadata(path)
         if not isinstance(payload, Mapping):
             return ModelReader().read_many(payload), []

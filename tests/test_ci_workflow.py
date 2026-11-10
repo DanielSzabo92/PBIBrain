@@ -21,7 +21,7 @@ class CiWorkflowTest(unittest.TestCase):
         cls.text = WORKFLOW.read_text(encoding="utf-8")
 
     def test_the_workflow_runs_on_each_push_and_pull_request_on_windows(self) -> None:
-        self.assertRegex(self.text, r"(?m)^on:\n  push:\n  pull_request:\n")
+        self.assertRegex(self.text, r"(?m)^on:\n  push:(?:\n    branches:\n      - main)?\n  pull_request:\n")
         self.assertRegex(self.text, r"(?m)^    runs-on: windows-latest$")
         self.assertNotIn("\t", self.text)
 
