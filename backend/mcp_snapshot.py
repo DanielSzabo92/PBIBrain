@@ -82,7 +82,7 @@ def _source_files(source: Path) -> Iterable[Path]:
 
 def _display(path: Path, base: Path) -> str:
     try:
-        return Path(os.path.relpath(path, base)).as_posix()
+        return Path(os.path.relpath(path.resolve(), base.resolve())).as_posix()
     except ValueError:  # another drive on Windows
         return path.as_posix()
 
