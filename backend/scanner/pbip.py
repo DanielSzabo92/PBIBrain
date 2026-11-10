@@ -21,6 +21,7 @@ _TABLE_RE = re.compile(r"^\s*table\s+(.+?)\s*$", re.IGNORECASE)
 _MODEL_RE = re.compile(r"^\s*model\s+(.+?)\s*$", re.IGNORECASE)
 _ATTRIBUTE_RE = re.compile(r"^\s*([A-Za-z][A-Za-z0-9_]*)\s*:\s*(.*?)\s*$")
 _RELATIONSHIP_RE = re.compile(r"^\s*relationship\s+(.+?)\s*$", re.IGNORECASE)
+_DATABASE_RE = re.compile(r"^\s*database\s+(.+?)\s*$", re.IGNORECASE)
 _EXPRESSION_RE = re.compile(r"^\s*expression\s+(.+?)\s*=\s*(.*?)\s*$", re.IGNORECASE)
 
 
@@ -324,20 +325,20 @@ def _parse_model_meta(path: Path) -> dict[str, Any]:
     match = next((candidate for candidate in (_MODEL_RE.match(line) for line in lines) if candidate), None)
     tmdl_name = _unquote(match.group(1)) if match else None
     platform_name = _platform_name(path)
-    name = tmdl_name or platform_name or path.stem
-    if name.casefold() == "model" and platform_name:
-        name = platform_name
+    db_file = path / "definition" / "database.tmdl"
+    db_lines = db_file.read_text(encoding="utf-8").splitlines() if db_file.is_file() else []
+    db_match = next((candidate for candidate in (_DATABASE_RE.match(line) for line in db_lines) if candidate), None)
+    db_name = _unquote(db_match.group(1)) if db_match else None
+    name = tmdl_name or db_name or platform_name or path.stem
+    if name.casefold() == "model":
+        name = db_name or platform_name or (path.stem if path.stem.casefold() != "model" else "Model")
     source = _attribute(lines, "lineageTag") or _platform_id(path)
     source = source or "pbip-model-" + hashlib.sha256(str(path.resolve()).encode("utf-8")).hexdigest()[:24]
-    compatibility = _attribute(
-        (path / "definition" / "database.tmdl").read_text(encoding="utf-8").splitlines()
-        if (path / "definition" / "database.tmdl").is_file()
-        else [],
-        "compatibilityLevel",
-    )
+    compatibility = _attribute(db_lines, "compatibilityLevel")
     model: dict[str, Any] = {
         "id": source,
         "name": name,
+        "database_name": db_name,
         "source_path": str(path),
         "compatibility_level": compatibility,
         "tables": [],
@@ -357,6 +358,8 @@ def _parse_model_bim(path: Path) -> dict[str, Any]:
     model = dict(value) if isinstance(value, Mapping) else {}
     platform_name = _platform_name(path)
     name = model.get("name") or payload.get("name") or platform_name or path.stem
+    if name.casefold() == "model" and path.stem and path.stem.casefold() != "model":
+        name = path.stem
     source = model.get("id") or payload.get("id") or _platform_id(path)
     source = source or "pbip-model-" + hashlib.sha256(str(path.resolve()).encode("utf-8")).hexdigest()[:24]
     compatibility = (

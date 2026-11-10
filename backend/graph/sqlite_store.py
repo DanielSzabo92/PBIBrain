@@ -113,6 +113,26 @@ def tokenize_text(text: str) -> list[str]:
     return tokens
 
 
+def _sanitize_path_segment(value: str, default: str = "item") -> str:
+    """Sanitize a string for use as a single path segment across OSes.
+
+    Removes/replaces invalid filesystem characters (/ \ : * ? " < > | control chars)
+    and strips leading/trailing whitespace and trailing dots (forbidden on Windows).
+    """
+    if not value:
+        return default
+    cleaned = re.sub(r'[/\\:*?"<>|\x00-\x1f]', '_', str(value))
+    cleaned = re.sub(r'\s+', ' ', cleaned).strip(' .')
+    reserved = {
+        "con", "prn", "aux", "nul",
+        "com1", "com2", "com3", "com4", "com5", "com6", "com7", "com8", "com9",
+        "lpt1", "lpt2", "lpt3", "lpt4", "lpt5", "lpt6", "lpt7", "lpt8", "lpt9",
+    }
+    if cleaned.casefold() in reserved or not cleaned:
+        return f"{cleaned or default}_obj"
+    return cleaned
+
+
 class SQLiteStore:
     """ACID SQLite storage for PBIBrain graphs with Trail exporter."""
 
@@ -424,7 +444,10 @@ class SQLiteStore:
 
         # Export Trail cache cards if directory is configured
         if self.directory is not None:
-            self.export_trail()
+            try:
+                self.export_trail()
+            except Exception:
+                LOGGER.warning("Exporting Trail cache failed", exc_info=True)
 
     def upsert_node(self, node: Node | Mapping[str, Any]) -> Node:
         n = node if isinstance(node, Node) else node_from_dict(node)
@@ -695,9 +718,17 @@ class SQLiteStore:
         source_file = props.get("source_file") or props.get("ast_location", {}).get("source_file")
 
         # Determine model/report folder prefix
+        is_report_obj = node.type in {
+            "PAGE", "VISUAL", "BOOKMARK", "REPORT", "REPORT_MEASURE", "VISUAL_CALCULATION",
+            "PAGE_FILTER", "REPORT_FILTER", "VISUAL_FILTER",
+        } or (node.report_id and not node.model_id)
+
         scope_prefix = ""
-        if node.model_id:
-            # Clean model id
+        if is_report_obj and node.report_id:
+            scope_prefix = node.report_id.replace("report:", "").strip("/")
+            if scope_prefix and not scope_prefix.endswith(".Report"):
+                scope_prefix += ".Report"
+        elif node.model_id:
             scope_prefix = node.model_id.replace("model:", "").strip("/")
             if scope_prefix and not scope_prefix.endswith(".SemanticModel"):
                 scope_prefix += ".SemanticModel"
@@ -706,21 +737,31 @@ class SQLiteStore:
             if scope_prefix and not scope_prefix.endswith(".Report"):
                 scope_prefix += ".Report"
 
+        if scope_prefix:
+            scope_prefix = _sanitize_path_segment(scope_prefix)
+
         if source_file:
-            path_str = source_file.replace("\\", "/").strip("/")
-            if scope_prefix and not path_str.startswith(scope_prefix):
-                return f"{scope_prefix}/{path_str}"
-            return path_str
+            path_str = str(source_file).replace("\\", "/").strip("/")
+            segments = [_sanitize_path_segment(part) for part in path_str.split("/") if part]
+            safe_path_str = "/".join(segments)
+            if scope_prefix and not safe_path_str.startswith(scope_prefix):
+                return f"{scope_prefix}/{safe_path_str}"
+            return safe_path_str
 
         # Fallback based on type
         owner = props.get("table_id") or node.name
         if isinstance(owner, str) and ":" in owner:
             owner = owner.split(":")[-1]
+        safe_owner = _sanitize_path_segment(str(owner or "table"))
+        safe_name = _sanitize_path_segment(str(node.name or "item"))
+
         if node.type in {"TABLE", "MEASURE", "COLUMN", "HIERARCHY", "PARTITION"}:
-            return f"{scope_prefix or 'Model'}/definition/tables/{owner}.tmdl"
+            return f"{scope_prefix or 'Model'}/definition/tables/{safe_owner}.tmdl"
         if node.type in {"PAGE", "VISUAL"}:
-            return f"{scope_prefix or 'Report'}/definition/pages/{node.name}/page.json"
-        return f"{scope_prefix or 'Project'}/{node.name}.md"
+            return f"{scope_prefix or 'Report'}/definition/pages/{safe_name}/page.json"
+        if node.type == "BOOKMARK":
+            return f"{scope_prefix or 'Report'}/definition/bookmarks/{safe_name}"
+        return f"{scope_prefix or 'Project'}/{safe_name}"
 
     def export_trail(self, target_dir: Path | None = None) -> None:
         """Export the on-disk Trail cache: wiring.json, ask-index.json, INDEX.md, and cards."""
@@ -894,11 +935,17 @@ class SQLiteStore:
                     card_lines.append(f"  - {rel} by `{src_name}`")
 
             card_lines.append("")
-            self._atomic_write_text(card_file, "\n".join(card_lines))
-            index_entries.append(f"- [{path_key}](file://{path_key}.md) ({len(path_nodes)} symbols)")
+            try:
+                self._atomic_write_text(card_file, "\n".join(card_lines))
+                index_entries.append(f"- [{path_key}](file://{path_key}.md) ({len(path_nodes)} symbols)")
+            except Exception:
+                LOGGER.warning("Failed to write Trail card for %s", path_key, exc_info=True)
 
         # Write INDEX.md
-        self._atomic_write_text(out_dir / "INDEX.md", "\n".join(index_entries) + "\n")
+        try:
+            self._atomic_write_text(out_dir / "INDEX.md", "\n".join(index_entries) + "\n")
+        except Exception:
+            LOGGER.warning("Failed to write INDEX.md", exc_info=True)
 
         # Delete stale cards
         stale_cards = prev_cards - curr_cards
@@ -911,14 +958,26 @@ class SQLiteStore:
                     pass
 
         # Write current card manifest
-        self._atomic_write_json(manifest_file, {"cards": sorted(curr_cards)})
+        try:
+            self._atomic_write_json(manifest_file, {"cards": sorted(curr_cards)})
+        except Exception:
+            LOGGER.warning("Failed to write cards manifest", exc_info=True)
 
     def _atomic_write_text(self, file_path: Path, content: str) -> None:
         file_path.parent.mkdir(parents=True, exist_ok=True)
-        with tempfile.NamedTemporaryFile("w", dir=file_path.parent, delete=False, encoding="utf-8") as tf:
-            tf.write(content)
-            temp_name = tf.name
-        os.replace(temp_name, file_path)
+        temp_name = None
+        try:
+            with tempfile.NamedTemporaryFile("w", dir=file_path.parent, delete=False, encoding="utf-8") as tf:
+                tf.write(content)
+                temp_name = tf.name
+            os.replace(temp_name, file_path)
+        except Exception:
+            if temp_name and os.path.exists(temp_name):
+                try:
+                    os.unlink(temp_name)
+                except Exception:
+                    pass
+            raise
 
     def _atomic_write_json(self, file_path: Path, payload: Any) -> None:
         content = json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True, default=_json_default) + "\n"

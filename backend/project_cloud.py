@@ -243,21 +243,48 @@ def bind_reports(models: list[dict[str, Any]], reports: list[dict[str, Any]]) ->
     by_name: dict[str, list[dict[str, Any]]] = {}
     for model in models:
         by_name.setdefault(str(model.get("name") or "").casefold(), []).append(model)
+        source_path = model.get("source_path")
+        if source_path:
+            p = Path(source_path)
+            if p.stem and p.stem.casefold() not in by_name:
+                by_name.setdefault(p.stem.casefold(), []).append(model)
+            if p.name and p.name.casefold() not in by_name:
+                by_name.setdefault(p.name.casefold(), []).append(model)
+        if model.get("database_name"):
+            db_name = str(model["database_name"]).casefold()
+            if db_name not in by_name:
+                by_name.setdefault(db_name, []).append(model)
+
     placeholders: dict[str, dict[str, Any]] = {}
     items: dict[str, dict[str, Any]] = {}
     for report in reports:
         cloud = report.get("cloud_source") if isinstance(report.get("cloud_source"), Mapping) else None
         reference = report.get("model_id")
+        keys: dict[str, str] = {}
         if cloud is not None and cloud.get("dataset_id"):
             keys = {"model": str(cloud["dataset_id"])}
         elif isinstance(reference, str) and reference.startswith("byConnection"):
             keys = connection_keys(reference)
+        elif isinstance(reference, str) and reference:
+            if reference.casefold() in by_id:
+                continue
+            keys = {"path": reference}
         else:
-            continue  # A byPath binding (or none): the scanner resolves it.
+            continue
+
         target = None
         if keys.get("model"):
             wanted = keys["model"].casefold()
             target = by_cloud.get(wanted) or by_id.get(wanted)
+            if target is None:
+                matches = by_name.get(wanted, [])
+                if len(matches) == 1:
+                    target = matches[0]
+            if target is None and wanted in {"referencedobject", "model"}:
+                # In Power BI Desktop, 'ReferencedObject' is the standard placeholder for a live/external connection.
+                # If there is exactly one model in the project, bind to it.
+                if len(models) == 1:
+                    target = models[0]
         if target is None and keys.get("catalog"):
             matches = by_name.get(keys["catalog"].casefold(), [])
             if keys.get("workspace"):
@@ -265,13 +292,35 @@ def bind_reports(models: list[dict[str, Any]], reports: list[dict[str, Any]]) ->
                            if str((model.get("cloud_source") or {}).get("workspace_name") or "").casefold() == keys["workspace"].casefold()] or matches
             if len(matches) == 1:
                 target = matches[0]
+        if target is None and keys.get("path"):
+            path_ref = Path(keys["path"])
+            for m in models:
+                m_path = m.get("source_path")
+                if m_path:
+                    try:
+                        if Path(m_path).resolve() == path_ref.resolve():
+                            target = m
+                            break
+                    except Exception:
+                        pass
+                    if path_ref.name.casefold() == Path(m_path).name.casefold() or path_ref.stem.casefold() == Path(m_path).stem.casefold():
+                        target = m
+                        break
+            if target is None:
+                stem_matches = by_name.get(path_ref.stem.casefold(), [])
+                if len(stem_matches) == 1:
+                    target = stem_matches[0]
+            if target is None and len(models) == 1:
+                target = models[0]
+
         if target is not None:
             report["model_id"] = target["id"]
             continue
-        key = (keys.get("model") or "|".join(filter(None, (keys.get("workspace"), keys.get("catalog")))) or "unknown").casefold()
+
+        key = (keys.get("model") or keys.get("path") or "|".join(filter(None, (keys.get("workspace"), keys.get("catalog")))) or "unknown").casefold()
         placeholder = placeholders.get(key)
         if placeholder is None:
-            name = keys.get("catalog") or keys.get("model") or "Semantic model"
+            name = keys.get("catalog") or keys.get("model") or (Path(keys["path"]).stem if keys.get("path") else "Semantic model")
             placeholder = {
                 "id": f"not-checked-{_safe_name(key)}",
                 "name": name,
