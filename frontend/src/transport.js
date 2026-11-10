@@ -44,6 +44,13 @@ export function createBrainTransport({ baseUrl = API_ROOT, fetcher = globalThis.
         body: JSON.stringify({ action, ...payload }),
       });
     },
+    async reviewBulk(action, items) {
+      return request("/review", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action, items }),
+      });
+    },
     getOverview() {
       return request("/overview");
     },

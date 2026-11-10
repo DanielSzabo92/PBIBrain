@@ -461,6 +461,49 @@ def reopen(repository: GraphRepository, item_id: str) -> dict[str, Any]:
     return _set_status(repository, item_id, "candidate")
 
 
+def _set_status_many(repository: GraphRepository, item_ids: Sequence[str], status: str) -> dict[str, Any]:
+    status = str(status).lower()
+    if status not in _ALLOWED_STATUSES:
+        raise ValueError(f"unsupported review status: {status}")
+    nodes, edges = _all_items(repository)
+    targets = {str(item_id) for item_id in item_ids}
+    changed_nodes: list[Node] = []
+    changed_edges: list[Edge] = []
+    for node in nodes:
+        if node.properties.get("candidate_ids") and node.id in targets:
+            continue
+        if any(_item_matches(node.to_dict(), target) for target in targets) and node.status != "factual":
+            node.status = status
+            changed_nodes.append(node)
+    for edge in edges:
+        if any(_item_matches(edge.to_dict(), target) for target in targets) and edge.evidence_class == "INFERRED":
+            edge.status = status
+            changed_edges.append(edge)
+    for node in nodes:
+        if node.properties.get("candidate_ids"):
+            statuses = {edge.status for edge in edges if edge.to_id == node.id and edge.properties.get("candidate_id")}
+            node.status = next(iter(statuses)) if len(statuses) == 1 else "candidate"
+    repository.replace(nodes, edges)
+    return {
+        "status": status,
+        "count": len(changed_nodes) + len(changed_edges),
+        "nodes": [node.to_dict() for node in changed_nodes],
+        "edges": [edge.to_dict() for edge in changed_edges],
+    }
+
+
+def approve_many(repository: GraphRepository, item_ids: Sequence[str]) -> dict[str, Any]:
+    return _set_status_many(repository, item_ids, "approved")
+
+
+def reject_many(repository: GraphRepository, item_ids: Sequence[str]) -> dict[str, Any]:
+    return _set_status_many(repository, item_ids, "rejected")
+
+
+def reopen_many(repository: GraphRepository, item_ids: Sequence[str]) -> dict[str, Any]:
+    return _set_status_many(repository, item_ids, "candidate")
+
+
 def edit(
     repository: GraphRepository,
     item_id: str,
@@ -524,11 +567,14 @@ __all__ = [
     "OverrideStore",
     "apply_overrides_to_dict",
     "approve",
+    "approve_many",
     "edit",
     "get_review_queue",
     "override",
     "remove_override",
     "reopen",
+    "reopen_many",
     "reject",
+    "reject_many",
     "review_queue",
 ]

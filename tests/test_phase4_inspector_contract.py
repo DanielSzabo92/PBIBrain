@@ -513,6 +513,40 @@ class Phase4TransportContractTests(unittest.TestCase):
         finally:
             app.close()
 
+    def test_bulk_review_approve_and_reject_and_undo(self):
+        api = BrainAPI(self.repository)
+        try:
+            concept_id = self.ids["concept"]
+            approved = api.apply_review("bulk", "approve", {"items": [concept_id]})
+            self.assertEqual(approved["result"]["status"], "approved")
+            self.assertGreaterEqual(approved["result"]["count"], 1)
+
+            node = self.repository.get_object(concept_id)
+            self.assertEqual(node.status, "approved")
+
+            reopened = api.apply_review("bulk", "reopen", {"items": [concept_id]})
+            self.assertEqual(reopened["result"]["status"], "candidate")
+            node = self.repository.get_object(concept_id)
+            self.assertEqual(node.status, "candidate")
+
+            rejected = api.apply_review("bulk", "reject", {"items": [concept_id]})
+            self.assertEqual(rejected["result"]["status"], "rejected")
+            node = self.repository.get_object(concept_id)
+            self.assertEqual(node.status, "rejected")
+        finally:
+            api.close()
+
+    def test_brain_app_devcenter_sessions_route_when_empty(self):
+        app = create_app(self.repository)
+        try:
+            status, payload = app.handle("GET", "/api/devcenter/sessions")
+            self.assertEqual(status, 200)
+            self.assertIn("sessions", payload)
+            self.assertEqual(payload["sessions"], [])
+        finally:
+            app.close()
+
+
 
 class Phase4FrontendContractTests(unittest.TestCase):
     def test_frontend_has_out_of_box_api_proxy(self):
@@ -610,6 +644,11 @@ const result = await transport.review("approve", { target: "n1" });
 const body = JSON.parse(request.options.body);
 if (result.accepted !== true || request.url !== "/local/review" || request.options.method !== "POST" || body.action !== "approve" || body.target !== "n1") {
   throw new Error("review transport contract failed");
+}
+const bulkResult = await transport.reviewBulk("approve", ["n1", "n2"]);
+const bulkBody = JSON.parse(request.options.body);
+if (bulkResult.accepted !== true || request.url !== "/local/review" || request.options.method !== "POST" || bulkBody.action !== "approve" || bulkBody.items?.length !== 2) {
+  throw new Error("bulk review transport contract failed");
 }
 '''
         result = subprocess.run(

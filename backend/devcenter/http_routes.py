@@ -67,6 +67,8 @@ def dispatch(app: Any, method: str, parts: Sequence[str], query: Mapping[str, Se
         return 405, error_reply("action_not_allowed", "The method is not allowed for this route.", {"reason": "method_not_allowed"})
     devcenter = getattr(app, "devcenter", None)
     if devcenter is None:
+        if list(parts) == ["sessions"]:
+            return 200, {"revision": None, "sessions": []}
         return 409, error_reply("session_not_open", "No merge session is open.")
     query = {**query, **{p[1:-1]: [part] for p, part in zip(selected.path, parts) if p.startswith("{")}}
     try:

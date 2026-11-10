@@ -557,6 +557,18 @@ function AppInner({ transport = brainTransport }) {
 
   const handleUndoReview = useCallback(
     async (auditEntry) => {
+      if (auditEntry.isBulk) {
+        try {
+          await transport.reviewBulk("reopen", auditEntry.itemIds || []);
+          setAuditTrail((current) => current.filter((entry) => entry.id !== auditEntry.id));
+          toast.show({ tone: "ok", text: "Bulk decision undone" });
+          await Promise.allSettled([loadSnapshot(), load()]);
+          return true;
+        } catch {
+          toast.show({ tone: "warn", text: "Could not undo bulk decision. Try again." });
+          return false;
+        }
+      }
       const { item, reviewId, candidateId, targetId, property } = auditEntry;
       const stale = item?.issue === "stale" || item?.issue_type === "stale" || item?.status === "stale";
       const payload = {
@@ -593,6 +605,65 @@ function AppInner({ transport = brainTransport }) {
       }
     },
     [transport, loadSnapshot, load, toast],
+  );
+
+  const bulkReview = useCallback(
+    async (action, items) => {
+      if (scanInFlight.current || !items?.length) return false;
+      const generation = projectGeneration.current;
+      setNotice("");
+      try {
+        const itemPayloads = items.map((item) => {
+          const reviewId = item?.review_id || item?.override_id || item?.id;
+          const candidateId = item?.properties?.candidate_id || item?.item?.candidate_id || item?.item?.properties?.candidate_id || reviewId;
+          const target = itemTarget(item);
+          return candidateId || target;
+        }).filter(Boolean);
+
+        const result = await transport.reviewBulk(action, itemPayloads);
+        if (generation !== projectGeneration.current) return false;
+        const returned = result?.snapshot || result?.brain;
+        if (returned) {
+          setSnapshot(normalizeSnapshot(returned));
+          setSnapshotLoaded(true);
+        }
+
+        const actionText = action === "approve" ? "Approved" : action === "reject" ? "Rejected" : "Updated";
+        const count = items.length;
+        const actionLabel = `${actionText} ${count} ${count === 1 ? "suggestion" : "suggestions"}`;
+
+        const bulkAuditEntry = {
+          id: `audit-${Date.now()}-bulk`,
+          isBulk: true,
+          action,
+          items,
+          itemIds: itemPayloads,
+          count,
+          actor: "You",
+          timestamp: new Date().toISOString(),
+          label: actionLabel,
+        };
+        setAuditTrail((current) => [bulkAuditEntry, ...current]);
+
+        toast.show({
+          tone: "ok",
+          text: actionLabel,
+          action: {
+            label: "Undo",
+            onClick: async () => {
+              await handleUndoReview(bulkAuditEntry);
+            },
+          },
+        });
+        await Promise.allSettled([loadSnapshot(), load()]);
+        return true;
+      } catch (cause) {
+        if (generation !== projectGeneration.current) return false;
+        toast.show({ tone: "warn", text: `Bulk ${action} failed. Try again.` });
+        return false;
+      }
+    },
+    [handleUndoReview, load, loadSnapshot, transport, toast],
   );
 
   const navigate = useCallback((key) => {
@@ -810,7 +881,7 @@ function AppInner({ transport = brainTransport }) {
             {view === "search" ? <div className="page page-narrow" data-ui-stack=""><SearchView session={searchSession} onSession={setSearchSession} colors={graphColors} transport={transport} overview={overview} onSelect={selectNode} /></div> : null}
             {view === "graph" ? <GraphView session={graphSession} onSession={setGraphSession} colors={graphColors} transport={transport} overview={overview} snapshot={snapshot} selectedId={selectedId} onSelect={selectNode} /> : null}
             {view === "inspector" ? <div className="page page-wide" data-ui-stack="">{selectedId ? <><Button variant="ghost" size="sm" className="inspector-back" onClick={() => { if (inspectorOrigin === "inspector") { setSelectedId(null); setInspectedObject(null); } else setView(inspectorOrigin); }}><ArrowLeft aria-hidden="true" />{inspectorOrigin === "search" ? "Back to search results" : inspectorOrigin === "inspector" ? "Inspect another object" : `Back to ${VIEWS.find(([key]) => key === inspectorOrigin)?.[1]?.toLowerCase() || "overview"}`}</Button><Inspector key={selectedId} transport={transport} scanning={scanning} colors={graphColors} node={selected} details={inspectedDetails} loading={Boolean(selectedId && !inspectedDetails && !inspectorError)} error={inspectorError} snapshot={snapshot} snapshotLoaded={snapshotLoaded} snapshotError={snapshotError} onEvidenceRetry={() => loadSnapshot().catch(() => {})} overview={overview} onSelect={selectNode} onRetry={() => selectNode(selectedId)} onReview={review} onGraph={() => setView("graph")} /></> : <InspectorEmpty overview={overview} colors={graphColors} recentObjects={recentObjects} onSelect={(id) => { setInspectorOrigin("inspector"); selectNode(id); }} onOpenSearch={() => { setView("search"); focusSearchField(); }} onOpenPalette={() => setPaletteOpen(true)} onOpenGraph={() => setView("graph")} />}</div> : null}
-            {view === "review" ? <div className="page page-wide" data-ui-stack=""><ReviewQueue colors={graphColors} scanning={scanning} session={reviewSession} onSession={setReviewSession} snapshot={snapshot} loaded={snapshotLoaded} loading={!snapshotLoaded && (snapshotLoading || !snapshotError)} error={snapshotError} onRetry={() => loadSnapshot().catch(() => {})} overview={overview} onSelect={selectNode} onReview={review} auditTrail={auditTrail} onUndoReview={handleUndoReview} /></div> : null}
+            {view === "review" ? <div className="page page-wide" data-ui-stack=""><ReviewQueue colors={graphColors} scanning={scanning} session={reviewSession} onSession={setReviewSession} snapshot={snapshot} loaded={snapshotLoaded} loading={!snapshotLoaded && (snapshotLoading || !snapshotError)} error={snapshotError} onRetry={() => loadSnapshot().catch(() => {})} overview={overview} onSelect={selectNode} onReview={review} onBulkReview={bulkReview} auditTrail={auditTrail} onUndoReview={handleUndoReview} /></div> : null}
             {view === "devcenter" ? <DevCenter onOpenProject={closeDesktopProject} /> : null}
             {view === "config" ? <div className="page page-narrow" data-ui-stack=""><PageHeading title="Settings" description="Manage project sources, graph appearance, model context, documentation, and the AI provider of the chat." />{configError && !config ? <Card className="panel"><EmptyState icon={<TriangleAlert />} tone="bad" title="Project settings unavailable" detail="Retry to load your saved sources and appearance." action={<Button variant="outline" onClick={load}>Retry settings</Button>} /></Card> : <Tabs value={settingsTab} onValueChange={setSettingsTab} className="settings-tabs">
               <TabsList aria-label="Settings sections"><TabsTrigger value="project">Project</TabsTrigger><TabsTrigger value="colors">Graph colors</TabsTrigger><TabsTrigger value="summary">Model summary / agent context</TabsTrigger><TabsTrigger value="documentation">Documentation export</TabsTrigger><TabsTrigger value="ai">AI provider</TabsTrigger><TabsTrigger value="keyboard">Keyboard</TabsTrigger></TabsList>
@@ -1621,7 +1692,7 @@ function reviewKeys(event, onCancelEdit) {
   }
 }
 
-function ReviewQueue({ session, onSession, snapshot, loaded, loading, error, onRetry, overview, onSelect, onReview, scanning, colors, auditTrail = [], onUndoReview }) {
+function ReviewQueue({ session, onSession, snapshot, loaded, loading, error, onRetry, overview, onSelect, onReview, onBulkReview, scanning, colors, auditTrail = [], onUndoReview }) {
   const { issue = "ALL", objectType = "ALL", modelId = "ALL", reportId = "ALL", sort = "confidence-high", tab = "queue" } = session;
   const change = (values) => onSession((current) => ({ ...current, ...values }));
   const panel = useRef(null);
@@ -1662,22 +1733,27 @@ function ReviewQueue({ session, onSession, snapshot, loaded, loading, error, onR
 
   const lowEvidenceItems = filtered.filter((item) => isLowEvidence(item, snapshot.nodes));
   const standardItems = filtered.filter((item) => !isLowEvidence(item, snapshot.nodes));
+  const approvableItems = filtered.filter((item) => item.issue !== "conflict" && item.issue !== "stale");
 
   const handleBulkAction = async (action, items) => {
     if (bulkBusy || scanning || !items?.length) return;
     setBulkBusy(true);
-    let count = 0;
     try {
-      for (const item of items) {
-        try {
-          const ok = await onReview(action, item);
-          if (ok !== false) count++;
-        } catch {}
+      if (onBulkReview) {
+        await onBulkReview(action, items);
+      } else {
+        let count = 0;
+        for (const item of items) {
+          try {
+            const ok = await onReview(action, item);
+            if (ok !== false) count++;
+          } catch {}
+        }
+        toast.show({
+          tone: "ok",
+          text: `${action === "approve" ? "Approved" : "Rejected"} ${count} ${count === 1 ? "suggestion" : "suggestions"}`,
+        });
       }
-      toast.show({
-        tone: "ok",
-        text: `${action === "approve" ? "Approved" : "Rejected"} ${count} low-evidence ${count === 1 ? "suggestion" : "suggestions"}`,
-      });
     } finally {
       setBulkBusy(false);
     }
@@ -1804,6 +1880,18 @@ function ReviewQueue({ session, onSession, snapshot, loaded, loading, error, onR
           {reports.length > 1 ? <Label className="select-field"><span>Report</span><NativeSelect aria-label="Report" value={reportId} onChange={(event) => change({ reportId: event.target.value, modelId: "ALL" })}><option value="ALL">All reports</option>{reports.map((value, index) => <option key={value} value={value}>{scopeName(value, "Report", index)}</option>)}</NativeSelect></Label> : null}
           {hasFilters ? <Button variant="ghost" size="sm" onClick={() => change({ issue: "ALL", objectType: "ALL", modelId: "ALL", reportId: "ALL" })}><X />Clear filters</Button> : null}
           <Label className="select-field select-sort"><span>Sort</span><NativeSelect aria-label="Sort" value={sort} onChange={(event) => change({ sort: event.target.value })}><option value="confidence-high">Most certain first</option><option value="confidence-low">Least certain first</option><option value="impact-high">Highest impact first</option><option value="impact-low">Lowest impact first</option></NativeSelect></Label>
+          {approvableItems.length > 0 ? (
+            <div className="queue-bulk-actions" data-ui-actions="">
+              <Button variant="outline" size="sm" className="bulk-approve" disabled={bulkBusy || scanning} onClick={() => handleBulkAction("approve", approvableItems)}>
+                <Check className="size-4" aria-hidden="true" />
+                {hasFilters ? `Approve filtered (${approvableItems.length})` : `Approve all (${approvableItems.length})`}
+              </Button>
+              <Button variant="ghost" size="sm" className="bulk-reject" disabled={bulkBusy || scanning} onClick={() => handleBulkAction("reject", approvableItems)}>
+                <X className="size-4" aria-hidden="true" />
+                {hasFilters ? `Reject filtered (${approvableItems.length})` : `Reject all (${approvableItems.length})`}
+              </Button>
+            </div>
+          ) : null}
         </div>
         <Card className="panel queue-panel" aria-busy={loading}>
           {loading ? <div className="queue-loading">{[0, 1, 2].map((index) => <Skeleton className="skeleton-row-item" key={index} />)}<p className="sr-only" role="status">Loading suggestions…</p></div> : filtered.length ? <>

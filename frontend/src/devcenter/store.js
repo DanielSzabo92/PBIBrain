@@ -132,7 +132,7 @@ export function createDevCenterStore({
       }
       if (error.code === "session_not_open") {
         closeSession({ banner: true });
-        return null;
+        if (key === "session") return null;
       }
       // The region keeps its old data and marks it not current.
       setResource(id, key, params, { status: "error", error, current: false });

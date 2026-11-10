@@ -31,12 +31,15 @@ from .review import (
     OverrideStore,
     apply_overrides_to_dict,
     approve,
+    approve_many,
     edit,
     get_review_queue,
     override,
     reject,
+    reject_many,
     remove_override,
     reopen,
+    reopen_many,
 )
 
 
@@ -357,6 +360,23 @@ class BrainAPI:
     def apply_review(self, item_id: str, action: str, payload: Mapping[str, Any] | None = None) -> dict[str, Any]:
         payload = dict(payload or {})
         action = str(action).casefold()
+        items = payload.get("items") or payload.get("item_ids")
+        if item_id == "bulk" or (isinstance(items, (list, tuple)) and len(items) > 0):
+            item_ids = [
+                str(x.get("candidate_id") or x.get("target") or x.get("id") or x)
+                if isinstance(x, Mapping)
+                else str(x)
+                for x in (items or [])
+            ]
+            if action == "approve":
+                result = approve_many(self.repository, item_ids)
+                return {"result": result, "snapshot": self.get_snapshot()}
+            if action == "reject":
+                result = reject_many(self.repository, item_ids)
+                return {"result": result, "snapshot": self.get_snapshot()}
+            if action in {"reopen", "undo"}:
+                result = reopen_many(self.repository, item_ids)
+                return {"result": result, "snapshot": self.get_snapshot()}
         item_id = str(payload.get("candidate_id") or item_id)
         if item_id.startswith("override:") and action in {"approve", "reject", "remove", "resolve"}:
             result = self.remove_override(item_id, payload.get("override_property") or payload.get("property"))
@@ -446,6 +466,7 @@ class BrainApp:
         # One request at a time: the chat worker (issue #7) calls handle() from its own thread.
         self.request_lock = threading.RLock()
         self._chat: Any = None
+        self._devcenter: Any = None
 
     @property
     def chat(self) -> Any:
@@ -460,6 +481,36 @@ class BrainApp:
     @chat.setter
     def chat(self, value: Any) -> None:
         self._chat = value
+
+    @property
+    def devcenter(self) -> Any:
+        if self._devcenter is None:
+            from backend.devcenter.session.manager import DevCenterSessions
+
+            self._devcenter = DevCenterSessions()
+            project = self.project
+            if project is None:
+                for candidate in (Path("config/brain.json"), Path(".pbibrain/brain.json"), Path("brain.json")):
+                    if candidate.is_file():
+                        from backend.projects import ProjectService
+
+                        self.project = ProjectService(candidate)
+                        project = self.project
+                        break
+            if project is not None:
+                config_path = getattr(project, "config_path", None)
+                if config_path:
+                    cfg_path = Path(config_path).resolve()
+                    if cfg_path.parent.name in {".pbibrain", "config"}:
+                        root = cfg_path.parent.parent
+                    else:
+                        root = cfg_path.parent
+                    self._devcenter.attach_project(root)
+        return self._devcenter
+
+    @devcenter.setter
+    def devcenter(self, value: Any) -> None:
+        self._devcenter = value
 
     @staticmethod
     def _json_body(body: bytes | str | Mapping[str, Any] | None) -> dict[str, Any]:
@@ -683,6 +734,9 @@ class BrainApp:
             if method == "POST" and parts == ["review"]:
                 payload = self._json_body(body)
                 action = str(payload.pop("action", ""))
+                items = payload.get("items") or payload.get("item_ids")
+                if items is not None:
+                    return 200, self.api.apply_review("bulk", action, payload)
                 item_id = str(payload.get("candidate_id") or payload.get("target") or "")
                 if not item_id:
                     raise ValueError("review target is required")
@@ -797,6 +851,9 @@ def serve(
     if config_path is not None:
         from backend.projects import ProjectService
         application.project = ProjectService(config_path)
+    elif Path("config/brain.json").is_file():
+        from backend.projects import ProjectService
+        application.project = ProjectService("config/brain.json")
     application.static_dir = Path(static_dir).resolve() if static_dir else None
     try:
         with make_server(host, int(port), application) as server:
