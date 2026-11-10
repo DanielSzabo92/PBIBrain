@@ -103,32 +103,26 @@ The Development Center lets teams consolidate diverging models safely:
 ## Quickstart
 
 ### Prerequisites
-* Windows PC (for native LadybugDB support).
+* Windows, Linux, or macOS.
 * Python 3.11+.
-* Node.js 20+ (for building the frontend).
-* LadybugDB shared library (`lbug_shared.dll` on PATH or specified via `LBUG_C_API_LIB_PATH`).
+* Node.js 20+ (for building the web UI).
 
-### Installation
+### 1-Click Launch
 
-```powershell
-# 1. Clone repository
+Clone and start immediately:
+
+```bash
 git clone https://github.com/DanielSzabo92/PBIBrain.git
 cd PBIBrain
 
-# 2. Install Python package in editable mode
-python -m pip install -e .
+# On Windows:
+start.bat
 
-# 3. Build frontend interface
-cd frontend
-npm ci
-npm run build
-cd ..
-
-# 4. Start the unified app (UI + API)
-brain serve
+# On Linux or macOS:
+./start.sh
 ```
 
-Open `http://127.0.0.1:8000/` in your browser.
+The script automatically sets up the Python virtual environment, builds the web interface (if not already built), starts the local server, and opens **`http://127.0.0.1:8000/`** in your browser.
 
 ---
 

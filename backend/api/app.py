@@ -855,6 +855,17 @@ def serve(
         from backend.projects import ProjectService
         application.project = ProjectService("config/brain.json")
     application.static_dir = Path(static_dir).resolve() if static_dir else None
+    url = f"http://{host}:{port}/"
+    print("\n=======================================================", flush=True)
+    print(f" PBIBrain server running at: {url}", flush=True)
+    if application.static_dir and not (application.static_dir / "index.html").is_file():
+        print(f" [Notice] UI build not found in {application.static_dir}", flush=True)
+        print("   -> To run development UI with hot reload: cd frontend && npm run dev", flush=True)
+        print("   -> To build static UI for this server:   cd frontend && npm run build", flush=True)
+    else:
+        print(f" Web Inspector UI available at: {url}", flush=True)
+    print(" Press Ctrl+C to stop.", flush=True)
+    print("=======================================================\n", flush=True)
     try:
         with make_server(host, int(port), application) as server:
             server.serve_forever()

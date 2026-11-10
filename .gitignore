@@ -37,7 +37,7 @@ data/*-identity.json
 *.dll
 *.exe
 
-data/brain.lbug
+data/
 config/identity.json
 
 # Windows application build and generated project state
