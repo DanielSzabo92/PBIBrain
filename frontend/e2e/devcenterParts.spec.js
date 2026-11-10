@@ -246,6 +246,7 @@ test("Menu: keys open, move, select, and Escape returns focus to the trigger", a
 
   await page.keyboard.press("ArrowDown");
   await expect(page.getByRole("menu")).toBeVisible();
+  await expect(page.getByRole("menuitem", { name: "Rename" })).toBeFocused();
   await page.keyboard.press("c");
   await expect(page.getByRole("menuitem", { name: "Copy name" })).toBeFocused();
   await page.keyboard.press("Enter");

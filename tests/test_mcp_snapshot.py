@@ -59,7 +59,7 @@ def _measure_id(client: SnapshotClient, name: str) -> str:
 class SnapshotWriteTests(unittest.TestCase):
     def setUp(self) -> None:
         self.temporary = tempfile.TemporaryDirectory()
-        self.root = Path(self.temporary.name)
+        self.root = Path(self.temporary.name).resolve()
         self.config = _write_small_project(self.root)
 
     def tearDown(self) -> None:
@@ -104,7 +104,7 @@ class SnapshotWriteTests(unittest.TestCase):
 class SnapshotClientTests(unittest.TestCase):
     def setUp(self) -> None:
         self.temporary = tempfile.TemporaryDirectory()
-        self.root = Path(self.temporary.name)
+        self.root = Path(self.temporary.name).resolve()
         self.config = _write_small_project(self.root)
 
     def tearDown(self) -> None:
