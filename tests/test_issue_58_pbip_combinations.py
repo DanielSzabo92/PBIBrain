@@ -37,84 +37,82 @@ class Issue58TrailExportTests(unittest.TestCase):
     def test_resolve_card_path_handles_slashes_and_spaces(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             db_dir = Path(temp_dir)
-            store = SQLiteStore(db_dir)
-
-            # Node with slashes and spaces in name (the issue 58 bookmark name: 'LO / SP Data')
-            bookmark = Node(
-                id="bm-1",
-                type="BOOKMARK",
-                name="LO / SP Data",
-                model_id="model:not-checked-ReferencedObject",
-                report_id="report:Sales.Report",
-            )
-            path = store._resolve_card_path(bookmark)
-            self.assertEqual(path, "Sales.Report/definition/bookmarks/LO _ SP Data")
-            self.assertFalse(path.endswith(".md"))
-
-            # Table node with special characters
-            table = Node(
-                id="tbl-1",
-                type="TABLE",
-                name="LO / SP Data",
-                model_id="model:Sales.SemanticModel",
-            )
-            path = store._resolve_card_path(table)
-            self.assertEqual(path, "Sales.SemanticModel/definition/tables/LO _ SP Data.tmdl")
-
-            # Fallback project node
-            custom = Node(
-                id="c-1",
-                type="CUSTOM",
-                name="Some / Node: 1",
-            )
-            path = store._resolve_card_path(custom)
-            self.assertEqual(path, "Project/Some _ Node_ 1")
-            self.assertFalse(path.endswith(".md"))
-
-    def test_export_trail_creates_cards_without_path_errors(self):
-        with tempfile.TemporaryDirectory() as temp_dir:
-            db_dir = Path(temp_dir)
-            store = SQLiteStore(db_dir)
-
-            # Multiple nodes with tricky names that would cause WinError 3 without sanitization
-            nodes = [
-                Node(
+            with SQLiteStore(db_dir) as store:
+                # Node with slashes and spaces in name (the issue 58 bookmark name: 'LO / SP Data')
+                bookmark = Node(
                     id="bm-1",
                     type="BOOKMARK",
                     name="LO / SP Data",
                     model_id="model:not-checked-ReferencedObject",
                     report_id="report:Sales.Report",
-                ),
-                Node(
-                    id="page-1",
-                    type="PAGE",
-                    name="Overview / Summary",
-                    report_id="report:Sales.Report",
-                ),
-                Node(
+                )
+                path = store._resolve_card_path(bookmark)
+                self.assertEqual(path, "Sales.Report/definition/bookmarks/LO _ SP Data")
+                self.assertFalse(path.endswith(".md"))
+
+                # Table node with special characters
+                table = Node(
                     id="tbl-1",
                     type="TABLE",
-                    name="Sales Data",
-                    model_id="model:not-checked-ReferencedObject",
-                ),
-            ]
-            store.replace_all(nodes, [])
+                    name="LO / SP Data",
+                    model_id="model:Sales.SemanticModel",
+                )
+                path = store._resolve_card_path(table)
+                self.assertEqual(path, "Sales.SemanticModel/definition/tables/LO _ SP Data.tmdl")
 
-            # Check that Trail files and cards are generated cleanly
-            wiring_file = db_dir / ".graph" / "wiring.json"
-            index_file = db_dir / "INDEX.md"
-            self.assertTrue(wiring_file.is_file())
-            self.assertTrue(index_file.is_file())
+                # Fallback project node
+                custom = Node(
+                    id="c-1",
+                    type="CUSTOM",
+                    name="Some / Node: 1",
+                )
+                path = store._resolve_card_path(custom)
+                self.assertEqual(path, "Project/Some _ Node_ 1")
+                self.assertFalse(path.endswith(".md"))
 
-            # Verify card files exist on disk
-            card1 = db_dir / "Sales.Report" / "definition" / "bookmarks" / "LO _ SP Data.md"
-            self.assertTrue(card1.is_file(), f"Expected card file at {card1}")
-            card2 = db_dir / "Sales.Report" / "definition" / "pages" / "Overview _ Summary" / "page.json.md"
-            self.assertTrue(card2.is_file(), f"Expected card file at {card2}")
+    def test_export_trail_creates_cards_without_path_errors(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            db_dir = Path(temp_dir)
+            with SQLiteStore(db_dir) as store:
+                # Multiple nodes with tricky names that would cause WinError 3 without sanitization
+                nodes = [
+                    Node(
+                        id="bm-1",
+                        type="BOOKMARK",
+                        name="LO / SP Data",
+                        model_id="model:not-checked-ReferencedObject",
+                        report_id="report:Sales.Report",
+                    ),
+                    Node(
+                        id="page-1",
+                        type="PAGE",
+                        name="Overview / Summary",
+                        report_id="report:Sales.Report",
+                    ),
+                    Node(
+                        id="tbl-1",
+                        type="TABLE",
+                        name="Sales Data",
+                        model_id="model:not-checked-ReferencedObject",
+                    ),
+                ]
+                store.replace_all(nodes, [])
 
-            index_content = index_file.read_text(encoding="utf-8")
-            self.assertIn("LO _ SP Data", index_content)
-            self.assertNotIn(".md.md", index_content)
+                # Check that Trail files and cards are generated cleanly
+                wiring_file = db_dir / ".graph" / "wiring.json"
+                index_file = db_dir / "INDEX.md"
+                self.assertTrue(wiring_file.is_file())
+                self.assertTrue(index_file.is_file())
+
+                # Verify card files exist on disk
+                card1 = db_dir / "Sales.Report" / "definition" / "bookmarks" / "LO _ SP Data.md"
+                self.assertTrue(card1.is_file(), f"Expected card file at {card1}")
+                card2 = db_dir / "Sales.Report" / "definition" / "pages" / "Overview _ Summary" / "page.json.md"
+                self.assertTrue(card2.is_file(), f"Expected card file at {card2}")
+
+                index_content = index_file.read_text(encoding="utf-8")
+                self.assertIn("LO _ SP Data", index_content)
+                self.assertNotIn(".md.md", index_content)
 
 
 class Issue58PbipCombinationTests(unittest.TestCase):
@@ -179,25 +177,25 @@ class Issue58PbipCombinationTests(unittest.TestCase):
             }), encoding="utf-8")
 
             project = ProjectService(project_config)
-            repo = GraphRepository(root / "data")
-            result = project.scan(repo)
+            with GraphRepository(root / "data") as repo:
+                result = project.scan(repo)
 
-            # Verification:
-            # Model is scanned, both reports are scanned
-            self.assertGreater(result.model_count, 0)
-            self.assertGreater(result.report_count, 0)
+                # Verification:
+                # Model is scanned, both reports are scanned
+                self.assertGreater(result.model_count, 0)
+                self.assertGreater(result.report_count, 0)
 
-            # ThinReport is bound to the model (or recognized successfully)
-            thin_report_nodes = [n for n in repo.all_nodes() if n.type == "REPORT" and n.name == "ThinReport"]
-            self.assertEqual(len(thin_report_nodes), 1)
+                # ThinReport is bound to the model (or recognized successfully)
+                thin_report_nodes = [n for n in repo.all_nodes() if n.type == "REPORT" and n.name == "ThinReport"]
+                self.assertEqual(len(thin_report_nodes), 1)
 
-            # Bookmark "LO / SP Data" exists and was indexed
-            bm_nodes = [n for n in repo.all_nodes() if n.type == "BOOKMARK"]
-            self.assertTrue(any(n.name == "LO / SP Data" for n in bm_nodes))
+                # Bookmark "LO / SP Data" exists and was indexed
+                bm_nodes = [n for n in repo.all_nodes() if n.type == "BOOKMARK"]
+                self.assertTrue(any(n.name == "LO / SP Data" for n in bm_nodes))
 
-            # Trail cards written without WinError 3
-            cards_manifest = root / "data" / ".graph" / "cards_manifest.json"
-            self.assertTrue(cards_manifest.is_file())
+                # Trail cards written without WinError 3
+                cards_manifest = root / "data" / ".graph" / "cards_manifest.json"
+                self.assertTrue(cards_manifest.is_file())
 
     def test_unrelated_model_and_report_combinations(self):
         """Unrelated combinations (e.g. report referencing external model) do not fail the scan."""
@@ -241,14 +239,14 @@ class Issue58PbipCombinationTests(unittest.TestCase):
             }), encoding="utf-8")
 
             project = ProjectService(project_config)
-            repo = GraphRepository(root / "data")
-            result = project.scan(repo)
+            with GraphRepository(root / "data") as repo:
+                result = project.scan(repo)
 
-            # Not checked items should include the unrelated external model
-            self.assertTrue(any(item["name"] == "UnrelatedModel" for item in result.not_checked))
+                # Not checked items should include the unrelated external model
+                self.assertTrue(any(item["name"] == "UnrelatedModel" for item in result.not_checked))
 
-            # The scan completed cleanly
-            self.assertGreater(result.report_count, 0)
+                # The scan completed cleanly
+                self.assertGreater(result.report_count, 0)
 
     def test_direct_folder_source_ingestion(self):
         """Scan can accept .SemanticModel and .Report directories directly in sources."""
@@ -271,11 +269,11 @@ class Issue58PbipCombinationTests(unittest.TestCase):
             }), encoding="utf-8")
 
             project = ProjectService(project_config)
-            repo = GraphRepository(root / "data")
-            result = project.scan(repo)
+            with GraphRepository(root / "data") as repo:
+                result = project.scan(repo)
 
-            self.assertGreater(result.model_count, 0)
-            self.assertGreater(result.report_count, 0)
+                self.assertGreater(result.model_count, 0)
+                self.assertGreater(result.report_count, 0)
 
 
 if __name__ == "__main__":
