@@ -41,14 +41,18 @@ if not exist ".venv\Scripts\activate.bat" (
 call .venv\Scripts\activate.bat
 
 :: 3. Install backend dependencies if not installed
-python -c "import backend" >nul 2>nul
+python -c "import antlr4, jsonschema; from backend.cli.main import _parser" >nul 2>nul
 if !errorlevel! neq 0 (
     echo [*] Installing Power BI Brain backend dependencies...
-    pip install -e .
+    python -m pip install --disable-pip-version-check -e ".[mcp]"
     if !errorlevel! neq 0 (
-        echo [ERROR] Failed to install backend dependencies.
-        pause
-        exit /b 1
+        echo [*] Retrying with core dependencies...
+        python -m pip install --disable-pip-version-check -e .
+        if !errorlevel! neq 0 (
+            echo [ERROR] Failed to install backend dependencies.
+            pause
+            exit /b 1
+        )
     )
 )
 

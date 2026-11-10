@@ -34,9 +34,9 @@ fi
 source .venv/bin/activate
 
 # 3. Backend dependencies
-if ! python -c "import backend" >/dev/null 2>&1; then
+if ! python -c "import antlr4, jsonschema; from backend.cli.main import _parser" >/dev/null 2>&1; then
     echo "[*] Installing Power BI Brain backend dependencies..."
-    pip install -e .
+    python -m pip install --disable-pip-version-check -e ".[mcp]" || python -m pip install --disable-pip-version-check -e .
 fi
 
 # 4. Check / build frontend
