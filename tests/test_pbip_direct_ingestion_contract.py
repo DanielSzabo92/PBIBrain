@@ -336,7 +336,7 @@ os._exit(0)
             repository.close()
 
             reopened = GraphRepository(database)
-            self.assertEqual(reopened.storage, "ladybug")
+            self.assertEqual(reopened.storage, "trail")
             self.assertEqual({node.id for node in reopened.all_nodes()}, expected_node_ids)
             self.assertEqual({edge.id for edge in reopened.all_edges()}, expected_edge_ids)
 

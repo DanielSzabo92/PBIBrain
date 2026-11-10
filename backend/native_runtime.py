@@ -23,10 +23,11 @@ def configure_native_runtime() -> Path | None:
             raise RuntimeError("PBIBrain's database runtime is missing. Reinstall PBIBrain.")
         return None
     os.environ["LBUG_C_API_LIB_PATH"] = str(library)
-    # Use the runtime we ship. Ladybug's optional pybind extension otherwise
-    # takes precedence and can fail while inserting the project's edges.
     os.environ["LBUG_PYTHON_BACKEND"] = "capi"
     key = str(directory)
     if sys.platform == "win32" and key not in _dll_directories:
-        _dll_directories[key] = os.add_dll_directory(key)
+        try:
+            _dll_directories[key] = os.add_dll_directory(key)
+        except OSError:
+            pass
     return library

@@ -2,7 +2,7 @@
 
 A semantic graph engine, interactive desktop workbench, and Model Context Protocol (MCP) server for Power BI and Microsoft Fabric.
 
-PBIBrain turns Power BI project files (`.pbip`, TMDL, PBIR) and cloud semantic models/reports into a unified, provenance-tracked semantic graph. It gives developers and AI coding agents a shared, authoritative understanding of data models, DAX dependencies, report bindings, and upstream data sources.
+PBIBrain turns Power BI metadata / PBIP files (`.pbip`, TMDL, PBIR) and cloud semantic models/reports into a unified, provenance-tracked semantic graph of canonical nodes and edges. Brain is infrastructure: it gives developers and AI coding agents a shared, authoritative understanding of data models, DAX dependencies, report bindings, and upstream data sources.
 
 ---
 
@@ -213,12 +213,75 @@ PBIBrain/
 
 ---
 
-## Documentation Links
+## Requirements
 
-* [Agent Integration & MCP Guide](docs/AGENT_GUIDE.md): MCP tool schemas, reply budgets, and snapshot contracts.
-* [Change Guard Contract](docs/CHANGE_GUARD_CONTRACT.md): Invariants and safety guarantees during model merges.
-* [Development Center Technical Design](docs/DEV_CENTER_TECHNICAL_DESIGN.md): Architecture of model alignment and XMLA/Fabric deployments.
-* [Desktop Distribution Guide](docs/DESKTOP.md): Standalone Windows executable and packaging details.
+Windows or Linux, Python 3.11+, and Node.js 20+ to build the UI (`npm run dev`).
+Zero-DLL SQLite engine powers the graph storage and Trail cache; historical setups used `LBUG_C_API_LIB_PATH`.
+Install dependencies with:
+```powershell
+python -m pip install -e .
+```
+
+---
+
+## Trust model
+
+The graph keeps evidence classes distinct:
+
+| Class | Meaning |
+| --- | --- |
+| `FACT` | Mechanically extracted structure or DAX/report fact. |
+| `INFERRED` | Semantic interpretation proposed from evidence. |
+| `OBSERVED` | Report co-occurrence or other observed usage; not proof of compatibility. |
+| Human decision | Approval, rejection, edit, or override. Stored as lifecycle status or in the separate overrides file. |
+
+Generated facts are never replaced by human overrides.
+
+---
+
+## Brain API
+
+`backend.api.app.BrainAPI` provides programmatic Python access:
+
+```text
+search_objects(query)
+get_context(target, task=None)
+```
+
+The HTTP transport exposes routes under `/api/brain`.
+
+---
+
+## Brain Inspector
+
+The local UI uses React Flow (`@xyflow/react`) for interactive graph exploration:
+
+```powershell
+cd frontend
+npm install
+npm run dev
+```
+
+---
+
+## Verification
+
+Run the test suites and type/compilation verification:
+
+```powershell
+python -m unittest discover -s tests
+python -m compileall -q backend tests
+cd frontend
+npm run build
+```
+
+---
+
+## Security and limits
+
+- Power BI access is read-only.
+- The server runs on loopback (`127.0.0.1`).
+- Credentials are never stored or logged in graph persistence.
 
 ---
 
