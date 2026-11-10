@@ -57,6 +57,13 @@
       "computedHash": "4c0615e0cd41ffbca0c7912dba1f1dd1d84b8a3499a5c393be53df9d1b9dec16",
       "installMode": "copy"
     },
+    "config": {
+      "source": "microsoft/TokenEconomizer",
+      "sourceType": "github",
+      "skillPath": "plugin/codex-skills/config/SKILL.md",
+      "computedHash": "e456c18c2aa6882144748823b0ffeef6a2446225185d2c3f4e3c695585148aa8",
+      "installMode": "copy"
+    },
     "design-artifact": {
       "source": "plannotator/effective-html",
       "sourceType": "github",
@@ -121,6 +128,13 @@
       "computedHash": "f6652a3bb94950baa33c684cc0966c838eb65cf22ebb5769a4f51ea205c254fe",
       "installMode": "copy"
     },
+    "microskills": {
+      "source": "microsoft/TokenEconomizer",
+      "sourceType": "github",
+      "skillPath": "plugin/codex-skills/microskills/SKILL.md",
+      "computedHash": "a880ac9fa70ded5ab258d8f8c466ab52bca03b97be9f75208e4de72af7c012ff",
+      "installMode": "copy"
+    },
     "mobile-native": {
       "source": "emilkowalski/skills",
       "sourceType": "github",
@@ -149,11 +163,32 @@
       "computedHash": "5d738305c722c25e054a9e3b67e68d4429617d9fbae4bc8861b73cc25c8ba84c",
       "installMode": "copy"
     },
+    "repos": {
+      "source": "microsoft/TokenEconomizer",
+      "sourceType": "github",
+      "skillPath": "plugin/codex-skills/repos/SKILL.md",
+      "computedHash": "620cc3cc9dfdf93c4fa4185597a3983d4369d8556806f884be97fcfc6be23e17",
+      "installMode": "copy"
+    },
     "review-animations": {
       "source": "emilkowalski/skills",
       "sourceType": "github",
       "skillPath": "skills/review-animations/SKILL.md",
       "computedHash": "b1aca2c16876b8f00e2a1eb161714e63ec41099269d5f95c2f307230749b9dcd",
+      "installMode": "copy"
+    },
+    "status": {
+      "source": "microsoft/TokenEconomizer",
+      "sourceType": "github",
+      "skillPath": "plugin/codex-skills/status/SKILL.md",
+      "computedHash": "cac38d477426ecc343cda856879751fa21dfc13229477183574329c4140b3069",
+      "installMode": "copy"
+    },
+    "toolprune": {
+      "source": "microsoft/TokenEconomizer",
+      "sourceType": "github",
+      "skillPath": "plugin/codex-skills/toolprune/SKILL.md",
+      "computedHash": "77edcd9b86f76d41b441f3f6acfb59e91c70a5856b5863acb9b9fc78117917dd",
       "installMode": "copy"
     },
     "write-swift": {
