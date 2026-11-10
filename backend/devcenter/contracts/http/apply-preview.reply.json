@@ -249,6 +249,12 @@
         "warnings"
       ],
       "additionalProperties": false
+    },
+    "target_files": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
     }
   },
   "required": [

@@ -37,7 +37,7 @@ def main():
 
             scanned = run("project-scan")
             reopened = run("status", "--json")
-            if reopened.get("storage") != "ladybug" or scanned["nodes"] <= 0 or scanned["edges"] <= 0:
+            if reopened.get("storage") != "trail" or scanned["nodes"] <= 0 or scanned["edges"] <= 0:
                 raise RuntimeError(f"Native graph was not created: {scanned}, {reopened}")
             if any(reopened[key] != scanned[key] for key in ("nodes", "edges")):
                 raise RuntimeError(f"Frozen reopen changed graph counts: {scanned}, {reopened}")

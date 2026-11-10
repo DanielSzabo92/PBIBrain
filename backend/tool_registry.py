@@ -166,13 +166,53 @@ def merge_tools(client: Any, client_label: Callable[[], str]) -> list[Tool]:
             plan_validate]
 
 
+def pbi_tools(client: Any) -> list[Tool]:
+    """The six typed Power BI domain tools for lineage, impact, and bindings."""
+
+    def pbi_find_object(query: str = "", model_id: str | None = None, object_type: str | None = None,
+                        name: str | None = None) -> dict[str, Any]:
+        """Find Power BI objects (table, column, measure, visual, page) by query or exact name."""
+        q = name if name else query
+        return client.get("search", q=q, model_id=model_id, object_type=object_type)
+
+    def pbi_lineage(object_id: str, direction: str = "both") -> dict[str, Any]:
+        """Trace lineage dependencies (upstream and downstream) with exact source file spans."""
+        return client.get("objects/" + quote(object_id, safe=""))
+
+    def pbi_impact(target_id: str, include_report_usage: bool = True) -> dict[str, Any]:
+        """Evaluate downstream impact on measures, columns, partitions, and visuals."""
+        return client.post("impact", {"target_id": target_id, "include_report_usage": include_report_usage})
+
+    def pbi_visual_bindings(target_id: str) -> dict[str, Any]:
+        """Get model columns, measures, and roles bound to a visual or page."""
+        return client.get("objects/" + quote(target_id, safe=""))
+
+    def pbi_rls_for(table_id_or_name: str, role_name: str | None = None) -> dict[str, Any]:
+        """Find Row-Level Security (RLS) filter expressions and affected tables/roles."""
+        return client.get("search", q=table_id_or_name, object_type="ROLE_FILTER")
+
+    def pbi_context(target: str, task: str | None = None) -> dict[str, Any]:
+        """Retrieve task-scoped context and code spans for an exact object ID."""
+        return client.get("context", target=target, task=task)
+
+    return [pbi_find_object, pbi_lineage, pbi_impact, pbi_visual_bindings, pbi_rls_for, pbi_context]
+
+
 def build_tools(client: Any, *, freshness: Callable[[], dict[str, Any]] | None = None,
-                client_label: Callable[[], str] = lambda: DEFAULT_CLIENT) -> dict[str, Tool]:
+                client_label: Callable[[], str] = lambda: DEFAULT_CLIENT,
+                include_pbi_tools: bool = False) -> dict[str, Tool]:
     """Every tool, by name, in a fixed order (the order is part of the provider prompt cache prefix)."""
 
     fresh = freshness if freshness is not None else client.freshness
     tools = brain_tools(client, fresh) + merge_tools(client, client_label)
+    if include_pbi_tools:
+        tools.extend(pbi_tools(client))
     return {tool.__name__: tool for tool in tools}
+
+
+def build_pbi_tools(client: Any) -> dict[str, Tool]:
+    """Typed Power BI domain tools by name."""
+    return {tool.__name__: tool for tool in pbi_tools(client)}
 
 
 # JSON schema of a tool, derived from its signature ------------------------------------------

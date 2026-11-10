@@ -72,6 +72,16 @@
         ],
         "additionalProperties": false
       }
+    },
+    "finished_utc": {
+      "anyOf": [
+        {
+          "$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/utc_time"
+        },
+        {
+          "type": "null"
+        }
+      ]
     }
   },
   "required": [
