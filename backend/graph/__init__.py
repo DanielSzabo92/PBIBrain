@@ -8,7 +8,8 @@ from .schema import (
     Edge,
     Node,
 )
-from .repository import GraphRepository, LadybugRepository
+from .repository import GraphRepository, LadybugRepository, TrailRepository
+from .trail_store import TrailStore
 
 __all__ = [
     "EDGE_TYPES",
@@ -19,4 +20,6 @@ __all__ = [
     "Node",
     "GraphRepository",
     "LadybugRepository",
+    "TrailRepository",
+    "TrailStore",
 ]

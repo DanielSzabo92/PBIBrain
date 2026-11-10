@@ -1,7 +1,7 @@
-"""Graph repository abstraction backed by LadybugDB.
+"""Graph repository abstraction backed by Trail.
 
 The JSON implementation is an explicit test double selected with
-``use_native=False``.  Production callers use the native Ladybug store.
+``use_native=False``.  Production callers use the native Trail store.
 """
 
 from __future__ import annotations
@@ -12,7 +12,16 @@ import re
 from pathlib import Path
 from typing import Any, Iterable, Mapping, Sequence
 
-from .schema import Edge, Node, edge_from_dict, node_from_dict, serialize_edges, serialize_nodes, ladybug_schema, GRAPH_SCHEMA_VERSION
+from .schema import (
+    GRAPH_SCHEMA_VERSION,
+    Edge,
+    Node,
+    edge_from_dict,
+    node_from_dict,
+    serialize_edges,
+    serialize_nodes,
+)
+from .trail_store import TrailStore
 
 LOGGER = logging.getLogger(__name__)
 
@@ -21,14 +30,58 @@ def _json_default(value: Any) -> str:
     return str(value)
 
 
+class _TrailConnection:
+    """Transactional connection wrapper around TrailStore."""
+
+    def __init__(self, store: TrailStore | None) -> None:
+        self.store = store
+        self._in_tx = False
+        self._staged_payload: Mapping[str, Any] | None = None
+
+    def stage_payload(self, payload: Mapping[str, Any]) -> None:
+        self._staged_payload = payload
+
+    def execute(self, statement: str, params: Mapping[str, Any] | None = None) -> Any:
+        text = " ".join(str(statement).split())
+        upper = text.upper()
+        if upper == "BEGIN TRANSACTION":
+            self._in_tx = True
+            self._staged_payload = None
+            return []
+        if upper == "MATCH (N:BRAINNODE) DETACH DELETE N":
+            self._staged_payload = {
+                "schema_version": GRAPH_SCHEMA_VERSION,
+                "nodes": [],
+                "edges": [],
+            }
+            return []
+        if upper == "COMMIT":
+            if self.store is not None and self._staged_payload is not None:
+                self.store.write(self._staged_payload)
+            self._in_tx = False
+            self._staged_payload = None
+            return []
+        if upper == "ROLLBACK":
+            self._in_tx = False
+            self._staged_payload = None
+            return []
+        if upper == "CHECKPOINT":
+            return []
+        return []
+
+    def close(self) -> None:
+        self._in_tx = False
+        self._staged_payload = None
+
+
 class GraphRepository:
-    """Store and query canonical nodes and edges in LadybugDB."""
+    """Store and query canonical nodes and edges in Trail."""
 
     def __init__(self, path: str | Path | None = None, *, use_native: bool | None = None) -> None:
         self.path = Path(path) if path is not None else None
         self.nodes: dict[str, Node] = {}
         self.edges: dict[str, Edge] = {}
-        self._native = None
+        self._native: tuple[TrailStore | None, Any] | None = None
         self._native_error: str | None = None
         self.storage = "memory"
         # Validation is a read-only runtime result.  Source synchronization
@@ -40,6 +93,11 @@ class GraphRepository:
                 payload = json.loads(self.path.read_text(encoding="utf-8"))
                 self._load_payload(payload)
                 self.storage = "json"
+            elif self.path and self.path.is_dir():
+                store = TrailStore(self.path)
+                if store.exists():
+                    self._load_payload(store.load())
+                self.storage = "json"
             elif self.path:
                 self.storage = "json"
             else:
@@ -49,105 +107,51 @@ class GraphRepository:
         self._try_open_native()
         if self._native is None:
             detail = getattr(self, "_native_error", None)
-            message = "LadybugDB is required for the production graph repository"
+            message = "Trail graph store could not be initialized"
             if detail:
                 message += f": {detail}"
-            message += "; close other PBIBrain sessions and check that the project folder is writable. For Unicode folders on Windows, use the current packaged PBIBrain desktop or agent (UTF-8 runtime)."
+            message += "; check that the project folder is writable."
             raise RuntimeError(message)
 
     @property
     def is_native(self) -> bool:
         return self._native is not None
 
+    @property
+    def trail_store(self) -> TrailStore | None:
+        if self._native is not None and isinstance(self._native[0], TrailStore):
+            return self._native[0]
+        return None
+
     def _try_open_native(self) -> None:
         from backend.native_runtime import configure_native_runtime
 
         configure_native_runtime()
         try:
-            import ladybug as lb  # type: ignore[import-not-found]
-        except ImportError:
-            self._native_error = "the ladybug package is not installed"
-            return
-        try:
             if self.path:
                 self.path.parent.mkdir(parents=True, exist_ok=True)
-            database = lb.Database(str(self.path) if self.path else ":memory:")
-            connection = lb.Connection(database)
-            for statement in ladybug_schema():
-                try:
-                    connection.execute(statement)
-                except Exception as exc:  # existing schema is safe to reuse
-                    if "already" not in str(exc).lower() and "exists" not in str(exc).lower():
-                        raise
-            self._native = (database, connection)
-            self.storage = "ladybug"
+                store = TrailStore(self.path)
+                store.initialize()
+            else:
+                store = None
+            connection = _TrailConnection(store)
+            self._native = (store, connection)
+            self.storage = "trail"
             self._load_native()
         except Exception as exc:
             self._native_error = str(exc)
-            LOGGER.debug("LadybugDB initialization failed", exc_info=True)
+            LOGGER.debug("Trail store initialization failed", exc_info=True)
             self._native = None
 
-    def _native_rows(self, query: str) -> list[Mapping[str, Any]]:
-        if self._native is None:
-            return []
-        result = self._native[1].execute(query)
-        rows_as_dict = getattr(result, "rows_as_dict", None)
-        if callable(rows_as_dict):
-            rows = rows_as_dict().get_all()
-        else:
-            rows = result.get_all()
-        return [row if isinstance(row, Mapping) else {} for row in rows]
-
     def _load_native(self) -> None:
-        """Hydrate the in-memory query index from an existing Ladybug graph."""
+        """Hydrate the in-memory query index from an existing Trail graph store."""
 
-        node_query = (
-            "MATCH (n:BrainNode) RETURN n.id AS id, n.type AS type, n.name AS name, "
-            "n.description AS description, n.model_id AS model_id, n.report_id AS report_id, "
-            "n.source_id AS source_id, n.status AS status, n.source AS source, n.properties AS properties"
-        )
-        edge_query = (
-            "MATCH (a:BrainNode)-[e:BrainEdge]->(b:BrainNode) RETURN e.id AS id, e.type AS type, "
-            "a.id AS from_id, b.id AS to_id, e.source AS source, e.confidence AS confidence, "
-            "e.status AS status, e.evidence_class AS evidence_class, e.evidence AS evidence, e.properties AS properties"
-        )
-        for row in self._native_rows(node_query):
-            properties = row.get("properties", {})
-            if isinstance(properties, str):
-                properties = json.loads(properties) if properties else {}
-            node = Node(
-                id=row.get("id", ""),
-                type=row.get("type", "UNKNOWN"),
-                name=row.get("name", ""),
-                description=row.get("description"),
-                model_id=row.get("model_id"),
-                report_id=row.get("report_id"),
-                source_id=row.get("source_id"),
-                status=row.get("status", "factual"),
-                source=row.get("source", "model_metadata"),
-                properties=properties if isinstance(properties, Mapping) else {},
-            )
-            self.nodes[node.id] = node
-        for row in self._native_rows(edge_query):
-            evidence = row.get("evidence", [])
-            properties = row.get("properties", {})
-            if isinstance(evidence, str):
-                evidence = json.loads(evidence) if evidence else []
-            if isinstance(properties, str):
-                properties = json.loads(properties) if properties else {}
-            edge = Edge(
-                id=row.get("id", ""),
-                type=row.get("type", "UNKNOWN"),
-                from_id=row.get("from_id", ""),
-                to_id=row.get("to_id", ""),
-                source=row.get("source", "model_metadata"),
-                confidence=row.get("confidence", 1.0),
-                status=row.get("status", "factual"),
-                evidence=evidence if isinstance(evidence, list) else [evidence],
-                evidence_class=row.get("evidence_class", "FACT"),
-                properties=properties if isinstance(properties, Mapping) else {},
-            )
-            self.edges[edge.id] = edge
+        if self._native is None:
+            return
+        store = self._native[0]
+        if isinstance(store, TrailStore) and store.exists():
+            payload = store.load()
+            self._load_payload(payload)
 
     def _load_payload(self, payload: Mapping[str, Any]) -> None:
         from .migrations import migrate_payload
@@ -161,7 +165,11 @@ class GraphRepository:
             self.edges[edge.id] = edge
 
     def _payload(self) -> dict[str, Any]:
-        return {"schema_version": GRAPH_SCHEMA_VERSION, "nodes": serialize_nodes(self.nodes.values()), "edges": serialize_edges(self.edges.values())}
+        return {
+            "schema_version": GRAPH_SCHEMA_VERSION,
+            "nodes": serialize_nodes(self.nodes.values()),
+            "edges": serialize_edges(self.edges.values()),
+        }
 
     def _persist(self) -> None:
         if self._native is not None:
@@ -188,11 +196,8 @@ class GraphRepository:
                 connection.execute("ROLLBACK")
             except Exception:
                 LOGGER.debug("Native rollback unavailable", exc_info=True)
-            LOGGER.error("LadybugDB graph replacement failed", exc_info=True)
-            raise RuntimeError(f"LadybugDB graph replacement failed: {exc}") from exc
-        # Consolidate the committed snapshot: replaying complex replacement
-        # transactions after abrupt process exit can fail in the native WAL.
-        # A checkpoint failure cannot undo COMMIT, so keep the published index.
+            LOGGER.error("Trail graph replacement failed", exc_info=True)
+            raise RuntimeError(f"Trail graph replacement failed: {exc}") from exc
         try:
             connection.execute("CHECKPOINT")
         except Exception:
@@ -200,6 +205,10 @@ class GraphRepository:
 
     def _write_native_graph(self, connection: Any) -> None:
         connection.execute("MATCH (n:BrainNode) DETACH DELETE n")
+        payload = self._payload()
+        if isinstance(connection, _TrailConnection):
+            connection.stage_payload(payload)
+            return
         for node in self.nodes.values():
             props = json.dumps(node.properties, ensure_ascii=False, sort_keys=True, default=_json_default)
             query = (
@@ -426,10 +435,8 @@ class GraphRepository:
         return list(reversed(path))
 
     def query_graph(self, cypher: str, params: Mapping[str, Any] | None = None) -> Any:
-        """Run trusted Cypher on native Ladybug or the explicit test double."""
+        """Run deterministic structural queries against the canonical graph."""
 
-        if self._native is not None:
-            return self._native[1].execute(cypher, params or {})
         text = " ".join(str(cypher).split())
         if re.fullmatch(r"MATCH \(\w+:BrainNode\) RETURN \w+\.\*", text, re.I):
             return [node.to_dict() for node in self.all_nodes()]
@@ -439,7 +446,9 @@ class GraphRepository:
         if match:
             wanted = match.group(1).upper()
             return [node.to_dict() for node in self.all_nodes() if node.type == wanted]
-        raise RuntimeError("Cypher fallback supports only simple BrainNode reads; install ladybug for query_graph")
+        if self._native is not None and not isinstance(self._native[1], _TrailConnection):
+            return self._native[1].execute(cypher, params or {})
+        raise RuntimeError("Unsupported query_graph pattern; use repository methods or simple BrainNode MATCH queries")
 
     execute = query_graph
 
@@ -462,5 +471,9 @@ class GraphRepository:
         self.close()
 
 
-class LadybugRepository(GraphRepository):
-    """Explicit name for callers that want to document the canonical store."""
+class TrailRepository(GraphRepository):
+    """Explicit name for callers that want to document the canonical Trail store."""
+
+
+# Backward-compatible alias for external callers or tests importing LadybugRepository.
+LadybugRepository = TrailRepository

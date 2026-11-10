@@ -60,7 +60,7 @@ class CiWorkflowTest(unittest.TestCase):
         self.assertIn('Select-String -Path dist/index.html -Pattern "pywebview-shim"', self.text)
 
     def test_the_setup_has_the_native_runtime_and_the_bridge(self) -> None:
-        for needed in ("scripts/prepare-native-runtime.ps1", "LBUG_C_API_LIB_PATH", "TabularMetadata.csproj", "npm ci", "npx playwright install chromium"):
+        for needed in ("scripts/prepare-native-runtime.ps1", "TabularMetadata.csproj", "npm ci", "npx playwright install chromium"):
             with self.subTest(needed=needed):
                 self.assertIn(needed, self.text)
 

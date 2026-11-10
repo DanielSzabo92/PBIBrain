@@ -26,7 +26,7 @@ FACT_TYPES = {"MODEL", "TABLE", "COLUMN", "MEASURE", "RELATIONSHIP", "SHARED_EXP
               "HIERARCHY", "LEVEL", "PARTITION", "SECURITY_ROLE", "ROLE_FILTER", "OLS_PERMISSION", "REPORT_MEASURE", "BOOKMARK"}
 # Model collections that the scanner reads into graph nodes (version 1 object types).
 SUPPORTED_MODEL_PROPERTIES = {"tables", "relationships", "measures", "expressions", "functions", "calculationGroups", "culture", "name", "id", "lineageTag",
-                              "source_path", "annotations", "defaultPowerBIDataSourceVersion", "discourageImplicitMeasures", "dataAccessOptions", "roles"}
+                              "source_path", "ast_location", "annotations", "defaultPowerBIDataSourceVersion", "discourageImplicitMeasures", "dataAccessOptions", "roles"}
 
 
 def validate_paths(root: Path, manifest: list[dict[str, Any]]) -> None:

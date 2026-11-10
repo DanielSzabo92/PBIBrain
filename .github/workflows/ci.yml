@@ -28,7 +28,6 @@ jobs:
     env:
       CI: "1"
       PYTHONUTF8: "1"
-      LBUG_C_API_LIB_PATH: ${{ github.workspace }}\runtime\native\lbug_shared.dll
     steps:
       - uses: actions/checkout@v4
 
@@ -53,7 +52,7 @@ jobs:
           path: .cache/native
           key: native-${{ hashFiles('scripts/prepare-native-runtime.ps1') }}
 
-      - name: Prepare the native runtime (LadybugDB and OpenSSL DLLs, SHA-256 checked)
+      - name: Prepare the native runtime (OpenSSL DLLs, SHA-256 checked)
         run: |
           ./scripts/prepare-native-runtime.ps1
           "$env:GITHUB_WORKSPACE\runtime\native" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append

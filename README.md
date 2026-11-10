@@ -139,8 +139,25 @@ Review and future documentation/visualization plan: [Product review](docs/PRODUC
 
 ## Requirements
 
-Windows, Python 3.11+, matching LadybugDB native library, and Node.js/npm to build
-the optional GUI. No Power BI installation is needed for file-based PBIP scans.
+Windows, macOS, or Linux, Python 3.11+, and Node.js/npm to build the optional GUI
+or run the standalone `trail-pbi` CLI. No external C++ database DLL (`lbug_shared.dll`)
+or Power BI installation is needed for file-based PBIP scans: `PBIBrain` persists
+its canonical graph natively in the **Trail** format (`.graph/wiring.json`,
+`.cache/ask-index.json`, `INDEX.md`, and per-file `<path>.md` wiring cards).
+
+## Standalone `trail-pbi` CLI & MCP Server (`trail-pbi/`)
+
+This repository also includes **`trail-pbi`** (`trail-pbi/`), a standalone Power BI
+and Microsoft Fabric-specialized extension of [Trail-Code](https://github.com/trailhq/Trail-Code)
+that preserves 100% of Trail's full-stack AST extractors (TypeScript, Python, C#,
+Rust, Go, Java, Scala, R, etc.) while adding first-class deterministic extractors
+and cross-file lineage resolution for:
+
+- **TMDL (`.tmdl`) & TMSL (`model.bim`)** semantic models with container line-span shifting
+- **DAX (`.dax` and embedded formulas)** measures, calculated columns, calculation groups, RLS roles, and visual calculations
+- **Power Query / M (`.pq`, `.m`, and embedded partitions/expressions)** with data source lineage (`Sql.Database`, `Lakehouse.Contents`, `Fabric.Warehouse`, `Kusto.Contents`, `Value.NativeQuery`)
+- **SQL (`.sql`) & KQL (`.kql`)** warehouse views, stored procedures, and Kusto functions/tables
+- **PBIP / PBIR (`.pbip`, `definition.pbir`, `report.json`, `page.json`, `visual.json`, `reportExtensions.json`, `*.bookmark.json`, `.platform`)**
 
 <p align="center">
   <a href="docs/project-diagram.html" target="_blank" rel="noopener"><strong>Open the full interactive project map ↗</strong></a>
@@ -150,7 +167,7 @@ the optional GUI. No Power BI installation is needed for file-based PBIP scans.
 
 ## Setup guide
 
-This guide is for running Power BI Brain on a Windows PC. The PBIBrain folder
+This guide is for running Power BI Brain locally. The PBIBrain folder
 and the Power BI project are separate. A Power BI project can be anywhere on
 your computer; it does not need to be inside the PBIBrain folder.
 
@@ -159,10 +176,7 @@ your computer; it does not need to be inside the PBIBrain folder.
 Install:
 
 - Python 3.11 or newer.
-- Node.js and npm for the Inspector web interface.
-- The LadybugDB Python package and its matching native library. Installing
-  PBIBrain installs the Python package, but Windows also needs
-  `lbug_shared.dll`.
+- Node.js and npm for the Inspector web interface (and standalone `trail-pbi`).
 - Optional: Power BI Desktop if you want to use the Desktop Bridge.
 
 The Desktop Bridge CLI requires Node.js 20 or newer. It is optional for
@@ -176,9 +190,8 @@ Use the folder where this repository is installed:
 cd C:\path\to\PBIBrain
 ```
 
-Run the commands below from this folder. The default database is
-`data/brain.lbug`, and the default identity file is
-`config/identity.json`.
+Run the commands below from this folder. The default Trail graph directory is
+`.trail/cache`, and the default identity file is `config/identity.json`.
 
 ### 3. Install the Python backend
 
@@ -201,29 +214,10 @@ If `brain` is not found, use the module form instead:
 python -m backend.cli.main --help
 ```
 
-### 4. Configure the LadybugDB Windows library
+### 4. Verify the Trail graph store
 
-Find `lbug_shared.dll` on a PC where LadybugDB is already configured:
-
-```powershell
-where.exe /R C:\ lbug_shared.dll
-```
-
-If it is not available, download the matching Windows shared library from the
-[LadybugDB releases](https://github.com/LadybugDB/ladybug/releases). Use the
-version that matches the installed Python package.
-
-Set the DLL path in the current PowerShell window:
-
-```powershell
-$env:LBUG_C_API_LIB_PATH = 'C:\path\to\lbug_shared.dll'
-$env:PATH = "$(Split-Path $env:LBUG_C_API_LIB_PATH);$env:PATH"
-```
-
-These environment variables apply only to the current PowerShell window. Set
-them again in every new window, or add them to your Windows user environment.
-
-Verify the backend and native library:
+No native database DLLs or environment variables (`LBUG_C_API_LIB_PATH`) are required.
+Verify the backend and Trail storage status:
 
 ```powershell
 brain status --json

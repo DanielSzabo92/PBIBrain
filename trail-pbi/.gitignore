@@ -1,0 +1,6 @@
+node_modules/
+dist/
+.trail/
+.context/
+*.tsbuildinfo
+.DS_Store

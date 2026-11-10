@@ -20,7 +20,6 @@ a = Analysis(
         "webview.platforms.edgechromium",
         "clr",
         "pythonnet",
-        "ladybug._lbug_capi",
         "backend.mcp_server",
         "backend.chat.service",
         "anthropic",

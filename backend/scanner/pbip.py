@@ -186,11 +186,23 @@ def _formula(rhs: str, block: list[str]) -> str | None:
     return "\n".join(parts).strip() or None
 
 
-def _parse_table(path: Path) -> dict[str, Any] | None:
+def _trimmed_end(lines: list[str], start: int, end: int) -> int:
+    cursor = end
+    while cursor > start + 1 and not lines[cursor - 1].strip():
+        cursor -= 1
+    return cursor
+
+
+def _parse_table(path: Path, model_root: Path | None = None) -> dict[str, Any] | None:
     lines = path.read_text(encoding="utf-8").splitlines()
     table_index = next((i for i, line in enumerate(lines) if _TABLE_RE.match(line)), None)
     if table_index is None:
         return None
+    source_file = (
+        path.relative_to(model_root).as_posix()
+        if model_root is not None and path.is_relative_to(model_root)
+        else f"definition/tables/{path.name}"
+    )
     table_match = _TABLE_RE.match(lines[table_index])
     assert table_match is not None
     table_name = _unquote(table_match.group(1))
@@ -205,6 +217,10 @@ def _parse_table(path: Path) -> dict[str, Any] | None:
         "columns": [],
         "measures": [],
         "hierarchies": [],
+        "ast_location": {
+            "source_file": source_file,
+            "span": f"L{table_index + 1}-L{_trimmed_end(lines, table_index, len(lines))}",
+        },
     }
     object_matches = [
         (index, match)
@@ -222,14 +238,19 @@ def _parse_table(path: Path) -> dict[str, Any] | None:
     ]
     for position, (index, match) in enumerate(object_indexes):
         end = object_indexes[position + 1][0] if position + 1 < len(object_indexes) else len(lines)
+        actual_end = _trimmed_end(lines, index, end)
         kind = match.group(2).casefold()
         header = match.group(3)
         if kind == "partition":
             # Issue #10: the partition source (M text or Direct Lake entity) feeds the data-source lineage.
-            table.setdefault("partitions", []).append(_parse_partition(header, lines[index:end]))
+            table.setdefault("partitions", []).append(
+                _parse_partition(header, lines[index:end], source_file=source_file, start_line=index + 1, end_line=actual_end)
+            )
             continue
         if kind == "hierarchy":
-            table["hierarchies"].append(_parse_hierarchy(_unquote(header.strip()), lines[index:end]))
+            table["hierarchies"].append(
+                _parse_hierarchy(_unquote(header.strip()), lines[index:end], source_file=source_file, start_line=index + 1, end_line=actual_end)
+            )
             continue
         name_part, separator, rhs = header.partition("=")
         object_name = _unquote(name_part.strip())
@@ -247,6 +268,10 @@ def _parse_table(path: Path) -> dict[str, Any] | None:
             "sortByColumn": _attribute(block, "sortByColumn"),
             "summarizeBy": _attribute(block, "summarizeBy"),
             "sourceColumn": _attribute(block, "sourceColumn"),
+            "ast_location": {
+                "source_file": source_file,
+                "span": f"L{index + 1}-L{actual_end}",
+            },
         }
         if expression:
             item["expression"] = expression
@@ -261,11 +286,20 @@ def _parse_table(path: Path) -> dict[str, Any] | None:
 _SOURCE_RE = re.compile(r"^(\s*)source\s*(?:=\s*(.*?))?\s*$", re.IGNORECASE)
 
 
-def _parse_partition(header: str, block: list[str]) -> dict[str, Any]:
+def _parse_partition(
+    header: str,
+    block: list[str],
+    *,
+    source_file: str | None = None,
+    start_line: int | None = None,
+    end_line: int | None = None,
+) -> dict[str, Any]:
     """Read one TMDL partition block into the TOM shape: name, mode and source (type, expression or entity)."""
 
     name_part, _, source_type = header.partition("=")
     partition: dict[str, Any] = {"name": _unquote(name_part.strip())}
+    if source_file and start_line is not None and end_line is not None:
+        partition["ast_location"] = {"source_file": source_file, "span": f"L{start_line}-L{end_line}"}
     source: dict[str, Any] = {"type": source_type.strip() or None}
     start = next((index for index, line in enumerate(block[1:], 1) if _SOURCE_RE.match(line)), None)
     header_lines = block[:start] if start is not None else block
@@ -296,21 +330,40 @@ def _parse_partition(header: str, block: list[str]) -> dict[str, Any]:
     return partition
 
 
-def _parse_hierarchy(name: str, block: list[str]) -> dict[str, Any]:
+def _parse_hierarchy(
+    name: str,
+    block: list[str],
+    *,
+    source_file: str | None = None,
+    start_line: int | None = None,
+    end_line: int | None = None,
+) -> dict[str, Any]:
     """Read one TMDL hierarchy block and its levels."""
 
     starts = [index for index, line in enumerate(block) if _LEVEL_RE.match(line)]
     header = block[: starts[0]] if starts else block
     hierarchy: dict[str, Any] = {"name": name, "levels": []}
+    if source_file and start_line is not None and end_line is not None:
+        hierarchy["ast_location"] = {"source_file": source_file, "span": f"L{start_line}-L{end_line}"}
     lineage = _attribute(header, "lineageTag")
     if lineage:
         hierarchy["lineageTag"] = lineage
     for position, index in enumerate(starts):
         end = starts[position + 1] if position + 1 < len(starts) else len(block)
+        actual_end = _trimmed_end(block, index, end)
         level_block = block[index:end]
         match = _LEVEL_RE.match(block[index])
         assert match is not None
-        level = {"name": _unquote(match.group(2)), "ordinal": position, "column": _unquote(_attribute(level_block, "column") or "")}
+        level: dict[str, Any] = {
+            "name": _unquote(match.group(2)),
+            "ordinal": position,
+            "column": _unquote(_attribute(level_block, "column") or ""),
+        }
+        if source_file and start_line is not None:
+            level["ast_location"] = {
+                "source_file": source_file,
+                "span": f"L{start_line + index}-L{start_line + actual_end - 1}",
+            }
         lineage = _attribute(level_block, "lineageTag")
         if lineage:
             level["lineageTag"] = lineage
@@ -341,18 +394,25 @@ def _parse_model_meta(path: Path) -> dict[str, Any]:
         "source_path": str(path),
         "compatibility_level": compatibility,
         "tables": [],
-        "relationships": _parse_relationships(path / "definition" / "relationships.tmdl"),
-        "shared_expressions": _parse_expressions(path / "definition" / "expressions.tmdl"),
+        "relationships": _parse_relationships(path / "definition" / "relationships.tmdl", model_root=path),
+        "shared_expressions": _parse_expressions(path / "definition" / "expressions.tmdl", model_root=path),
     }
+    if model_file.is_file():
+        model["ast_location"] = {
+            "source_file": "definition/model.tmdl",
+            "span": f"L1-L{max(1, len(lines))}",
+        }
     for table_path in sorted((path / "definition" / "tables").rglob("*.tmdl"), key=lambda item: str(item).casefold()):
-        table = _parse_table(table_path)
+        table = _parse_table(table_path, model_root=path)
         if table:
             model["tables"].append(table)
     return {key: value for key, value in model.items() if value not in (None, [], {})}
 
 
 def _parse_model_bim(path: Path) -> dict[str, Any]:
-    payload = _read_json(path / "model.bim")
+    bim_file = path / "model.bim"
+    bim_lines = len(bim_file.read_text(encoding="utf-8").splitlines()) if bim_file.is_file() else 1
+    payload = _read_json(bim_file)
     value = payload.get("model", payload)
     model = dict(value) if isinstance(value, Mapping) else {}
     platform_name = _platform_name(path)
@@ -370,6 +430,10 @@ def _parse_model_bim(path: Path) -> dict[str, Any]:
             "name": name,
             "source_path": str(path),
             "compatibility_level": compatibility,
+            "ast_location": {
+                "source_file": "model.bim",
+                "span": f"L1-L{max(1, bim_lines)}",
+            },
         }
     )
     return {key: value for key, value in model.items() if value not in (None, [], {})}
@@ -391,18 +455,30 @@ def _split_endpoint(value: Any) -> dict[str, str] | str:
     return {"table": _unquote(table), "column": _unquote(column)}
 
 
-def _parse_relationships(path: Path) -> list[dict[str, Any]]:
+def _parse_relationships(path: Path, model_root: Path | None = None) -> list[dict[str, Any]]:
     if not path.is_file():
         return []
+    source_file = (
+        path.relative_to(model_root).as_posix()
+        if model_root is not None and path.is_relative_to(model_root)
+        else "definition/relationships.tmdl"
+    )
     lines = path.read_text(encoding="utf-8").splitlines()
     starts = [index for index, line in enumerate(lines) if _RELATIONSHIP_RE.match(line)]
     result: list[dict[str, Any]] = []
     for position, index in enumerate(starts):
         end = starts[position + 1] if position + 1 < len(starts) else len(lines)
+        actual_end = _trimmed_end(lines, index, end)
         match = _RELATIONSHIP_RE.match(lines[index])
         assert match is not None
         block = lines[index:end]
-        values: dict[str, Any] = {"id": _unquote(match.group(1))}
+        values: dict[str, Any] = {
+            "id": _unquote(match.group(1)),
+            "ast_location": {
+                "source_file": source_file,
+                "span": f"L{index + 1}-L{actual_end}",
+            },
+        }
         for line in block[1:]:
             attr = _ATTRIBUTE_RE.match(line)
             if not attr:
@@ -427,14 +503,20 @@ def _parse_relationships(path: Path) -> list[dict[str, Any]]:
     return result
 
 
-def _parse_expressions(path: Path) -> list[dict[str, Any]]:
+def _parse_expressions(path: Path, model_root: Path | None = None) -> list[dict[str, Any]]:
     if not path.is_file():
         return []
+    source_file = (
+        path.relative_to(model_root).as_posix()
+        if model_root is not None and path.is_relative_to(model_root)
+        else "definition/expressions.tmdl"
+    )
     lines = path.read_text(encoding="utf-8").splitlines()
     starts = [index for index, line in enumerate(lines) if _EXPRESSION_RE.match(line)]
     result: list[dict[str, Any]] = []
     for position, index in enumerate(starts):
         end = starts[position + 1] if position + 1 < len(starts) else len(lines)
+        actual_end = _trimmed_end(lines, index, end)
         match = _EXPRESSION_RE.match(lines[index])
         assert match is not None
         expression = match.group(2).strip()
@@ -449,6 +531,10 @@ def _parse_expressions(path: Path) -> list[dict[str, Any]]:
                 "expression": expression,
                 "kind": "m",
                 "language": "m",
+                "ast_location": {
+                    "source_file": source_file,
+                    "span": f"L{index + 1}-L{actual_end}",
+                },
             }
         )
     return result
@@ -491,17 +577,27 @@ def _read_report(path: Path, models: Mapping[Path, Mapping[str, Any]], root: Pat
             visual = _read_json(visual_file)
             if "id" not in visual and visual.get("name") is not None:
                 visual["id"] = visual["name"]
-            visuals.append(visual)
-        pages.append(
-            {
-                **page_payload,
-                "id": source_name,
-                "name": display,
-                "display_name": display,
-                "order": page_payload.get("ordinal", ordinal),
-                "visuals": visuals,
+            v_lines = len(visual_file.read_text(encoding="utf-8").splitlines())
+            visual["ast_location"] = {
+                "source_file": visual_file.relative_to(path).as_posix(),
+                "span": f"L1-L{max(1, v_lines)}",
             }
-        )
+            visuals.append(visual)
+        page_item: dict[str, Any] = {
+            **page_payload,
+            "id": source_name,
+            "name": display,
+            "display_name": display,
+            "order": page_payload.get("ordinal", ordinal),
+            "visuals": visuals,
+        }
+        if page_file.is_file():
+            p_lines = len(page_file.read_text(encoding="utf-8").splitlines())
+            page_item["ast_location"] = {
+                "source_file": page_file.relative_to(path).as_posix(),
+                "span": f"L1-L{max(1, p_lines)}",
+            }
+        pages.append(page_item)
     extensions_file = path / "definition" / "reportExtensions.json"
     extensions = _read_json(extensions_file) if extensions_file.is_file() else {}
     report: dict[str, Any] = {
@@ -514,6 +610,12 @@ def _read_report(path: Path, models: Mapping[Path, Mapping[str, Any]], root: Pat
         "source_path": str(path),
         "pages": pages,
     }
+    if report_json.is_file():
+        r_lines = len(report_json.read_text(encoding="utf-8").splitlines())
+        report["ast_location"] = {
+            "source_file": report_json.relative_to(path).as_posix(),
+            "span": f"L1-L{max(1, r_lines)}",
+        }
     return report
 
 
@@ -548,8 +650,21 @@ def _read_bookmarks(folder: Path) -> list[dict[str, Any]]:
         if name not in files:
             continue
         payload = _read_json(files[name])
-        bookmarks.append({**payload, "id": payload.get("name", name), "order": ordinal, "group_name": group,
-                          "source_file": files[name].relative_to(folder.parent.parent).as_posix()})
+        rel_file = files[name].relative_to(folder.parent.parent).as_posix()
+        b_lines = len(files[name].read_text(encoding="utf-8").splitlines())
+        bookmarks.append(
+            {
+                **payload,
+                "id": payload.get("name", name),
+                "order": ordinal,
+                "group_name": group,
+                "source_file": rel_file,
+                "ast_location": {
+                    "source_file": rel_file,
+                    "span": f"L1-L{max(1, b_lines)}",
+                },
+            }
+        )
     return bookmarks
 
 

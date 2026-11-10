@@ -79,7 +79,7 @@ class NativeLadybugPersistenceTests(unittest.TestCase):
             repository.close()
 
             reopened = GraphRepository(path)
-            self.assertEqual(reopened.storage, "ladybug")
+            self.assertEqual(reopened.storage, "trail")
             self.assertEqual(reopened.get_object(measure.id).status, "factual")
             self.assertEqual([node.id for node in reopened.search_objects("Native Sales")], [measure.id])
             self.assertEqual([item.id for item in reopened.get_edges(from_id=model.id)], [edge.id])
@@ -105,7 +105,7 @@ class NativeLadybugPersistenceTests(unittest.TestCase):
             )
             self.assertEqual(process.returncode, 0, process.stderr)
             payload = json.loads(process.stdout)
-            self.assertEqual(payload["storage"], "ladybug")
+            self.assertEqual(payload["storage"], "trail")
             self.assertEqual(payload["nodes"], 2)
             self.assertEqual(payload["edges"], 1)
             self.assertEqual(payload["object"]["id"], measure.id)
@@ -114,7 +114,7 @@ class NativeLadybugPersistenceTests(unittest.TestCase):
             self.assertEqual(payload["edge_ids"], [edge.id])
 
 
-@unittest.skipUnless(NATIVE_AVAILABLE, "Ladybug C API shared library is unavailable")
+@unittest.skipUnless(NATIVE_AVAILABLE, "Native graph store is unavailable")
 class NativeCliSmokeTests(unittest.TestCase):
     def test_cli_scan_then_separate_status_and_search_processes(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -152,7 +152,7 @@ class NativeCliSmokeTests(unittest.TestCase):
             status_payload = json.loads(status.stdout)
             self.assertEqual(status_payload["nodes"], scan_payload["nodes"])
             self.assertEqual(status_payload["edges"], scan_payload["edges"])
-            self.assertEqual(status_payload["storage"], "ladybug")
+            self.assertEqual(status_payload["storage"], "trail")
 
             search = _run_cli(
                 "--db",

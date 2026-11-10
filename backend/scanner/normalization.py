@@ -58,8 +58,11 @@ def _safe_value(value: Any) -> Any:
 def _raw_properties(
     raw: Mapping[str, Any], *, exclude: Iterable[str] = (), **values: Any
 ) -> dict[str, Any]:
-    excluded = {_norm(key) for key in exclude}
+    excluded = {_norm(key) for key in (*exclude, "ast_location")}
     result = {key: _safe_value(value) for key, value in values.items() if value is not None}
+    ast_location = raw.get("ast_location")
+    if isinstance(ast_location, Mapping):
+        result["ast_location"] = _safe_value(ast_location)
     result["raw_source"] = _safe_value(
         {key: value for key, value in raw.items() if _norm(key) not in excluded}
     )
