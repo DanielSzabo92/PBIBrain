@@ -30,7 +30,7 @@ for (const theme of ["dark", "light"]) {
   test(`U-fix-1: axe on the review queue with a destructive button has no color-contrast violation (${theme})`, async ({ page, context }) => {
     await setTheme(context, theme);
     // The Brain snapshot (GET /api/brain) gets one outdated saved decision, so the queue shows "Remove decision".
-    await page.route("**/api/brain", async (route) => {
+    await page.route("**/api/brain**", async (route) => {
       const response = await route.fetch();
       const body = await response.json();
       const snapshot = body.snapshot && typeof body.snapshot === "object" ? body.snapshot : body;

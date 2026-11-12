@@ -19,7 +19,7 @@ test("overview exposes invalid graph issues separately from extraction", async (
 });
 
 test("review decisions show the exact table scope for duplicate columns", async ({ page }) => {
-  await page.route("**/api/brain", async (route) => {
+  await page.route("**/api/brain**", async (route) => {
     const response = await route.fetch();
     const data = await response.json();
     const nodes = [
