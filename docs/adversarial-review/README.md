@@ -54,6 +54,20 @@ Fix order: **01–05** (trust and speed), then **06–09** (the graph and review
 | Clean, navigable layout? | Shell yes; graph and lineage at scale no: 06, 07, 08, 19. |
 | Self-explanatory UI with little text? | No; the UI leans on sentences: 14, 09, 18. |
 
+## Fix status
+
+Measured on the same 13,731-object project, before → after.
+
+| # | State | What changed | Result |
+|---|---|---|---|
+| 02 | **Fixed** | Palette stylesheet matches the markup; scope shows names, not graph IDs; `e2e/palette.spec.js` guards it | Styled, one line per row |
+| 03 | **Fixed** (first part) | Read-only answers kept until the graph or decisions change; overview built at server start; one shared store read per request; review-queue target lookup indexed | First content 14 s → 0.6 s; `/api/overview` 11 s → 2 ms warm; one object 1.9 s → 20 ms; graph slice 2.1 s → 0.2 s |
+| 04 | **Partly** | `brain serve` answers each request on its own thread; cached answers and files skip the request lock | A cached read during a slow request: 24 s → 0.3 s. Open: the desktop host server is still serial; scan is still one blocking request; no compression (of little use on loopback, dropped from the plan) |
+| 05 | **Mostly** | Most-used measures and hot unreviewed objects are computed by the server; no "None"/"Clean"/"no issues" claim without data; scan time is recorded and survives a restart | Widgets are correct on first paint. Open: "8 sources" vs "32 sources" wording, the "99+" badge |
+| 01 | **Partly** | Review screens load a slim snapshot (`/api/brain?view=review`); indexed lookups; rows mounted 50 at a time; derived lists memoised | 163 MB → 44 MB; ready in 137 s → ~2 s; longest freeze 99 s → 0.9 s; DOM 378k → 7k elements. Open: true server paging, lighter rows (09), bulk actions by filter |
+
+Everything else is open.
+
 ## What is already good (keep)
 
 Token system and contrast-checked themes · one icon and colour per object type · provenance as line style · docked graph pane and no-flicker selection · Field usage matrix (dense, readable, the best view at scale) · menu bar and status bar · Merge compare grid and guarded apply · Undo on review decisions.

@@ -1,6 +1,20 @@
 // UI boundaries: names and readable evidence, never storage identities or payloads.
 const identity = /\b(?:model|report|table|column|measure|page|visual|workspace|semantic|edge|override|relationship|selector|conflict):[^\s,;"{}]+|\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b|\b[0-9a-f]{32,64}\b/gi;
 
+// Objects of a list by ID. The index is built once per list and kept while the list lives, so a
+// lookup for each of 11,000 review rows does not walk 14,000 objects every time.
+const indexes = new WeakMap();
+export function byId(list, id) {
+  if (!Array.isArray(list) || id === undefined || id === null) return undefined;
+  let index = indexes.get(list);
+  if (!index || index.size !== list.length) {
+    index = { size: list.length, map: new Map() };
+    for (const item of list) if (item && !index.map.has(item.id)) index.map.set(item.id, item);
+    indexes.set(list, index);
+  }
+  return index.map.get(id);
+}
+
 export function formatDaxName(table, name) {
   if (!table && !name) return "";
   if (table && !name) {
@@ -120,9 +134,9 @@ export function readableText(value, nodes = []) {
     if (/^[\[{]/.test(value.trim())) {
       try { return readableText(JSON.parse(value), nodes); } catch { /* A formula can start with [. */ }
     }
-    const named = nodes.find((node) => node.id === value);
+    const named = byId(nodes, value);
     if (named?.name && named.name !== value) return readableText(named.name);
-    const replaced = value.replace(identity, (id) => nodes.find((node) => node.id === id)?.name || "Referenced object");
+    const replaced = value.replace(identity, (id) => byId(nodes, id)?.name || "Referenced object");
     return sanitizeDoublePunctuation(sanitizePhrases(replaced));
   }
   if (Array.isArray(value)) return [...new Set(value.map((item) => readableText(item, nodes)).filter(Boolean))].join(" · ");

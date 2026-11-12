@@ -1,3 +1,4 @@
+import { byId } from "./presentation.js";
 import { readableText } from "./presentation.js";
 
 function cleanToken(str) {
@@ -18,7 +19,7 @@ export function isLowEvidence(item, nodes = []) {
   if (issue === "conflict" || issue === "stale") return false;
 
   const targetId = item.target_id || item.target || item.object_id || item.item?.target || item.item?.target_id;
-  const targetNode = Array.isArray(nodes) ? nodes.find((node) => node.id === targetId) : null;
+  const targetNode = byId(nodes, targetId) || null;
   const targetName = targetNode?.name || item.name || item.target_name || "";
   const value = String(item.value ?? item.meaning ?? item.properties?.value ?? item.properties?.meaning ?? item.item?.value ?? "").trim();
 

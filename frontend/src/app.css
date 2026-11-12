@@ -1643,10 +1643,10 @@ button.breadcrumb-link:hover {
 .command-palette { display: flex; flex-direction: column; max-height: min(480px, 70vh); background: var(--surface); color: var(--text); }
 .command-palette-header { display: flex; align-items: center; gap: 10px; height: 44px; padding: 0 12px 0 14px; border-bottom: 1px solid var(--line); flex: none; }
 .command-palette-search-icon, .command-palette-spinner { width: 16px; height: 16px; color: var(--text-3); flex: none; }
-.command-palette-input { flex: 1; min-width: 0; height: 100%; background: transparent; border: 0; outline: none; font: inherit; font-size: var(--fs-emphasis, 14px); color: var(--text); }
+.command-palette-input { flex: 1; min-width: 0; height: 100%; background: transparent; border: 0; outline: none; font: inherit; font-size: var(--fs-emphasis); color: var(--text); }
 .command-palette-input::placeholder { color: var(--text-3); }
 .command-palette-input::-webkit-search-cancel-button { display: none; }
-.command-palette-esc-badge, .command-palette-shortcut, .command-palette-footer kbd { flex: none; padding: 1px 5px; border: 1px solid var(--line-strong); border-radius: var(--r-xs); background: var(--surface-2); color: var(--text-3); font-family: var(--font-ui); font-size: var(--fs-kbd, 11px); line-height: 16px; font-variant-numeric: tabular-nums; }
+.command-palette-esc-badge, .command-palette-shortcut, .command-palette-footer kbd { flex: none; padding: 1px 5px; border: 1px solid var(--line-strong); border-radius: var(--r-xs); background: var(--surface-2); color: var(--text-3); font-family: var(--font-ui); font-size: var(--fs-micro); line-height: 16px; font-variant-numeric: tabular-nums; }
 .command-palette-body { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 6px; outline: none; }
 .command-palette-empty { padding: 28px 16px; text-align: center; color: var(--text-3); font-size: var(--fs-body); }
 .command-palette-group + .command-palette-group { margin-top: 4px; padding-top: 4px; border-top: 1px solid var(--line); }
@@ -1761,3 +1761,5 @@ button.breadcrumb-link:hover {
   color: var(--text-3);
   font-size: var(--fs-meta);
 }
+
+.queue-more { display: flex; justify-content: center; padding: 8px 0 4px; border-top: 1px solid var(--line); }

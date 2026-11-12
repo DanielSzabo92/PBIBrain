@@ -35,7 +35,8 @@ export function createBrainTransport({ baseUrl = API_ROOT, fetcher = globalThis.
     async getSnapshot() {
       const bootstrapped = bootstrapSnapshot();
       if (bootstrapped) return bootstrapped;
-      return request("/brain");
+      // The review view of the snapshot: names, scopes, formulas and suggestions, without parse trees and raw source.
+      return request("/brain?view=review");
     },
     async review(action, payload) {
       return request("/review", {

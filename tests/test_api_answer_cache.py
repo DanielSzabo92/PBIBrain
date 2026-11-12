@@ -63,9 +63,27 @@ class AnswerCacheTests(unittest.TestCase):
         self.assertEqual(2, len(self.handled))
 
     def test_requests_that_are_not_pure_reads_are_never_cached(self):
-        call(self.app, "/api/brain")
-        call(self.app, "/api/brain")
+        call(self.app, "/api/config")
+        call(self.app, "/api/config")
         self.assertEqual(2, len(self.handled))
+
+    def test_review_snapshot_keeps_the_shape_and_drops_the_heavy_parts(self):
+        self.repository.upsert_node(Node(id="measure:heavy", type="MEASURE", name="Heavy", model_id="model:m",
+                                         properties={"expression": "SUM(T[A])", "dax_ast": {"kind": "call"}, "raw_source": "x" * 5000}))
+        full = call(self.app, "/api/brain")[1]
+        slim = call(self.app, "/api/brain", "view=review")[1]
+        self.assertEqual(set(full) | {"view"}, set(slim))
+        self.assertEqual([node["id"] for node in full["nodes"]], [node["id"] for node in slim["nodes"]])
+        heavy = next(node for node in slim["nodes"] if node["id"] == "measure:heavy")
+        self.assertEqual("SUM(T[A])", heavy.get("expression") or heavy["properties"].get("expression"))
+        self.assertNotIn("dax_ast", json.dumps(heavy))
+        self.assertNotIn("raw_source", json.dumps(heavy))
+
+    def test_overview_reports_the_most_used_measures_itself(self):
+        overview = call(self.app, "/api/overview")[1]
+        self.assertEqual(1, overview["measure_count"])
+        self.assertEqual(["measure:a"], [item["id"] for item in overview["top_measures"]])
+        self.assertEqual([], overview["hot_unreviewed"])
 
     def test_shared_read_returns_the_same_objects_as_a_fresh_read(self):
         fresh = [node.to_dict() for node in self.repository.all_nodes()]

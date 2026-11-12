@@ -19,7 +19,7 @@ import { MAKER_NAME, PRODUCT_CREDIT, PRODUCT_NAME } from "./brand";
 import { TypeGlyph, TypeIcon } from "./components/TypeGlyph";
 import { CloudSourcePicker } from "./components/CloudSourcePicker";
 import { highlightDax } from "./dax";
-import { objectName, objectScope, originNote, readableText, publicProperties, scopeChoices, statusLabel, suggestionLabel, isBackendUnreachableError, sanitizeDoublePunctuation } from "./presentation";
+import { byId, objectName, objectScope, originNote, readableText, publicProperties, scopeChoices, statusLabel, suggestionLabel, isBackendUnreachableError, sanitizeDoublePunctuation } from "./presentation";
 import { Button } from "./components/ui/button";
 import { Input } from "./components/ui/input";
 import { NativeSelect } from "./components/ui/native-select";
@@ -1107,6 +1107,8 @@ function Overview({ overview, config, counts, colors, loading, projectName, onVi
   const conflicts = snapshot?.conflicts || [];
 
   const mostUsedMeasures = useMemo(() => {
+    // The server counts over the whole graph. The browser estimate below is only for a server that does not send it.
+    if (Array.isArray(overview?.top_measures)) return overview.top_measures.map((item) => ({ node: item, count: item.count || 0 }));
     const measures = nodes.filter((node) => node.type === "MEASURE" || node.type === "CALCULATION_ITEM");
     if (!measures.length) return [];
     const usageCounts = new Map();
@@ -1119,9 +1121,15 @@ function Overview({ overview, config, counts, colors, loading, projectName, onVi
       .map((m) => ({ node: m, count: usageCounts.get(m.id) || 0 }))
       .sort((a, b) => b.count - a.count || a.node.name.localeCompare(b.node.name))
       .slice(0, 5);
-  }, [nodes, edges]);
+  }, [nodes, edges, overview?.top_measures]);
 
   const unreviewedOnHot = useMemo(() => {
+    if (Array.isArray(overview?.hot_unreviewed)) {
+      return overview.hot_unreviewed.map((item) => ({
+        item: { id: item.id, kind: item.kind, meaning: item.label }, targetId: item.target_id, degree: item.degree || 0,
+        targetNode: { id: item.target_id, name: item.name, type: item.type },
+      }));
+    }
     const unreviewed = [
       ...candidates.filter((c) => !["approved", "rejected", "overridden"].includes(c.status)).map((c) => ({ ...c, kind: "candidate" })),
       ...conflicts.map((c) => ({ ...c, kind: "conflict" })),
@@ -1141,7 +1149,7 @@ function Overview({ overview, config, counts, colors, loading, projectName, onVi
     });
     scored.sort((a, b) => b.degree - a.degree);
     return scored.slice(0, 5);
-  }, [candidates, conflicts, edges, nodes]);
+  }, [candidates, conflicts, edges, nodes, overview?.hot_unreviewed]);
 
   const recentChanges = useMemo(() => {
     const list = [];
@@ -1227,7 +1235,7 @@ function Overview({ overview, config, counts, colors, loading, projectName, onVi
             </Disclosure>
           ) : null}
         </div>
-      ) : (
+      ) : validationState === "not_run" ? null : (
         <p className="widget-empty muted">No schema or dependency issues detected.</p>
       )}
       {validationState === "not_run" && onScan ? (
@@ -1320,7 +1328,7 @@ function Overview({ overview, config, counts, colors, loading, projectName, onVi
                 <Calculator className="status-icon" aria-hidden="true" />
                 <h3>Most-used measures</h3>
               </div>
-              <span className="widget-badge muted">{mostUsedMeasures.length ? `${mostUsedMeasures.length} shown` : "None"}</span>
+              {mostUsedMeasures.length ? <span className="widget-badge muted">Top {mostUsedMeasures.length}</span> : null}
             </div>
             {mostUsedMeasures.length ? (
               <ul className="widget-list">
@@ -1337,7 +1345,7 @@ function Overview({ overview, config, counts, colors, loading, projectName, onVi
                 ))}
               </ul>
             ) : (
-              <p className="widget-empty muted">No measures defined in the loaded models.</p>
+              <p className="widget-empty muted">{overview?.measure_count === 0 ? "No measures in the scanned models." : "Not available until the project is scanned."}</p>
             )}
           </Card>
 
@@ -1347,7 +1355,7 @@ function Overview({ overview, config, counts, colors, loading, projectName, onVi
                 <Flame className="status-icon tone-warn" aria-hidden="true" />
                 <h3>Unreviewed on hot objects</h3>
               </div>
-              <span className="widget-badge muted">{unreviewedOnHot.length ? `${unreviewedOnHot.length} pending` : "Clean"}</span>
+              {unreviewedOnHot.length ? <span className="widget-badge muted">Top {unreviewedOnHot.length}</span> : pending === 0 ? <span className="widget-badge muted">Clean</span> : null}
             </div>
             {unreviewedOnHot.length ? (
               <ul className="widget-list">
@@ -1368,7 +1376,7 @@ function Overview({ overview, config, counts, colors, loading, projectName, onVi
                 ))}
               </ul>
             ) : (
-              <p className="widget-empty muted">No pending suggestions or conflicts on connected objects.</p>
+              <p className="widget-empty muted">{pending === 0 ? "No pending suggestions or conflicts." : "Open the review queue to see them."}</p>
             )}
           </Card>
 
@@ -1696,6 +1704,8 @@ function reviewKeys(event, onCancelEdit) {
   }
 }
 
+const REVIEW_PAGE = 50;
+
 function ReviewQueue({ session, onSession, snapshot, loaded, loading, error, onRetry, overview, onSelect, onReview, onBulkReview, scanning, colors, auditTrail = [], onUndoReview }) {
   const { issue = "ALL", objectType = "ALL", modelId = "ALL", reportId = "ALL", sort = "confidence-high", tab = "queue" } = session;
   const change = (values) => onSession((current) => ({ ...current, ...values }));
@@ -1711,33 +1721,56 @@ function ReviewQueue({ session, onSession, snapshot, loaded, loading, error, onR
     });
     return () => cancelAnimationFrame(frame);
   }, []);
-  const external = snapshot.review_items.map((item) => ({ ...item, issue: reviewIssue(item) }));
-  const candidates = snapshot.semantic_candidates.map((item) => ({ ...item, issue: "candidate" }));
-  const conflicts = snapshot.conflicts.map((item) => ({ ...item, issue: "conflict", status: item.status || "candidate", confidence: item.confidence ?? 0 }));
-  const staleRecords = [...snapshot.stale_overrides, ...snapshot.overrides.filter((item) => item.status === "stale"), ...external.filter((item) => item.issue === "stale")];
-  const stale = staleRecords.map((item) => ({ ...item, issue: "stale", status: item.status || "candidate", confidence: item.confidence ?? 0 }));
-  const all = mergeReviewItems(external.length ? external : [...candidates, ...conflicts, ...stale]).filter((item) => !["rejected", "approved", "overridden"].includes(item.status));
-  const types = [...new Set(all.map((item) => snapshot.nodes.find((node) => node.id === itemTarget(item))?.type).filter(Boolean))].sort();
-  const models = [...new Set(all.map((item) => itemScopeValue(item, snapshot.nodes.find((node) => node.id === itemTarget(item)), "model_id")).filter(Boolean))].sort();
-  const reports = [...new Set(all.map((item) => itemScopeValue(item, snapshot.nodes.find((node) => node.id === itemTarget(item)), "report_id")).filter(Boolean))].sort();
-  const filtered = all.filter((item) => {
-    const targetNode = snapshot.nodes.find((node) => node.id === itemTarget(item));
-    const isLow = isLowEvidence(item, snapshot.nodes);
-    const matchesIssue = issue === "ALL" ? true : issue === "low-evidence" ? isLow : item.issue === issue;
-    return matchesIssue
-      && (objectType === "ALL" || targetNode?.type === objectType)
-      && (modelId === "ALL" || itemScopeValue(item, targetNode, "model_id") === modelId)
-      && (reportId === "ALL" || itemScopeValue(item, targetNode, "report_id") === reportId);
-  }).sort((a, b) => {
-    if (sort === "confidence-low") return itemConfidence(a) - itemConfidence(b);
-    if (sort === "impact-high") return itemImpact(b) - itemImpact(a);
-    if (sort === "impact-low") return itemImpact(a) - itemImpact(b);
-    return itemConfidence(b) - itemConfidence(a);
-  });
+  // Derived once per snapshot and filter, not on every render: the queue can hold more than 10,000 suggestions.
+  const { all, types, models, reports, filtered, lowEvidenceItems, standardItems } = useMemo(() => {
+    const external = snapshot.review_items.map((item) => ({ ...item, issue: reviewIssue(item) }));
+    const candidates = snapshot.semantic_candidates.map((item) => ({ ...item, issue: "candidate" }));
+    const conflicts = snapshot.conflicts.map((item) => ({ ...item, issue: "conflict", status: item.status || "candidate", confidence: item.confidence ?? 0 }));
+    const staleRecords = [...snapshot.stale_overrides, ...snapshot.overrides.filter((item) => item.status === "stale"), ...external.filter((item) => item.issue === "stale")];
+    const stale = staleRecords.map((item) => ({ ...item, issue: "stale", status: item.status || "candidate", confidence: item.confidence ?? 0 }));
+    const all = mergeReviewItems(external.length ? external : [...candidates, ...conflicts, ...stale]).filter((item) => !["rejected", "approved", "overridden"].includes(item.status));
+    const types = [...new Set(all.map((item) => byId(snapshot.nodes, itemTarget(item))?.type).filter(Boolean))].sort();
+    const models = [...new Set(all.map((item) => itemScopeValue(item, byId(snapshot.nodes, itemTarget(item)), "model_id")).filter(Boolean))].sort();
+    const reports = [...new Set(all.map((item) => itemScopeValue(item, byId(snapshot.nodes, itemTarget(item)), "report_id")).filter(Boolean))].sort();
+    const filtered = all.filter((item) => {
+      const targetNode = byId(snapshot.nodes, itemTarget(item));
+      const isLow = isLowEvidence(item, snapshot.nodes);
+      const matchesIssue = issue === "ALL" ? true : issue === "low-evidence" ? isLow : item.issue === issue;
+      return matchesIssue
+        && (objectType === "ALL" || targetNode?.type === objectType)
+        && (modelId === "ALL" || itemScopeValue(item, targetNode, "model_id") === modelId)
+        && (reportId === "ALL" || itemScopeValue(item, targetNode, "report_id") === reportId);
+    }).sort((a, b) => {
+      if (sort === "confidence-low") return itemConfidence(a) - itemConfidence(b);
+      if (sort === "impact-high") return itemImpact(b) - itemImpact(a);
+      if (sort === "impact-low") return itemImpact(a) - itemImpact(b);
+      return itemConfidence(b) - itemConfidence(a);
+    });
 
-  const lowEvidenceItems = filtered.filter((item) => isLowEvidence(item, snapshot.nodes));
-  const standardItems = filtered.filter((item) => !isLowEvidence(item, snapshot.nodes));
-  const approvableItems = filtered.filter((item) => item.issue !== "conflict" && item.issue !== "stale");
+    const lowEvidenceItems = [];
+    const standardItems = [];
+    for (const item of filtered) (isLowEvidence(item, snapshot.nodes) ? lowEvidenceItems : standardItems).push(item);
+    return { all, types, models, reports, filtered, lowEvidenceItems, standardItems };
+  }, [snapshot, issue, objectType, modelId, reportId, sort]);
+  // Rows are mounted in steps as the list is scrolled; a queue of 11,000 suggestions must not build 11,000 rows at once.
+  const [shown, setShown] = useState(REVIEW_PAGE);
+  const filterKey = `${issue}|${objectType}|${modelId}|${reportId}|${sort}|${tab}`;
+  useEffect(() => { setShown(REVIEW_PAGE); }, [filterKey]);
+  const more = useRef(null);
+  const longest = Math.max(standardItems.length, lowEvidenceItems.length);
+  useEffect(() => {
+    const sentinel = more.current;
+    if (!sentinel || shown >= longest || typeof IntersectionObserver !== "function") return undefined;
+    const observer = new IntersectionObserver((entries) => {
+      if (entries.some((entry) => entry.isIntersecting)) setShown((count) => count + REVIEW_PAGE);
+    }, { rootMargin: "600px" });
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [shown, longest]);
+  const moreRows = shown < longest
+    ? <div ref={more} className="queue-more"><Button variant="ghost" size="sm" onClick={() => setShown((count) => count + REVIEW_PAGE)}>Show more ({(longest - shown).toLocaleString()} left)</Button></div>
+    : null;
+  const approvableItems = useMemo(() => filtered.filter((item) => item.issue !== "conflict" && item.issue !== "stale"), [filtered]);
 
   const handleBulkAction = async (action, items) => {
     if (bulkBusy || scanning || !items?.length) return;
@@ -1916,7 +1949,7 @@ function ReviewQueue({ session, onSession, snapshot, loaded, loading, error, onR
                   </div>
                 </div>
                 <div className="queue-list" onKeyDown={(e) => reviewKeys(e, () => setActiveEditId(null))}>
-                  {lowEvidenceItems.map((item) => (
+                  {lowEvidenceItems.slice(0, shown).map((item) => (
                     <ReviewItem
                       colors={colors}
                       key={item.id || `${item.issue}-${itemTarget(item)}`}
@@ -1940,7 +1973,7 @@ function ReviewQueue({ session, onSession, snapshot, loaded, loading, error, onR
               <>
                 {standardItems.length ? (
                   <div className="queue-list" onKeyDown={(e) => reviewKeys(e, () => setActiveEditId(null))}>
-                    {standardItems.map((item) => (
+                    {standardItems.slice(0, shown).map((item) => (
                       <ReviewItem
                         colors={colors}
                         key={item.id || `${item.issue}-${itemTarget(item)}`}
@@ -1977,7 +2010,7 @@ function ReviewQueue({ session, onSession, snapshot, loaded, loading, error, onR
                       </div>
                     </div>
                     <div className="queue-list" onKeyDown={(e) => reviewKeys(e, () => setActiveEditId(null))}>
-                      {lowEvidenceItems.map((item) => (
+                      {lowEvidenceItems.slice(0, shown).map((item) => (
                         <ReviewItem
                           colors={colors}
                           key={item.id || `${item.issue}-${itemTarget(item)}`}
@@ -2000,6 +2033,7 @@ function ReviewQueue({ session, onSession, snapshot, loaded, loading, error, onR
                 ) : null}
               </>
             )}
+            {moreRows}
           </> : <EmptyState icon={hasFilters ? <ShieldCheck /> : <CircleCheck />} tone={hasFilters ? undefined : "ok"} title={hasFilters ? "No matching reviews" : "Queue is clear"} detail={hasFilters ? "Choose different filters to see the remaining reviews." : "All suggestions have been reviewed."} action={hasFilters ? <Button variant="outline" onClick={() => change({ issue: "ALL", objectType: "ALL", modelId: "ALL", reportId: "ALL" })}>Clear filters</Button> : null} />}
         </Card>
       </>
@@ -2009,7 +2043,7 @@ function ReviewQueue({ session, onSession, snapshot, loaded, loading, error, onR
 }
 
 function ReviewedItem({ entry, nodes, colors, onSelect, onUndo, disabled = false }) {
-  const targetNode = nodes.find((node) => node.id === entry.targetId);
+  const targetNode = byId(nodes, entry.targetId);
   const [pending, setPending] = useState(false);
   const status = entry.action === "approve" ? "approved" : entry.action === "reject" ? "rejected" : entry.action === "remove" ? "stale" : entry.action || "approved";
   const actionText = status === "approved" ? "Approved" : status === "rejected" ? "Rejected" : status === "overridden" ? "Edited" : "Decision removed";
@@ -2079,7 +2113,7 @@ function ReviewItem({
   onStartEdit,
   onCancelEdit,
 }) {
-  const targetNode = nodes.find((node) => node.id === itemTarget(item));
+  const targetNode = byId(nodes, itemTarget(item));
   const [pending, setPending] = useState(false);
   const [exiting, setExiting] = useState(false);
   const [expanded, setExpanded] = useState(false);
