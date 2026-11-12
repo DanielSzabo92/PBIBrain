@@ -467,6 +467,9 @@ class BrainApp:
         self.request_lock = threading.RLock()
         self._chat: Any = None
         self._devcenter: Any = None
+        # Answers to read-only graph requests, kept until the graph or the decisions change.
+        self._answers: dict[str, tuple[tuple[Any, ...], int, bytes]] = {}
+        self._answers_lock = threading.Lock()
 
     @property
     def chat(self) -> Any:
@@ -511,6 +514,67 @@ class BrainApp:
     @devcenter.setter
     def devcenter(self, value: Any) -> None:
         self._devcenter = value
+
+    # Read-only routes whose answer depends only on the graph and the stored decisions.
+    _CACHED_ROUTES = ("/api/overview", "/api/review", "/api/lineage", "/api/commonality", "/api/graph", "/api/objects", "/api/object/", "/api/search")
+    _CACHE_ENTRIES = 64
+    _CACHE_ENTRY_BYTES = 16 * 1024 * 1024
+
+    def _graph_stamp(self) -> tuple[Any, ...]:
+        """Identify the state that cached answers were built from.
+
+        The file times cover a writer in another process, for example a command-line scan.
+        """
+
+        repository = self.api.repository
+        times: list[int] = []
+        path = getattr(repository, "path", None)
+        if path is not None:
+            for candidate in (path, Path(str(path) + "-wal")):
+                try:
+                    times.append(candidate.stat().st_mtime_ns)
+                except OSError:
+                    times.append(0)
+        return (id(repository), getattr(repository, "revision", 0), getattr(self.api.overrides, "revision", 0), *times)
+
+    def _reading(self) -> Any:
+        """One shared read of the store for a read-only request; a no-op for a repository without it."""
+
+        from contextlib import nullcontext
+
+        reading = getattr(self.api.repository, "reading", None)
+        return reading() if callable(reading) else nullcontext()
+
+    def _cached_answer(self, key: str, stamp: tuple[Any, ...]) -> tuple[int, bytes] | None:
+        with self._answers_lock:
+            found = self._answers.get(key)
+            if found is None or found[0] != stamp:
+                return None
+            self._answers[key] = self._answers.pop(key)  # most recently used last
+            return found[1], found[2]
+
+    def _store_answer(self, key: str, stamp: tuple[Any, ...], status: int, raw: bytes) -> None:
+        if status != 200 or len(raw) > self._CACHE_ENTRY_BYTES:
+            return
+        with self._answers_lock:
+            self._answers.pop(key, None)
+            for stale in [name for name, value in self._answers.items() if value[0] != stamp]:
+                del self._answers[stale]
+            while len(self._answers) >= self._CACHE_ENTRIES:
+                del self._answers[next(iter(self._answers))]
+            self._answers[key] = (stamp, status, raw)
+
+    def prime(self) -> None:
+        """Build the Overview answer ahead of the first request, so the first screen does not wait for it."""
+
+        try:
+            with self.request_lock:
+                stamp = self._graph_stamp()
+                with self._reading():
+                    status, payload = self.handle("GET", "/api/overview")
+                self._store_answer("/api/overview?", stamp, status, json.dumps(payload, ensure_ascii=False, sort_keys=True).encode("utf-8"))
+        except Exception:  # a failed warm-up must never stop the server
+            pass
 
     @staticmethod
     def _json_body(body: bytes | str | Mapping[str, Any] | None) -> dict[str, Any]:
@@ -762,6 +826,7 @@ class BrainApp:
         origin = str(environ.get("HTTP_ORIGIN") or "")
         local_hosts = {"127.0.0.1", "localhost", "::1"}
         status, payload = 200, None
+        raw: bytes | None = None
         try:
             parsed_host = urlsplit(f"http://{host}")
             if parsed_host.hostname not in local_hosts or parsed_host.username or parsed_host.path:
@@ -790,14 +855,30 @@ class BrainApp:
                         mime = mimetypes.guess_type(asset.name)[0] or "application/octet-stream"
                         start_response("200 OK", [("Content-Type", mime), ("Content-Length", str(len(raw))), ("X-Content-Type-Options", "nosniff")])
                         return [raw]
-                with self.request_lock:
-                    status, payload = self.handle(method, f"{path}?{query}" if query else path, body)
+                target = f"{path}?{query}" if query else path
+                key = f"{path}?{query}" if method == "GET" and path.startswith(self._CACHED_ROUTES) else None
+                # A cached answer needs no lock: a slow request must not hold up the rest of the UI.
+                cached = self._cached_answer(key, self._graph_stamp()) if key else None
+                if cached is not None:
+                    status, raw = cached
+                else:
+                    with self.request_lock:
+                        stamp = self._graph_stamp()
+                        if key:
+                            with self._reading():
+                                status, payload = self.handle(method, target, body)
+                        else:
+                            status, payload = self.handle(method, target, body)
+                        if key and status == 200:
+                            raw = json.dumps(payload, ensure_ascii=False, sort_keys=True).encode("utf-8")
+                            self._store_answer(key, stamp, status, raw)
         except PermissionError as exc:
             status, payload = 403, {"error": str(exc)}
         except (ValueError, OSError) as exc:
             status, payload = 400, {"error": str(exc)}
         status_text = {200: "OK", 204: "No Content", 400: "Bad Request", 403: "Forbidden", 404: "Not Found", 405: "Method Not Allowed", 413: "Payload Too Large", 415: "Unsupported Media Type", 503: "Service Unavailable"}.get(status, "Error")
-        raw = b"" if payload is None else json.dumps(payload, ensure_ascii=False, sort_keys=True).encode("utf-8")
+        if raw is None or status != 200:
+            raw = b"" if payload is None else json.dumps(payload, ensure_ascii=False, sort_keys=True).encode("utf-8")
         headers = [("Content-Type", "application/json"), ("Content-Length", str(len(raw))), ("Cache-Control", "no-store"), ("X-Content-Type-Options", "nosniff")]
         if origin and status != 403:
             headers.extend([("Access-Control-Allow-Origin", origin), ("Vary", "Origin")])
@@ -839,7 +920,13 @@ def serve(
 ) -> None:
     """Serve the local API directly with the Python standard library."""
 
-    from wsgiref.simple_server import make_server
+    from socketserver import ThreadingMixIn
+    from wsgiref.simple_server import WSGIServer, make_server
+
+    class ThreadingServer(ThreadingMixIn, WSGIServer):
+        """One thread per request: files and cached answers no longer wait behind a slow request."""
+
+        daemon_threads = True
 
     if host not in {"127.0.0.1", "localhost"}:
         raise ValueError("PBIBrain is local-only; use 127.0.0.1 or localhost")
@@ -867,7 +954,8 @@ def serve(
     print(" Press Ctrl+C to stop.", flush=True)
     print("=======================================================\n", flush=True)
     try:
-        with make_server(host, int(port), application) as server:
+        threading.Thread(target=application.prime, name="pbibrain-prime", daemon=True).start()
+        with make_server(host, int(port), application, server_class=ThreadingServer) as server:
             server.serve_forever()
     except KeyboardInterrupt:
         pass

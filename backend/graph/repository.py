@@ -9,9 +9,11 @@ from __future__ import annotations
 import json
 import logging
 import re
+import threading
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Iterable, Iterator, Mapping, Sequence
 
 from .schema import Edge, Node, edge_from_dict, node_from_dict, serialize_edges, serialize_nodes, GRAPH_SCHEMA_VERSION
 from .sqlite_store import SQLiteStore
@@ -66,6 +68,11 @@ class GraphRepository:
         # Validation is a read-only runtime result.  Source synchronization
         # owns when it is refreshed; graph persistence stays canonical facts.
         self.validation_result: Any = None
+        # Counts every write. Readers that cache derived answers compare it to know when to drop them.
+        self.revision = 0
+        self._reading = threading.local()
+        self._shared_read: tuple[tuple[Any, ...], list[Node], list[Edge]] | None = None
+        self._shared_lock = threading.Lock()
 
         if use_native is False:
             if self.path and self.path.is_file():
@@ -202,6 +209,7 @@ class GraphRepository:
             )
 
     def upsert_node(self, node: Node | Mapping[str, Any]) -> Node:
+        self.revision += 1
         value = node if isinstance(node, Node) else node_from_dict(node)
         self.nodes[value.id] = value
         if self._native is not None and not isinstance(self._native[1], _NativeConnectionWrapper):
@@ -213,6 +221,7 @@ class GraphRepository:
         return value
 
     def upsert_nodes(self, nodes: Iterable[Node | Mapping[str, Any]]) -> list[Node]:
+        self.revision += 1
         values = [node if isinstance(node, Node) else node_from_dict(node) for node in nodes]
         for v in values:
             self.nodes[v.id] = v
@@ -227,6 +236,7 @@ class GraphRepository:
     add_nodes = upsert_nodes
 
     def upsert_edge(self, edge: Edge | Mapping[str, Any]) -> Edge:
+        self.revision += 1
         value = edge if isinstance(edge, Edge) else edge_from_dict(edge)
         self.edges[value.id] = value
         if self._store is not None:
@@ -236,6 +246,7 @@ class GraphRepository:
         return value
 
     def upsert_edges(self, edges: Iterable[Edge | Mapping[str, Any]]) -> list[Edge]:
+        self.revision += 1
         values = [edge if isinstance(edge, Edge) else edge_from_dict(edge) for edge in edges]
         for v in values:
             self.edges[v.id] = v
@@ -253,6 +264,7 @@ class GraphRepository:
         node_values = [node if isinstance(node, Node) else node_from_dict(node) for node in nodes]
         edge_values = [edge if isinstance(edge, Edge) else edge_from_dict(edge) for edge in edges]
         previous_nodes, previous_edges = self.nodes, self.edges
+        self.revision += 1
         self.nodes = {value.id: value for value in node_values}
         self.edges = {value.id: value for value in edge_values}
         try:
@@ -268,6 +280,7 @@ class GraphRepository:
         """Publish the latest validation result without changing graph facts."""
 
         self.validation_result = result
+        self.revision += 1
         return result
 
     def get_validation_result(self) -> Any:
@@ -298,12 +311,50 @@ class GraphRepository:
 
     get_node = get_object
 
+    @contextmanager
+    def reading(self) -> Iterator[None]:
+        """Serve all_nodes and all_edges from one shared read of the store while the block runs.
+
+        A read-only request asks for the full lists many times, and each read of the store
+        decodes every row again (about 1.2 s for 14,000 objects). Inside this block the lists
+        are read once per revision and shared. Use it only around code that does not change
+        the objects it gets; writers keep the fresh copies they have today.
+        """
+
+        depth = getattr(self._reading, "depth", 0)
+        self._reading.depth = depth + 1
+        try:
+            yield
+        finally:
+            self._reading.depth = depth
+
+    def _shared(self) -> tuple[list[Node], list[Edge]] | None:
+        if self._store is None or not getattr(self._reading, "depth", 0):
+            return None
+        stamp: tuple[Any, ...] = (self.revision,)
+        if self.path is not None:
+            for candidate in (self.path, Path(str(self.path) + "-wal")):
+                try:
+                    stamp += (candidate.stat().st_mtime_ns,)
+                except OSError:
+                    stamp += (0,)
+        with self._shared_lock:
+            if self._shared_read is None or self._shared_read[0] != stamp:
+                self._shared_read = (stamp, self._store.all_nodes(), self._store.all_edges())
+            return self._shared_read[1], self._shared_read[2]
+
     def all_nodes(self) -> list[Node]:
+        shared = self._shared()
+        if shared is not None:
+            return list(shared[0])
         if self._store is not None:
             return self._store.all_nodes()
         return [self.nodes[key] for key in sorted(self.nodes)]
 
     def all_edges(self) -> list[Edge]:
+        shared = self._shared()
+        if shared is not None:
+            return list(shared[1])
         if self._store is not None:
             return self._store.all_edges()
         return [self.edges[key] for key in sorted(self.edges)]

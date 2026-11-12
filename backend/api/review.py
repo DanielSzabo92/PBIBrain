@@ -57,6 +57,8 @@ class OverrideStore:
     def __init__(self, path: str | Path | None = None) -> None:
         self.path = Path(path) if path is not None else None
         self._records: list[dict[str, Any]] = self._read()
+        # Counts every stored change, for readers that cache answers built from the decisions.
+        self.revision = 0
 
     def _read(self) -> list[dict[str, Any]]:
         if self.path is None or not self.path.is_file():
@@ -75,6 +77,7 @@ class OverrideStore:
         return [dict(record) for record in self._records]
 
     def _write(self) -> None:
+        self.revision += 1
         if self.path is None:
             return
         self.path.parent.mkdir(parents=True, exist_ok=True)
@@ -200,6 +203,29 @@ def _all_items(repository: GraphRepository) -> tuple[list[Node], list[Edge]]:
     return repository.all_nodes(), repository.all_edges()
 
 
+class _IndexedEdges(list):
+    """An edge list with a one-pass index of the first inferred edge into each object.
+
+    The review queue asks for the target of every candidate. A scan of all edges for each
+    candidate is quadratic: 10 s for 11,500 candidates and 42,000 edges.
+    """
+
+    _first: dict[str, tuple[str, str]] | None = None
+
+    def first_inferred_source(self, item_id: str) -> str | None:
+        if self._first is None:
+            first: dict[str, tuple[str, str]] = {}
+            for edge in self:
+                if edge.evidence_class != "INFERRED":
+                    continue
+                known = first.get(edge.to_id)
+                if known is None or edge.id < known[0]:
+                    first[edge.to_id] = (edge.id, edge.from_id)
+            self._first = first
+        found = self._first.get(item_id)
+        return found[1] if found else None
+
+
 def _candidate_target(item: Mapping[str, Any], edges: Sequence[Edge]) -> str | None:
     properties = _properties(item)
     for key in ("target", "target_id", "object_id"):
@@ -208,9 +234,14 @@ def _candidate_target(item: Mapping[str, Any], edges: Sequence[Edge]) -> str | N
     if item.get("from_id"):
         return str(item["from_id"])
     item_id = str(item.get("id", ""))
-    incoming = [edge for edge in edges if edge.to_id == item_id and edge.evidence_class == "INFERRED"]
-    if incoming:
-        return sorted(incoming, key=lambda edge: edge.id)[0].from_id
+    if isinstance(edges, _IndexedEdges):
+        first = edges.first_inferred_source(item_id)
+        if first is not None:
+            return first
+    else:
+        incoming = [edge for edge in edges if edge.to_id == item_id and edge.evidence_class == "INFERRED"]
+        if incoming:
+            return sorted(incoming, key=lambda edge: edge.id)[0].from_id
     conflict_target = properties.get("target_id")
     return str(conflict_target) if conflict_target else None
 
@@ -297,6 +328,7 @@ def get_review_queue(
     """Return unresolved semantic candidates and conflicts for the Inspector."""
 
     nodes, edges = _all_items(repository)
+    edges = _IndexedEdges(edges)
     by_id = {node.id: node for node in nodes}
     records: list[dict[str, Any]] = []
     seen_candidates: set[str] = set()
