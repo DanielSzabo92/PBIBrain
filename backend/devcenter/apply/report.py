@@ -5,7 +5,8 @@ The report is for a commit message or a pull request. The app never commits or p
 
 from __future__ import annotations
 
-from typing import Any, Mapping
+from typing import Any
+from collections.abc import Mapping
 
 _CHANGES = (("created", "Added"), ("modified", "Changed"), ("renamed", "Renamed"), ("deleted", "Removed"))
 

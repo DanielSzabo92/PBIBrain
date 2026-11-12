@@ -9,7 +9,7 @@ from backend.graph.loader import build_fact_graph, scan_sources
 from backend.graph.repository import GraphRepository
 
 from tests.fixtures.phase1_sources import MODEL_ID, REPORT_A_ID, REPORT_B_ID, model_source, report_source
-from tests.support.canonical import as_mapping, by_type
+from tests.support.canonical import by_type
 
 
 def edge_tuples(graph):

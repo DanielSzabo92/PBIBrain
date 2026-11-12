@@ -38,7 +38,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 import hashlib
 import json
-from typing import Any, Iterable, Mapping, Sequence
+from typing import Any
+from collections.abc import Iterable, Mapping, Sequence
 
 from backend.devcenter.alignment.keys import fold
 from backend.devcenter.compare.extract import MODEL, REPORT, CompareObject

@@ -11,8 +11,10 @@ a wrong method gives 405, and only then the route checks the open session.
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
-from typing import Any, Callable, Mapping, Sequence
+from typing import Any
+from collections.abc import Callable, Mapping, Sequence
 
 from backend.devcenter.errors import DevCenterError, error_reply
 
@@ -88,6 +90,18 @@ def get_sessions(devcenter: Any, query: Mapping[str, Sequence[str]], body: Any) 
 @route("GET", "session", contract="http/session.reply.json")
 def get_session(devcenter: Any, query: Mapping[str, Sequence[str]], body: Any) -> Mapping[str, Any]:
     return devcenter.session_summary()
+
+
+def json_body(body: Any) -> Any:
+    """The JSON request body as a value; an empty body is an empty object."""
+    if isinstance(body, Mapping):
+        return dict(body)
+    if body in (None, b"", ""):
+        return {}
+    try:
+        return json.loads(body.decode("utf-8") if isinstance(body, bytes) else body)
+    except (UnicodeDecodeError, ValueError) as exc:
+        raise DevCenterError("invalid_payload", "The request body is not valid JSON.", {"reason": "invalid_json"}) from exc
 
 
 from backend.devcenter.compare import http_routes as _compare_routes  # noqa: E402,F401  (build step S3)

@@ -1,7 +1,7 @@
 """Tests for typed Power BI agent tools (pbi_find_object, pbi_lineage, etc.)."""
 
 import unittest
-from backend.tool_registry import build_pbi_tools, build_tools, pbi_tools, tool_schema
+from backend.tool_registry import build_pbi_tools, tool_schema
 
 
 class FakeClient:

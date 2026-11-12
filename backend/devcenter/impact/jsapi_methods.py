@@ -9,7 +9,8 @@ Registers the 4 state-changing methods for pywebview JS API:
 
 from __future__ import annotations
 
-from typing import Any, Mapping
+from typing import Any
+from collections.abc import Mapping
 
 from backend.devcenter.impact import service
 from backend.devcenter.jsapi import register

@@ -45,11 +45,7 @@ def _split_case(chunk: str) -> list[str]:
         kind = _kind(char)
         following = _kind(chunk[index + 1]) if index + 1 < len(chunk) else None
         split = False
-        if kind == "upper" and before == "lower":
-            split = True
-        elif kind == "upper" and before == "upper" and following == "lower":
-            split = True
-        elif {kind, before} & {"digit", "symbol"} and kind != before:
+        if kind == "upper" and before == "lower" or kind == "upper" and before == "upper" and following == "lower" or {kind, before} & {"digit", "symbol"} and kind != before:
             split = True
         if split:
             tokens.append(current)
@@ -137,9 +133,7 @@ def render(parts: list[str], style: str | None, separator: str | None, original:
 
     if style is None and separator is None:
         return original
-    if style == "title":
-        parts = [_capital(part) for part in parts]
-    elif style == "pascal":
+    if style == "title" or style == "pascal":
         parts = [_capital(part) for part in parts]
     elif style == "camel":
         parts = [part.lower() if index == 0 else _capital(part.lower()) for index, part in enumerate(parts)]

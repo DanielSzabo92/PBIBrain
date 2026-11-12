@@ -11,7 +11,8 @@ reply of the route, or the error shape ``{error: {code, message, details}}``.
 
 # No "from __future__ import annotations": FastMCP reads the real annotation types to find the Context parameter.
 
-from typing import Any, Callable, Mapping
+from typing import Any
+from collections.abc import Callable, Mapping
 
 # Tool name -> (HTTP method, path below /api/devcenter/). Do not add a route that changes accepted state.
 TOOL_ROUTES: dict[str, tuple[str, str]] = {

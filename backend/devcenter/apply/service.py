@@ -16,7 +16,8 @@ from pathlib import Path
 import threading
 import time
 from types import SimpleNamespace
-from typing import Any, Callable, Mapping, Sequence
+from typing import Any
+from collections.abc import Callable, Mapping, Sequence
 import uuid
 
 from backend.devcenter.apply import desktop as desktop_states
@@ -45,7 +46,7 @@ UNCHECKED = "UNCHECKED_IMPACT"
 APPLY_BUDGET_SECONDS = 300.0
 
 
-def service(devcenter: Any) -> "ApplyService":
+def service(devcenter: Any) -> ApplyService:
     """Give the apply service of a session owner. The first call makes it."""
 
     current = getattr(devcenter, "apply_service", None)

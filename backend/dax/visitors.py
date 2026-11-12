@@ -8,7 +8,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass, fields, is_dataclass
 import re
-from typing import Any, Iterable, Iterator, Mapping
+from typing import Any
+from collections.abc import Iterator, Mapping
 
 
 _META_KEYS = {

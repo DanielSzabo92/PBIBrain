@@ -15,6 +15,7 @@ import { brainTransport, normalizeSnapshot } from "./transport";
 import { desktopRequest, subscribeToDesktopBridge } from "./desktop";
 import NavIcon from "./NavIcon";
 import BrandMark from "./components/BrandMark";
+import { MAKER_NAME, PRODUCT_CREDIT, PRODUCT_NAME } from "./brand";
 import { TypeGlyph, TypeIcon } from "./components/TypeGlyph";
 import { CloudSourcePicker } from "./components/CloudSourcePicker";
 import { highlightDax } from "./dax";
@@ -736,7 +737,7 @@ function AppInner({ transport = brainTransport }) {
   }
 
   const activeProject = desktopSession?.project;
-  const projectName = activeProject?.name || config?.name || "PBIBrain";
+  const projectName = activeProject?.name || config?.name || PRODUCT_NAME;
   const pending = counts.review;
   const connection = loading ? "loading" : error ? "error" : "ready";
   const reloadBrain = () => {
@@ -790,6 +791,8 @@ function AppInner({ transport = brainTransport }) {
     ] },
     { id: "help", label: "Help", items: [
       { label: "Keyboard shortcuts", keys: shortcutKeys("shortcuts"), onSelect: () => setShortcutsOpen(true) },
+      { separator: true },
+      { label: `About ${PRODUCT_NAME}`, onSelect: () => toast.show({ tone: "ok", text: `${PRODUCT_CREDIT}. Semantic graph workbench for Power BI.` }) },
     ] },
   ];
   return (
@@ -963,7 +966,7 @@ function ViewLoading() {
 }
 
 function DesktopConnecting({ error, onRetry }) {
-  return <main className="onboarding-shell"><Card className="onboarding-card connecting-card" aria-live="polite"><BrandMark size={44} className="onboarding-mark" /><h1>{error ? "Desktop connection needed" : "Opening PBIBrain"}</h1><p className="onboarding-copy">{error || "Preparing your private project workspace."}</p>{error ? <Button onClick={onRetry}><RefreshCw />Retry connection</Button> : <span className="connecting-indicator"><i /><i /><i /><span>Connecting</span></span>}</Card></main>;
+  return <main className="onboarding-shell"><Card className="onboarding-card connecting-card" aria-live="polite"><BrandMark size={44} className="onboarding-mark" /><h1>{error ? "Desktop connection needed" : "Opening PBIBrain"}</h1><p className="onboarding-copy">{error || "Preparing your private project workspace."}</p>{error ? <Button onClick={onRetry}><RefreshCw />Retry connection</Button> : <span className="connecting-indicator"><i /><i /><i /><span>Connecting</span></span>}<p className="brand-credit">by {MAKER_NAME}</p></Card></main>;
 }
 
 function DesktopOnboarding({ api, error, onOpen }) {
@@ -999,6 +1002,7 @@ function DesktopOnboarding({ api, error, onOpen }) {
         {message ? <p className="onboarding-error" role="alert"><TriangleAlert aria-hidden="true" />{message}</p> : null}
         <Button size="lg" className="onboarding-submit" disabled={working}>{working ? "Opening…" : "Open project"} <ArrowRight aria-hidden="true" /></Button>
       </form>
+      <p className="brand-credit">by {MAKER_NAME}</p>
       <p className="onboarding-note">Your Power BI files are only read, never changed.</p>
     </Card>
   </main>;
@@ -2270,4 +2274,4 @@ export default function App(props) {
   );
 }
 
-export { isBackendUnreachableError, Overview, AppInner };
+export { isBackendUnreachableError, Overview };

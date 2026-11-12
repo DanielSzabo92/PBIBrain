@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { Menubar as MenubarPrimitive } from "radix-ui";
 import { Check, CircleCheck, Keyboard, Moon, Sun, TriangleAlert } from "lucide-react";
 import BrandMark from "./BrandMark";
+import { PRODUCT_CREDIT } from "../brand";
 import { Dialog, DialogContent } from "./ui/dialog";
 import { Tooltip } from "./ui/tooltip";
 import { SHORTCUTS, displayKeys } from "../shortcuts";
@@ -65,7 +66,7 @@ export function AppMenuBar({ menus, projectName, children }) {
   }, []);
   return (
     <header className="app-titlebar">
-      <span className="app-titlebar-brand" aria-hidden="true"><BrandMark size={18} /></span>
+      <span className="app-titlebar-brand" aria-hidden="true" title={PRODUCT_CREDIT}><BrandMark size={18} /></span>
       <MenubarPrimitive.Root ref={bar} value={value} onValueChange={setValue} className="app-menubar" aria-label="Application menu">
         {menus.map((menu) => (
           <MenubarPrimitive.Menu key={menu.id} value={menu.id}>

@@ -30,7 +30,6 @@ from backend.adapters.pbir import (
     PBIRWriteError,
     PBIRWriter,
     REFUSED_REASONS,
-    validate_report_documents,
     write_report,
 )
 from backend.devcenter.compare.extract import load_objects

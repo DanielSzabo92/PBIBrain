@@ -355,7 +355,7 @@ class UserDecisionTests(AgentToolsTestCase):
         self.assertEqual([ready_one["id"], ready_two["id"]], reply["accepted_ids"])
         self.assertEqual([{"id": conflict["id"], "reason": "user_choice_conflict"}, {"id": marked["id"], "reason": "source_changed"}],
                          reply["skipped"])
-        entries = self.log(f"action=proposal_accept_all")["entries"]
+        entries = self.log("action=proposal_accept_all")["entries"]
         self.assertEqual({ready_one["id"], ready_two["id"]}, {item["proposal_id"] for item in entries})
         self.assertEqual(log_before + 2, self.log()["total"])
         choices = self.devcenter._open.document["merge_choices"]

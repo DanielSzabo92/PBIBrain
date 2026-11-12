@@ -10,7 +10,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Mapping, Sequence
+from typing import Any
+from collections.abc import Mapping, Sequence
 
 from backend.devcenter.apply.steps import CANONICAL_CHECK, GUARD, PROMOTION, WRITE, ApplyFailure, guard_failure
 from backend.snapshots.manifest import source_manifest

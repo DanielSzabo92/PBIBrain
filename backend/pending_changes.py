@@ -20,11 +20,12 @@ from __future__ import annotations
 import logging
 import threading
 import time
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from pathlib import Path
-from typing import Any, Callable, Mapping
+from typing import Any
+from collections.abc import Callable, Mapping
 
-from backend.mcp_snapshot import MAX_CHANGED_LISTED, _compact_record, load_agent_snapshot, source_fingerprint
+from backend.mcp_snapshot import _compact_record, load_agent_snapshot, source_fingerprint
 from backend.safety import assess_change
 
 LOGGER = logging.getLogger(__name__)
@@ -40,7 +41,7 @@ _cache_lock = threading.Lock()
 
 
 def _now() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 def _graph_payload(graph: Any) -> dict[str, Any]:
@@ -186,7 +187,7 @@ class SourceWatcher:
             self._wake.wait(self.interval)
             self._wake.clear()
 
-    def start(self) -> "SourceWatcher":
+    def start(self) -> SourceWatcher:
         if self._thread is None or not self._thread.is_alive():
             self._stop.clear()
             self._thread = threading.Thread(target=self._run, name="pbibrain-source-watcher", daemon=True)

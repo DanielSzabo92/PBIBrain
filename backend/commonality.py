@@ -22,7 +22,8 @@ from __future__ import annotations
 
 import hashlib
 import json
-from typing import Any, Iterable, Mapping, Sequence
+from typing import Any
+from collections.abc import Iterable, Mapping, Sequence
 
 from backend.devcenter.alignment import keys
 from backend.devcenter.alignment.align import DomainSources, align_domain

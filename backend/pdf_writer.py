@@ -13,7 +13,7 @@ from __future__ import annotations
 import unicodedata
 import zlib
 from dataclasses import dataclass, field
-from typing import Iterable, Sequence
+from collections.abc import Iterable, Sequence
 
 PAGE_WIDTH = 595.0  # A4 portrait, in points
 PAGE_HEIGHT = 842.0
@@ -130,7 +130,7 @@ class Bookmark:
     level: int
     page: int
     y: float
-    children: list["Bookmark"] = field(default_factory=list)
+    children: list[Bookmark] = field(default_factory=list)
 
 
 @dataclass(frozen=True)

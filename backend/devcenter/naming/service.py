@@ -15,7 +15,8 @@ from __future__ import annotations
 import copy
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Callable, Mapping
+from typing import Any
+from collections.abc import Callable, Mapping
 
 from backend.devcenter import contracts
 from backend.devcenter.errors import DevCenterError, not_allowed

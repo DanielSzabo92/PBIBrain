@@ -8,7 +8,8 @@ JSON pointer of the value, never the value itself.
 from __future__ import annotations
 
 import re
-from typing import Any, Iterator
+from typing import Any
+from collections.abc import Iterator
 
 from backend.devcenter.errors import DevCenterError
 

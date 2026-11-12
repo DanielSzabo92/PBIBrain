@@ -25,7 +25,8 @@ from pathlib import Path, PurePosixPath
 import shutil
 import subprocess
 import time
-from typing import Any, Callable, Mapping, Protocol, Sequence
+from typing import Any, Protocol
+from collections.abc import Callable, Mapping, Sequence
 from urllib.parse import quote, unquote, urlsplit
 import uuid
 

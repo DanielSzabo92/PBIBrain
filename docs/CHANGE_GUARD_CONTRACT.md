@@ -142,7 +142,7 @@ I-001/I-003/I-012/I-016: enforced at the configured candidate-only container bou
 
 None of these claims establishes a security boundary for an arbitrary already-running host process with the user's full filesystem access. Supported agent execution must enter the isolated runtime. Do not mount source roots, credentials, controller state, a Docker socket, or the user's profile into it.
 
-Evidence: [`guarded-development`](evidence/guarded-development-2026-10-09/). Protocol details: [impact](IMPACT_ANALYSIS.md), [regression](REGRESSION_PROTOCOL.md), [security](SECURITY_BOUNDARIES.md), [recovery](RECOVERY_PROTOCOL.md).
+Protocol details: [impact](IMPACT_ANALYSIS.md), [regression](REGRESSION_PROTOCOL.md), [security](SECURITY_BOUNDARIES.md), [recovery](RECOVERY_PROTOCOL.md).
 
 ## 2026-10-09 proof and coverage continuation
 
@@ -173,7 +173,7 @@ Remaining unsupported boundaries stay explicit: arbitrary calculated-table depen
 
 Guard-only changes are staged independently of the user's existing UI edits. The isolated release exposed a genuine Windows checkout defect: Git newline conversion changed the pinned Microsoft schema bytes. Scoped `.gitattributes` entries preserve vendor/evidence bytes exactly; a regression test stages and checks out the real catalog with `core.autocrlf=true` and verifies every pinned hash. The integrity gate was retained throughout; no expected hash was weakened or rewritten to accommodate corruption.
 
-The final release keeps the same checked implementation while adding verification records. `evidence/guarded-development-2026-10-09/continuation-manifest.json` binds the tested source tree, final suite results and retained evidence hashes. Source-code publication is separate from the disposable Power BI model promotion acceptance test and does not establish acceptance of the remaining unsupported specification scope.
+The final release keeps the same checked implementation while adding verification records. The verification records (`docs/evidence/guarded-development-2026-10-09/`) were retired from the tree and remain in git history. Source-code publication is separate from the disposable Power BI model promotion acceptance test and does not establish acceptance of the remaining unsupported specification scope.
 
 ## User decision workflow — 2026-10-09
 

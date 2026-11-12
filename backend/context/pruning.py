@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import json
-from typing import Any, Mapping
+from typing import Any
+from collections.abc import Mapping
 
 from .schema import CONTEXT_KEYS, empty_context
 

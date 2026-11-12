@@ -15,7 +15,8 @@ read routes and the proposal routes of ``TOOL_ROUTES``. No tool can accept or ap
 
 import inspect
 import typing
-from typing import Any, Callable
+from typing import Any
+from collections.abc import Callable
 from urllib.parse import quote
 
 from backend.devcenter.agent_tools import DEFAULT_CLIENT, AgentTools

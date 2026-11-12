@@ -10,9 +10,10 @@ import tempfile
 import threading
 import uuid
 from pathlib import Path
-from typing import Any, Callable, Mapping
+from typing import Any
+from collections.abc import Callable, Mapping
 from urllib.parse import unquote, urlsplit
-from wsgiref.simple_server import WSGIRequestHandler, WSGIServer, make_server
+from wsgiref.simple_server import WSGIServer, make_server
 
 from backend.api.app import BrainAPI, BrainApp
 from backend.connection_marker import marker_connection_id

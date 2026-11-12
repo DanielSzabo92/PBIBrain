@@ -6,7 +6,8 @@ plain mapping returned by this reader.
 
 from __future__ import annotations
 
-from typing import Any, Mapping
+from typing import Any
+from collections.abc import Mapping
 
 from .metadata_reader import collection, load_metadata, pick
 

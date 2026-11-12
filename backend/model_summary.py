@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import hashlib
 from collections import Counter, defaultdict
-from typing import Any, Mapping
+from typing import Any
+from collections.abc import Mapping
 
 from backend.api.review import OverrideStore, apply_overrides_to_dict
 from backend.documentation_export import (

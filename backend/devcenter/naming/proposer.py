@@ -10,7 +10,8 @@ The clash check is built in and compares names case-insensitively.
 
 from __future__ import annotations
 
-from typing import Any, Iterable, Mapping
+from typing import Any
+from collections.abc import Iterable, Mapping
 
 from backend.devcenter.naming.objects import (
     COLUMN_TYPES,

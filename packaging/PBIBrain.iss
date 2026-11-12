@@ -1,6 +1,6 @@
 #define AppName "PBIBrain"
 #define AppVersion "0.1.0"
-#define AppPublisher "PBIBrain"
+#define AppPublisher "DownDraughtLab"
 #define AppExeName "PBIBrain.exe"
 
 [Setup]
@@ -9,7 +9,7 @@ AppName={#AppName}
 AppVersion={#AppVersion}
 AppPublisher={#AppPublisher}
 DefaultDirName={autopf}\PBIBrain
-DefaultGroupName=PBIBrain
+DefaultGroupName=DownDraughtLab\PBIBrain
 DisableProgramGroupPage=yes
 OutputDir=..\dist\installer
 OutputBaseFilename=PBIBrain-Setup-x64

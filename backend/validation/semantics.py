@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import json
 from collections import defaultdict
-from typing import Any, Mapping, Sequence
+from typing import Any
+from collections.abc import Mapping
 
 from . import ValidationIssue, ValidationResult, graph_values, item_dict, properties
 
@@ -86,7 +87,6 @@ def validate_semantics(value: Any, edges: Any = None, *, analyses: Any = None) -
     nodes = [item_dict(item) for item in node_values]
     edge_records = [item_dict(item) for item in edge_values]
     result = ValidationResult()
-    by_id = {str(node.get("id")): node for node in nodes if node.get("id") is not None}
 
     # Explicit conflict nodes/edges are reviewable semantic warnings.
     for node in nodes:

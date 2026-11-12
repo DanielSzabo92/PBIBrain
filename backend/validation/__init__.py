@@ -8,7 +8,8 @@ facts or Power BI.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Iterable, Mapping
+from typing import Any
+from collections.abc import Iterable, Mapping
 
 
 SEVERITIES = ("INFO", "WARNING", "ERROR", "BLOCKING")
@@ -97,7 +98,7 @@ class ValidationResult:
         self.issues.append(issue)
         return issue
 
-    def extend(self, other: "ValidationResult | Iterable[ValidationIssue | Mapping[str, Any]]") -> "ValidationResult":
+    def extend(self, other: ValidationResult | Iterable[ValidationIssue | Mapping[str, Any]]) -> ValidationResult:
         values = other.issues if isinstance(other, ValidationResult) else other
         self.issues.extend(coerce_issue(item) for item in values)
         if isinstance(other, ValidationResult):

@@ -8,8 +8,8 @@ flagged as information-only (no copy action).
 from __future__ import annotations
 
 import hashlib
-import json
-from typing import Any, Mapping, Sequence
+from typing import Any
+from collections.abc import Mapping, Sequence
 
 from backend.devcenter.compare.extract import CompareObject
 from backend.devcenter.plan.fields import field_locations

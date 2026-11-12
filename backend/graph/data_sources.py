@@ -8,7 +8,8 @@ be read is marked ``check_status: not_checked`` (reason ``m_not_read``) instead 
 
 from __future__ import annotations
 
-from typing import Any, Mapping, MutableMapping
+from typing import Any
+from collections.abc import Mapping, MutableMapping
 
 from .m_sources import (
     REASON_M_NOT_READ, STATUS_NOT_CHECKED, STATUS_READ, data_source_id, entity_source, parameter_value,

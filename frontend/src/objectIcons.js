@@ -5,7 +5,7 @@ import {
   Link2, ListFilter, OctagonAlert, PanelsTopLeft, ShieldUser, Sigma, SquareFunction, Table2, Tag, ToggleLeft, Box, Cylinder, Rows3,
 } from "lucide-react";
 
-export const TYPE_ICONS = {
+const TYPE_ICONS = {
   MODEL: Database,
   TABLE: Table2,
   COLUMN: Columns3,

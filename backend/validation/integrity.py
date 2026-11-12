@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from . import ValidationResult, graph_values
+from . import ValidationResult
 from .graph import (
     validate_dax_dependencies,
     validate_graph_integrity,
@@ -12,7 +12,7 @@ from .graph import (
     validate_source_disappearance,
 )
 from .overrides import validate_overrides
-from .semantics import validate_semantic_integrity, validate_semantics
+from .semantics import validate_semantic_integrity
 
 
 class ValidationEngine:

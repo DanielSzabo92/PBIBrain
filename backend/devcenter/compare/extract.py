@@ -17,7 +17,8 @@ from dataclasses import dataclass, field
 import json
 from pathlib import Path
 import threading
-from typing import Any, Iterator, Mapping
+from typing import Any
+from collections.abc import Iterator, Mapping
 
 from backend.adapters.tabular_metadata.bridge import MetadataUnavailable, TabularMetadataAdapter
 from backend.devcenter.errors import not_allowed

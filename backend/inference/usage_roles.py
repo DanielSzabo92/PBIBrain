@@ -10,9 +10,11 @@ semantic review queue.
 from __future__ import annotations
 
 from collections import Counter, defaultdict
-from typing import Any, Iterable, Mapping
+from typing import Any
+from collections.abc import Iterable, Mapping
 
 from backend.graph.schema import Edge, Node
+from backend.text_keys import alnum_key as _norm
 
 KPI_VISUAL_TYPES = frozenset({"card", "cardvisual", "multirowcard", "kpi", "gauge"})
 _FIELD_TYPES = frozenset({"COLUMN", "MEASURE", "HIERARCHY", "REPORT_MEASURE", "FIELD_PARAMETER", "CALCULATION_ITEM", "LEVEL"})
@@ -24,10 +26,6 @@ _ROLE_LABELS = {
     "tooltip_page_field": "tooltip page field", "target": "target value", "details": "details", "size": "size",
 }
 MAX_USAGES = 50
-
-
-def _norm(value: Any) -> str:
-    return "".join(char for char in str(value).casefold() if char.isalnum())
 
 
 def _plural(count: int, word: str) -> str:

@@ -8,7 +8,8 @@ it does not interpret DAX or infer business meaning.
 from __future__ import annotations
 
 from dataclasses import dataclass, field, is_dataclass, asdict
-from typing import Any, Mapping
+from typing import Any
+from collections.abc import Mapping
 
 
 def _json_value(value: Any) -> Any:

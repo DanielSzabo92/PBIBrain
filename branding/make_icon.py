@@ -1,4 +1,4 @@
-"""Generate the small, original PBIBrain Windows icon without build dependencies."""
+"""Generate the small, original PBIBrain (DownDraughtLab) Windows icon without build dependencies."""
 
 from pathlib import Path
 import math

@@ -8,7 +8,8 @@ import logging
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Iterable, Mapping, Sequence
+from typing import Any
+from collections.abc import Iterable, Mapping
 
 from .data_sources import link_data_sources
 from .repository import GraphRepository
@@ -48,7 +49,7 @@ class FactGraph:
             result["observations"] = [item.to_dict() for item in self.observations]
         return result
 
-    def load(self, repository: GraphRepository) -> "FactGraph":
+    def load(self, repository: GraphRepository) -> FactGraph:
         repository.replace(self.nodes, self.edges)
         return self
 

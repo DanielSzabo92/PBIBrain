@@ -148,7 +148,7 @@ def analysis_edges(result: Any) -> list[Any]:
 
 
 def analysis_evidence(result: Any) -> list[Any]:
-    data = result_mapping(result)
+    result_mapping(result)
     values = result_items(result, "evidence", "evidence_items", "diagnostics")
     for edge in analysis_edges(result):
         edge_data = item_mapping(edge)

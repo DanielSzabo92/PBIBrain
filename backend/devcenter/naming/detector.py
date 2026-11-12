@@ -10,7 +10,8 @@ from __future__ import annotations
 
 from collections import Counter
 from dataclasses import dataclass
-from typing import Any, Iterable, Mapping
+from typing import Any
+from collections.abc import Iterable, Mapping
 
 from backend.devcenter.naming.objects import COLUMN_TYPES, FORMAT_KINDS, MEASURE, RULE_OBJECT_TYPES, NamedObject
 from backend.devcenter.naming.rules import (
@@ -41,7 +42,7 @@ class NamingSettings:
     min_support: float = DEFAULT_MIN_SUPPORT
 
     @classmethod
-    def from_mapping(cls, value: Mapping[str, Any] | None) -> "NamingSettings":
+    def from_mapping(cls, value: Mapping[str, Any] | None) -> NamingSettings:
         value = value or {}
         objects = value.get("min_objects", DEFAULT_MIN_OBJECTS)
         ratio = value.get("min_support", DEFAULT_MIN_SUPPORT)

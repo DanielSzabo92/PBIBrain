@@ -6,9 +6,9 @@ import json
 import mimetypes
 import threading
 from collections import Counter
-from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Mapping, Sequence
+from typing import Any
+from collections.abc import Mapping, Sequence
 from urllib.parse import parse_qs, unquote, urlsplit
 
 from backend.context import get_context as build_context
@@ -449,7 +449,7 @@ class BrainAPI:
         if self._owns_repository:
             self.repository.close()
 
-    def __enter__(self) -> "BrainAPI":
+    def __enter__(self) -> BrainAPI:
         return self
 
     def __exit__(self, *_: Any) -> None:

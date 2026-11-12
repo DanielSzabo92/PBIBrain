@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import Any, Mapping, Sequence
+from typing import Any
+from collections.abc import Mapping, Sequence
 
 from backend.graph.repository import GraphRepository
 from backend.graph.schema import Edge, Node
@@ -196,8 +197,6 @@ def inspect_object(
     object_payload = _payload(node, store)
     all_edges = repository.all_edges()
     connected = [edge for edge in all_edges if edge.from_id == node.id or edge.to_id == node.id]
-    outgoing = [edge for edge in connected if edge.from_id == node.id]
-    incoming = [edge for edge in connected if edge.to_id == node.id]
     related = {
         edge.to_id if edge.from_id == node.id else edge.from_id
         for edge in connected

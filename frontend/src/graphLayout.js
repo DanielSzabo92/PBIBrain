@@ -8,12 +8,12 @@ export const NODE_HEIGHT = 32;
 export const GROUP_WIDTH = 200;
 export const GROUP_HEIGHT = 48;
 // Spacing (visual contract §11.8): rank gap 96, node gap 24.
-export const RANK_GAP = 96;
-export const NODE_GAP = 24;
+const RANK_GAP = 96;
+const NODE_GAP = 24;
 
 const LEAF_SIZE = Object.freeze({ width: NODE_WIDTH, height: NODE_HEIGHT });
 /** Default sizer: every object is a leaf. Callers pass their own to give groups a larger footprint. */
-export function leafSize() {
+function leafSize() {
   return LEAF_SIZE;
 }
 function sized(sizeOf, node) {

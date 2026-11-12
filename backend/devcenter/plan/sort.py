@@ -9,7 +9,8 @@ name. A dependency cycle makes the plan Invalid.
 from __future__ import annotations
 
 import heapq
-from typing import Any, Mapping, Sequence
+from typing import Any
+from collections.abc import Mapping, Sequence
 
 from backend.devcenter.alignment.keys import fold
 

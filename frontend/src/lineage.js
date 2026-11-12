@@ -61,7 +61,7 @@ const compareName = (left, right) => objectName(left).localeCompare(objectName(r
 export const MAX_LANE_WIDTH = 280;
 export const TWO_LINE_HEIGHT = 48;
 // Node chrome around the name (app.css .flow-node): border, padding, type chip and gaps, room for a badge.
-export const NAME_CHROME = 2 + 3 + 24 + 8 + 10;
+const NAME_CHROME = 2 + 3 + 24 + 8 + 10;
 const ZOOM_SLACK = 1.3;
 const estimate = (text) => String(text).length * 7;
 

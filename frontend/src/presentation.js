@@ -113,7 +113,6 @@ export function sanitizeDoublePunctuation(text) {
 export function formatPlural(n, singular, plural = `${singular}s`) {
   return `${n} ${n === 1 ? singular : plural}`;
 }
-export const plural = formatPlural;
 
 export function readableText(value, nodes = []) {
   if (value == null || value === "") return "";

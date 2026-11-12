@@ -1,6 +1,7 @@
 """Presentation groups for canonical objects; ownership is never changed."""
 
-from typing import Any, Mapping
+from typing import Any
+from collections.abc import Mapping
 from .schema import OBJECT_TYPES
 
 REPORT_TYPES = frozenset({"REPORT", "PAGE", "VISUAL", "VISUAL_CALCULATION", "VISUAL_FILTER", "PAGE_FILTER", "REPORT_FILTER", "REPORT_MEASURE", "BOOKMARK"})

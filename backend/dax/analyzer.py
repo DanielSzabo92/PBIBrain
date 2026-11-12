@@ -13,7 +13,8 @@ import hashlib
 import json
 import logging
 import re
-from typing import Any, Callable, Iterable, Mapping, Sequence
+from typing import Any
+from collections.abc import Callable, Iterable, Mapping, Sequence
 
 from backend.graph.schema import Edge, Node, node_from_dict
 
@@ -22,7 +23,6 @@ from .visitors import (
     AstVisit,
     ReferenceInfo,
     attr,
-    function_name,
     iter_functions,
     iter_references,
     iter_variables,
@@ -30,12 +30,9 @@ from .visitors import (
     node_text,
     walk_ast,
 )
+from backend.text_keys import alnum_key as _norm
 
 LOGGER = logging.getLogger(__name__)
-
-
-def _norm(value: Any) -> str:
-    return "".join(char for char in str(value).casefold() if char.isalnum())
 
 
 def _safe(value: Any, *, _seen: set[int] | None = None) -> Any:
@@ -462,11 +459,6 @@ class DaxAnalyzer:
             self._analyze_ast(source, analysis, extra_ast)
         self._store_analysis(source, analysis)
         return analysis
-
-    analyze_expression = analyze_object
-
-    def analyze_ast(self, source_object: Node | str, ast: Any, expression: str = "") -> DaxAnalysis:
-        return self.analyze_object(source_object, expression, ast)
 
     def _parse(self, expression: str, *, function: bool = False) -> tuple[Any, dict[str, Any] | None]:
         key = ("function:" if function else "") + expression

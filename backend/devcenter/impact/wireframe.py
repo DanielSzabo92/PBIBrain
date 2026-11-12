@@ -7,7 +7,8 @@ Visual statuses are resolved in strict priority order:
 
 from __future__ import annotations
 
-from typing import Any, Mapping, Sequence
+from typing import Any
+from collections.abc import Mapping, Sequence
 
 from backend.devcenter.compare.extract import CompareObject
 

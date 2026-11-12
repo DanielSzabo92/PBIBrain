@@ -5,11 +5,10 @@ Derive a deterministic, sorted plan of plan steps and operations from session st
 
 from __future__ import annotations
 
-import copy
 import json
-from pathlib import Path
 import re
-from typing import Any, Mapping, Sequence
+from typing import Any
+from collections.abc import Mapping, Sequence
 
 from backend.devcenter.compare import service as compare_service
 from backend.devcenter.errors import DevCenterError
@@ -17,6 +16,8 @@ from backend.devcenter.naming import service as naming_service
 from backend.devcenter.naming.rules import is_active
 from backend.devcenter.plan.compiler import PlanInput, compile_plan, plan_hash
 from backend.devcenter.session import proposals
+from backend.devcenter.common import query_value as _one
+from backend.devcenter.common import session_snapshot as _snapshot
 
 
 def _detect_compatibility_level(devcenter: Any, document: Mapping[str, Any], target_model: str | None) -> int | None:
@@ -51,11 +52,6 @@ def _load_naming_rules(devcenter: Any, document: Mapping[str, Any]) -> Sequence[
     except Exception:
         pass
     return ()
-
-
-def _snapshot(devcenter: Any) -> dict[str, Any]:
-    with devcenter._lock:
-        return copy.deepcopy(devcenter._require_open().document)
 
 
 def build_plan(devcenter: Any, document: Mapping[str, Any], *, include_proposals: bool = False) -> dict[str, Any]:
@@ -93,11 +89,6 @@ def build_plan(devcenter: Any, document: Mapping[str, Any], *, include_proposals
         devcenter._plan_state = "ready"
 
     return plan
-
-
-def _one(query: Mapping[str, Sequence[str]], name: str) -> str | None:
-    values = list(query.get(name) or [])
-    return str(values[-1]) if values else None
 
 
 def get_plan(devcenter: Any, query: Mapping[str, Sequence[str]]) -> dict[str, Any]:

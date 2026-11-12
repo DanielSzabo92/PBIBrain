@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { t, tn } from "../copy.js";
 
-export function choiceDisplayName(choice, donors = []) {
+function choiceDisplayName(choice, donors = []) {
   if (!choice) return t("shared.not_set");
   const kind = choice.kind || choice.choice;
   if (kind === "keep" || kind === "keep_target") return t("compare.bulk.keep");

@@ -5,7 +5,8 @@ A path part such as ``{row}`` comes to the handler as the query value ``row``.
 
 from __future__ import annotations
 
-from typing import Any, Mapping, Sequence
+from typing import Any
+from collections.abc import Mapping, Sequence
 
 from backend.devcenter.compare import service
 from backend.devcenter.errors import DevCenterError

@@ -8,7 +8,8 @@ and atomic state mutations (UC28).
 from __future__ import annotations
 
 import copy
-from typing import Any, Mapping, Sequence
+from typing import Any
+from collections.abc import Mapping, Sequence
 
 from backend.devcenter.compare import service as compare_service
 from backend.devcenter.compare.extract import CompareObject, load_objects
@@ -20,11 +21,7 @@ from backend.devcenter.impact.removal import get_removal_preview
 from backend.devcenter.impact.wireframe import build_report_wireframe
 from backend.devcenter.plan import service as plan_service
 from backend.devcenter.session import proposals
-
-
-def _snapshot(devcenter: Any) -> dict[str, Any]:
-    with devcenter._lock:
-        return copy.deepcopy(devcenter._require_open().document)
+from backend.devcenter.common import session_snapshot as _snapshot
 
 
 def _get_query_val(query: Mapping[str, Sequence[str]], name: str) -> str | None:

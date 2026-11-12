@@ -29,7 +29,7 @@ export const PALETTES = [
 ];
 
 /** Light-theme variant of a stored (dark-theme) colour: the tuned value for defaults, else a darker mix. */
-export function lightVariant(color) {
+function lightVariant(color) {
   return LIGHT_VARIANTS[String(color).toLowerCase()] || `color-mix(in oklch, ${color} 55%, #18181a)`;
 }
 
@@ -39,7 +39,6 @@ export function artifactStyle(node, colors) {
   return { "--artifact-color": color, "--artifact-color-light": lightVariant(color) };
 }
 
-export const OBJECT_TYPES = Object.values(ARTIFACT_GROUPS).flatMap((group) => group.types);
 export const EDGE_TYPES = ["CONTAINS", "BELONGS_TO", "DEPENDS_ON", "REFERENCES", "MODIFIES_FILTER", "ACTIVATES_RELATIONSHIP", "MODIFIES_RELATIONSHIP", "USES", "RELATES_TO", "FILTERS", "USES_MODEL", "CONTROLLED_BY", "HAS_OPTION", "DEFAULTS_TO", "SEMANTICALLY_MAPS_TO", "SIMILAR_TO", "OBSERVED_WITH", "CONFLICTS_WITH", "ALIAS_OF", "HAS_ROLE", "HAS_BEHAVIOR", "DRILLS_THROUGH_TO", "TOOLTIP_PAGE", "INTERACTS_WITH", "SYNCED_WITH", "FORMATS_BY"];
 
 export function artifactGroup(node) {

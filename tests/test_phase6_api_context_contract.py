@@ -11,7 +11,7 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 from backend.api.app import BrainAPI
 from backend.graph.loader import build_fact_graph

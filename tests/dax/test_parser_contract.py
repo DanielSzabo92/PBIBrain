@@ -49,7 +49,6 @@ class DaxParserContractTests(unittest.TestCase):
             "switch": {"switch", "function_call", "call"},
             "calculate": {"calculate", "function_call", "call"},
             "filter": {"filter", "function_call", "call"},
-            "table_reference": {"table_reference", "table_ref", "reference"},
         }
         for case in GOLDEN_DAX:
             if case.error:

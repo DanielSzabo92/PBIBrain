@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import json
 from collections import deque
-from typing import Any, Iterable, Mapping, Sequence
+from typing import Any
+from collections.abc import Iterable, Mapping
 
 from backend.graph.schema import Edge, Node, edge_from_dict, node_from_dict
 

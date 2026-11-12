@@ -10,16 +10,15 @@ Replaces LadybugDB with a pure-Python, zero-DLL SQLite engine providing:
 from __future__ import annotations
 
 import collections
-import hashlib
 import json
 import logging
-import math
 import os
 from pathlib import Path
 import re
 import sqlite3
 import tempfile
-from typing import Any, Iterable, Mapping, Sequence
+from typing import Any
+from collections.abc import Iterable, Mapping, Sequence
 
 from .schema import (
     GRAPH_SCHEMA_VERSION,
@@ -114,7 +113,7 @@ def tokenize_text(text: str) -> list[str]:
 
 
 def _sanitize_path_segment(value: str, default: str = "item") -> str:
-    """Sanitize a string for use as a single path segment across OSes.
+    r"""Sanitize a string for use as a single path segment across OSes.
 
     Removes/replaces invalid filesystem characters (/ \ : * ? " < > | control chars)
     and strips leading/trailing whitespace and trailing dots (forbidden on Windows).
@@ -247,7 +246,7 @@ class SQLiteStore:
                 pass
             self._conn = None
 
-    def __enter__(self) -> "SQLiteStore":
+    def __enter__(self) -> SQLiteStore:
         return self
 
     def __exit__(self, *_: Any) -> None:
@@ -677,8 +676,7 @@ class SQLiteStore:
             clauses.append("n.type = ?")
             params.append(object_type.upper())
 
-        # Check if FTS5 is available and query has tokens
-        fts_worked = False
+        # Use FTS5 when the query has tokens; fall back to LIKE matching if it fails.
         if tokens:
             try:
                 fts_query = " AND ".join(f'"{tok}"*' for tok in tokens)
@@ -693,10 +691,9 @@ class SQLiteStore:
                 """
                 cursor = conn.execute(sql, [fts_query, *params, limit, offset])
                 rows = cursor.fetchall()
-                fts_worked = True
                 return [self.node_from_row(row) for row in rows]
             except Exception:
-                fts_worked = False
+                pass
 
         # Fallback to standard LIKE matching
         if q_clean:

@@ -4,13 +4,11 @@
  * breaks or needs; this module only turns that reply into what the warning shows.
  */
 
+import { formatPlural as plural } from "./presentation.js";
+
 export const PENDING_POLL_MS = 5000;
 const SHOWN_STATUSES = new Set(["BREAKS", "NEEDS", "CHANGED", "UNREADABLE"]);
 const MAX_ITEMS = 5;
-
-function plural(count, one, many = `${one}s`) {
-  return `${count} ${count === 1 ? one : many}`;
-}
 
 function objectLabel(item) {
   if (!item) return "";

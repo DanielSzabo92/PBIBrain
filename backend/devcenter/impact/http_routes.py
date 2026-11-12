@@ -5,7 +5,8 @@ All 4 read endpoints emit session revision and validate against contracts.
 
 from __future__ import annotations
 
-from typing import Any, Mapping, Sequence
+from typing import Any
+from collections.abc import Mapping, Sequence
 
 from backend.devcenter.http_routes import route
 from backend.devcenter.impact import service

@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import json
-from typing import Any, Mapping
+from typing import Any
+from collections.abc import Mapping
 
 from backend.diff.snapshots import MISSING
 from backend.snapshots.manifest import canonical_json, content_hash, utc_now

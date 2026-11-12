@@ -19,7 +19,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import hashlib
-from typing import Any, Mapping, Sequence
+from typing import Any
+from collections.abc import Mapping, Sequence
 
 from backend.devcenter.alignment.align import AlignedRow, DomainSources, align_domain
 from backend.devcenter.alignment.keys import fold
@@ -284,7 +285,7 @@ def sort_rows(rows: Sequence[Mapping[str, Any]], sort: str | None, order: str | 
 
 
 def state_counts(rows: Sequence[Mapping[str, Any]]) -> dict[str, int]:
-    counts = {state: 0 for state in STATES}
+    counts = dict.fromkeys(STATES, 0)
     for row in rows:
         counts[row["row_state"]] += 1
     return counts

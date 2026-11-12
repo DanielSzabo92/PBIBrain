@@ -3,7 +3,8 @@ from __future__ import annotations
 
 from difflib import SequenceMatcher
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any
+from collections.abc import Mapping
 
 from backend.snapshots.manifest import Snapshot, canonical_json, content_hash, safe_path
 

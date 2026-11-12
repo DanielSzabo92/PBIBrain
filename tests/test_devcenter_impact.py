@@ -20,7 +20,6 @@ And JSON schema Draft202012Validator conformance on all S6 endpoints.
 
 from __future__ import annotations
 
-import copy
 import json
 from pathlib import Path
 import shutil
@@ -41,7 +40,6 @@ from backend.devcenter.contracts import Draft202012Validator
 from backend.devcenter.impact import service as impact_service
 from backend.devcenter.impact.engine import (
     ImpactEngine,
-    build_graph_from_objects,
     deterministic_item_id,
 )
 from backend.devcenter.impact.wireframe import resolve_visual_status
@@ -210,11 +208,6 @@ class ImpactAcceptanceTests(unittest.TestCase):
             CompareObject(kind="measure", subtype="measure", domain=MODEL, source_key="measure:DonorTable/TopM", name="TopM", table="DonorTable", props={"expression": "[DonorM] * 2"}),
         ]
 
-        sources = {
-            "src-1": SourceObjects(target_objs, []),
-            "src-2": SourceObjects(donor_objs, []),
-        }
-
         # Change plan takes TopM into target
         plan = {
             "status": "valid",
@@ -283,7 +276,7 @@ class ImpactAcceptanceTests(unittest.TestCase):
             dc = DevCenterSessions(app_data_dir=None)
             dc.attach_project(root)
 
-            s = jsapi.call(dc, "session_create", {"display_name": "Sibling Test"})
+            jsapi.call(dc, "session_create", {"display_name": "Sibling Test"})
             r1 = jsapi.call(dc, "source_add", {"base_revision": dc.revision, "path": str(root / "SalesA/SalesA.pbip")})
             r2 = jsapi.call(dc, "source_add", {"base_revision": r1["revision"], "path": str(root / "SalesB/SalesB.pbip")})
             # Add a sibling report source bound to src-1

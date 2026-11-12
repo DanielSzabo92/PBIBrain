@@ -1,5 +1,4 @@
 """Synthetic PBIP benchmark using real TOM ingestion, not runtime acceptance."""
-from copy import deepcopy
 import json
 from pathlib import Path
 import tempfile

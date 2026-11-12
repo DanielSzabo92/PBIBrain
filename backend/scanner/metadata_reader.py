@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any
+from collections.abc import Mapping
+from backend.text_keys import alnum_key as _key_name
 
 
 def load_metadata(source: Any) -> Any:
@@ -64,14 +66,6 @@ def pick(value: Any, *names: str, default: Any = None) -> Any:
     return default
 
 
-def key_name(value: str) -> str:
-    return _key_name(value)
-
-
-def _key_name(value: str) -> str:
-    return "".join(char for char in value.casefold() if char.isalnum())
-
-
 def collection(value: Any, *names: str) -> list[Any]:
     result: list[Any] = []
     seen_names: set[str] = set()
@@ -83,9 +77,7 @@ def collection(value: Any, *names: str) -> list[Any]:
         item = pick(value, name)
         if item is None:
             continue
-        if isinstance(item, list):
-            result.extend(item)
-        elif isinstance(item, tuple):
+        if isinstance(item, list) or isinstance(item, tuple):
             result.extend(item)
         elif isinstance(item, Mapping):
             # Some metadata APIs return a keyed object instead of an array.

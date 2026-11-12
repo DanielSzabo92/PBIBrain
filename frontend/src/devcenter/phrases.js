@@ -5,9 +5,9 @@ import { formatDaxName, formatObjectRef } from "../presentation.js";
 
 export { formatDaxName, formatObjectRef };
 
-export const PHRASES = Object.freeze(PHRASES_CONTRACT.phrases ?? {});
+const PHRASES = Object.freeze(PHRASES_CONTRACT.phrases ?? {});
 
-export const PLAN_OP_PHRASES = Object.freeze({
+const PLAN_OP_PHRASES = Object.freeze({
   SET_EXPRESSION: "Set expression",
   SET_PROPERTIES: "Set properties",
   SET_PROPERTY: "Set property",

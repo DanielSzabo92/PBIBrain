@@ -17,7 +17,8 @@ chunks so the Stop button closes the connection.
 from __future__ import annotations
 
 import json
-from typing import Any, Callable, Iterator, Mapping, Sequence
+from typing import Any
+from collections.abc import Callable, Iterator, Mapping, Sequence
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlsplit
 from urllib.request import ProxyHandler, Request, build_opener

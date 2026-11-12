@@ -13,7 +13,7 @@ import { invalidatedBy, RESOURCE_KEYS } from "./invalidation.js";
 import { createDevCenterJsApi } from "./jsapiClient.js";
 import { createPoller, documentVisible, PROGRESS_METHODS, PROGRESS_POLL_MS, SESSION_POLL_MS, systemClock } from "./poller.js";
 
-export const MAX_REFETCH = 2;
+const MAX_REFETCH = 2;
 
 const SESSION_METHODS = new Set(["session_create", "session_open"]);
 const OTHER_KEYS = RESOURCE_KEYS.filter((key) => key !== "session");

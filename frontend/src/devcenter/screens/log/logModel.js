@@ -4,7 +4,7 @@ import { COPY, t } from "../../copy.js";
 import { formatObjectRef } from "../../phrases.js";
 import { kindText, timeText } from "../agent/agentModel.js";
 
-export const LOG_PAGE = 50;
+const LOG_PAGE = 50;
 
 // The actions of the Action filter: each top-level "log.action.<name>" key of the copy.
 export const LOG_ACTIONS = Object.freeze(

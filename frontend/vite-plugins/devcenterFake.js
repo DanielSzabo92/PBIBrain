@@ -3,7 +3,7 @@
 // /api and /__test__ to tests/devcenter_ui_server.py. Without it, the plugin does nothing.
 
 export const DEVCENTER_SHIM_PATH = "/__test__/pywebview-shim.js";
-export const DEVCENTER_FAKE_DEFAULT_URL = "http://127.0.0.1:8766";
+const DEVCENTER_FAKE_DEFAULT_URL = "http://127.0.0.1:8766";
 
 export function devcenterFakeEnabled(env = {}) {
   return env.DEVCENTER_FAKE === "1";

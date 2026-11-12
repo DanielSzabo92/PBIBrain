@@ -8,7 +8,7 @@ export const JSAPI_METHODS = Object.freeze(METHOD_LIST.map((entry) => Object.fre
 
 const KINDS = new Map(JSAPI_METHODS.map((entry) => [entry.name, entry.kind]));
 
-export function methodKind(method) {
+function methodKind(method) {
   return KINDS.get(method) ?? null;
 }
 

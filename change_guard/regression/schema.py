@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
 from backend.snapshots.manifest import content_hash
 
 MODES = {"EXACT", "NUMERIC_TOLERANCE", "EXPECTED_CHANGE", "PRESERVE_AGGREGATE", "EXPECTED_VALUE", "EXPECTED_DELTA", "SET_EQUIVALENCE", "SCHEMA_ONLY", "MONITOR"}

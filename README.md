@@ -1,5 +1,7 @@
 # Power BI Brain
 
+*A DownDraughtLab product.*
+
 A semantic graph engine, interactive desktop workbench, and Model Context Protocol (MCP) server for Power BI and Microsoft Fabric.
 
 PBIBrain turns Power BI metadata / PBIP files (`.pbip`, TMDL, PBIR) and cloud semantic models/reports into a unified, provenance-tracked semantic graph of canonical nodes and edges. Brain is infrastructure: it gives developers and AI coding agents a shared, authoritative understanding of data models, DAX dependencies, report bindings, and upstream data sources.

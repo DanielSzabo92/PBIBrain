@@ -11,7 +11,7 @@ export const OBJECT_TYPE_LABELS = Object.freeze({
   calculation_group: "Calculation groups",
 });
 
-export const STATUS_BADGE = Object.freeze({
+const STATUS_BADGE = Object.freeze({
   proposed: { tone: "info", key: "rules.status.proposed" },
   confirmed: { tone: "ok", key: "rules.status.confirmed" },
   rejected: { tone: "plain", key: "rules.status.rejected" },

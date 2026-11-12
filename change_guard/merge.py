@@ -19,7 +19,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 import tempfile
-from typing import Any, Callable, Iterable, Mapping, Sequence
+from typing import Any
+from collections.abc import Callable, Iterable, Mapping, Sequence
 
 from backend.diff.snapshots import MISSING
 from backend.snapshots.manifest import canonical_json, content_hash, safe_path, source_manifest

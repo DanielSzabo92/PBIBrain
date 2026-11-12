@@ -18,7 +18,8 @@ import copy
 import json
 from pathlib import Path
 import re
-from typing import Any, Mapping
+from typing import Any
+from collections.abc import Mapping
 
 from backend.devcenter.errors import DevCenterError, not_allowed
 from backend.devcenter.session.secrets import check_secrets

@@ -14,7 +14,7 @@ compare ignores only the line ending style.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Mapping
+from collections.abc import Mapping
 
 from backend.dax.parser import dax_tokens
 

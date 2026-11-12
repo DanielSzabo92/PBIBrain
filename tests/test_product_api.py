@@ -1,5 +1,4 @@
 """Local transport, graph scope, and failed-write acceptance checks."""
-import io
 import json
 import tempfile
 import unittest

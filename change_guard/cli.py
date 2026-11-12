@@ -4,7 +4,7 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
-from typing import Sequence
+from collections.abc import Sequence
 from backend.snapshots.manifest import canonical_json
 from .orchestrator import ChangeGuard
 from .workspace import DockerIsolation, LocalCopyIsolation

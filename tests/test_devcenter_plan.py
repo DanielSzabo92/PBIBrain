@@ -18,17 +18,12 @@ Tests all 13 acceptance criteria:
 
 from __future__ import annotations
 
-import copy
-import json
 from pathlib import Path
 import shutil
 import tempfile
 import unittest
 from unittest.mock import patch
-import uuid
 
-from backend.api.app import create_app
-from backend.devcenter.compare import service as compare_service
 from backend.devcenter.compare.extract import (
     MODEL,
     REPORT,
@@ -36,8 +31,8 @@ from backend.devcenter.compare.extract import (
     SourceObjects,
     model_objects,
 )
-from backend.devcenter.compare.rows import CompareResult, SessionSource, build_rows
-from backend.devcenter.plan import PlanInput, compile_plan, plan_hash, summary
+from backend.devcenter.compare.rows import SessionSource, build_rows
+from backend.devcenter.plan import PlanInput, compile_plan, plan_hash
 from backend.devcenter.plan.compiler import (
     ADD_NEW_NAME,
     CASCADE,
@@ -51,10 +46,9 @@ from backend.devcenter.plan.compiler import (
     STATUS_VALID,
     STATUS_WARNINGS,
     TAKE,
-    TAKE_PROPERTIES,
 )
 from backend.devcenter.plan.lineage import LINEAGE_NAMESPACE, new_lineage_tag
-from backend.devcenter.plan.refs import ModelIndex, bracket_token, scan, table_token
+from backend.devcenter.plan.refs import ModelIndex, scan
 from backend.devcenter.plan.service import build_plan, get_plan, validate_plan
 from backend.devcenter.session.manager import DevCenterSessions
 from tests.fixtures.dax_golden import GOLDEN_DAX
@@ -710,7 +704,7 @@ class PlanEngineTests(unittest.TestCase):
 
             dc = DevCenterSessions(app_data_dir=None)
             dc.attach_project(root)
-            created = dc.create({"display_name": "UC33 Test"})
+            dc.create({"display_name": "UC33 Test"})
 
             s1 = dc.source_add({"base_revision": 1, "path": str(root / "SalesA/SalesA.pbip")})
             s2 = dc.source_add({"base_revision": s1["revision"], "path": str(root / "SalesB/SalesB.pbip")})

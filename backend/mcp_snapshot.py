@@ -14,9 +14,10 @@ import hashlib
 import json
 import logging
 import os
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from pathlib import Path
-from typing import Any, Iterable, Mapping
+from typing import Any
+from collections.abc import Iterable, Mapping
 from urllib.parse import urlencode
 
 LOGGER = logging.getLogger(__name__)
@@ -148,7 +149,7 @@ def write_agent_snapshot(project: Any, repository: Any, *, scanned_at: str | Non
     target = snapshot_path(config_path)
     payload = {
         "version": SNAPSHOT_VERSION,
-        "scanned_at": scanned_at or datetime.now(timezone.utc).isoformat(),
+        "scanned_at": scanned_at or datetime.now(UTC).isoformat(),
         "project": project.get_config().get("name"),
         "sources": source_fingerprint(config_path, project.source_paths()),
         "graph": {"schema_version": GRAPH_SCHEMA_VERSION,

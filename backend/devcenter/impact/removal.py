@@ -12,7 +12,8 @@ When an object is deleted or selected for removal:
 
 from __future__ import annotations
 
-from typing import Any, Mapping, Sequence
+from typing import Any
+from collections.abc import Mapping, Sequence
 
 from backend.devcenter.compare.extract import CompareObject
 from backend.devcenter.plan.fields import field_locations

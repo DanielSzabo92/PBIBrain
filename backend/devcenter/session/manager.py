@@ -12,7 +12,8 @@ from pathlib import Path
 import shutil
 import threading
 import uuid
-from typing import Any, Callable, Mapping
+from typing import Any
+from collections.abc import Callable, Mapping
 
 from backend.devcenter.errors import DevCenterError, not_allowed
 from backend.devcenter.session.proposals import session_lists

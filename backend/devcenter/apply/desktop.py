@@ -12,7 +12,8 @@ import os
 from pathlib import Path
 import shutil
 import subprocess
-from typing import Any, Callable, Iterable, Mapping
+from typing import Any
+from collections.abc import Callable, Iterable, Mapping
 
 NOT_OPEN = "not_open"
 OPEN_SAVED = "open_saved"

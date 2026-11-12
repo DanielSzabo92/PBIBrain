@@ -41,7 +41,7 @@ const ROW_HEIGHT = 36;
 const OVERSCAN = 10;
 const MAX_CACHED_PAGES = 25;
 
-export const TYPE_ICONS = {
+const TYPE_ICONS = {
   measure: Calculator,
   calculation_item: Calculator,
   report_measure: Calculator,
@@ -64,18 +64,18 @@ const STATE_PRECEDENCE = [
   "same",
 ];
 
-export function objectTypeIcon(type) {
+function objectTypeIcon(type) {
   const key = String(type || "").toLowerCase().replace(/\s+/g, "_");
   return TYPE_ICONS[key] || TableIcon;
 }
 
-export function choiceText(choice, donors = []) {
+function choiceText(choice, donors = []) {
   return formatMergeChoiceLabel(choice, donors);
 }
 
 // The Merge Choice badge (UI design 4.3): at most one, in the priority "Confirm row first",
 // "Question", "Proposed". The proposed choice shows only in the tooltip.
-export function mergeChoiceBadge(row, session, donors = []) {
+function mergeChoiceBadge(row, session, donors = []) {
   if ((row?.marks?.length ?? 0) > 0) {
     return { kind: "mark", className: "dc-badge-mark", label: t("compare.badge.confirm_first"), tooltip: t("compare.badge.confirm_first") };
   }
@@ -89,7 +89,7 @@ export function mergeChoiceBadge(row, session, donors = []) {
   return null;
 }
 
-export function GridShortcutsHelp() {
+function GridShortcutsHelp() {
   const [open, setOpen] = useState(false);
   const shortcuts = [
     { key: "D", desc: "Open code diff for selected cell (or double-click cell)" },

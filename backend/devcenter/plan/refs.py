@@ -20,7 +20,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 import re
-from typing import Callable, Iterable, Mapping, Sequence
+from collections.abc import Callable, Iterable, Mapping, Sequence
 
 from backend.dax.parser import DaxSpanToken, dax_token_spans
 from backend.devcenter.alignment.keys import fold
@@ -118,7 +118,7 @@ class ModelIndex:
     report_measures_by_name: dict[str, list[CompareObject]] = field(default_factory=dict)
 
     @classmethod
-    def build(cls, model: Iterable[CompareObject], report: Iterable[CompareObject] = ()) -> "ModelIndex":
+    def build(cls, model: Iterable[CompareObject], report: Iterable[CompareObject] = ()) -> ModelIndex:
         index = cls()
         for item in model:
             if item.kind == "table":

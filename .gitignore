@@ -30,7 +30,6 @@ data/*-identity.json
 *.jpeg
 *.gif
 !docs/screenshots/*.png
-!docs/ui-audit/**/*.png
 *.zip
 *.7z
 *.rar
@@ -66,8 +65,6 @@ frontend/.guard-test-results/
 !tests/fixtures/merge_lab/**/*.pbip
 !tests/fixtures/merge_lab/**/*.pbir
 
-# Orchestrator run state of the Development Center build.
-.scratch/dev-center-build/orchestrator-state.json
 
 # Design system gate receipts
 .ds-receipts/

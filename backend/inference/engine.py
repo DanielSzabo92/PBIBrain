@@ -7,13 +7,12 @@ import hashlib
 import inspect
 import json
 import logging
-import re
 from collections.abc import Iterable, Mapping
 from typing import Any
 
 from backend.graph.schema import Edge, Node, edge_from_dict, node_from_dict
 
-from .confidence import confidence_breakdown, confidence_from_evidence
+from .confidence import confidence_breakdown
 from .semantics import (
     SemanticCandidate,
     SemanticConflict,
@@ -176,18 +175,6 @@ def _column_table(nodes: Mapping[str, Node], column: Node) -> Node | None:
     table_id = column.properties.get("table_id")
     table = nodes.get(str(table_id)) if table_id else None
     return table if table and table.type == "TABLE" else None
-
-
-def _column_values(column: Node) -> list[Any]:
-    for key in ("values", "distinct_values", "distinctValues", "options", "allowed_values", "allowedValues"):
-        value = column.properties.get(key)
-        if isinstance(value, (list, tuple, set, frozenset)):
-            return sorted(list(value), key=lambda item: _json(item))
-    for key in ("cardinality", "distinct_count", "distinctCount"):
-        value = column.properties.get(key)
-        if isinstance(value, (list, tuple, set, frozenset)):
-            return sorted(list(value), key=lambda item: _json(item))
-    return []
 
 
 def _fallback_selector_candidates(

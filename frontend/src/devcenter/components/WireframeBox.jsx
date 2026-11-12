@@ -6,7 +6,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { t } from "../copy.js";
 import { wireStatusWord, wireVisualLabel } from "../screens/impact/impactModel.js";
 
-export const WIRE_ICONS = { removed: Trash2, breaks: CircleX, changes: TriangleAlert, new: Plus, not_checked: CircleHelp };
+const WIRE_ICONS = { removed: Trash2, breaks: CircleX, changes: TriangleAlert, new: Plus, not_checked: CircleHelp };
 
 export function WireStatus({ status }) {
   const Icon = WIRE_ICONS[status];
