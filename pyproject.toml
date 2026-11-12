@@ -7,6 +7,7 @@ name = "powerbi-brain"
 version = "0.1.0"
 description = "Canonical, provenance-aware Power BI semantic graph"
 requires-python = ">=3.11"
+authors = [{ name = "DownDraughtLab" }]
 dependencies = ["antlr4-python3-runtime==4.13.2", "jsonschema==4.25.1"]
 
 [project.optional-dependencies]
