@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { t, tn } from "../copy.js";
 
-export const NAME_CHECK_DEBOUNCE_MS = 300;
+const NAME_CHECK_DEBOUNCE_MS = 300;
 
 export default function NameField({
   label = t("row.name.label"),

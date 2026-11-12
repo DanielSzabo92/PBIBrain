@@ -1,9 +1,7 @@
 # Canonical TMDL is CRLF (what Power BI Desktop and the TOM bridge write on every OS).
 # The byte-exact rules below come later, so they win for their folders.
 *.tmdl text eol=crlf
-docs/evidence/**/*.tmdl -text
-# Integrity-pinned vendor and evidence bytes must survive Windows Git checkout.
+# Integrity-pinned vendor bytes must survive Windows Git checkout.
 backend/adapters/pbir/schemas/** -text
-docs/evidence/guarded-development-2026-10-09/** -text
 # The merge lab fixtures keep exact bytes (TMDL CRLF, one LF file on purpose).
 tests/fixtures/merge_lab/** -text

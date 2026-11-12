@@ -12,7 +12,8 @@ from __future__ import annotations
 import hashlib
 import json
 import re
-from typing import Any, Iterable, Mapping
+from typing import Any
+from collections.abc import Iterable, Mapping
 
 from backend.devcenter.errors import DevCenterError
 from backend.devcenter.naming.objects import NamedObject, rule_type

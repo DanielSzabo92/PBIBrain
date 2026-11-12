@@ -6,23 +6,12 @@ accepted state (ADR 0003).
 
 from __future__ import annotations
 
-import json
-from typing import Any, Mapping, Sequence
+from typing import Any
+from collections.abc import Mapping, Sequence
 
-from backend.devcenter.errors import DevCenterError
 from backend.devcenter.http_routes import PROPOSAL, route
 from backend.devcenter.session import proposals
-
-
-def _json(body: Any) -> Any:
-    if isinstance(body, Mapping):
-        return dict(body)
-    if body in (None, b"", ""):
-        return {}
-    try:
-        return json.loads(body.decode("utf-8") if isinstance(body, bytes) else body)
-    except (UnicodeDecodeError, ValueError) as exc:
-        raise DevCenterError("invalid_payload", "The request body is not valid JSON.", {"reason": "invalid_json"}) from exc
+from backend.devcenter.http_routes import json_body as _json
 
 
 @route("POST", "proposals", kind=PROPOSAL, contract="http/proposals.reply.json")

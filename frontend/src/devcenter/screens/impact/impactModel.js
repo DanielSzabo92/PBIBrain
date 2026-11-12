@@ -5,7 +5,7 @@ import { formatObjectRef } from "../../phrases.js";
 export const PAGE_SIZE = 500;
 export const GRAPH_LIMIT = 150;
 export const AREA_STEP = 20;
-export const GROUPS = ["breaks", "needs", "offers"];
+const GROUPS = ["breaks", "needs", "offers"];
 export const VIEWS = ["table", "graph", "wireframe"];
 
 // Sort order of severities: blocking, severity, name (UI design 4.5).
@@ -15,7 +15,7 @@ export const SEVERITY_ORDER = [
 const INFORMATION_SEVERITIES = new Set(["mapped", "not_changed_by_this_plan"]);
 
 // The primary action is the first allowed action of this list. All other allowed actions go in the row menu.
-export const PRIMARY_ORDER = ["include_in_rewrite", "set_policy_repoint", "set_policy_cascade", "map_to_target", "add_from_donor"];
+const PRIMARY_ORDER = ["include_in_rewrite", "set_policy_repoint", "set_policy_cascade", "map_to_target", "add_from_donor"];
 export const BULK_ACTIONS = ["include_in_rewrite", "add_from_donor"];
 export const POLICY_ACTIONS = new Set(["set_policy_block", "set_policy_cascade", "set_policy_repoint"]);
 
@@ -59,7 +59,7 @@ function severityRank(severity) {
   return index < 0 ? SEVERITY_ORDER.length : index;
 }
 
-export function compareItems(a, b) {
+function compareItems(a, b) {
   const blocking = Number(itemStatus(b) === "blocking") - Number(itemStatus(a) === "blocking");
   if (blocking) return blocking;
   const severity = severityRank(a.severity) - severityRank(b.severity);
@@ -261,7 +261,6 @@ export function graphNodeLabel(node) {
 }
 
 // Wireframe (UI design 4.5, 7.3): each visual shows one status, in this order.
-export const WIRE_STATUS_ORDER = ["removed", "breaks", "changes", "new", "not_checked", "unchanged"];
 
 export function wireStatusWord(status) {
   return t(`impact.wireframe.status.${status}`);

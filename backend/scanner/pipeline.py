@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from pathlib import Path
 from typing import Any
 
@@ -17,7 +17,6 @@ from backend.sync import (
     UNCHANGED,
     SyncResult,
     classify_changes,
-    edge_fingerprint,
     node_fingerprint,
     preserve_review_statuses,
     reconcile_overrides,
@@ -179,7 +178,7 @@ class Scanner:
         )
         _stamp_hashes(graph.nodes)
         graph.load(self.repository)
-        self.repository.last_scan = datetime.now(timezone.utc).isoformat()
+        self.repository.last_scan = datetime.now(UTC).isoformat()
         self._run_validation(graph)
         LOGGER.info("scan complete: %d nodes, %d factual edges", len(graph.nodes), len(graph.edges))
         return graph
@@ -285,7 +284,7 @@ class Scanner:
         _preserve_candidate_statuses(graph, previous_nodes, previous_edges)
         _stamp_hashes(graph.nodes)
         graph.load(self.repository)
-        self.repository.last_scan = datetime.now(timezone.utc).isoformat()
+        self.repository.last_scan = datetime.now(UTC).isoformat()
         self._run_validation(
             graph,
             previous={"nodes": previous_nodes, "edges": previous_edges},

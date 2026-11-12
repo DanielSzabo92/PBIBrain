@@ -18,7 +18,8 @@ import threading
 import uuid
 from collections import OrderedDict
 from pathlib import Path
-from typing import Any, Callable, Mapping, Sequence
+from typing import Any
+from collections.abc import Callable, Mapping, Sequence
 from urllib.parse import urlencode
 
 from backend.devcenter.agent_tools import TOOL_ROUTES

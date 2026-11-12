@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import copy
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 import json
 import os
 from pathlib import Path
@@ -11,7 +11,8 @@ import re
 import sys
 import tempfile
 import time
-from typing import Any, Callable, Mapping
+from typing import Any
+from collections.abc import Callable, Mapping
 import uuid
 
 from backend.devcenter.errors import DevCenterError, not_allowed
@@ -50,7 +51,7 @@ LOCK_LOCKED = "locked"
 
 
 def utc_now() -> str:
-    return datetime.now(timezone.utc).replace(microsecond=0).strftime("%Y-%m-%dT%H:%M:%SZ")
+    return datetime.now(UTC).replace(microsecond=0).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def canonical_bytes(document: Mapping[str, Any]) -> bytes:
@@ -229,9 +230,7 @@ class SessionLock:
             # A lock that another instance is writing now is not readable for a short time.
             if age < _UNREADABLE_LOCK_SECONDS:
                 return False
-        elif holder.get("owner") == self.owner:
-            return False
-        elif isinstance(holder.get("pid"), int) and _process_alive(holder["pid"]):
+        elif holder.get("owner") == self.owner or isinstance(holder.get("pid"), int) and _process_alive(holder["pid"]):
             return False
         moved = self.path.with_name(f".{self.path.name}.{uuid.uuid4().hex}.stale")
         try:

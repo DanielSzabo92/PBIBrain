@@ -185,7 +185,7 @@ test("Issue #49: Grid keyboard shortcuts help popover and aria-keyshortcuts attr
   const appShellCode = await readFile(path.join(SRC, "components/AppShell.jsx"), "utf8");
 
   // 1. GridShortcutsHelp component exists and announces required shortcuts: D, M, Space, Enter, diff, F5
-  assert.ok(gridCode.includes("export function GridShortcutsHelp()"), "GridShortcutsHelp component must be exported");
+  assert.ok(gridCode.includes("function GridShortcutsHelp()"), "GridShortcutsHelp component must exist");
   assert.ok(gridCode.includes('"D"') && gridCode.includes("code diff"), "GridShortcutsHelp must announce D for diff");
   assert.ok(gridCode.includes('"M"') && gridCode.includes("bulk merge"), "GridShortcutsHelp must announce M for bulk choices");
   assert.ok(gridCode.includes('"Space"') && gridCode.includes("row selection"), "GridShortcutsHelp must announce Space for selection");

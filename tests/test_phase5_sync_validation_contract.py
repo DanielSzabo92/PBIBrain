@@ -31,12 +31,10 @@ from backend.validation import (
 )
 
 from tests.fixtures.phase5_sources import (
-    COL_AMOUNT,
     MEASURE_BASE,
     MEASURE_FORECAST,
     MEASURE_LEGACY,
     MEASURE_NET,
-    MODEL_ID,
     phase5_changed_source,
     phase5_deleted_source,
     phase5_model_source,

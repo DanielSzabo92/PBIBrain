@@ -11,7 +11,6 @@ Power BI Desktop, Tabular Editor, DAX Studio, VS Code). Branch `claude/ui-audit-
 - Every main view walked at 1440×900 and 1920×1080, dark and light, mouse and keyboard only.
   Keyboard probes were scripted with Playwright (Tab order, F-keys, Ctrl+digit, Alt, arrows) so
   the results are reproducible, not impressions.
-- Screenshots: `docs/ui-audit/screenshots/desktop/before-*.png` and `after-*.png`.
 
 ## Verdict
 

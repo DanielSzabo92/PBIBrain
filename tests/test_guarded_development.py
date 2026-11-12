@@ -5,24 +5,22 @@ from decimal import Decimal
 import io
 import json
 from pathlib import Path
-import shutil
 import subprocess
 import tempfile
 import unittest
 
-from backend.adapters.tabular_metadata import TabularMetadataAdapter, MetadataUnavailable
+from backend.adapters.tabular_metadata import TabularMetadataAdapter
 from backend.api.app import BrainAPI, BrainApp
 from backend.context.builder import build_context
-from backend.diff import compare_snapshots, compare_properties
-from backend.graph.loader import build_fact_graph
+from backend.diff import compare_properties
 from backend.graph.repository import GraphRepository
 from backend.impact import analyze_impact
 from backend.impact.cache import SnapshotImpactCache
-from backend.snapshots import Snapshot, capture_snapshot, source_manifest, content_hash
+from backend.snapshots import Snapshot, source_manifest, content_hash
 from backend.snapshots.manifest import safe_path, SourceIntegrityError
 from backend.snapshots.scan import scan_snapshot
 from change_guard.audit import AuditStore, AuditIntegrityError
-from change_guard.contracts import authorize_contract, enforce_scope, validate_contract
+from change_guard.contracts import authorize_contract, validate_contract
 from change_guard.contracts.schema import ContractError
 from change_guard.orchestrator import ChangeGuard, GuardError
 from change_guard.policy import Policy, evaluate_candidate

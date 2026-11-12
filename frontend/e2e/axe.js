@@ -3,7 +3,7 @@ import { createRequire } from "node:module";
 
 const require = createRequire(import.meta.url);
 const AXE_PATH = require.resolve("axe-core/axe.min.js");
-export const AXE_TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"];
+const AXE_TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"];
 
 // Run axe on the page and return the violations as short records.
 export async function axeViolations(page, { include, rules } = {}) {

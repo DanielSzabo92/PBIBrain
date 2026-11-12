@@ -161,7 +161,6 @@ class LocalAnalysisServices:
 
     def execute_readonly(self, query, params=None):
         if params: raise ValueError("Local query parameters unsupported")
-        from .query_coverage import query_targets
         # The independent AST validation precedes the query-only engine call.
         # Server reader permissions remain the mutation security boundary.
         from backend.validation.powerbi import ValidationQuery

@@ -5,7 +5,8 @@ They exist in the pywebview JS API only, like the other state changes (ADR 0003)
 
 from __future__ import annotations
 
-from typing import Any, Mapping
+from typing import Any
+from collections.abc import Mapping
 
 from backend.devcenter.jsapi import register
 from backend.devcenter.session import templates

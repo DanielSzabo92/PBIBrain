@@ -10,10 +10,11 @@ from __future__ import annotations
 from dataclasses import asdict, is_dataclass
 import hashlib
 import json
-import re
-from typing import Any, Iterable, Mapping, Sequence
+from typing import Any
+from collections.abc import Iterable, Mapping, Sequence
 
 from backend.graph.schema import Edge, Node, edge_from_dict, node_from_dict
+from backend.text_keys import alnum_key as _norm
 
 
 SELECTOR_FUNCTIONS = frozenset(
@@ -73,10 +74,6 @@ class SelectorDiscovery(list):
         super().__init__(selectors)
         self.candidates = list(candidates)
         self.edges = list(edges)
-
-
-def _norm(value: Any) -> str:
-    return "".join(char for char in str(value).casefold() if char.isalnum())
 
 
 _VALUE_KEY_NAMES = frozenset(_norm(item) for item in _VALUE_KEYS)
@@ -271,18 +268,6 @@ def _table_columns(table: Node, nodes: Sequence[Node]) -> list[Node]:
         for item in nodes
         if item.type == "COLUMN"
         and str(_get(item.properties, "table_id", "tableId", default="")) == table.id
-    ]
-
-
-def _table_measures(table: Node, nodes: Sequence[Node]) -> list[Node]:
-    return [
-        item
-        for item in nodes
-        if item.type == "MEASURE"
-        and (
-            str(_get(item.properties, "table_id", "tableId", default="")) == table.id
-            or (item.model_id == table.model_id and not _get(item.properties, "table_id", "tableId"))
-        )
     ]
 
 

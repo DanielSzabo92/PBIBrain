@@ -6,7 +6,6 @@ particular inference class or persistence implementation.
 
 from __future__ import annotations
 
-import copy
 import json
 import tempfile
 import unittest
@@ -19,12 +18,10 @@ from backend.scanner.pipeline import Scanner
 
 from tests.fixtures.phase3_sources import (
     COL_CHOICE,
-    COL_CONTROL_UNRELATED,
     COL_DATE,
     COL_NAMING_ONLY,
     MEASURE_CONFLICT,
     MEASURE_NET,
-    MODEL_ID,
     TABLE_CONFLICT,
     TABLE_CONTROL,
     TABLE_NAMING_ONLY,

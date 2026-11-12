@@ -7,7 +7,8 @@ renamed table uses the target table name.
 
 from __future__ import annotations
 
-from typing import Any, Sequence
+from typing import Any
+from collections.abc import Sequence
 
 
 def fold(value: Any) -> str:

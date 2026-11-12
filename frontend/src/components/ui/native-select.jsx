@@ -40,16 +40,4 @@ function NativeSelectOption({
   );
 }
 
-function NativeSelectOptGroup({
-  className,
-  ...props
-}) {
-  return (
-    <optgroup
-      data-slot="native-select-optgroup"
-      className={cn("bg-[Canvas] text-[CanvasText]", className)}
-      {...props} />
-  );
-}
-
-export { NativeSelect, NativeSelectOptGroup, NativeSelectOption }
+export { NativeSelect, NativeSelectOption }

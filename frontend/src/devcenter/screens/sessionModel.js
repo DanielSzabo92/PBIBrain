@@ -10,10 +10,6 @@ export function isModelSource(source) {
   return MODEL_KINDS.has(source?.kind);
 }
 
-export function isReportSource(source) {
-  return REPORT_KINDS.has(source?.kind) || (source?.kind === "pbip" && Boolean(source?.report_path));
-}
-
 // GET session has no name fields for the target: the names come from the source list (S2).
 export function sourceName(session, sourceId) {
   if (!sourceId) return null;
@@ -291,7 +287,7 @@ export function formatTime(value) {
 }
 
 // The last part of a path, with no folder suffix.
-export function pathName(path) {
+function pathName(path) {
   const name = String(path ?? "").replace(/\\/g, "/").replace(/\/+$/, "").split("/").pop() ?? "";
   return name.replace(/\.(SemanticModel|Report|pbip|bim)$/i, "") || name;
 }

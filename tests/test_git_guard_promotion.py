@@ -1,5 +1,4 @@
 """Real Git/filesystem fault injection, with no external repositories."""
-import json
 from pathlib import Path
 import subprocess
 import tempfile

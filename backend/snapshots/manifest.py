@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 import hashlib
 import json
 import os
 from pathlib import Path
 import subprocess
-from typing import Any, Mapping
+from typing import Any
+from collections.abc import Mapping
 
 SCHEMA_VERSION = 1
 # guarded-3 (S1): new object types, links, and PBIR positions.
@@ -32,7 +33,7 @@ def content_hash(value: Any) -> str:
 
 
 def utc_now() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 def safe_path(root: Path, relative: str, *, must_exist: bool = False) -> Path:
@@ -100,7 +101,7 @@ class Snapshot:
         return self.to_dict()["snapshot_id"]
 
     @classmethod
-    def from_dict(cls, payload: Mapping[str, Any]) -> "Snapshot":
+    def from_dict(cls, payload: Mapping[str, Any]) -> Snapshot:
         snapshot = cls(canonical_json(dict(payload)))
         if snapshot.snapshot_id != content_hash(snapshot.to_dict()["identity_inputs"]):
             raise SourceIntegrityError("Snapshot identity mismatch")

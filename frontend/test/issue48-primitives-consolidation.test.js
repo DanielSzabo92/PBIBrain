@@ -21,13 +21,6 @@ test("Issue #48: Primitives consolidation (ContextMenu, Breadcrumb, Skeleton, Ac
   const skeletonCode = await readFile(path.join(SRC, "components/ui/skeleton.jsx"), "utf8");
   assert.ok(skeletonCode.includes("function Skeleton"), "Skeleton is exported");
 
-  const accordionCode = await readFile(path.join(SRC, "components/ui/accordion.jsx"), "utf8");
-  assert.ok(accordionCode.includes("AccordionTrigger"), "AccordionTrigger is exported");
-  assert.ok(accordionCode.includes("AccordionContent"), "AccordionContent is exported");
-
-  const sonnerCode = await readFile(path.join(SRC, "components/ui/sonner.jsx"), "utf8");
-  assert.ok(sonnerCode.includes("Toaster"), "Sonner Toaster is exported");
-
   const toastCode = await readFile(path.join(SRC, "components/ui/toast.jsx"), "utf8");
   assert.ok(toastCode.includes("sonnerToast"), "toast.jsx unifies on sonner");
   assert.ok(toastCode.includes("ToastProvider"), "ToastProvider is exported");

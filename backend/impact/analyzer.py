@@ -8,7 +8,8 @@ from __future__ import annotations
 from collections import defaultdict, deque
 from copy import deepcopy
 from time import perf_counter
-from typing import Any, Mapping
+from typing import Any
+from collections.abc import Mapping
 
 from backend.snapshots.manifest import content_hash
 from backend.validation import graph_values, item_dict

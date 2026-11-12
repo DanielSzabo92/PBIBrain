@@ -9,7 +9,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 import re
-from typing import Any, Callable, Mapping
+from typing import Any
+from collections.abc import Callable, Mapping
 
 
 def _safe(value: Any) -> Any:

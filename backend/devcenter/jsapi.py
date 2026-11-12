@@ -17,7 +17,8 @@ from dataclasses import dataclass
 import importlib
 import logging
 import traceback
-from typing import Any, Callable, Mapping
+from typing import Any
+from collections.abc import Callable, Mapping
 
 from backend.devcenter import contracts
 from backend.devcenter.errors import DevCenterError, error_reply

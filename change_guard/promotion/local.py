@@ -1,9 +1,8 @@
 """Journaled multi-file replacement. Explicitly not a crash-atomic transaction."""
 from __future__ import annotations
 
-import os
 from pathlib import Path
-from typing import Callable
+from collections.abc import Callable
 from backend.snapshots.manifest import source_manifest, safe_path, content_hash, utc_now
 from change_guard.audit.records import AuditStore, durable_write, exclusive_lock
 

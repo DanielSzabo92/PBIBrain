@@ -18,7 +18,6 @@ export const SERVER_ERROR_CODES = Object.freeze([
 // Codes that only the client makes. "aborted" and "dropped" never show to the user.
 export const CLIENT_ERROR_CODES = Object.freeze(["network", "unknown", "aborted", "dropped"]);
 
-export const ERROR_SOURCES = Object.freeze(["http", "jsapi", "network"]);
 
 // The UI reaction for each code (UI design section 10, "Other codes").
 // toast: shared.stale toast after a refetch. list: session list with a banner.

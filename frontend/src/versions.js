@@ -30,7 +30,7 @@ export function rootOf(node) {
  * Key of an object inside its model or report, the same in every version of it, or "" when there is none.
  * Model objects: type + table + name. Report objects: type + source ID (else name), under their parent's key.
  */
-export function relativeKey(node, byId, seen = new Set()) {
+function relativeKey(node, byId, seen = new Set()) {
   if (!node || ROOTS.has(node.type) || seen.has(node.id)) return "";
   seen.add(node.id);
   const own = `${node.type}:${fold(node.report_id ? node.source_id || node.name : node.name)}`;

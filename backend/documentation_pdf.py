@@ -15,8 +15,9 @@ import math
 import re
 from collections import Counter, defaultdict
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from typing import Any, Iterable, Mapping, Sequence
+from datetime import datetime, UTC
+from typing import Any
+from collections.abc import Iterable, Mapping, Sequence
 
 from backend.documentation_export import (
     UNKNOWN,
@@ -110,7 +111,7 @@ def _count(number: int, word: str) -> str:
 
 
 def _now() -> str:
-    return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    return datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
 
 def _pdf_date(stamp: str) -> str:

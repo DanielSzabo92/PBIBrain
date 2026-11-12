@@ -25,7 +25,8 @@ from __future__ import annotations
 
 from collections import Counter
 from dataclasses import dataclass, field
-from typing import Any, Callable, Iterable, Mapping, Sequence
+from typing import Any
+from collections.abc import Callable, Iterable, Mapping, Sequence
 
 from backend.devcenter.alignment import keys
 from backend.devcenter.compare.extract import CompareObject

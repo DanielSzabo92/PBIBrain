@@ -10,9 +10,10 @@ import json
 import logging
 import re
 from pathlib import Path
-from typing import Any, Iterable, Mapping, Sequence
+from typing import Any
+from collections.abc import Iterable, Mapping, Sequence
 
-from .schema import Edge, Node, edge_from_dict, node_from_dict, serialize_edges, serialize_nodes, ladybug_schema, GRAPH_SCHEMA_VERSION
+from .schema import Edge, Node, edge_from_dict, node_from_dict, serialize_edges, serialize_nodes, GRAPH_SCHEMA_VERSION
 from .sqlite_store import SQLiteStore
 
 LOGGER = logging.getLogger(__name__)
@@ -443,7 +444,7 @@ class GraphRepository:
             self._store.close()
             self._store = None
 
-    def __enter__(self) -> "GraphRepository":
+    def __enter__(self) -> GraphRepository:
         return self
 
     def __exit__(self, *_: Any) -> None:

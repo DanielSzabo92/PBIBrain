@@ -10,15 +10,13 @@ it does not guess a meaning.
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import Any, Iterable, Iterator, Mapping
+from typing import Any
+from collections.abc import Iterable, Iterator, Mapping
 
 from .schema import Node
+from backend.text_keys import alnum_key as _norm
 
 _PRIMARY_ORDER = ("projection", "page_binding", "sort", "conditional_formatting")
-
-
-def _norm(value: Any) -> str:
-    return "".join(char for char in str(value).casefold() if char.isalnum())
 
 
 def visual_usage_properties(visual: Node) -> dict[str, dict[str, Any]]:

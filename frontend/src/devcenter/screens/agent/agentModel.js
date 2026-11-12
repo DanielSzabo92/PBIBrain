@@ -91,7 +91,7 @@ export function readyProposals(open) {
   return (open ?? []).filter((item) => proposalStatus(item) === "ready");
 }
 
-export function kindCounts(proposals) {
+function kindCounts(proposals) {
   const counts = new Map();
   for (const item of proposals ?? []) counts.set(item.kind, (counts.get(item.kind) ?? 0) + 1);
   return [...counts.entries()].map(([kind, n]) => ({ kind, n, text: `${kindText(kind)}: ${n}` }));

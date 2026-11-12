@@ -5,12 +5,9 @@ import json
 from pathlib import Path
 import tempfile
 import sys
-import shutil
 import subprocess
 from copy import deepcopy
-from decimal import Decimal
-from backend.snapshots import capture_snapshot, content_hash, source_manifest, Snapshot
-from backend.snapshots.scan import scan_snapshot
+from backend.snapshots import source_manifest, Snapshot
 from change_guard.regression import ExecutionContext
 from change_guard.regression.local import LocalAnalysisServices, LocalTestInstance
 from tests.test_pbir_coverage import schema_report
@@ -50,7 +47,7 @@ def frozen_fixture(root):
 def probe():
     with tempfile.TemporaryDirectory(prefix="guard-real-regression-") as temporary:
         root = Path(temporary) / "source"
-        data = frozen_fixture(root)
+        frozen_fixture(root)
         def git(*arguments):
             return subprocess.run(["git", "-C", str(root), *arguments], capture_output=True, text=True, check=True).stdout.strip()
         git("init"); git("config", "user.name", "PBIBrain proof"); git("config", "user.email", "proof@localhost")
@@ -139,7 +136,7 @@ def probe():
             assert source_manifest(guard.source_root) == snapshot.to_dict()["source_manifest"], "Acceptance must not apply sources before promotion"
             promoted = guard.promote_candidate(operation, mode="git", binding=reviewed["review_binding"])
             assert promoted["state"] == "POST_PROMOTION_VERIFIED", promoted
-            final = guard.review(operation)
+            guard.review(operation)
             return {"proof_version": 1, "status": "PASSED", "kind": "REAL_DESKTOP_ENGINE", "scope": "SEALED_LITERAL_ACCEPTANCE_FIXTURE",
                 "engine_version": before.load_evidence["engine_version"], "context": context.__dict__, "data_freeze": before.freeze_evidence,
                 "permissions": [adapter.permission_evidence for adapter in (before, after)], "baseline_snapshot_id": snapshot.snapshot_id,

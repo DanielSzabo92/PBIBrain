@@ -7,7 +7,8 @@ canonical model extensible while object-specific fields remain in ``properties``
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Iterable, Mapping
+from typing import Any
+from collections.abc import Iterable, Mapping
 
 # Version 2 (S1) adds the node types HIERARCHY, LEVEL, PARTITION, SECURITY_ROLE,
 # ROLE_FILTER, OLS_PERMISSION, REPORT_MEASURE, and BOOKMARK. The node and edge

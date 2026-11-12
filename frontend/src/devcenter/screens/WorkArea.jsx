@@ -21,9 +21,9 @@ import LogTab from "./log/LogTab.jsx";
 import CompareGrid from "../components/CompareGrid.jsx";
 import { agentCount, banners, deriveReadiness, planStatus, targetLine } from "./sessionModel.js";
 
-export const TABS = ["compare", "impact", "plan", "agent", "sources", "rules", "log"];
-export const LOCKED_REASON_ID = "dc-locked-reason";
-export const BUSY_REASON_ID = "dc-busy-reason";
+const TABS = ["compare", "impact", "plan", "agent", "sources", "rules", "log"];
+const LOCKED_REASON_ID = "dc-locked-reason";
+const BUSY_REASON_ID = "dc-busy-reason";
 
 // sources_check runs automatically once on each open of a session (UI design 4.2).
 const checkedOnOpen = new Set();

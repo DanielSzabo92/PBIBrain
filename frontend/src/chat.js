@@ -4,7 +4,6 @@
 // injected, because answers carry project text (names, descriptions, DAX) the model quoted.
 
 export const POLL_MS = 120;
-export const OBJECT_SCHEME = "object:";
 
 // ---- Context chips ---------------------------------------------------------------------
 
@@ -144,7 +143,7 @@ export function answerText(message) {
   return message.parts.filter((part) => part.type === "text").map((part) => part.text).join("");
 }
 
-export const TOOL_LABELS = {
+const TOOL_LABELS = {
   brain_overview: "Read the project overview",
   brain_search: "Searched objects",
   brain_object: "Read an object",

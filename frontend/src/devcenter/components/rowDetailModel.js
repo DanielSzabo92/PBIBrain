@@ -3,7 +3,7 @@
 import { t } from "../copy.js";
 import { phraseText } from "../phrases.js";
 
-export const PICKER_PROPERTIES = Object.freeze({
+const PICKER_PROPERTIES = Object.freeze({
   measure: [
     { id: "expression", label: "Expression" },
     { id: "format_string", label: "Format string" },
@@ -31,7 +31,7 @@ export const PICKER_PROPERTIES = Object.freeze({
   ],
 });
 
-export function pickerTypeKey(objectType, subtype) {
+function pickerTypeKey(objectType, subtype) {
   const raw = subtype || objectType || "";
   if (raw === "measure" || objectType === "measure") return "measure";
   if (raw === "data_column" || raw === "calculated_column" || objectType === "column") return "column";
@@ -84,7 +84,7 @@ export function isCellPresent(cell) {
   return cell.state !== "missing";
 }
 
-export function getPresentDonors(row, donors = []) {
+function getPresentDonors(row, donors = []) {
   return donors.filter((donor) => isCellPresent(getRowCell(row, donor.source_id)));
 }
 
@@ -104,7 +104,7 @@ export function getRowPropertiesForDonor(row, donorId) {
   return [];
 }
 
-export function extractPropertyId(propItem) {
+function extractPropertyId(propItem) {
   if (!propItem) return "";
   if (propItem.property) return propItem.property;
   const raw = String(propItem.phrase_id || "");

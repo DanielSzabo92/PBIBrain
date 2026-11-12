@@ -112,7 +112,7 @@ class UserDecisionTests(unittest.TestCase):
         from change_guard.promotion.local import LocalPromotion, PromotionError
         from change_guard.promotion.git import GitPromotion
         self.candidate()
-        state = self.guard.candidate_status(self.operation)
+        self.guard.candidate_status(self.operation)
         review = self.guard.review(self.operation)
         # A cached permit is a test double for authorization previously issued
         # by the trusted controller. This test certifies only revocation.

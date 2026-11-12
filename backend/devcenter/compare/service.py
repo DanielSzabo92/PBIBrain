@@ -15,7 +15,8 @@ from __future__ import annotations
 
 import copy
 import difflib
-from typing import Any, Mapping, Sequence
+from typing import Any
+from collections.abc import Mapping, Sequence
 
 from backend.devcenter.alignment.align import OVERRIDE_BREAK, OVERRIDE_CONFIRM, OVERRIDE_REJECT_RENAME
 from backend.devcenter.alignment.keys import fold
@@ -34,6 +35,8 @@ from backend.devcenter.compare.rows import (
     state_counts,
 )
 from backend.devcenter.errors import DevCenterError, not_allowed
+from backend.devcenter.common import query_value as _one
+from backend.devcenter.common import session_snapshot as _snapshot
 
 ACTION_CLEAR = "clear"
 ACTIONS = (OVERRIDE_CONFIRM, OVERRIDE_BREAK, OVERRIDE_REJECT_RENAME, ACTION_CLEAR)
@@ -70,11 +73,6 @@ def compute(devcenter: Any, document: Mapping[str, Any], mode: str | None = None
                       merge_choices=document.get("merge_choices") or {}, marks=document.get("source_marks") or [])
 
 
-def _one(query: Mapping[str, Sequence[str]], name: str) -> str | None:
-    values = list(query.get(name) or [])
-    return str(values[-1]) if values else None
-
-
 def _integer(query: Mapping[str, Sequence[str]], name: str, default: int, maximum: int) -> int:
     value = _one(query, name)
     if value is None or value == "":
@@ -86,11 +84,6 @@ def _integer(query: Mapping[str, Sequence[str]], name: str, default: int, maximu
     if number < 0 or number > maximum:
         raise DevCenterError("invalid_payload", "The paging value is not valid.", {"reason": "invalid_paging", "field": name})
     return number
-
-
-def _snapshot(devcenter: Any) -> dict[str, Any]:
-    with devcenter._lock:
-        return copy.deepcopy(devcenter._require_open().document)
 
 
 def compare_rows(devcenter: Any, query: Mapping[str, Sequence[str]]) -> dict[str, Any]:

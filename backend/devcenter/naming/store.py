@@ -15,7 +15,8 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any
+from collections.abc import Mapping
 
 from backend.devcenter.errors import DevCenterError
 from backend.devcenter.naming.objects import RULE_OBJECT_TYPES
@@ -38,13 +39,6 @@ RULES_DIR = "naming-rules"
 
 def local_rule_file(project_root: Path, model_dir: Path) -> Path:
     return project_root / ".pbibrain" / RULES_DIR / f"{model_dir.name}.json"
-
-
-def cloud_rule_file(app_data_dir: Path, workspace_id: str, model_id: str) -> Path:
-    for part in (workspace_id, model_id):
-        if not part or any(char in part for char in '\\/:*?"<>|') or part in {".", ".."}:
-            raise DevCenterError("invalid_payload", "The cloud item ID is not valid.", {"reason": "invalid_item_id"})
-    return app_data_dir / RULES_DIR / workspace_id / f"{model_id}.json"
 
 
 def empty_rule_set(model: str) -> dict[str, Any]:

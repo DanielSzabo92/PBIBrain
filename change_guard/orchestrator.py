@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from dataclasses import asdict
 from copy import deepcopy
 from functools import wraps
 import getpass

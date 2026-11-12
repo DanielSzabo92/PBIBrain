@@ -10,7 +10,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 import json
 from pathlib import Path
-from typing import Any, Iterable, Iterator
+from typing import Any
+from collections.abc import Iterable, Iterator
 
 from backend.devcenter.sources.kinds import MODEL_TMDL, MODEL_TMSL, REPORT_PBIR, LocalSource
 from backend.devcenter.sources.objects import _blocks, _declaration, _unquote

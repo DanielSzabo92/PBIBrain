@@ -1,6 +1,6 @@
 // App preferences that the Development Center uses (UI design 9.3, A24).
 // The "/" key switch is stored in localStorage, as the theme is. Storage can be unavailable: then the default is on.
-export const SLASH_KEY = "pbibrain-slash-search";
+const SLASH_KEY = "pbibrain-slash-search";
 
 export function slashSearchEnabled(storage = globalThis.localStorage) {
   try {

@@ -12,7 +12,6 @@ from backend.scanner.normalization import normalize_model, normalize_report
 from tests.fixtures.phase1_sources import (
     MODEL_ID,
     REPORT_A_ID,
-    REPORT_B_ID,
     model_source,
     renamed_model_source,
     report_source,

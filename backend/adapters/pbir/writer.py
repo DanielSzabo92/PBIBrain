@@ -7,7 +7,8 @@ import json
 from pathlib import Path
 import re
 import shutil
-from typing import Any, Iterable, Mapping, Sequence
+from typing import Any
+from collections.abc import Mapping, Sequence
 
 from backend.adapters.pbir.validation import validate_report_documents
 from backend.devcenter.alignment.keys import fold

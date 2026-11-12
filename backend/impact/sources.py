@@ -9,7 +9,8 @@ a source behind them cannot be named.
 from __future__ import annotations
 
 from collections import defaultdict, deque
-from typing import Any, Mapping, Sequence
+from typing import Any
+from collections.abc import Mapping, Sequence
 
 # USES_MODEL is left out: a report reaches the sources its visuals use, not every source of its model.
 UPSTREAM_EDGES = {"DEPENDS_ON", "REFERENCES", "USES", "FILTERS", "SOURCES_FROM"}

@@ -2,18 +2,10 @@
 
 from __future__ import annotations
 
-from typing import Any, Callable, Mapping
+from typing import Any
+from collections.abc import Callable, Mapping
 
-from .schema import GRAPH_SCHEMA_VERSION, ladybug_schema
-
-
-def apply_schema(connection) -> None:
-    for statement in ladybug_schema():
-        try:
-            connection.execute(statement)
-        except Exception as exc:
-            if "already" not in str(exc).lower() and "exists" not in str(exc).lower():
-                raise
+from .schema import GRAPH_SCHEMA_VERSION
 
 
 def _version_1_to_2(payload: dict[str, Any]) -> dict[str, Any]:

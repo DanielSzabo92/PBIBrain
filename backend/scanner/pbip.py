@@ -12,7 +12,8 @@ import json
 import re
 import textwrap
 from pathlib import Path
-from typing import Any, Iterable, Mapping
+from typing import Any
+from collections.abc import Iterable, Mapping
 
 
 _OBJECT_RE = re.compile(r"^(\s+)(column|measure|hierarchy|partition)\s+(.+?)\s*$", re.IGNORECASE)

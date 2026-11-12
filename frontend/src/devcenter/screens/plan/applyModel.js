@@ -2,7 +2,6 @@
 // Plain JS with no React import, so that node --test can test it.
 import { t, tn } from "../../copy.js";
 
-export const KINDS = Object.freeze(["apply", "format", "undo"]);
 
 // The JS API method of each flow kind.
 export const FLOW_METHOD = Object.freeze({ apply: "apply", format: "format_only_apply", undo: "undo_apply" });
@@ -90,7 +89,7 @@ export function progressRows(kind, progress, { approvalCount = 0, failedStep = n
 }
 
 // The row number (1 based) and the count of the progress list, for "Step <i> of <n>".
-export function progressCount(rows) {
+function progressCount(rows) {
   const running = rows.findIndex((row) => row.state === "running");
   const done = rows.filter((row) => row.state === "done").length;
   return { i: running >= 0 ? running + 1 : Math.min(done + 1, rows.length), n: rows.length };
@@ -371,7 +370,7 @@ export function failureReason(error) {
 }
 
 // The name of the failed step, for "Failed step: <step>."
-export function failedStepLabel(kind, step) {
+function failedStepLabel(kind, step) {
   if (!step) return t("shared.not_known");
   if (kind === "undo") {
     const row = UNDO_ROWS.find((item) => item.steps.includes(step));
@@ -429,7 +428,7 @@ export function undoState(last) {
 }
 
 // "2026-11-06" for a Date (local time).
-export function isoDate(date = new Date()) {
+function isoDate(date = new Date()) {
   const pad = (value) => String(value).padStart(2, "0");
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 }

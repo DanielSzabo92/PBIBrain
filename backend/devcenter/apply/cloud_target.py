@@ -24,7 +24,8 @@ import json
 from pathlib import Path
 import shutil
 from types import SimpleNamespace
-from typing import Any, Mapping
+from typing import Any
+from collections.abc import Mapping
 
 from backend.devcenter.apply.steps import ApplyFailure
 from backend.devcenter.errors import DevCenterError

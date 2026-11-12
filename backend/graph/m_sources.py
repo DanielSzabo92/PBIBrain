@@ -12,7 +12,8 @@ from __future__ import annotations
 import hashlib
 import re
 from dataclasses import dataclass, field
-from typing import Any, Iterable, Mapping
+from typing import Any
+from collections.abc import Iterable, Mapping
 
 STATUS_READ = "read"
 STATUS_NOT_CHECKED = "not_checked"

@@ -10,7 +10,8 @@ from dataclasses import dataclass, field
 import hashlib
 import json
 import re
-from typing import Any, Iterable, Mapping, Sequence
+from typing import Any
+from collections.abc import Iterable, Mapping, Sequence
 
 from backend.graph.schema import Edge, Node
 
@@ -136,13 +137,6 @@ def _slug(value: Any) -> str:
 def _hash(*parts: Any) -> str:
     marker = "|".join(_json(part) for part in parts)
     return hashlib.sha256(marker.encode("utf-8")).hexdigest()[:32]
-
-
-def _value_for(candidate: Mapping[str, Any]) -> Any:
-    for key in ("value", "meaning", "concept", "role", "behavior", "alias"):
-        if candidate.get(key) is not None:
-            return candidate[key]
-    return None
 
 
 @dataclass(slots=True)

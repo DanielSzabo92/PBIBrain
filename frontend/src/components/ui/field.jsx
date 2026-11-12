@@ -10,7 +10,7 @@ export function useFieldIds(id) {
   return { control: base, label: `${base}-label`, hint: `${base}-hint`, list: `${base}-list` }
 }
 
-export function FieldHint({ id, error, loading, children }) {
+function FieldHint({ id, error, loading, children }) {
   if (!error && !loading && !children) return null
   return (
     <p id={id} className={cn("ui-field-hint", error && "is-error")}>

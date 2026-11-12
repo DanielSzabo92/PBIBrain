@@ -2,7 +2,7 @@
 
 Status: ACCEPTED (baseline for the frontend design and for the build). Date: 2026-10-31.
 
-This document tells how the app does each function of the [functional specification](DEV_CENTER_FUNCTIONAL_SPEC.md). It collects the decisions of the wayfinder map `.scratch/dev-center/map.md` (tickets 01 to 14). Each decision has one home ticket. This document gives the decision; the ticket gives the reasons and the facts that were found first.
+This document tells how the app does each function of the [functional specification](DEV_CENTER_FUNCTIONAL_SPEC.md). It collects the decisions of the wayfinder map (tickets 01 to 14). Each decision has one home ticket. This document gives the decision; the ticket gives the reasons and the facts that were found first. The tickets were retired from the tree (`.scratch/dev-center/issues/`) and remain in git history.
 
 The words in this document have the meanings in [CONTEXT.md](../CONTEXT.md). Use "Merge Choice" for the choice on one row. The word "decision" means the review decisions of the change guard.
 
@@ -95,7 +95,7 @@ A cloud connection has the access type `Read` (default) or `Read/Write`. A `Read
 
 ## 3. Graph coverage
 
-Home ticket: [Which new object types must the graph learn first?](../.scratch/dev-center/issues/06-object-coverage.md).
+Home ticket: *Which new object types must the graph learn first?*.
 
 ### 3.1 New object types in version 1
 
@@ -129,7 +129,7 @@ M text is never parsed, except to find references to shared expressions. A copie
 
 ## 4. Alignment and compare
 
-Home ticket: [What are the match and compare rules?](../.scratch/dev-center/issues/07-compare-rules.md).
+Home ticket: *What are the match and compare rules?*.
 
 ### 4.1 Alignment
 
@@ -182,7 +182,7 @@ Home ticket: [What are the match and compare rules?](../.scratch/dev-center/issu
 
 ## 5. Naming rules
 
-Home ticket: [How does the app find and store naming rules?](../.scratch/dev-center/issues/11-naming-rules.md).
+Home ticket: *How does the app find and store naming rules?*.
 
 - Rule shape: rule ID, scope (object type + optional table or display folder filter), one check kind (prefix, suffix, letter case, separator, unit word, folder by type, regular expression for user rules only), origin (detected or user), status (proposed, confirmed, rejected).
 - In scope: tables, data columns, calculated columns, calculated tables, measures, hierarchies, calculation groups, report measures (they use the measure rules).
@@ -194,7 +194,7 @@ Home ticket: [How does the app find and store naming rules?](../.scratch/dev-cen
 
 ## 6. Change Plan
 
-Home ticket: [How does the Change Plan engine work?](../.scratch/dev-center/issues/09-change-plan.md).
+Home ticket: *How does the Change Plan engine work?*.
 
 ### 6.1 Shape
 
@@ -261,7 +261,7 @@ Bulk operations make the `edit` choices for a scope (row keys, or the compare fi
 
 ## 7. Impact data
 
-Home ticket: [Which impact data does the backend give to the UI?](../.scratch/dev-center/issues/10-impact-data.md).
+Home ticket: *Which impact data does the backend give to the UI?*.
 
 - One record, the Impact item: stable item ID (hash), direction (breaks or needs), cause (plan step or row), impacted object (source, object ID, type, name, model or report), severity, certainty, reason (phrase ID + text), shortest path (+ count of other paths), blocking flag, allowed actions.
 - Severity. Breaks: breaks, changes value, needs review. Needs: will be added, mapped, missing, name clash.
@@ -278,7 +278,7 @@ Home ticket: [Which impact data does the backend give to the UI?](../.scratch/de
 
 ## 8. Change guard for merge
 
-Home ticket: [What must change so that the change guard accepts create, delete, and rename?](../.scratch/dev-center/issues/08-guard-reuse.md).
+Home ticket: *What must change so that the change guard accepts create, delete, and rename?*.
 
 - Reuse for safety checks only: scope check, file coverage check, backups, undo. No Docker isolation, because the app writes and the agent only proposes.
 - Canonical TMDL proof ([ADR 0001](adr/0001-canonical-tmdl-proof.md)): each changed `.tmdl` file must be byte-equal to the TOM serialization of the candidate model. Then the guard compares the full baseline TOM tree with the candidate tree. Each difference must match a plan operation. A difference in any object type, also types that the graph does not model, rejects the apply.
@@ -296,7 +296,7 @@ Code areas: `backend/diff/snapshots.py` (`_raw_coverage`, `compare_objects`), `b
 
 ## 9. TMDL and PBIR write
 
-Home tickets: [How can the app write TMDL safely?](../.scratch/dev-center/issues/01-tmdl-write.md), [Which PBIR versions must the app support?](../.scratch/dev-center/issues/04-pbir-copy.md), [What happens when the app changes files while Power BI Desktop has the project open?](../.scratch/dev-center/issues/05-desktop-open.md).
+Home tickets: *How can the app write TMDL safely?*, *Which PBIR versions must the app support?*, *What happens when the app changes files while Power BI Desktop has the project open?*.
 
 ### 9.1 Model write (bridge)
 
@@ -324,7 +324,7 @@ Home tickets: [How can the app write TMDL safely?](../.scratch/dev-center/issues
 
 ## 10. XMLA and Fabric (cloud)
 
-Home tickets: [How does the app read and write cloud models through XMLA?](../.scratch/dev-center/issues/02-xmla-access.md), [How does the app read and write cloud reports through the Fabric REST API?](../.scratch/dev-center/issues/03-fabric-report-api.md).
+Home tickets: *How does the app read and write cloud models through XMLA?*, *How does the app read and write cloud reports through the Fabric REST API?*.
 
 ### 10.1 Sign-in (version 1)
 
@@ -368,7 +368,7 @@ The original design notes follow.
 
 ## 11. Session storage
 
-Home ticket: [How does the app store a merge session?](../.scratch/dev-center/issues/13-session-storage.md).
+Home ticket: *How does the app store a merge session?*.
 
 - Folder `<project root>/.pbibrain/sessions/<session ID>/`; cloud-only target: `%APPDATA%/PBIBrain/sessions/<session ID>/` (no git).
 - `session.json`: canonical JSON (sorted keys, 2-space indent, LF), atomic save on each state change. Content: `schema_version`, session ID, display name, created and updated time (UTC), `revision`, sources, target, compare mode, alignment overrides, Merge Choices by row key, removal policies, prerequisite and Need mappings, item action results, selected Offers, naming rule file path and hash, agent proposals, agent questions with answers, Source Fingerprints, row hashes.
@@ -384,7 +384,7 @@ Home ticket: [How does the app store a merge session?](../.scratch/dev-center/is
 
 ## 12. Agent MCP tools
 
-Home ticket: [What are the exact agent tools?](../.scratch/dev-center/issues/12-agent-tools.md).
+Home ticket: *What are the exact agent tools?*.
 
 - Eight tools in the existing "PBIBrain" MCP server: `session_get`, `compare_rows_list`, `impact_get`, `naming_rules_get`, `name_propose`, `proposal_submit`, `question_ask`, `plan_validate`. The `brain_*` tools stay.
 - No write path for the agent ([ADR 0003](adr/0003-accepted-state-only-in-process.md)):

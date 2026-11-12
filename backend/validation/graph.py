@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import Any, Mapping, Sequence
+from typing import Any
+from collections.abc import Mapping, Sequence
 
 from backend.graph.schema import EDGE_TYPES, OBJECT_TYPES, STATUS_VALUES, EVIDENCE_CLASSES
 
@@ -232,7 +233,7 @@ def _validate_relationships(
             elif _node_type(by_id[table_id]) != "TABLE":
                 _add(result, "invalid_table_reference", "ERROR", f"Object table_id is not a TABLE: {table_id}", object_id=node_id, table_id=table_id)
             elif model_id and _id(by_id[table_id].get("model_id")) not in {None, model_id}:
-                _add(result, "cross_model_table_reference", "ERROR", f"Object table and model scopes differ", object_id=node_id, table_id=table_id)
+                _add(result, "cross_model_table_reference", "ERROR", "Object table and model scopes differ", object_id=node_id, table_id=table_id)
 
         parent_id = _id(props.get("parent_id", props.get("parentId")))
         if type_name in _REPORT_TYPES and parent_id and parent_id not in by_id:

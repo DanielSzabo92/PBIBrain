@@ -9,9 +9,10 @@ import logging
 import os
 import tempfile
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any
+from collections.abc import Mapping
 
 from backend.graph.loader import FactGraph, build_fact_graph
 from backend.graph.repository import GraphRepository
@@ -294,7 +295,7 @@ class ProjectService:
                         f"Graph publication failed and identity rollback failed: {restore_error}"
                     ) from publish_error
                 raise
-            scanned_at = datetime.now(timezone.utc).isoformat()
+            scanned_at = datetime.now(UTC).isoformat()
             repository.last_scan = scanned_at
             if scanner.last_validation is not None:
                 repository.set_validation_result(scanner.last_validation)
@@ -469,7 +470,7 @@ def _stable_roots(values: list[dict[str, Any]], path: Path, kind: str) -> list[d
     for index, value in enumerate(values):
         item = copy.deepcopy(value)
         if source_id(item) is None:
-            digest = hashlib.sha256(f"{source_marker}|{kind}|{index}".encode("utf-8")).hexdigest()[:24]
+            digest = hashlib.sha256(f"{source_marker}|{kind}|{index}".encode()).hexdigest()[:24]
             item["id"] = f"project-{digest}"
         stable.append(item)
     return stable

@@ -19,7 +19,8 @@ from pathlib import Path
 import sys
 import threading
 import time
-from typing import Any, Mapping, Protocol, Sequence
+from typing import Any, Protocol
+from collections.abc import Mapping, Sequence
 
 from backend.devcenter.errors import DevCenterError, not_allowed
 

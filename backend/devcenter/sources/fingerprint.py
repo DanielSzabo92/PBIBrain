@@ -40,6 +40,3 @@ def source_files(source: LocalSource) -> list[dict[str, object]]:
 def source_fingerprint(source: LocalSource) -> str:
     return content_hash(source_files(source))
 
-
-def is_present(source_root: Path) -> bool:
-    return source_root.exists()

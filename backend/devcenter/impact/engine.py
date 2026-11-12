@@ -15,11 +15,11 @@ Implements dual-direction graph traversal:
 from __future__ import annotations
 
 from collections import defaultdict, deque
-import copy
 import hashlib
 import json
 from pathlib import Path
-from typing import Any, Mapping, Sequence
+from typing import Any
+from collections.abc import Mapping, Sequence
 
 from backend.devcenter.alignment.keys import fold
 from backend.devcenter.compare.extract import CompareObject
@@ -398,9 +398,7 @@ class ImpactEngine:
             # Determine severity
             if not is_certain:
                 severity = "needs_review"
-            elif ch_type == "deleted":
-                severity = "breaks"
-            elif ch_type == "renamed":
+            elif ch_type == "deleted" or ch_type == "renamed":
                 severity = "breaks"
             else:
                 severity = "changes_value"
@@ -552,9 +550,7 @@ class ImpactEngine:
                     aligned_target_key = self.alignment_index.get(source_id, {}).get(ref_key)
                     is_satisfied = False
 
-                    if aligned_target_key and aligned_target_key in target_keys:
-                        is_satisfied = True
-                    elif ref_key in target_keys:
+                    if aligned_target_key and aligned_target_key in target_keys or ref_key in target_keys:
                         is_satisfied = True
 
                     if not is_satisfied:

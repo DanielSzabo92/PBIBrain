@@ -115,7 +115,7 @@ class DirectPBIPIngestionContractTests(unittest.TestCase):
         self.assertGreaterEqual(len(nodes), 8, graph.to_dict())
         model = _node_by_source(nodes, "MODEL", MODEL_LINEAGE)
         sales = _node_by_source(nodes, "TABLE", SALES_LINEAGE)
-        date = _node_by_name(nodes, "TABLE", TABLE_DATE)
+        _node_by_name(nodes, "TABLE", TABLE_DATE)
         measure = _node_by_source(nodes, "MEASURE", NET_LINEAGE)
         report = _node_by_name(nodes, "REPORT", "Finance Report")
         page = _node_by_name(nodes, "PAGE", PAGE_OVERVIEW)

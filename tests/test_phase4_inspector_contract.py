@@ -13,7 +13,6 @@ import shutil
 import subprocess
 import tempfile
 import unittest
-from typing import Any
 from unittest.mock import patch
 from urllib.parse import quote
 

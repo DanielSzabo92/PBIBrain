@@ -22,7 +22,8 @@ import os
 from pathlib import Path
 import re
 import shutil
-from typing import Any, Mapping
+from typing import Any
+from collections.abc import Mapping
 import uuid
 
 CLOUD_MODEL = "cloud_model"

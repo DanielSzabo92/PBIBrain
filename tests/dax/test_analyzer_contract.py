@@ -20,7 +20,6 @@ from tests.dax._helpers import (
     item_mapping,
     item_target,
     item_type,
-    mapping,
     result_mapping,
 )
 from tests.fixtures.dax_golden import CANONICAL_SYMBOLS, GOLDEN_BY_NAME, GOLDEN_DAX, MODEL_ID

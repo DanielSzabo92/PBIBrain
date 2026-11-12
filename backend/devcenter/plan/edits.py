@@ -24,7 +24,8 @@ from __future__ import annotations
 
 import copy
 import re
-from typing import Any, Mapping, Sequence
+from typing import Any
+from collections.abc import Mapping, Sequence
 
 from backend.devcenter.compare import service as compare_service
 from backend.devcenter.compare.extract import MODEL

@@ -7,7 +7,7 @@ import { SegmentedControl } from "@/components/ui/segmented-control";
 import { t } from "../copy.js";
 
 // Basic line-by-line diff.
-export function computeDiff(leftText = "", rightText = "") {
+function computeDiff(leftText = "", rightText = "") {
   const leftLines = String(leftText || "").split("\n");
   const rightLines = String(rightText || "").split("\n");
   const max = Math.max(leftLines.length, rightLines.length);

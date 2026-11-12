@@ -12,17 +12,15 @@ import re
 import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Iterable, Mapping, Sequence
+from typing import Any
+from collections.abc import Iterable, Mapping, Sequence
 
 from backend.graph.schema import Node
 
 from .metadata_reader import collection, description, display_name, expression, pick, source_id
 from .model_reader import ModelReader
 from .report_reader import ReportReader
-
-
-def _norm(value: Any) -> str:
-    return "".join(char for char in str(value).casefold() if char.isalnum())
+from backend.text_keys import alnum_key as _norm
 
 
 def _present(value: Any) -> bool:

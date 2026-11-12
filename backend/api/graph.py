@@ -5,7 +5,8 @@ from __future__ import annotations
 import hashlib
 import json
 from collections import deque
-from typing import Any, Sequence
+from typing import Any
+from collections.abc import Sequence
 
 from backend.graph.repository import GraphRepository
 from backend.graph.artifacts import artifact_group

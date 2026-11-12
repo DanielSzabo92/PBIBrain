@@ -7,7 +7,8 @@ and the found state (UC7).
 
 from __future__ import annotations
 
-from typing import Any, Mapping, Sequence
+from typing import Any
+from collections.abc import Mapping, Sequence
 
 PRESENT = "present"
 ABSENT = "absent"

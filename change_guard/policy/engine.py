@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Mapping
-from backend.snapshots.manifest import canonical_json, content_hash
+from typing import Any
+from collections.abc import Mapping
+from backend.snapshots.manifest import content_hash
 from change_guard.contracts import ChangeContract
 
 

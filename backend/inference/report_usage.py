@@ -9,10 +9,11 @@ from __future__ import annotations
 
 from collections import defaultdict
 import hashlib
-import json
-from typing import Any, Iterable, Mapping
+from typing import Any
+from collections.abc import Iterable, Mapping
 
 from backend.graph.schema import Edge, Node, edge_from_dict, node_from_dict
+from backend.text_keys import alnum_key as _norm
 
 
 _MODEL_OBJECT_TYPES = frozenset(
@@ -27,10 +28,6 @@ _MODEL_OBJECT_TYPES = frozenset(
         "CALCULATION_ITEM",
     }
 )
-
-
-def _norm(value: Any) -> str:
-    return "".join(char for char in str(value).casefold() if char.isalnum())
 
 
 def _get(value: Any, *keys: str, default: Any = None) -> Any:

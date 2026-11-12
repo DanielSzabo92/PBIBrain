@@ -21,7 +21,6 @@ import unittest
 
 from backend.adapters.tabular_metadata import (
     CanonicalCheckFailed,
-    MetadataUnavailable,
     ModelWriteFailed,
     TabularMetadataAdapter,
     TreeCompareFailed,

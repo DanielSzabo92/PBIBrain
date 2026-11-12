@@ -9,7 +9,7 @@ import { Button } from "./button"
 // Previous and Next stay in place at the first and the last row (aria-disabled), so that focus
 // stays on the same button (UI design 9.2). When it opens, focus goes to the h2. Close or Escape returns focus to the opener,
 // else to returnFocusRef.
-export const SIDE_PANE_WIDE = "(min-width: 1280px)"
+const SIDE_PANE_WIDE = "(min-width: 1280px)"
 
 function useWide() {
   const query = React.useMemo(() => (typeof window !== "undefined" && window.matchMedia ? window.matchMedia(SIDE_PANE_WIDE) : null), [])

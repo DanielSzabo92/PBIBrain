@@ -4,7 +4,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 import subprocess
-from typing import Any, Mapping, Sequence
+from typing import Any
+from collections.abc import Mapping, Sequence
 
 
 class MetadataUnavailable(RuntimeError):

@@ -17,7 +17,8 @@ import copy
 import os
 from pathlib import Path
 import shutil
-from typing import Any, Mapping
+from typing import Any
+from collections.abc import Mapping
 import uuid
 
 from backend.adapters.tabular_metadata import ConvertFailed, TabularMetadataAdapter

@@ -10,7 +10,8 @@ Cascade removes a visual only when no projection field stays.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Iterator, Mapping
+from typing import Any
+from collections.abc import Iterator, Mapping
 
 from backend.devcenter.compare.extract import CompareObject
 

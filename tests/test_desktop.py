@@ -124,7 +124,7 @@ class DesktopTests(unittest.TestCase):
         server = DesktopServer(self.controller)
         server.start()
         try:
-            first = self.controller.open_project("Project", str(self.root))
+            self.controller.open_project("Project", str(self.root))
             marker_path = self.root / ".pbibrain" / "connection.json"
             first_session = json.loads(marker_path.read_text(encoding="utf-8"))["connection_id"]
             self.assertTrue(self.controller.close_project()["ok"])

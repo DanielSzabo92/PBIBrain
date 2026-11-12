@@ -7,7 +7,8 @@ affected only by possible/inferred links.
 
 from __future__ import annotations
 
-from typing import Any, Mapping, Sequence
+from typing import Any
+from collections.abc import Mapping, Sequence
 
 
 def build_completeness(

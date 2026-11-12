@@ -9,7 +9,7 @@ import { OriginBadge } from "./OriginBadge";
 import { buildImpactMatrix } from "../matrix";
 import { LANES, laneOf } from "../lineage";
 import { groupVersions, versionNote } from "../versions";
-import { objectName } from "../presentation";
+import { formatPlural as plural, objectName } from "../presentation";
 import { typeLabel } from "../graphPresentation";
 
 // Large projects open with tables and pages folded, so the first view is a readable summary.
@@ -17,7 +17,6 @@ const FOLD_TABLES_ABOVE = 160;
 const FOLD_PAGES_ABOVE = 48;
 
 const toggle = (set, id) => { const next = new Set(set); if (next.has(id)) next.delete(id); else next.add(id); return next; };
-const plural = (count, one, many = `${one}s`) => `${count} ${count === 1 ? one : many}`;
 
 const laneKey = (node) => LANES[laneOf(node)].key;
 

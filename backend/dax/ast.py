@@ -7,7 +7,8 @@ objects so later analyzers can inspect one deterministic tree.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Iterator, Mapping
+from typing import Any
+from collections.abc import Iterator
 
 
 @dataclass(frozen=True, slots=True)
@@ -355,25 +356,6 @@ class ErrorNode(AstNode):
         return result
 
 
-# Short aliases make the AST pleasant to consume without hiding the canonical
-# names used by the parser documentation.
+# Public aliases exported by backend.dax.
 DaxNode = AstNode
 DaxExpression = AstNode
-Literal = LiteralNode
-Identifier = IdentifierNode
-Reference = ReferenceNode
-FunctionCall = FunctionCallNode
-BinaryOperator = BinaryOpNode
-UnaryOperator = UnaryOpNode
-Parenthesized = ParenthesizedNode
-VarDeclaration = VarDeclarationNode
-Return = ReturnNode
-VarBlock = VarBlockNode
-TableConstructor = TableConstructorNode
-Error = ErrorNode
-
-
-def node_to_dict(node: AstNode | Mapping[str, Any]) -> dict[str, Any]:
-    if isinstance(node, AstNode):
-        return node.to_dict()
-    return dict(node)

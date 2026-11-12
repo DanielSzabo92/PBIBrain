@@ -2,8 +2,9 @@ from __future__ import annotations
 
 from collections import Counter
 from datetime import date, datetime
-from decimal import Decimal, InvalidOperation
-from typing import Any, Mapping
+from decimal import Decimal
+from typing import Any
+from collections.abc import Mapping
 
 from backend.snapshots.manifest import canonical_json, content_hash
 

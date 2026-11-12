@@ -31,12 +31,14 @@ from __future__ import annotations
 
 import copy
 from dataclasses import dataclass
-from typing import Any, Callable, Mapping, Sequence
+from typing import Any
+from collections.abc import Callable, Mapping, Sequence
 import uuid
 
 from backend.devcenter import contracts
 from backend.devcenter.errors import DevCenterError, not_allowed
 from backend.devcenter.session.store import utc_now
+from backend.devcenter.common import query_value as _one
 
 CONFIDENCE_THRESHOLD = 0.9
 
@@ -736,11 +738,6 @@ def _drop_impact_cache(devcenter: Any) -> None:
 
 
 # Log read (UC8) ------------------------------------------------------------------
-
-
-def _one(query: Mapping[str, Sequence[str]], name: str) -> str | None:
-    values = list(query.get(name) or [])
-    return str(values[-1]) if values else None
 
 
 def _number(query: Mapping[str, Sequence[str]], name: str, default: int, maximum: int | None = None) -> int:
