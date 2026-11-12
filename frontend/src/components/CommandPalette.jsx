@@ -25,7 +25,7 @@ import {
 } from "lucide-react";
 import { Dialog, DialogContent } from "./ui/dialog";
 import { displayKeys, shortcutKeys } from "../shortcuts";
-import { artifactColor } from "../graphPresentation";
+import { artifactColor, typeLabel } from "../graphPresentation";
 import { objectName } from "../presentation";
 import { TypeGlyph } from "./TypeGlyph";
 
@@ -134,6 +134,15 @@ export default function CommandPalette({
     ? allCommands.filter((cmd) => cmd.label.toLowerCase().includes(trimmed) || cmd.group.toLowerCase().includes(trimmed))
     : allCommands;
 
+  // The scope is a readable path (model or report, then the owner), never a raw graph ID.
+  const roots = [...(overview?.model_objects || []), ...(overview?.report_objects || [])];
+  const scopeLabel = (obj) => {
+    const root = roots.find((item) => item.id === (obj.report_id || obj.model_id))?.name;
+    const owner = obj.table_name || obj.page_name || obj.properties?.table_name || obj.properties?.page_name;
+    const path = [root, owner].filter((part) => part && part !== labelFor(obj)).join(" › ");
+    return path || typeLabel(obj.type);
+  };
+
   // Flatten items for keyboard navigation index
   const items = [];
 
@@ -146,7 +155,7 @@ export default function CommandPalette({
         type: "object",
         group: "Matching objects",
         label: labelFor(obj),
-        detail: obj.model_id || obj.report_id || obj.type,
+        detail: scopeLabel(obj),
         object: obj,
         action: () => onSelectObject?.(obj.id),
       });
@@ -175,7 +184,7 @@ export default function CommandPalette({
         type: "recent",
         group: "Recent objects",
         label: obj.name || obj.id,
-        detail: obj.type || "Object",
+        detail: scopeLabel(obj),
         object: obj,
         action: () => onSelectObject?.(obj.id),
       });

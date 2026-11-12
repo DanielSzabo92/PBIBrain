@@ -6,6 +6,7 @@ import { Sheet, SheetTrigger, SheetContent, SheetHeader, SheetTitle, SheetDescri
 import { Button } from "./ui/button";
 import { TypeGlyph } from "./TypeGlyph";
 import { typeLabel } from "../graphPresentation";
+import { byId } from "../presentation";
 import { highlightDax } from "../dax";
 import { objectName, readableText } from "../presentation";
 
@@ -31,7 +32,7 @@ export default function ObjectContextPreview({
   const incoming = edges.filter((e) => e.to_id === node.id);
   const outgoing = edges.filter((e) => e.from_id === node.id);
 
-  const resolveNode = (id) => nodes.find((n) => n.id === id);
+  const resolveNode = (id) => byId(nodes, id);
 
   const incomingNames = incoming
     .map((e) => resolveNode(e.from_id))

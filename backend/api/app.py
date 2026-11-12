@@ -48,6 +48,12 @@ def _last_scan(repository: GraphRepository) -> Any:
         value = getattr(repository, name, None)
         if value:
             return value
+    # After a restart the time of the scan is the time the stored graph was last written.
+    path = getattr(repository, "path", None)
+    if path is not None and Path(path).is_file():
+        from datetime import datetime, timezone
+
+        return datetime.fromtimestamp(Path(path).stat().st_mtime, tz=timezone.utc).isoformat(timespec="seconds")
     return None
 
 
@@ -89,6 +95,29 @@ def get_overview(repository: GraphRepository, *, store: OverrideStore | None = N
     warning_count = sum(1 for node in nodes if node.type == "CONFLICT") + sum(
         1 for edge in edges if edge.type == "CONFLICTS_WITH"
     )
+    # The Overview widgets. The server holds the whole graph, so the screen never has to guess from a partial load.
+    inbound: Counter[str] = Counter()
+    degree: Counter[str] = Counter()
+    for edge in edges:
+        degree[edge.from_id] += 1
+        degree[edge.to_id] += 1
+        if edge.type != "CONTAINS" and edge.evidence_class not in {"INFERRED", "OBSERVED"}:
+            inbound[edge.to_id] += 1
+    measures = [node for node in nodes if node.type in {"MEASURE", "CALCULATION_ITEM"}]
+    top_measures = [
+        {**_root_summary(node), "type": node.type, "count": inbound[node.id]}
+        for node in sorted(measures, key=lambda node: (-inbound[node.id], node.name or "", node.id))[:5]
+    ]
+    names = {node.id: node for node in nodes}
+    hot: list[dict[str, Any]] = []
+    for item in sorted(review_items, key=lambda item: -degree[str(item.get("object_id") or item.get("target_id") or "")])[:5]:
+        target_id = str(item.get("object_id") or item.get("target_id") or "")
+        target = names.get(target_id)
+        hot.append({
+            "id": item.get("id"), "target_id": target_id, "name": target.name if target else target_id,
+            "type": target.type if target else "OBJECT", "kind": item.get("issue_type", "candidate"),
+            "label": item.get("value") or item.get("meaning"), "degree": degree[target_id],
+        })
     validation = getattr(repository, "validation_result", None)
     validation_state = getattr(repository, "validation_state", None)
     if validation_state is None:
@@ -117,6 +146,9 @@ def get_overview(repository: GraphRepository, *, store: OverrideStore | None = N
         "approved_count": sum(edge.status == "approved" for edge in edges),
         "warning_count": warning_count,
         "review_count": len(review_items),
+        "measure_count": len(measures),
+        "top_measures": top_measures,
+        "hot_unreviewed": hot,
         "review_counts": review_counts,
         "validation_state": str(validation_state),
         "validation_issues": validation_payload.get("issues", []),
@@ -244,6 +276,59 @@ def _snapshot(repository: GraphRepository, store: OverrideStore | None = None) -
     }
 
 
+# Node fields the review screens read. The rest (parse trees, raw source, DAX evidence) stays on the server.
+_REVIEW_NODE_FIELDS = ("id", "name", "type", "model_id", "report_id", "status", "description", "expression", "evidence_class",
+                       "table_id", "table_name", "page_id", "page_name", "data_type", "visual_type", "display_name", "title")
+_REVIEW_EDGE_FIELDS = ("id", "type", "from_id", "to_id", "status", "evidence_class", "confidence", "source")
+# Fields of the nested record that the screens read when the top level of a review item lacks them.
+_REVIEW_ITEM_FIELDS = ("candidate_id", "property", "value", "meaning", "assertion_type", "target", "target_id", "source", "confidence")
+
+
+def _slim(record: Mapping[str, Any], fields: Sequence[str]) -> dict[str, Any]:
+    properties = record.get("properties") if isinstance(record.get("properties"), Mapping) else {}
+    slim = {key: record[key] for key in fields if record.get(key) is not None}
+    small = {key: value for key, value in properties.items() if isinstance(value, (str, int, float, bool)) and len(str(value)) <= 240}
+    if small:
+        slim["properties"] = small
+    return slim
+
+
+def _review_snapshot(repository: GraphRepository, store: OverrideStore | None = None) -> dict[str, Any]:
+    """The snapshot for the review screens: the same shape as the full one, without the heavy parts.
+
+    The full snapshot of a 14,000-object project is 163 MB (parse trees, raw source, each piece of
+    evidence three times). The screens need names, scopes, formulas and the suggestions themselves.
+    """
+
+    full = _snapshot(repository, store)
+    items: list[dict[str, Any]] = []
+    for item in full["review_items"]:
+        slim = {key: value for key, value in item.items() if key != "item"}
+        nested = item.get("item") if isinstance(item.get("item"), Mapping) else None
+        if nested is not None:
+            if item.get("issue_type") in {"stale", "conflict"}:
+                slim["item"] = nested  # a saved decision is sent back whole when it is removed
+            else:
+                kept = {key: nested[key] for key in _REVIEW_ITEM_FIELDS if nested.get(key) is not None}
+                properties = nested.get("properties") if isinstance(nested.get("properties"), Mapping) else {}
+                if properties:
+                    kept["properties"] = {key: value for key, value in properties.items() if not isinstance(value, (list, dict))}
+                slim["item"] = kept
+        items.append(slim)
+    return {
+        **full,
+        "nodes": [_slim(node, _REVIEW_NODE_FIELDS) for node in full["nodes"]],
+        # Suggested and observed links only; structure and dependencies come from the object and graph requests.
+        "edges": [_slim(edge, _REVIEW_EDGE_FIELDS) for edge in full["edges"] if edge.get("evidence_class") in {"INFERRED", "OBSERVED"} or edge.get("type") == "CONFLICTS_WITH"],
+        "semantic_candidates": [{key: value for key, value in item.items() if key != "evidence"} for item in full["semantic_candidates"]],
+        "observations": [],
+        "review_items": items,
+        "review_queue": [],
+        "stale_overrides": [item for item in items if item.get("issue_type") == "stale"],
+        "view": "review",
+    }
+
+
 class BrainAPI:
     """In-process API facade shared by the UI transport and tests."""
 
@@ -263,7 +348,9 @@ class BrainAPI:
     def get_overview(self) -> dict[str, Any]:
         return get_overview(self.repository, store=self.overrides)
 
-    def get_snapshot(self) -> dict[str, Any]:
+    def get_snapshot(self, view: str | None = None) -> dict[str, Any]:
+        if view == "review":
+            return _review_snapshot(self.repository, self.overrides)
         return _snapshot(self.repository, self.overrides)
 
     def search_objects(
@@ -467,6 +554,9 @@ class BrainApp:
         self.request_lock = threading.RLock()
         self._chat: Any = None
         self._devcenter: Any = None
+        # Answers to read-only graph requests, kept until the graph or the decisions change.
+        self._answers: dict[str, tuple[tuple[Any, ...], int, bytes]] = {}
+        self._answers_lock = threading.Lock()
 
     @property
     def chat(self) -> Any:
@@ -511,6 +601,67 @@ class BrainApp:
     @devcenter.setter
     def devcenter(self, value: Any) -> None:
         self._devcenter = value
+
+    # Read-only routes whose answer depends only on the graph and the stored decisions.
+    _CACHED_ROUTES = ("/api/overview", "/api/review", "/api/brain", "/api/lineage", "/api/commonality", "/api/graph", "/api/objects", "/api/object/", "/api/search")
+    _CACHE_ENTRIES = 64
+    _CACHE_ENTRY_BYTES = 48 * 1024 * 1024
+
+    def _graph_stamp(self) -> tuple[Any, ...]:
+        """Identify the state that cached answers were built from.
+
+        The file times cover a writer in another process, for example a command-line scan.
+        """
+
+        repository = self.api.repository
+        times: list[int] = []
+        path = getattr(repository, "path", None)
+        if path is not None:
+            for candidate in (path, Path(str(path) + "-wal")):
+                try:
+                    times.append(candidate.stat().st_mtime_ns)
+                except OSError:
+                    times.append(0)
+        return (id(repository), getattr(repository, "revision", 0), getattr(self.api.overrides, "revision", 0), *times)
+
+    def _reading(self) -> Any:
+        """One shared read of the store for a read-only request; a no-op for a repository without it."""
+
+        from contextlib import nullcontext
+
+        reading = getattr(self.api.repository, "reading", None)
+        return reading() if callable(reading) else nullcontext()
+
+    def _cached_answer(self, key: str, stamp: tuple[Any, ...]) -> tuple[int, bytes] | None:
+        with self._answers_lock:
+            found = self._answers.get(key)
+            if found is None or found[0] != stamp:
+                return None
+            self._answers[key] = self._answers.pop(key)  # most recently used last
+            return found[1], found[2]
+
+    def _store_answer(self, key: str, stamp: tuple[Any, ...], status: int, raw: bytes) -> None:
+        if status != 200 or len(raw) > self._CACHE_ENTRY_BYTES:
+            return
+        with self._answers_lock:
+            self._answers.pop(key, None)
+            for stale in [name for name, value in self._answers.items() if value[0] != stamp]:
+                del self._answers[stale]
+            while len(self._answers) >= self._CACHE_ENTRIES:
+                del self._answers[next(iter(self._answers))]
+            self._answers[key] = (stamp, status, raw)
+
+    def prime(self) -> None:
+        """Build the Overview answer ahead of the first request, so the first screen does not wait for it."""
+
+        try:
+            with self.request_lock:
+                stamp = self._graph_stamp()
+                with self._reading():
+                    status, payload = self.handle("GET", "/api/overview")
+                self._store_answer("/api/overview?", stamp, status, json.dumps(payload, ensure_ascii=False, sort_keys=True).encode("utf-8"))
+        except Exception:  # a failed warm-up must never stop the server
+            pass
 
     @staticmethod
     def _json_body(body: bytes | str | Mapping[str, Any] | None) -> dict[str, Any]:
@@ -629,7 +780,8 @@ class BrainApp:
                 data = result.pop("data")
                 return 200, {**result, "bytes": len(data), "content_base64": base64.b64encode(data).decode("ascii")}
             if method == "GET" and parts == ["brain"]:
-                return 200, self.api.get_snapshot()
+                view = self._query_values(query, "view")
+                return 200, self.api.get_snapshot(str(view) if view else None)
             if method == "GET" and parts == ["objects"]:
                 object_type = self._query_values(query, "object_type") or self._query_values(query, "type")
                 return 200, self.api.search_objects(
@@ -762,6 +914,7 @@ class BrainApp:
         origin = str(environ.get("HTTP_ORIGIN") or "")
         local_hosts = {"127.0.0.1", "localhost", "::1"}
         status, payload = 200, None
+        raw: bytes | None = None
         try:
             parsed_host = urlsplit(f"http://{host}")
             if parsed_host.hostname not in local_hosts or parsed_host.username or parsed_host.path:
@@ -790,14 +943,30 @@ class BrainApp:
                         mime = mimetypes.guess_type(asset.name)[0] or "application/octet-stream"
                         start_response("200 OK", [("Content-Type", mime), ("Content-Length", str(len(raw))), ("X-Content-Type-Options", "nosniff")])
                         return [raw]
-                with self.request_lock:
-                    status, payload = self.handle(method, f"{path}?{query}" if query else path, body)
+                target = f"{path}?{query}" if query else path
+                key = f"{path}?{query}" if method == "GET" and path.startswith(self._CACHED_ROUTES) else None
+                # A cached answer needs no lock: a slow request must not hold up the rest of the UI.
+                cached = self._cached_answer(key, self._graph_stamp()) if key else None
+                if cached is not None:
+                    status, raw = cached
+                else:
+                    with self.request_lock:
+                        stamp = self._graph_stamp()
+                        if key:
+                            with self._reading():
+                                status, payload = self.handle(method, target, body)
+                        else:
+                            status, payload = self.handle(method, target, body)
+                        if key and status == 200:
+                            raw = json.dumps(payload, ensure_ascii=False, sort_keys=True).encode("utf-8")
+                            self._store_answer(key, stamp, status, raw)
         except PermissionError as exc:
             status, payload = 403, {"error": str(exc)}
         except (ValueError, OSError) as exc:
             status, payload = 400, {"error": str(exc)}
         status_text = {200: "OK", 204: "No Content", 400: "Bad Request", 403: "Forbidden", 404: "Not Found", 405: "Method Not Allowed", 413: "Payload Too Large", 415: "Unsupported Media Type", 503: "Service Unavailable"}.get(status, "Error")
-        raw = b"" if payload is None else json.dumps(payload, ensure_ascii=False, sort_keys=True).encode("utf-8")
+        if raw is None or status != 200:
+            raw = b"" if payload is None else json.dumps(payload, ensure_ascii=False, sort_keys=True).encode("utf-8")
         headers = [("Content-Type", "application/json"), ("Content-Length", str(len(raw))), ("Cache-Control", "no-store"), ("X-Content-Type-Options", "nosniff")]
         if origin and status != 403:
             headers.extend([("Access-Control-Allow-Origin", origin), ("Vary", "Origin")])
@@ -839,7 +1008,13 @@ def serve(
 ) -> None:
     """Serve the local API directly with the Python standard library."""
 
-    from wsgiref.simple_server import make_server
+    from socketserver import ThreadingMixIn
+    from wsgiref.simple_server import WSGIServer, make_server
+
+    class ThreadingServer(ThreadingMixIn, WSGIServer):
+        """One thread per request: files and cached answers no longer wait behind a slow request."""
+
+        daemon_threads = True
 
     if host not in {"127.0.0.1", "localhost"}:
         raise ValueError("PBIBrain is local-only; use 127.0.0.1 or localhost")
@@ -867,7 +1042,8 @@ def serve(
     print(" Press Ctrl+C to stop.", flush=True)
     print("=======================================================\n", flush=True)
     try:
-        with make_server(host, int(port), application) as server:
+        threading.Thread(target=application.prime, name="pbibrain-prime", daemon=True).start()
+        with make_server(host, int(port), application, server_class=ThreadingServer) as server:
             server.serve_forever()
     except KeyboardInterrupt:
         pass
