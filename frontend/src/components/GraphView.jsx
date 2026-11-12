@@ -87,6 +87,8 @@ export function createGraphSession(selectedId = "") {
     // Lineage lanes switched off with the lane chips (shared by Lineage and Matrix).
     hiddenLanes: [],
     groupVersions: true,
+    // Selecting an object hides what is not related to it. null: automatic, on for large pictures (issue #53).
+    relatedOnly: null,
     viewports: {},
     placements: {},
     showLabels: false,
@@ -123,6 +125,7 @@ function normalizeGraphSession(value, selectedId) {
     hiddenTypes: Array.isArray(incoming.hiddenTypes) ? incoming.hiddenTypes.filter((type) => typeof type === "string") : [],
     hiddenLanes: Array.isArray(incoming.hiddenLanes) ? incoming.hiddenLanes.filter((lane) => typeof lane === "string") : [],
     groupVersions: typeof incoming.groupVersions === "boolean" ? incoming.groupVersions : defaults.groupVersions,
+    relatedOnly: typeof incoming.relatedOnly === "boolean" ? incoming.relatedOnly : null,
     viewports: incoming.viewports && typeof incoming.viewports === "object" ? incoming.viewports : {},
     placements: incoming.placements && typeof incoming.placements === "object" ? incoming.placements : {},
     showLabels: typeof incoming.showLabels === "boolean" ? incoming.showLabels : defaults.showLabels,
@@ -220,20 +223,21 @@ function TypesPopover({ nodes, hiddenTypes, colors, onChange }) {
   </Popover>;
 }
 
-function DisplayPopoverContent({ direction, showLabels, includeSuggestions, grouped, canGroup, versions, canVersion, onChange }) {
+function DisplayPopoverContent({ direction, showLabels, includeSuggestions, grouped, canGroup, versions, canVersion, relatedOnly, onChange }) {
   return <div className="graph-popover-stack">
     <SelectField label="Layout" value={direction} onChange={(value) => onChange({ direction: value })}><option value="LR">Left to right</option><option value="TB">Top to bottom</option></SelectField>
     <Label className="graph-label-control"><Checkbox checked={showLabels} onCheckedChange={(checked) => onChange({ showLabels: checked === true })} />Relationship labels</Label>
     <Label className="graph-label-control"><Checkbox checked={includeSuggestions} onCheckedChange={(checked) => onChange({ includeSuggestions: checked === true })} />Include suggestions</Label>
     {canGroup ? <Label className="graph-label-control"><Checkbox checked={grouped} onCheckedChange={(checked) => onChange({ grouped: checked === true })} />Group by ownership</Label> : null}
     {canVersion ? <Label className="graph-label-control" title="Show an object once when it is in several versions of a model or report (same table and name, same page and visual IDs)"><Checkbox checked={versions} onCheckedChange={(checked) => onChange({ groupVersions: checked === true })} />Group versions</Label> : null}
+    <Label className="graph-label-control" title="When an object is selected, hide the objects it is not connected to instead of dimming them"><Checkbox checked={relatedOnly} onCheckedChange={(checked) => onChange({ relatedOnly: checked === true })} />Show only related on select</Label>
   </div>;
 }
 
-function DisplayPopover({ direction, showLabels, includeSuggestions, grouped, canGroup, versions, canVersion, onChange }) {
+function DisplayPopover({ direction, showLabels, includeSuggestions, grouped, canGroup, versions, canVersion, relatedOnly, onChange }) {
   return <Popover label="Display options" className="graph-popover graph-display-popover"
     trigger={<ToolbarTrigger icon={SlidersHorizontal} label="Display" title="Layout direction and labels" />}>
-    <DisplayPopoverContent direction={direction} showLabels={showLabels} includeSuggestions={includeSuggestions} grouped={grouped} canGroup={canGroup} versions={versions} canVersion={canVersion} onChange={onChange} />
+    <DisplayPopoverContent direction={direction} showLabels={showLabels} includeSuggestions={includeSuggestions} grouped={grouped} canGroup={canGroup} versions={versions} canVersion={canVersion} relatedOnly={relatedOnly} onChange={onChange} />
   </Popover>;
 }
 
@@ -260,7 +264,7 @@ function FiltersPopover({ filters, depth, centerId, overview, edgeTypes, activeC
 
 function ViewPopover({
   nodes, hiddenTypes, colors, onTypesChange,
-  direction, showLabels, includeSuggestions, grouped, canGroup, versions, canVersion, onDisplayChange,
+  direction, showLabels, includeSuggestions, grouped, canGroup, versions, canVersion, relatedOnly, onDisplayChange,
   filters, depth, centerId, overview, edgeTypes, activeCount, hasFilters, onFilters, onScope, onDepth, onResetFilters
 }) {
   const hiddenCount = hiddenTypes.length;
@@ -275,7 +279,7 @@ function ViewPopover({
         <TabsTrigger value="types" count={hiddenCount ? `${nodes.length - hiddenCount}/${nodes.length}` : undefined}>Types</TabsTrigger>
       </TabsList>
       <TabsContent value="display">
-        <DisplayPopoverContent direction={direction} showLabels={showLabels} includeSuggestions={includeSuggestions} grouped={grouped} canGroup={canGroup} versions={versions} canVersion={canVersion} onChange={onDisplayChange} />
+        <DisplayPopoverContent direction={direction} showLabels={showLabels} includeSuggestions={includeSuggestions} grouped={grouped} canGroup={canGroup} versions={versions} canVersion={canVersion} relatedOnly={relatedOnly} onChange={onDisplayChange} />
       </TabsContent>
       <TabsContent value="filters">
         <FiltersPopoverContent filters={filters} depth={depth} centerId={centerId} overview={overview} edgeTypes={edgeTypes} hasFilters={hasFilters} onFilters={onFilters} onScope={onScope} onDepth={onDepth} onReset={onResetFilters} />
@@ -426,9 +430,15 @@ export default function GraphView({ transport, overview, snapshot, selectedId, c
   const explorer = useMemo(() => buildExplorerGraph(shownNodes, shownEdges, expandedIds), [shownNodes, shownEdges, expandedIds]);
   const canvasNodes = overviewMode ? explorer.nodes : shownNodes;
   const focusedId = focusedNode?.id;
-  const canvasEdges = useMemo(() => overviewMode
-    ? explorer.edges.filter((edge) => filters.edgeType || edge.type === "CONTAINS" || DEPENDENCY_EDGES.has(edge.type) || edge.from_id === focusedId || edge.to_id === focusedId)
-    : shownEdges, [overviewMode, explorer, filters.edgeType, focusedId, shownEdges]);
+  // Overview lays out its structural links only; the links a selection adds are drawn, not laid out,
+  // so selecting an object never runs the layout again (issue #53).
+  const layoutEdges = useMemo(() => overviewMode
+    ? explorer.edges.filter((edge) => filters.edgeType || edge.type === "CONTAINS" || DEPENDENCY_EDGES.has(edge.type))
+    : shownEdges, [overviewMode, explorer, filters.edgeType, shownEdges]);
+  const canvasEdges = useMemo(() => overviewMode && focusedId && !filters.edgeType
+    ? [...layoutEdges, ...explorer.edges.filter((edge) => edge.type !== "CONTAINS" && !DEPENDENCY_EDGES.has(edge.type) && (edge.from_id === focusedId || edge.to_id === focusedId))]
+    : layoutEdges, [overviewMode, focusedId, filters.edgeType, layoutEdges, explorer]);
+  const relatedOnly = graphSession.relatedOnly ?? canvasNodes.length > VIEWPORT_ONLY_ABOVE;
   // Lineage searches and lane choices are applied here, not by the request: they re-fit the canvas too.
   const canvasKey = JSON.stringify([graphKey, viewMode, direction, !overviewMode && grouped, searchHere ? filters.query : "", viewMode === "full" ? hiddenLanes : []]);
   const saveViewport = useCallback((viewport) => updateSession((current) => {
@@ -542,7 +552,7 @@ export default function GraphView({ transport, overview, snapshot, selectedId, c
       {isNarrow ? (
         <ViewPopover
           nodes={nodes} hiddenTypes={hiddenTypes} colors={colors} onTypesChange={(next) => updateSession({ hiddenTypes: next })}
-          direction={direction} showLabels={showLabels} includeSuggestions={filters.status !== "factual"} grouped={grouped} canGroup={!overviewMode} versions={graphSession.groupVersions} canVersion={lanesView} onDisplayChange={changeDisplay}
+          direction={direction} showLabels={showLabels} includeSuggestions={filters.status !== "factual"} grouped={grouped} canGroup={!overviewMode} versions={graphSession.groupVersions} canVersion={lanesView} relatedOnly={relatedOnly} onDisplayChange={changeDisplay}
           filters={filters} depth={depth} centerId={centerId} overview={overview} edgeTypes={edgeTypes} activeCount={activeFilters} hasFilters={hasFilters}
           onFilters={updateFilters}
           onScope={(change) => { updateSession((current) => ({ ...current, centerId: "", filters: { ...current.filters, ...change } })); setFocusedNode(null); }}
@@ -552,7 +562,7 @@ export default function GraphView({ transport, overview, snapshot, selectedId, c
       ) : (
         <>
           <TypesPopover nodes={nodes} hiddenTypes={hiddenTypes} colors={colors} onChange={(next) => { updateSession({ hiddenTypes: next }); }} />
-          <DisplayPopover direction={direction} showLabels={showLabels} includeSuggestions={filters.status !== "factual"} grouped={grouped} canGroup={!overviewMode} versions={graphSession.groupVersions} canVersion={lanesView} onChange={changeDisplay} />
+          <DisplayPopover direction={direction} showLabels={showLabels} includeSuggestions={filters.status !== "factual"} grouped={grouped} canGroup={!overviewMode} versions={graphSession.groupVersions} canVersion={lanesView} relatedOnly={relatedOnly} onChange={changeDisplay} />
           <FiltersPopover filters={filters} depth={depth} centerId={centerId} overview={overview} edgeTypes={edgeTypes} activeCount={activeFilters} hasFilters={hasFilters}
             onFilters={updateFilters}
             onScope={(change) => { updateSession((current) => ({ ...current, centerId: "", filters: { ...current.filters, ...change } })); setFocusedNode(null); }}
@@ -578,7 +588,7 @@ export default function GraphView({ transport, overview, snapshot, selectedId, c
         {viewMode === "matrix" ? <ImpactMatrix graph={graph} error={error} onRetry={loadGraph} query={query} hiddenLanes={hiddenLanes} groupVersions={graphSession.groupVersions} colors={colors} selectedId={focusedNode?.id} onSelect={setFocusedNode} />
           : error ? <div className="graph-empty" role="alert"><span className="empty-icon tone-bad" aria-hidden="true"><TriangleAlert /></span><h3>Graph unavailable</h3><p>{error}</p><Button variant="outline" onClick={loadGraph}>Retry graph</Button></div>
           : !graph ? <div className="graph-empty graph-loading" role="status"><p>Loading graph…</p></div>
-          : canvasNodes.length ? <GraphCanvas key={canvasKey} rawById={rawById} apiRef={canvasApi} overview={overviewMode} full={viewMode === "full"} grouped={!overviewMode && grouped} onCenter={center} onInspect={inspect} nodes={canvasNodes} edges={canvasEdges} selectedId={focusedNode?.id || centerId} docked={docked} warningIds={warningIds} direction={direction} showLabels={showLabels} colors={colors} onSelect={setFocusedNode} onToggleGroup={toggleGroup} viewport={graphSession.viewports[canvasKey]} onViewportChange={saveViewport} placements={graphSession.placements[canvasKey]} onPlacementsChange={savePlacements} />
+          : canvasNodes.length ? <GraphCanvas key={canvasKey} rawById={rawById} apiRef={canvasApi} overview={overviewMode} full={viewMode === "full"} grouped={!overviewMode && grouped} onCenter={center} onInspect={inspect} nodes={canvasNodes} edges={canvasEdges} layoutEdges={layoutEdges} relatedOnly={relatedOnly} selectedId={focusedNode?.id || centerId} docked={docked} warningIds={warningIds} direction={direction} showLabels={showLabels} colors={colors} onSelect={setFocusedNode} onToggleGroup={toggleGroup} viewport={graphSession.viewports[canvasKey]} onViewportChange={saveViewport} placements={graphSession.placements[canvasKey]} onPlacementsChange={savePlacements} />
           : <div className="graph-empty"><span className="empty-icon" aria-hidden="true"><Search /></span><h3>No matching objects</h3><p>{hasFilters ? "Try another filter or clear the filters." : "Scan project sources to see their relationships."}</p>{hasFilters ? <Button variant="outline" onClick={reset}>Clear filters</Button> : null}</div>}
         <div className="graph-overlay graph-overlay-top" data-ui-actions="">
           {overviewMode && graphSession.expandedIds != null && explorer.collapsedCount < explorer.nodes.filter((node) => node.explorerChildCount > 0).length ? <Button variant="outline" size="xs" className="graph-overlay-button" onClick={() => updateSession({ expandedIds: null })}><ChevronsDownUp />Collapse all</Button> : null}
@@ -654,7 +664,7 @@ function edgeGeometry(source, target, direction, offset) {
   return { path, labelX: labelX + shiftX, labelY: labelY + shiftY };
 }
 
-function GraphCanvas({ rawById, apiRef, overview, full, grouped, onCenter, onInspect, nodes, edges, selectedId, docked, warningIds, direction, showLabels, colors, onSelect, onToggleGroup, viewport, onViewportChange, placements, onPlacementsChange }) {
+function GraphCanvas({ rawById, apiRef, overview, full, grouped, onCenter, onInspect, nodes, edges, layoutEdges = edges, relatedOnly = false, selectedId, docked, warningIds, direction, showLabels, colors, onSelect, onToggleGroup, viewport, onViewportChange, placements, onPlacementsChange }) {
   const [flow, setFlow] = useState(null);
   const [zoom, setZoom] = useState(viewport?.zoom || 1);
   const [tier, setTier] = useState(() => zoomTier(viewport?.zoom || 1));
@@ -678,16 +688,22 @@ function GraphCanvas({ rawById, apiRef, overview, full, grouped, onCenter, onIns
   const layout = useMemo(() => {
     if (lineage) return { ...layoutLineage(nodes, edges, direction, { measure: measureName, badge: versionRoom }), groups: [] };
     if (!overview) return grouped ? layoutArtifactGraph(nodes, edges, direction, sizeOf) : { ...layoutGraph(nodes, edges, direction, sizeOf), groups: [] };
-    const next = layoutExplorerGraph(nodes, edges, direction, previousPositions.current, sizeOf);
+    const next = layoutExplorerGraph(nodes, layoutEdges, direction, previousPositions.current, sizeOf);
     previousPositions.current = new Map(next.nodes.map(({ node, position }) => [node.id, position]));
     return { ...next, groups: [] };
     // fontsReady: lane widths follow measured names.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [nodes, edges, direction, grouped, overview, sizeOf, lineage, fontsReady]);
+  }, [nodes, layoutEdges, direction, grouped, overview, sizeOf, lineage, fontsReady]);
   useEffect(() => {
     if (overview) onPlacementsChange(Object.fromEntries(previousPositions.current));
   }, [layout, overview, onPlacementsChange]);
   const rects = useMemo(() => new Map(layout.nodes.map(({ node, position, width, height }) => [node.id, { x: position.x, y: position.y, width: width || NODE_WIDTH, height: height || NODE_HEIGHT }])), [layout]);
+  // Links drawn: the laid-out ones, plus in Overview the links a selection brings in.
+  const drawnEdges = useMemo(() => {
+    if (edges === layoutEdges) return layout.edges;
+    const laidOut = new Set(layoutEdges);
+    return [...layout.edges, ...edges.filter((edge) => !laidOut.has(edge) && rects.has(edge.from_id) && rects.has(edge.to_id)).map((edge) => ({ edge }))];
+  }, [edges, layoutEdges, layout, rects]);
   const byId = useMemo(() => new Map(nodes.map((node) => [node.id, node])), [nodes]);
   const reduced = prefersReducedMotion();
   const fitDuration = reduced ? 0 : 320;
@@ -712,18 +728,29 @@ function GraphCanvas({ rawById, apiRef, overview, full, grouped, onCenter, onIns
     if (!dx && !dy) return;
     flow.setViewport({ x: x + dx, y: y + dy, zoom: scale }, travel(duration));
   }, [flow, rects, fitDuration]);
+  // The canvas re-fits only when the pane docks or closes, never on a plain selection: re-fitting a large
+  // picture on every click moved everything under the pointer and made nodes flicker in and out (issue #53).
+  // Large pictures keep their zoom and only pan the selection into view.
+  const large = layout.nodes.length > VIEWPORT_ONLY_ABOVE;
+  const latest = useRef(null);
+  latest.current = { flow, reveal, fitOptions, fitDuration, selectedId, large };
   const wasDocked = useRef(docked);
   useEffect(() => {
-    const changed = wasDocked.current !== docked;
+    if (wasDocked.current === docked) return undefined;
     wasDocked.current = docked;
-    if (docked || changed) {
-      const timer = setTimeout(() => {
-        if (selectedId && docked) reveal(selectedId);
-        flow?.fitView({ ...fitOptions, ...travel(fitDuration) });
-      }, 40);
-      return () => clearTimeout(timer);
-    }
-  }, [docked, selectedId, reveal, flow, fitOptions, fitDuration]);
+    const timer = setTimeout(() => {
+      const current = latest.current;
+      if (current.large) { if (docked && current.selectedId) current.reveal(current.selectedId); }
+      else current.flow?.fitView({ ...current.fitOptions, ...travel(current.fitDuration) });
+    }, 40);
+    return () => clearTimeout(timer);
+  }, [docked]);
+  // While docked, a newly selected object is panned into view if the pane covers it.
+  useEffect(() => {
+    if (!docked || !selectedId) return undefined;
+    const timer = setTimeout(() => latest.current.reveal(selectedId), 40);
+    return () => clearTimeout(timer);
+  }, [docked, selectedId]);
 
   // Lineage reads from the left: when the lanes cannot fit at a readable zoom, open at Models (top-left)
   // instead of the middle of the picture. Estimated from the window, since the canvas is not measured yet.
@@ -751,7 +778,7 @@ function GraphCanvas({ rawById, apiRef, overview, full, grouped, onCenter, onIns
   }, [apiRef, fit, flow, stepDuration]);
 
   // In lineage lanes a selection lights its whole chain: what feeds it and everything it feeds, to the report.
-  const trace = useMemo(() => lineage && selectedId ? lineageOf(selectedId, layout.edges) : null, [lineage, selectedId, layout]);
+  const trace = useMemo(() => lineage && selectedId ? lineageOf(selectedId, drawnEdges) : null, [lineage, selectedId, drawnEdges]);
   const connected = useMemo(() => {
     if (trace) return trace.ids;
     const ids = new Set([selectedId]);
@@ -762,7 +789,9 @@ function GraphCanvas({ rawById, apiRef, overview, full, grouped, onCenter, onIns
   }, [edges, selectedId, trace]);
   const focusing = Boolean(selectedId) && rects.has(selectedId);
 
-  const flowNodes = useMemo(() => [
+  // Everything that does not depend on the selection is built once per layout; a selection only
+  // re-decorates the nodes it changes, so a click on a large picture stays cheap (issue #53).
+  const baseNodes = useMemo(() => [
     ...(layout.lanes || []).map((lane) => ({ id: `lane:${lane.key}`, type: "lane", position: { x: lane.x, y: lane.y }, width: lane.width, height: 28, measured: { width: lane.width, height: 28 }, selectable: false, focusable: false, draggable: false, style: { width: lane.width, pointerEvents: "none" }, data: lane })),
     ...layout.groups.map((group) => ({ id: group.id, type: "artifactGroup", position: group.position, width: group.width, height: group.height, measured: { width: group.width, height: group.height }, zIndex: -1, selectable: false, focusable: false, draggable: false, style: { width: group.width, height: group.height, pointerEvents: "none" }, data: { ...group, color: colors.groups[group.key] } })),
     ...layout.nodes.map(({ node, lines }) => {
@@ -772,47 +801,63 @@ function GraphCanvas({ rawById, apiRef, overview, full, grouped, onCenter, onIns
       const isGroup = overview && node.explorerChildCount > 0;
       const statusGlyph = warning || Boolean(STATUS_GLYPHS[node.status]);
       return {
-        id: node.id, type: "brain", position: { x: rect.x, y: rect.y }, selected: node.id === selectedId,
+        id: node.id, type: "brain", position: { x: rect.x, y: rect.y }, selected: false,
         width: rect.width, height: rect.height,
         // Default node ariaRole: "button"; group nodes use role="group" to avoid nested-interactive violations with toggle button.
         ariaRole: isGroup ? "group" : "button", ariaLabel: nodeLabel(node, warning, isGroup),
         // Cards have fixed dimensions. Preserve React Flow's measured/handle
         // state when controlled nodes are replaced after saving the session.
         measured: { width: rect.width, height: rect.height },
-        className: focusing && !connected.has(node.id) ? "is-dimmed" : "",
+        className: "",
         // Two-line names are shortened to what two lines hold, with a little slack for word wrapping.
         data: { node, direction, isGroup, onToggleGroup, onCenter, onInspect, warning, twoLine, versions: versionNote(node, rawById), color: artifactColor(node, colors), colors, displayName: middleEllipsis(objectName(node), (twoLine ? 1.8 : 1) * (nameRoom(rect.width, isGroup, statusGlyph) - versionRoom(node)) / scale, measureName) },
       };
     }),
-  ], [layout, rects, warningIds, overview, selectedId, focusing, connected, direction, onToggleGroup, onCenter, onInspect, colors, fontsReady, scale, rawById]);
+    // fontsReady: names are measured again once the UI font has loaded.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  ], [layout, rects, warningIds, overview, direction, onToggleGroup, onCenter, onInspect, colors, fontsReady, scale, rawById]);
+  const flowNodes = useMemo(() => baseNodes.map((item) => {
+    if (item.type !== "brain") return item;
+    const selected = item.id === selectedId;
+    const related = !focusing || connected.has(item.id);
+    if (!selected && related) return item;
+    return { ...item, selected, className: related ? "" : "is-dimmed", hidden: !related && relatedOnly };
+  }), [baseNodes, selectedId, focusing, connected, relatedOnly]);
   const laneCount = layout.lanes?.length || 0;
 
-  const flowEdges = useMemo(() => {
+  const baseEdges = useMemo(() => {
     const pairCount = new Map();
-    return layout.edges.map(({ edge, from = edge.from_id, to = edge.to_id }) => {
+    return drawnEdges.map(({ edge, from = edge.from_id, to = edge.to_id }) => {
       const pair = [edge.from_id, edge.to_id].sort().join("\u0000");
       const index = pairCount.get(pair) || 0;
       pairCount.set(pair, index + 1);
       const evidenceClass = String(edge.evidence_class || "FACT").toUpperCase();
-      const onPath = trace ? trace.edgeIds.has(edge.id) : Boolean(selectedId) && (edge.from_id === selectedId || edge.to_id === selectedId);
       const warning = edge.type === "CONFLICTS_WITH";
       const structure = STRUCTURE_EDGES.has(edge.type);
-      const source = byId.get(edge.from_id);
-      const target = byId.get(edge.to_id);
       // Lineage draws every link in flow direction (left → right), so arrows read "flows into".
       const geometry = edgeGeometry(rects.get(from), rects.get(to), direction, index * 10);
-      const tone = onPath ? "var(--brand)" : warning ? "var(--warn)" : "var(--graph-edge)";
       return {
-        id: edge.id, source: from, target: to, type: "routed",
-        label: typeLabel(edge.type),
-        ariaLabel: `${objectName(source)} ${typeLabel(edge.type)} ${objectName(target)}`,
-        className: ["flow-edge", evidenceClass.toLowerCase(), structure ? "is-structure" : "", warning ? "warning" : "", onPath ? "on-path" : "", focusing && !onPath ? "is-dimmed" : "", (showLabels || (onPath && !structure && layout.edges.length <= 12)) ? "show-label" : ""].filter(Boolean).join(" "),
-        markerEnd: structure && !onPath ? undefined : { type: MarkerType.ArrowClosed, color: tone, width: onPath ? 4 : 5.5, height: onPath ? 4 : 5.5 },
-        zIndex: onPath ? 1 : 0,
-        data: geometry,
+        edge, structure, warning,
+        classes: ["flow-edge", evidenceClass.toLowerCase(), structure ? "is-structure" : "", warning ? "warning" : ""].filter(Boolean),
+        flow: {
+          id: edge.id, source: from, target: to, type: "routed",
+          label: typeLabel(edge.type),
+          ariaLabel: `${objectName(byId.get(edge.from_id))} ${typeLabel(edge.type)} ${objectName(byId.get(edge.to_id))}`,
+          data: geometry,
+        },
       };
     });
-  }, [layout, rects, byId, direction, selectedId, focusing, showLabels, trace]);
+  }, [drawnEdges, rects, byId, direction]);
+  const flowEdges = useMemo(() => baseEdges.map(({ edge, structure, warning, classes, flow: base }) => {
+    const onPath = trace ? trace.edgeIds.has(edge.id) : Boolean(selectedId) && (edge.from_id === selectedId || edge.to_id === selectedId);
+    const tone = onPath ? "var(--brand)" : warning ? "var(--warn)" : "var(--graph-edge)";
+    return {
+      ...base,
+      className: [...classes, onPath ? "on-path" : "", focusing && !onPath ? "is-dimmed" : "", (showLabels || (onPath && !structure && drawnEdges.length <= 12)) ? "show-label" : ""].filter(Boolean).join(" "),
+      markerEnd: structure && !onPath ? undefined : { type: MarkerType.ArrowClosed, color: tone, width: onPath ? 4 : 5.5, height: onPath ? 4 : 5.5 },
+      zIndex: onPath ? 1 : 0,
+    };
+  }), [baseEdges, drawnEdges, selectedId, focusing, showLabels, trace]);
 
   // Arrow keys move to the connected object that lies in that direction (else the nearest object there).
   const step = useCallback((fromId, key) => {

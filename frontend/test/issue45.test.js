@@ -40,7 +40,7 @@ test("Issue #45: Graph view provides minimum readable zoom, uncluttered edges, d
 
   // Edge label collision avoidance and uncluttered threshold
   assert.ok(graphCode.includes("shiftY") || graphCode.includes("shiftX"), "GraphView offsets parallel edge labels to avoid collision");
-  assert.ok(graphCode.includes("layout.edges.length <= 12"), "GraphView guards edge labels on path to prevent clutter on dense graphs");
+  assert.ok(graphCode.includes("drawnEdges.length <= 12"), "GraphView guards edge labels on path to prevent clutter on dense graphs");
 
   // Re-fit on details pane opening/docking
   assert.ok(graphCode.includes("flow?.fitView"), "GraphView re-fits view when details pane docks");
