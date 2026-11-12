@@ -199,8 +199,6 @@ class ProjectService:
 
         project_paths = _project_paths(config, self.config_path.parent)
         result = self._scan_paths(repository, source_paths, project_paths, cloud_entries)
-        # The scan time is set on the repository after the graph is written: drop answers cached before it.
-        repository.revision = getattr(repository, "revision", 0) + 1
         # The read-only snapshot MCP answers from while the app is closed (issue #18). A scan that
         # published its graph never fails because this extra copy could not be written.
         try:

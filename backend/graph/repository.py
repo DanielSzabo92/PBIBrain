@@ -97,6 +97,16 @@ class GraphRepository:
             self._native = None
             raise RuntimeError(f"Failed to initialize graph storage: {exc}") from exc
 
+    # State that answers are built from but that is set as a plain attribute (the scanner sets the
+    # scan time and the validation result this way). Each change counts as a write, so readers
+    # that keep answers per revision never show the state from before it.
+    _COUNTED = frozenset({"validation_result", "last_scan"})
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        object.__setattr__(self, name, value)
+        if name in self._COUNTED and "revision" in self.__dict__:
+            object.__setattr__(self, "revision", self.revision + 1)
+
     @property
     def is_native(self) -> bool:
         return self._store is not None
@@ -280,7 +290,6 @@ class GraphRepository:
         """Publish the latest validation result without changing graph facts."""
 
         self.validation_result = result
-        self.revision += 1
         return result
 
     def get_validation_result(self) -> Any:
