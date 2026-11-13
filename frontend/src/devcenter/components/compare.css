@@ -399,8 +399,12 @@
   color: var(--cmp-different);
 }
 
+/* "Same" recedes by colour and weight, not by opacity: faded text failed the contrast check. */
 .dc-st-same {
   color: var(--text-3);
+}
+
+.dc-st-same svg {
   opacity: 0.45;
 }
 
