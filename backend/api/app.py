@@ -986,7 +986,10 @@ class BrainApp:
                 key = f"{path}?{query}" if method == "GET" and path.startswith(self._CACHED_ROUTES) else None
                 # A cached answer needs no lock: a slow request must not hold up the rest of the UI.
                 cached = self._cached_answer(key, self._graph_stamp()) if key else None
-                if cached is not None:
+                if method == "GET" and path == "/api/scan/status":
+                    # What the running scan is doing; the scan itself holds the request lock.
+                    status, payload = 200, dict(getattr(self.project, "scan_progress", None) or {"running": False})
+                elif cached is not None:
                     status, raw = cached
                 else:
                     with self.request_lock:

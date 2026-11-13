@@ -1,5 +1,5 @@
 import React, { useMemo } from "react";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, Layers } from "lucide-react";
 import { TypeGlyph } from "./TypeGlyph";
 import { LANES, laneOf } from "../lineage";
 import { formatCount } from "../presentation";
@@ -24,8 +24,9 @@ const MATRIX_ROLE = {
 /**
  * Lane chips: the lineage lanes in dependency order (Models › Sources › Queries › Tables › … › Report filters), each a toggle.
  * Shared by Lineage and Matrix, so switching off Columns hides them in both. Counts are the loaded objects.
+ * The last chip says whether versions of a model or report are folded into one, and how many such groups exist.
  */
-export default function LaneChips({ nodes, hidden, matrix, colors, onChange }) {
+export default function LaneChips({ nodes, hidden, matrix, colors, onChange, versionGroups = [], versionsFolded = false, onVersions }) {
   const counts = useMemo(() => {
     const result = new Map();
     nodes.forEach((node) => { const lane = LANES[laneOf(node)].key; result.set(lane, (result.get(lane) || 0) + 1); });
@@ -51,5 +52,12 @@ export default function LaneChips({ nodes, hidden, matrix, colors, onChange }) {
         </button>
       </React.Fragment>;
     })}
+    {versionGroups.length && onVersions ? <button type="button" className="lane-chip version-chip" aria-pressed={versionsFolded}
+      title={`${versionsFolded ? "Shown once" : "Shown separately"}: ${versionGroups.map((names) => names.join(" = ")).join("; ")}. Click to ${versionsFolded ? "show every version" : "fold versions into one"}.`}
+      onClick={() => onVersions(!versionsFolded)}>
+      <Layers aria-hidden="true" />
+      <span>{versionsFolded ? "Versions folded" : "Fold versions"}</span>
+      <span className="lane-chip-count" data-ui-number="">{formatCount(versionGroups.length)}</span>
+    </button> : null}
   </div>;
 }

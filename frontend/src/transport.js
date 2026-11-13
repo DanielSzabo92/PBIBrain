@@ -120,6 +120,10 @@ export function createBrainTransport({ baseUrl = API_ROOT, fetcher = globalThis.
         body: JSON.stringify(config),
       });
     },
+    /** What the running scan is doing: { running, phase, done, total }. Answered while the scan request is open. */
+    scanStatus() {
+      return request("/scan/status");
+    },
     scan() {
       return request("/scan", {
         method: "POST",

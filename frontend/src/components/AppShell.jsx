@@ -87,7 +87,7 @@ export function AppMenuBar({ menus, projectName, children }) {
   );
 }
 
-export function StatusBar({ connection, projectName, counts, pending, onReview, scanning, lastScan, notice, noticeFailed, theme, onTheme, onShortcuts, onScan }) {
+export function StatusBar({ connection, projectName, counts, pending, onReview, scanning, scanStatus, lastScan, notice, noticeFailed, theme, onTheme, onShortcuts, onScan }) {
   const label = connection === "loading" ? "Loading" : connection === "error" ? "Offline" : "Connected";
   const countsText = connection === "loading"
     ? "Loading project…"
@@ -99,7 +99,7 @@ export function StatusBar({ connection, projectName, counts, pending, onReview, 
   return (
     <footer className="app-statusbar" aria-label="Status bar">
       <Tooltip content={label}><span className={`statusbar-item connection connection-${connection}`}><i />{connection === "ready" || label === "Connected" ? <span className="sr-only">{label}</span> : label}</span></Tooltip>
-      {scanning ? <span className="statusbar-item topbar-scanning"><span className="statusbar-progress" aria-hidden="true" />Scanning sources…</span> : null}
+      {scanning ? <span className="statusbar-item topbar-scanning"><span className="statusbar-progress" aria-hidden="true" /><ScanProgress read={scanStatus} /></span> : null}
       <span className={`statusbar-item statusbar-counts ${connection === "loading" ? "statusbar-loading" : ""}`}>{countsText}</span>
       {pending > 0 ? <Tooltip content="Open the review queue (Ctrl+5)"><button type="button" className="statusbar-item statusbar-button statusbar-review" onClick={onReview}>{pending.toLocaleString()} to review</button></Tooltip> : null}
       {isScanUnknown && onScan ? (
@@ -170,4 +170,23 @@ export function ShortcutsDialog({ open, onOpenChange }) {
       </DialogContent>
     </Dialog>
   );
+}
+
+/** What the scan is doing and for how long, so a long scan is seen to be running. */
+function ScanProgress({ read }) {
+  const [seconds, setSeconds] = React.useState(0);
+  const [status, setStatus] = React.useState(null);
+  React.useEffect(() => {
+    const started = Date.now();
+    let live = true;
+    const tick = async () => {
+      setSeconds(Math.round((Date.now() - started) / 1000));
+      if (typeof read !== "function") return;
+      try { const next = await read(); if (live && next?.running) setStatus(next); } catch { /* The phase is a courtesy; the scan result still arrives. */ }
+    };
+    const timer = setInterval(tick, 1000);
+    return () => { live = false; clearInterval(timer); };
+  }, [read]);
+  const step = status?.total > 1 && status.done < status.total ? ` (${status.done + 1} of ${status.total})` : "";
+  return <>{status?.phase ? `${status.phase}${step}…` : "Scanning sources…"}{seconds >= 2 ? <span data-ui-number="" aria-hidden="true"> {seconds} s</span> : null}</>;
 }

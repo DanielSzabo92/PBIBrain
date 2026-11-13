@@ -84,6 +84,12 @@ Measured on the same 13,731-object project, before → after.
 | 21 | **Partly** | Theme follows the operating system until the user picks one; "Match system theme" in the View menu | A light-mode OS starts light. Open: one list behaviour |
 | 21 | **Mostly** | axe runs on Overview, Search, Graph, Inspector, Review and Settings in both themes (`e2e/a11yViews.spec.js`) | 12 runs, no violations |
 | 13 | **Mostly** | Object page: properties are a flat list, empty binding groups are not drawn; lane, type and group counts are formatted | No empty boxes on a visual or a measure page. Open: per-type pages, field wells |
+| 11 | **Mostly** | Above 200 suggestions the queue opens grouped by pattern (rule, evidence basis, object type) with counts, distinct names and confidence; a group is approved or rejected once (asked again above 50, naming the pattern) or opened to decide rows one by one; "Approve all" is not offered beside pattern decisions (`e2e/reviewGroups.spec.js`) | 11,528 rows → 7 patterns on the large project; a group opens in 0.3 s. Open: auto-accept at scan time, row selection |
+| 17 | **Mostly** | A "Versions folded" chip sits beside the lane chips whenever models or reports have versions; it names the folded groups and switches folding with one click; differing copies carry a neutral ≠ instead of a warning dot | Folding is visible from the toolbar. Open: user correction ("not versions") |
+| 10 | **Fixed** | "Copy link" on the object page | Open: links in chat answers |
+| 20 | **Mostly** | The scan reports its result ("Scan complete: 13,731 objects in 21 s") and the status bar counts seconds while it runs | Open: drop zone, phases, recent projects |
+| 19 | **Started** | Keep / Take / Skip tooltips name the models they act on | Open: bottom detail panel, stepper, one filter line |
+| 16 | **Partly** | A unit test fails the build when the entry script passes 420 kB or the stylesheet 230 kB, or when the graph library is preloaded (`test/bundleBudget.test.js`) | Open: splitting `App.jsx`, CSS ownership |
 
 Everything else is open.
 

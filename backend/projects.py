@@ -168,6 +168,8 @@ class ProjectService:
     """Coordinate project configuration and one safe, combined graph scan."""
 
     def __init__(self, config_path: str | Path = "config/brain.json", *, cloud: Any = None) -> None:
+        # What a running scan is doing, read by the UI without waiting for the scan request.
+        self.scan_progress: dict[str, Any] = {"running": False}
         self.config_store = ProjectConfigStore(config_path)
         # The Development Center ``CloudService`` (or a callable that gives it). None: the
         # scan reads cloud items from the cache only, as in the stand-alone agent.
@@ -198,7 +200,11 @@ class ProjectService:
             raise ProjectConfigError("Project has no configured sources")
 
         project_paths = _project_paths(config, self.config_path.parent)
-        result = self._scan_paths(repository, source_paths, project_paths, cloud_entries)
+        self.scan_progress = {"running": True, "phase": "Reading sources", "done": 0, "total": len(source_paths) + len(cloud_entries)}
+        try:
+            result = self._scan_paths(repository, source_paths, project_paths, cloud_entries)
+        finally:
+            self.scan_progress = {"running": False}
         # The read-only snapshot MCP answers from while the app is closed (issue #18). A scan that
         # published its graph never fails because this extra copy could not be written.
         try:
@@ -244,7 +250,14 @@ class ProjectService:
 
         models: list[dict[str, Any]] = []
         reports: list[dict[str, Any]] = []
-        for source_path in source_paths:
+        total = len(source_paths) + len(cloud_entries or [])
+
+        def phase(text: str, done: int | None = None) -> None:
+            if publish:
+                self.scan_progress = {"running": True, "phase": text, "done": total if done is None else done, "total": total}
+
+        for index, source_path in enumerate(source_paths):
+            phase(f"Reading {source_path.name}", index)
             source_models, source_reports = _read_project_source(source_path)
             models.extend(_stable_roots(source_models, source_path, "model"))
             reports.extend(_stable_roots(source_reports, source_path, "report"))
@@ -252,7 +265,8 @@ class ProjectService:
         cloud_states: list[dict[str, Any]] = []
         if cloud_entries:
             reader = self.cloud_reader()
-            for entry in cloud_entries:
+            for index, entry in enumerate(cloud_entries):
+                phase(f"Reading {entry.get('name') or 'cloud item'}", len(source_paths) + index)
                 root, state, item = _read_cloud_source(reader, entry)
                 (models if entry["kind"] == CLOUD_MODEL else reports).append(root)
                 cloud_states.append(state)
@@ -262,6 +276,7 @@ class ProjectService:
             raise ProjectSourceError("Project sources contain no semantic models or reports")
         models = _deduplicate_roots(models, "model")
         reports = _deduplicate_roots(reports, "report")
+        phase("Linking reports to models")
         not_checked.extend(bind_reports(models, reports))
 
         staged_identity = _temporary_identity(project_paths["identity_map"])
@@ -275,7 +290,9 @@ class ProjectService:
                 identity_path=staged_identity,
                 overrides_path=project_paths["overrides"],
             )
+            phase("Reading formulas and dependencies")
             graph = scanner.scan(models, reports)
+            phase("Saving the graph")
             if not publish:
                 return graph
             previous_nodes = repository.all_nodes()

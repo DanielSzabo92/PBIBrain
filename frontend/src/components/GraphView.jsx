@@ -19,7 +19,7 @@ import { ARTIFACT_GROUPS, EDGE_TYPES, artifactColor, artifactGroup, middleEllips
 import { buildExplorerGraph, bundleExplorerEdges, layoutExplorerGraph, layoutArtifactGraph, layoutGraph, NODE_WIDTH, NODE_HEIGHT, GROUP_WIDTH, GROUP_HEIGHT } from "../graphLayout";
 import { formatCount, objectName, scopeChoices, statusLabel, visualType } from "../presentation";
 import { foldLineage, hideLanes, layoutLineage, lineageOf, TWO_LINE_HEIGHT } from "../lineage";
-import { groupVersions, versionNote } from "../versions";
+import { groupVersions, versionFamilies, versionNote } from "../versions";
 import ImpactMatrix from "./ImpactMatrix";
 import LaneChips from "./LaneChips";
 import { VersionBadge } from "./VersionBadge";
@@ -422,6 +422,11 @@ export default function GraphView({ transport, overview, snapshot, selectedId, c
   const edges = graph?.edges || [];
   // Lineage: versions folded into one node, then lanes that are switched off bridged over.
   const versioned = useMemo(() => lanesView && graphSession.groupVersions ? groupVersions(nodes, edges) : null, [lanesView, graphSession.groupVersions, nodes, edges]);
+  // How many models and reports have versions, so the toolbar can say that folding is on (or could be).
+  const versionGroups = useMemo(() => {
+    if (!lanesView) return [];
+    return [...versionFamilies(nodes).families.values()].filter((members) => members.length > 1).map((members) => members.map((member) => objectName(member)));
+  }, [lanesView, nodes]);
   const rawById = useMemo(() => new Map((loadedNodes || []).map((node) => [node.id, node])), [loadedNodes]);
   // Type visibility is a view choice on the loaded slice. The focused object always stays for context.
   const hiddenSet = useMemo(() => new Set(hiddenTypes), [hiddenTypes]);
@@ -632,7 +637,8 @@ export default function GraphView({ transport, overview, snapshot, selectedId, c
       <span className="graph-summary" role="status" aria-live="polite" data-ui-number="" title={summaryDetail}>{summary}<span className="sr-only">{summaryDetail ? `. ${summaryDetail}` : ""}</span></span>
       <Button variant="ghost" size="sm" aria-label="Fit view" tooltip="Fit view (F)" disabled={!canvasNodes.length} onClick={() => canvasApi.current?.fit()}><Maximize />Fit</Button>
     </div>
-    {lanesView ? <LaneChips nodes={versioned ? versioned.nodes : nodes} hidden={hiddenLanes} matrix={viewMode === "matrix"} colors={colors} onChange={(next) => { updateSession({ hiddenLanes: next }); setFocusedNode(null); }} /> : null}
+    {lanesView ? <LaneChips nodes={versioned ? versioned.nodes : nodes} hidden={hiddenLanes} matrix={viewMode === "matrix"} colors={colors} onChange={(next) => { updateSession({ hiddenLanes: next }); setFocusedNode(null); }}
+      versionGroups={versionGroups} versionsFolded={graphSession.groupVersions} onVersions={(next) => { updateSession({ groupVersions: next }); setFocusedNode(null); }} /> : null}
     <div className="graph-body">
       <div id="graph-canvas" className="graph-canvas-card" data-slot="card" aria-busy={loading} style={docked ? { marginRight: DETAIL_PANE_WIDTH + 8 } : undefined}>
         {viewMode === "matrix" ? <ImpactMatrix graph={graph} error={error} onRetry={loadGraph} query={query} hiddenLanes={hiddenLanes} groupVersions={graphSession.groupVersions} colors={colors} selectedId={focusedNode?.id} onSelect={setFocusedNode} />

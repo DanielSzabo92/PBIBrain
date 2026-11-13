@@ -1153,11 +1153,12 @@ p.object-review { padding: 0 4px; }
 .flow-node.is-stack { box-shadow: 3px 3px 0 -1px var(--surface), 3px 3px 0 0 var(--line-strong); }
 .flow-node.is-stack.selected { box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--brand); }
 .version-badge {
-  position: relative; display: inline-grid; flex: none; place-items: center; min-width: 22px; height: 16px; padding: 0 4px;
+  position: relative; display: inline-flex; flex: none; align-items: center; justify-content: center; min-width: 22px; height: 16px; padding: 0 4px;
   border: 1px solid var(--line-strong); border-radius: 8px; color: var(--text-2); font-size: var(--fs-meta); font-variant-numeric: tabular-nums; font-weight: 600; line-height: 1;
 }
 .version-badge.is-partial { border-style: dashed; color: var(--text-3); }
-.version-badge.differs::after { position: absolute; top: -3px; right: -3px; width: 6px; height: 6px; border: 1px solid var(--surface); border-radius: 50%; background: var(--warn); content: ""; }
+/* Versions whose definitions differ: a neutral mark, not a warning. */
+.version-badge.differs::after { content: "≠"; margin-left: 2px; color: var(--text-2); }
 .is-far .version-badge { display: none; }
 .flow-node-meta { color: var(--text-3); font-size: var(--fs-meta); line-height: 15px; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .flow-node-meta { display: flex; align-items: center; gap: 10px; }
@@ -1883,3 +1884,32 @@ button.object-tree-twist:hover { background: var(--surface-3); color: var(--text
 /* A binding group with nothing in it says nothing; in the object page it is left out. */
 .object-workspace .visual-bindings .detail-section.is-empty { display: none; }
 .object-workspace .visual-bindings:not(:has(.detail-section:not(.is-empty))) { display: none; }
+
+/* Review queue grouped by pattern: one row per rule, basis and object type. */
+.review-group-columns, .review-group-head { display: grid; grid-template-columns: minmax(220px, 1fr) 190px 130px 190px; align-items: center; gap: 12px; padding: 0 18px; }
+.review-group-columns { height: 32px; font-size: var(--fs-meta); color: var(--muted); border-bottom: 1px solid var(--line); }
+.review-group-columns > :last-child, .review-group-actions { text-align: right; justify-content: flex-end; }
+.review-group { border-bottom: 1px solid var(--line); }
+.review-group:last-child { border-bottom: 0; }
+.review-group-head { min-height: 48px; }
+.review-group.is-open > .review-group-head { background: var(--surface-2); border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 2; }
+.review-group-toggle { display: flex; align-items: center; gap: 8px; min-width: 0; height: 48px; padding: 0; border: 0; background: none; color: var(--text); font: inherit; text-align: left; cursor: pointer; border-radius: var(--radius-sm); }
+.review-group-toggle:focus-visible { outline: 2px solid var(--ring); outline-offset: -2px; }
+.review-group-toggle > svg { width: 14px; height: 14px; flex: none; color: var(--muted); transition: transform 120ms ease; }
+.review-group-toggle > svg.is-open { transform: rotate(90deg); }
+.review-group-title { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.review-group-scope { color: var(--muted); white-space: nowrap; }
+.review-group-count { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.review-group-count small, .review-group-actions small { color: var(--muted); font-size: var(--fs-meta); }
+.review-group-confidence { font-variant-numeric: tabular-nums; color: var(--muted); white-space: nowrap; }
+.review-group-actions { display: flex; align-items: center; gap: 4px; }
+@media (max-width: 1100px) {
+  .review-group-columns, .review-group-head { grid-template-columns: minmax(160px, 1fr) 110px 170px; }
+  .review-group-columns > :nth-child(3), .review-group-confidence { display: none; }
+  .review-group-count small { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { .review-group-toggle > svg { transition: none; } }
+
+.version-chip { margin-left: 8px; }
+.version-chip > svg { width: 12px; height: 12px; flex: none; }
+.object-actions { display: inline-flex; align-items: center; gap: 4px; }

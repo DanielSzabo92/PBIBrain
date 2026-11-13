@@ -1216,10 +1216,13 @@ export default function CompareGrid({
       const choiceKind = rawKind ? normalizeChoiceKind(rawKind) : null;
       const isSaved = lastSavedRowKey === row.row_key;
 
-      const hasDonor = donors.some((d) => {
+      const takeDonor = donors.find((d) => {
         const cell = getCellData(d.source_id);
         return cell && cell.state !== "missing";
       });
+      const hasDonor = Boolean(takeDonor);
+      const targetName = targetSource?.display_name || "the target model";
+      const takeName = takeDonor ? takeDonor.display_name || takeDonor.name || "the source model" : "";
 
       return (
         <div
@@ -1247,7 +1250,7 @@ export default function CompareGrid({
                   e.stopPropagation();
                   handleSingleRowChoice(row, "keep");
                 }}
-                title="Keep target (K)"
+                title={`Keep the version in ${targetName} (K)`}
                 aria-keyshortcuts="k"
               >
                 Keep
@@ -1260,7 +1263,7 @@ export default function CompareGrid({
                   e.stopPropagation();
                   handleSingleRowChoice(row, "take");
                 }}
-                title={hasDonor ? "Take from donor (T)" : "No donor available"}
+                title={hasDonor ? `Take the version from ${takeName} (T)` : "No other model has this object"}
                 aria-keyshortcuts="t"
               >
                 Take
@@ -1273,7 +1276,7 @@ export default function CompareGrid({
                   e.stopPropagation();
                   handleSingleRowChoice(row, "skip");
                 }}
-                title="Skip (S)"
+                title="Decide later; nothing changes for this object (S)"
                 aria-keyshortcuts="s"
               >
                 Skip
