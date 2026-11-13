@@ -105,6 +105,10 @@ export function createBrainTransport({ baseUrl = API_ROOT, fetcher = globalThis.
     getConfig() {
       return request("/config");
     },
+    /** Whether each configured source path exists on disk. */
+    getSourceStatus() {
+      return request("/config/sources");
+    },
     saveConfig(config) {
       return request("/config", {
         method: "POST",
@@ -124,6 +128,8 @@ export function createBrainTransport({ baseUrl = API_ROOT, fetcher = globalThis.
       if (modelId) params.set("model_id", modelId);
       if (reportId) params.set("report_id", reportId);
       if (objectType) params.set("object_type", objectType);
+      // The search page lists project objects; alias and concept records repeat their names.
+      else params.set("kind", "objects");
       return request(`/search?${params}`);
     },
     getGraph({ centerId = "", modelId = "", reportId = "", depth = 1, limit = 100, query = "", artifact = "", objectType = "", status = "", edgeType = "" } = {}) {

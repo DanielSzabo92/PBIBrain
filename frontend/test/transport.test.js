@@ -16,7 +16,7 @@ function fakeFetch(body = {}) {
 test("search scopes and paginates through the local API", async () => {
   const fake = fakeFetch({ items: [], total: 0 });
   await createBrainTransport({ baseUrl: "/api", fetcher: fake.fetch }).search({ query: "Revenue", modelId: "m/1", reportId: "r/1", limit: 25, offset: 25 });
-  assert.equal(fake.calls[0].url, "/api/search?q=Revenue&limit=25&offset=25&model_id=m%2F1&report_id=r%2F1");
+  assert.equal(fake.calls[0].url, "/api/search?q=Revenue&limit=25&offset=25&model_id=m%2F1&report_id=r%2F1&kind=objects");
 });
 
 test("graph encodes a center and carries an explicit bounded scope", async () => {

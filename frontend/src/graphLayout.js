@@ -126,6 +126,18 @@ function presentationForest(nodes, edges) {
   return { parentOf, edgeByChild, childrenById };
 }
 
+/**
+ * The containment forest of a project: models and reports at the top, their tables, columns,
+ * measures, pages and visuals below. The Inspector tree reads it.
+ */
+export function objectForest(nodes, edges) {
+  const ordered = orderedNodes(nodes);
+  const forest = presentationForest(ordered, edges);
+  const byId = new Map(ordered.map((node) => [idKey(node.id), node]));
+  const roots = ordered.filter((node) => !forest.parentOf.has(idKey(node.id))).map((node) => idKey(node.id));
+  return { byId, roots, parentOf: forest.parentOf, childrenById: forest.childrenById };
+}
+
 function descendantCount(id, childrenById, memo) {
   if (memo.has(id)) return memo.get(id);
   const seen = new Set();

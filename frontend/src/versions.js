@@ -1,6 +1,7 @@
 // Versions: the same logical object in two copies of a model or report ("Sales" and "Sales v2").
 //
-// Two models (or two reports) are versions of each other when most of their objects match. Objects match
+// Two models (or two reports) are versions of each other when their names agree apart from a version
+// marker ("v2", "copy", "DEV", a date) and most of their objects match. Objects match
 // with the rules of Merge models: model objects by type, table and name; report objects by their page and
 // visual IDs, which survive a copied report folder. "Group versions" folds every set of matching objects into
 // one node, so the picture shows each logical object once:
@@ -18,6 +19,18 @@ const ROOTS = new Set(["MODEL", "REPORT"]);
 // Two roots are versions when this share of the smaller one's objects is also in the other.
 const FAMILY_OVERLAP = 0.5;
 const fold = (value) => String(value ?? "").trim().toLowerCase();
+
+// Words that mark a copy of the same thing: "Sales v2", "Sales (copy)", "Sales - DEV", "Sales 2024-05-01".
+const VERSION_WORDS = /\b(v(?:er(?:sion)?)?\.?\s*\d+(?:\.\d+)*|copy(?:\s+of)?|kopie|backup|bak|old|new|final|draft|wip|dev|test|uat|qa|stag(?:e|ing)|prod(?:uction)?|\d{4}[-_.]?\d{2}[-_.]?\d{2}|\(\d+\))\b/gi;
+
+/**
+ * A model or report name without its version marker. Two models stamped from one template
+ * ("Sales Analytics", "HR Analytics") share their structure but not this stem, and they are not versions.
+ */
+export function versionStem(name) {
+  const stem = fold(name).replace(/\(\d+\)/g, " ").replace(VERSION_WORDS, " ").replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+  return stem || fold(name);
+}
 // One shared collator: localeCompare with options builds a new one on every call.
 const NAME_ORDER = new Intl.Collator(undefined, { numeric: true, sensitivity: "base" });
 const byName = (left, right) => NAME_ORDER.compare(objectName(left), objectName(right)) || left.id.localeCompare(right.id);
@@ -71,6 +84,8 @@ export function versionFamilies(nodes) {
   const roots = [...keysByRoot.keys()].filter((id) => byId.has(id)).sort((a, b) => byName(byId.get(a), byId.get(b)));
   roots.forEach((a, index) => roots.slice(index + 1).forEach((b) => {
     if (byId.get(a).type !== byId.get(b).type) return;
+    // Matching structure alone is not enough: the names must agree apart from a version marker.
+    if (versionStem(objectName(byId.get(a))) !== versionStem(objectName(byId.get(b)))) return;
     const left = keysByRoot.get(a), right = keysByRoot.get(b);
     const smaller = Math.min(left.size, right.size);
     if (!smaller) return;

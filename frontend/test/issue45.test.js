@@ -11,7 +11,7 @@ test("Issue #45: Overview provides high-yield widgets and eliminates redundancy"
   const css = await readFile(path.join(SRC, "app.css"), "utf8");
 
   // Overview title and count redundancy reduction
-  assert.ok(appCode.includes("<h1>Overview</h1>"), "Overview uses standard page title 'Overview' rather than repeating project name");
+  assert.ok(/<h1[^>]*>Overview<\/h1>/.test(appCode), "Overview uses standard page title 'Overview' rather than repeating project name");
   assert.ok(!appCode.includes('className="project-counts"'), "Removes redundant project counts DL that duplicated status bar");
 
   // High-yield widgets

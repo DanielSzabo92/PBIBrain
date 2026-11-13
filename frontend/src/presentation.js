@@ -311,3 +311,55 @@ export function linksOf(edges, id) {
   }
   return index.get(id) || NO_LINKS;
 }
+
+/** A count that must fit a badge: 87, 1.2k, 11.5k, 2.4M. */
+export function compactCount(value) {
+  const number = Number(value) || 0;
+  if (number < 1000) return String(number);
+  const [scaled, unit] = number < 1e6 ? [number / 1e3, "k"] : [number / 1e6, "M"];
+  return `${scaled < 100 ? Math.floor(scaled * 10) / 10 : Math.floor(scaled)}${unit}`;
+}
+
+/**
+ * Folds copies of one object across models or reports into one row: eight versions of a model
+ * otherwise put the same name on screen eight times. Objects that share a name inside one
+ * model are different objects and stay apart.
+ * @returns {{ item: object, copies: object[] }[]} in the order of the first copy.
+ */
+export function foldSearchResults(items, objectOf = (item) => item) {
+  const groups = new Map();
+  for (const item of items || []) {
+    const object = objectOf(item);
+    const key = `${object.type}\u0000${String(object.name || "").toLowerCase()}`;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(item);
+  }
+  const rows = [];
+  for (const copies of groups.values()) {
+    const scopes = copies.map((item) => { const object = objectOf(item); return object.report_id || object.model_id || ""; });
+    const distinct = new Set(scopes).size === copies.length && !scopes.includes("");
+    if (copies.length > 1 && distinct) rows.push({ item: copies[0], copies });
+    else for (const item of copies) rows.push({ item, copies: [item] });
+  }
+  const order = new Map((items || []).map((item, index) => [item, index]));
+  return rows.sort((a, b) => order.get(a.item) - order.get(b.item));
+}
+
+/**
+ * The line of a matched text that holds the query, cut around it, as [before, hit, after].
+ * Empty when the text does not hold the query as typed.
+ */
+export function matchSnippet(text, query, width = 90) {
+  const value = String(text || ""), needle = String(query || "").trim();
+  if (!needle) return null;
+  const at = value.toLowerCase().indexOf(needle.toLowerCase());
+  if (at < 0) return null;
+  const lineStart = value.lastIndexOf("\n", at) + 1;
+  const lineEnd = value.indexOf("\n", at + needle.length);
+  const line = value.slice(lineStart, lineEnd < 0 ? value.length : lineEnd);
+  const offset = at - lineStart;
+  const start = Math.max(0, Math.min(offset - Math.floor((width - needle.length) / 3), line.length - width));
+  const cut = line.slice(start, start + width);
+  const hit = offset - start;
+  return [(start > 0 ? "…" : "") + cut.slice(0, hit).trimStart(), cut.slice(hit, hit + needle.length), cut.slice(hit + needle.length) + (start + width < line.length ? "…" : "")];
+}

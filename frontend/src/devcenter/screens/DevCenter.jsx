@@ -9,17 +9,17 @@ import { t } from "../copy.js";
 import { createDevCenterHttp } from "../httpClient.js";
 import { createDevCenterStore } from "../store.js";
 import { DevCenterProvider, useAction, useDevCenterState, useDevCenterStore } from "../useDevCenter.js";
+import { shared } from "../sharedStore.js";
 import SessionList from "./SessionList.jsx";
 import CreateSession from "./CreateSession.jsx";
 import WorkArea from "./WorkArea.jsx";
 import "./screens.css";
 
-let sharedStore = null;
 
 // One store for the app window. The open session stays open while the user goes to other sidebar items.
 export function devCenterStore() {
-  if (!sharedStore) sharedStore = createDevCenterStore({ http: createDevCenterHttp(), api: () => globalThis.pywebview?.api ?? null });
-  return sharedStore;
+  if (!shared.store) shared.store = createDevCenterStore({ http: createDevCenterHttp(), api: () => globalThis.pywebview?.api ?? null });
+  return shared.store;
 }
 
 // The last tab and the marks filter of each session, in memory only (UI design 2).

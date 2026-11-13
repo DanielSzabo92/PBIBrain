@@ -28,11 +28,14 @@ const THEME_KEY = "pbibrain-theme"
 
 function useSpecimenTheme() {
   const [theme, setTheme] = React.useState(() => (document.documentElement.dataset.theme === "light" ? "light" : "dark"))
+  const chosen = React.useRef(false)
   React.useEffect(() => {
     const root = document.documentElement
     root.classList.toggle("dark", theme === "dark")
     if (theme === "light") root.dataset.theme = "light"
     else delete root.dataset.theme
+    // Only a change made here is a choice; opening the page must not pin the system theme.
+    if (!chosen.current) { chosen.current = true; return }
     try { localStorage.setItem(THEME_KEY, theme) } catch { /* Storage can be unavailable. */ }
   }, [theme])
   return [theme, setTheme]

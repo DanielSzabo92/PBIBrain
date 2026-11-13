@@ -93,11 +93,12 @@ export function StatusBar({ connection, projectName, counts, pending, onReview, 
     ? "Loading project…"
     : connection === "error"
       ? "Service unreachable"
+      : !counts.objects ? "No data yet"
       : `${counts.models} ${counts.models === 1 ? "model" : "models"} · ${counts.reports} ${counts.reports === 1 ? "report" : "reports"} · ${counts.objects.toLocaleString()} objects · ${counts.edges.toLocaleString()} relationships`;
   const isScanUnknown = lastScan === "Last scan time unknown" || lastScan === "Not scanned";
   return (
     <footer className="app-statusbar" aria-label="Status bar">
-      <Tooltip content={label}><span className={`statusbar-item connection connection-${connection}`}><i />{label}</span></Tooltip>
+      <Tooltip content={label}><span className={`statusbar-item connection connection-${connection}`}><i />{connection === "ready" || label === "Connected" ? <span className="sr-only">{label}</span> : label}</span></Tooltip>
       {scanning ? <span className="statusbar-item topbar-scanning"><span className="statusbar-progress" aria-hidden="true" />Scanning sources…</span> : null}
       <span className={`statusbar-item statusbar-counts ${connection === "loading" ? "statusbar-loading" : ""}`}>{countsText}</span>
       {pending > 0 ? <Tooltip content="Open the review queue (Ctrl+5)"><button type="button" className="statusbar-item statusbar-button statusbar-review" onClick={onReview}>{pending.toLocaleString()} to review</button></Tooltip> : null}

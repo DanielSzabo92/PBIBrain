@@ -104,3 +104,44 @@ test("counts read as people write them; links of one object come from an index",
   node.name = "Net Sales";
   assert.equal(objectName(node), "Net Sales", "a renamed object is not served a stale name");
 });
+
+test("search folds the copies of one object across models and keeps same-model namesakes apart", async () => {
+  const { foldSearchResults, matchSnippet } = await import("../src/presentation.js");
+  const items = [
+    { id: "a", type: "MEASURE", name: "Total", model_id: "m1" },
+    { id: "x", type: "COLUMN", name: "Total", model_id: "m1" },
+    { id: "b", type: "MEASURE", name: "Total", model_id: "m2" },
+    { id: "c", type: "TABLE", name: "Dup", model_id: "m1" },
+    { id: "d", type: "TABLE", name: "Dup", model_id: "m1" },
+  ];
+  const rows = foldSearchResults(items);
+  assert.deepEqual(rows.map((row) => [row.item.id, row.copies.length]), [["a", 2], ["x", 1], ["c", 1], ["d", 1]]);
+  assert.deepEqual(matchSnippet("VAR x = 1\nRETURN DIVIDE([Sales], x)", "divide"), ["RETURN ", "DIVIDE", "([Sales], x)"]);
+  assert.equal(matchSnippet("abc", "zzz"), null);
+});
+
+test("the object tree lists owners first, opens on demand and filters by name with owners kept", async () => {
+  const { objectForest } = await import("../src/graphLayout.js");
+  const { ownersOf, treeRows } = await import("../src/objectTree.js");
+  const nodes = [
+    { id: "r", type: "REPORT", name: "A report" }, { id: "m", type: "MODEL", name: "Sales" },
+    { id: "t", type: "TABLE", name: "Orders" }, { id: "c", type: "COLUMN", name: "Amount" }, { id: "x", type: "MEASURE", name: "Total" },
+  ];
+  const edges = [["m", "t"], ["t", "c"], ["t", "x"]].map(([from_id, to_id]) => ({ id: `${from_id}>${to_id}`, type: "CONTAINS", from_id, to_id }));
+  const forest = objectForest(nodes, edges);
+  assert.deepEqual(treeRows(forest).map((row) => row.id), ["m", "r"]);
+  assert.deepEqual(treeRows(forest, new Set(["m", "t"])).map((row) => [row.id, row.depth]), [["m", 0], ["t", 1], ["x", 2], ["c", 2], ["r", 0]]);
+  assert.deepEqual(treeRows(forest, new Set(), "amou").map((row) => row.id), ["m", "t", "c"]);
+  assert.deepEqual(ownersOf(forest, "c"), ["m", "t"]);
+});
+
+test("models stamped from one template are not folded as versions; real copies are", async () => {
+  const { versionFamilies, versionStem } = await import("../src/versions.js");
+  assert.equal(versionStem("Sales Analytics v2"), "sales analytics");
+  assert.equal(versionStem("Sales Analytics (copy)"), "sales analytics");
+  assert.equal(versionStem("Sales Analytics - DEV 2024-05-01"), "sales analytics");
+  assert.notEqual(versionStem("HR Analytics"), versionStem("Sales Analytics"));
+  const model = (id, name) => [{ id, type: "MODEL", name }, { id: `${id}/t`, type: "TABLE", name: "Orders", model_id: id }, { id: `${id}/m`, type: "MEASURE", name: "Total", model_id: id, table_id: `${id}/t` }];
+  const { families } = versionFamilies([...model("a", "Sales Analytics"), ...model("b", "HR Analytics"), ...model("c", "Sales Analytics v2")]);
+  assert.deepEqual([...families.values()].map((members) => members.map((member) => member.id)).sort(), [["a", "c"], ["b"]]);
+});

@@ -104,11 +104,18 @@ def get_overview(repository: GraphRepository, *, store: OverrideStore | None = N
         if edge.type != "CONTAINS" and edge.evidence_class not in {"INFERRED", "OBSERVED"}:
             inbound[edge.to_id] += 1
     measures = [node for node in nodes if node.type in {"MEASURE", "CALCULATION_ITEM"}]
+    names = {node.id: node for node in nodes}
+
+    def scope_of(node: Any) -> str:
+        """Where an object lives, as names: "Sales Analytics / Orders". Tells apart objects with one name."""
+
+        owners = [names.get(getattr(node, key, None) or node.properties.get(key) or "") for key in ("model_id", "report_id", "table_id", "page_id")]
+        return " / ".join(owner.name for owner in owners if owner is not None and owner.id != node.id and owner.name)
+
     top_measures = [
-        {**_root_summary(node), "type": node.type, "count": inbound[node.id]}
+        {**_root_summary(node), "type": node.type, "count": inbound[node.id], "scope": scope_of(node)}
         for node in sorted(measures, key=lambda node: (-inbound[node.id], node.name or "", node.id))[:5]
     ]
-    names = {node.id: node for node in nodes}
     hot: list[dict[str, Any]] = []
     for item in sorted(review_items, key=lambda item: -degree[str(item.get("object_id") or item.get("target_id") or "")])[:5]:
         target_id = str(item.get("object_id") or item.get("target_id") or "")
@@ -117,6 +124,7 @@ def get_overview(repository: GraphRepository, *, store: OverrideStore | None = N
             "id": item.get("id"), "target_id": target_id, "name": target.name if target else target_id,
             "type": target.type if target else "OBJECT", "kind": item.get("issue_type", "candidate"),
             "label": item.get("value") or item.get("meaning"), "degree": degree[target_id],
+            "scope": scope_of(target) if target else "",
         })
     validation = getattr(repository, "validation_result", None)
     validation_state = getattr(repository, "validation_state", None)
@@ -718,6 +726,13 @@ class BrainApp:
                 if set(payload) != {"before", "after"} or any(not isinstance(item, str) for item in payload.values()):
                     raise ValueError("INVALID_COMPARE_REQUEST")
                 return 200, self.api.compare_prepared_snapshots(payload["before"], payload["after"])
+            if method == "GET" and parts == ["config", "sources"] and self.project is not None:
+                # Whether each configured path is there, so a wrong path shows before any scan runs.
+                config = self.project.get_config()
+                found = []
+                for value, resolved in zip(config.get("sources", []), self.project.source_paths()):
+                    found.append({"path": value, "exists": resolved.exists(), "kind": "folder" if resolved.is_dir() else "file" if resolved.is_file() else "missing"})
+                return 200, {"sources": found}
             if parts == ["config"] and self.project is not None:
                 if method == "GET":
                     return 200, self.project.get_config()
@@ -743,6 +758,7 @@ class BrainApp:
                     limit=int(str(self._query_values(query, "limit") or "50")),
                     offset=int(str(self._query_values(query, "offset") or "0")),
                     store=self.api.overrides,
+                    project_objects_only=str(self._query_values(query, "kind") or "") == "objects",
                 )
             if method == "GET" and parts == ["overview"]:
                 return 200, self.api.get_overview()
