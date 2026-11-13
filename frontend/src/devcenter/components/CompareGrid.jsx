@@ -1150,15 +1150,12 @@ export default function CompareGrid({
         >
           <ObjIcon className="dc-obj-icon" aria-hidden="true" />
           <div className="dc-obj-box">
-            <span className="dc-obj-name">
-              {row.table && row.object_type !== "table"
-                ? formatDaxName(row.table, row.name)
-                : row.object_type === "table"
-                  ? `'${row.name}'`
-                  : formatObjectRef(row.name)}
+            {/* Names read as in the rest of the app: the name, then its kind and table. The DAX spelling is the tooltip. */}
+            <span className="dc-obj-name" title={row.table && row.object_type !== "table" ? formatDaxName(row.table, row.name) : row.object_type === "table" ? `'${row.name}'` : formatObjectRef(row.name)}>
+              {row.name}
             </span>
             <span className="dc-obj-meta">
-              {row.object_type}
+              {row.object_type}{row.table && row.object_type !== "table" ? ` · ${row.table}` : ""}
             </span>
           </div>
         </div>

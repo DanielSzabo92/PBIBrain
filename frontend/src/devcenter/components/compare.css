@@ -284,11 +284,11 @@
   padding: 0;
 }
 
+/* 16 px box with 4 px of clear space on every side: a 24 px target without the heavy square. */
 .dc-col-chk input[type="checkbox"] {
-  min-width: 24px;
-  min-height: 24px;
   width: 16px;
   height: 16px;
+  margin: 4px;
   cursor: pointer;
   accent-color: var(--brand);
 }
@@ -1061,3 +1061,52 @@
   border: 1px solid var(--line);
 }
 
+
+/* ---------- Row detail docked below the grid ---------------------------- */
+/* On a window with room, the detail sits under the grid like the lower half of a diff tool,
+   so the model columns being compared stay in view. Smaller windows keep the overlay sheet. */
+@media (min-width: 1100px) and (min-height: 720px) {
+  .dc-compare-area.with-pane {
+    grid-template-rows: minmax(150px, 1fr) minmax(300px, 52%);
+    gap: var(--space-2);
+  }
+
+  .dc-compare-area.with-pane > .dc-row-pane {
+    position: static;
+    width: auto;
+    display: grid;
+    grid-template-columns: minmax(320px, 440px) minmax(0, 1fr);
+    column-gap: var(--space-6, 24px);
+    row-gap: 0;
+    align-content: start;
+    border-radius: var(--r-md);
+    box-shadow: none;
+    animation: none;
+  }
+
+  .dc-compare-area.with-pane > .dc-row-pane > * {
+    grid-column: 1;
+    margin-bottom: var(--space-3);
+    min-width: 0;
+  }
+
+  .dc-compare-area.with-pane > .dc-row-pane > .dc-row-pane-head {
+    grid-column: 1 / -1;
+    position: sticky;
+    top: calc(-1 * var(--space-4));
+    z-index: 2;
+    margin: calc(-1 * var(--space-4)) calc(-1 * var(--space-4)) var(--space-3);
+    padding: var(--space-3) var(--space-4) var(--space-2);
+    background: var(--surface);
+    box-shadow: 0 1px 0 var(--line);
+  }
+
+  /* The definitions of each model, side by side with the choice. */
+  .dc-compare-area.with-pane > .dc-row-pane > section[aria-labelledby="dc-pane-diffs-title"] {
+    grid-column: 2;
+    grid-row: 2 / span 12;
+    border-top: 0;
+    padding-top: 0;
+    margin-top: 0;
+  }
+}
