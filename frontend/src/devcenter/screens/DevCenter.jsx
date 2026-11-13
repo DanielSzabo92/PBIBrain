@@ -25,6 +25,19 @@ export function devCenterStore() {
 // The last tab and the marks filter of each session, in memory only (UI design 2).
 const tabMemory = new Map();
 
+/** The session skeleton; after five seconds it says why it may be slow instead of staying silent. */
+function SessionLoading() {
+  const [slow, setSlow] = useState(false);
+  useEffect(() => {
+    const timer = setTimeout(() => setSlow(true), 5000);
+    return () => clearTimeout(timer);
+  }, []);
+  return <div className="dc-page">
+    <Skeleton label={t("work.loading")} />
+    {slow ? <p className="dc-loading-slow" role="status">{t("work.loading.slow")}</p> : null}
+  </div>;
+}
+
 export default function DevCenter({ onOpenProject }) {
   const [store] = useState(devCenterStore);
   return (
@@ -173,7 +186,7 @@ function DevCenterScreens({ onOpenProject }) {
   const showList = () => setView("list");
   const showWork = () => setView("work");
 
-  if (view === null) return <div className="dc-page"><Skeleton label={t("work.loading")} /></div>;
+  if (view === null) return <SessionLoading />;
 
   const activeSession = session ? (sessionOverrides[sessionId] ? { ...session, ...sessionOverrides[sessionId] } : session) : null;
 
@@ -241,7 +254,7 @@ function DevCenterScreens({ onOpenProject }) {
             onDeleteSession={handleDelete}
           />
         ) : (
-          <div className="dc-page"><Skeleton label={t("work.loading")} /></div>
+          <SessionLoading />
         )
       ) : null}
     </div>

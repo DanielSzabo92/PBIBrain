@@ -93,6 +93,7 @@ Measured on the same 13,731-object project, before → after.
 | 13 | **Mostly** | A visual's page lists its fields by well (Axis, Values, Legend, …) in report order, with the aggregation and the shown name, when the report file records roles (`field_wells` in the object answer) | Open: per-type pages for tables and models |
 | 13 | **Fixed** | The page of a model, table, report or page has a Contents card: what it holds by kind, with data type or size, each row a link (`contents` in the object answer, `e2e/routes.spec.js`); the suggestion badge is no longer cut off | A model page lists its tables and relationships instead of "No description recorded" alone |
 | 19 | **Partly** | On a window of 1100 × 720 px or more the row detail is docked under the grid (choice on the left, each model's definition on the right) instead of covering the model columns; names read "Net Sales" with "measure · Sales" below (DAX spelling in the tooltip); row checkboxes are 16 px | At 1440 px the target and three source columns stay visible with a row open. Open: stepper, one filter line, validity chip |
+| 19 | **Mostly** | The cell a row's choice takes its result from is marked in the grid; the Merge Choice header explains Keep / Take / Skip; the validity control carries a status glyph and an arrow; step tabs (Compare, Impact, Plan) are set apart from tool tabs; a session that loads for more than 5 s says why | Open: one filter line, hiding choices that do not apply (the row contract tests require them) |
 
 Everything else is open.
 

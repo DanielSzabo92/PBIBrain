@@ -1,6 +1,6 @@
 // Work area frame of an open session (UI design 4.2): header, banner stack, and the six tabs.
 import React, { useEffect, useState } from "react";
-import { Copy, Edit3, FolderGit2, LoaderCircle, MoreHorizontal, RefreshCw, Trash2, X } from "lucide-react";
+import { ChevronRight, CircleCheck, CircleX, Copy, Edit3, FolderGit2, LoaderCircle, MoreHorizontal, RefreshCw, Trash2, TriangleAlert, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Banner } from "@/components/ui/notice";
 import { Menu } from "@/components/ui/menu";
@@ -22,6 +22,8 @@ import CompareGrid from "../components/CompareGrid.jsx";
 import { agentCount, banners, deriveReadiness, planStatus, targetLine } from "./sessionModel.js";
 
 const TABS = ["compare", "impact", "plan", "agent", "sources", "rules", "log"];
+// Compare, Impact and Plan are the steps of a merge; the rest are tools, set apart in the tab row.
+const TOOL_TABS = TABS.slice(3);
 const LOCKED_REASON_ID = "dc-locked-reason";
 const BUSY_REASON_ID = "dc-busy-reason";
 
@@ -135,8 +137,9 @@ export default function WorkArea({ session, tabState, onTabs, onRetryLock, onClo
         </div>
         <div className="dc-work-actions" data-ui-actions="">
           <Button variant={status.tone === "plain" ? "outline" : "status"} tone={status.tone === "plain" ? undefined : status.tone} aria-label={`${status.text}. ${t("work.plan.open")}`} onClick={() => onTabs({ tab: "plan" })}>
-            {status.checking ? <LoaderCircle className="spin" aria-hidden="true" /> : null}
+            {status.checking ? <LoaderCircle className="spin" aria-hidden="true" /> : status.tone === "ok" ? <CircleCheck aria-hidden="true" /> : status.tone === "bad" ? <CircleX aria-hidden="true" /> : status.tone === "warn" ? <TriangleAlert aria-hidden="true" /> : null}
             {status.text}
+            <ChevronRight className="dc-status-open" aria-hidden="true" />
           </Button>
           <Button variant="outline" onClick={checkSources} loading={check.pending} loadingText={t("work.check_sources.loading")} disabled={changeDisabled && !check.pending} aria-describedby={check.pending ? undefined : reasonId}>
             <RefreshCw aria-hidden="true" />{t("work.check_sources")}
@@ -198,6 +201,7 @@ export default function WorkArea({ session, tabState, onTabs, onRetryLock, onClo
               <TabsTrigger
                 key={tab}
                 value={tab}
+                className={tab === TOOL_TABS[0] ? "dc-tab-tool-first" : undefined}
                 count={count}
                 countTone={countTone}
                 countLabel={countLabel}>

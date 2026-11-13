@@ -138,6 +138,12 @@ function GridShortcutsHelp() {
   );
 }
 
+// The choice of a row, so the grid can mark the cell the result comes from.
+function chosenKind(row) {
+  const raw = row?.merge_choice ? row.merge_choice.kind || row.merge_choice.choice : null;
+  return raw ? normalizeChoiceKind(raw) : null;
+}
+
 export default function CompareGrid({
   session,
   tabState = {},
@@ -1310,7 +1316,7 @@ export default function CompareGrid({
       return (
         <div
           key={`cell-${rowIndex}-4`}
-          className={`dc-cell dc-col-tg ${isMissing ? "dc-cell-missing" : ""}`}
+          className={`dc-cell dc-col-tg ${isMissing ? "dc-cell-missing" : ""}${chosenKind(row) === "keep" ? " is-chosen" : ""}`}
           role="gridcell"
           aria-colindex={5}
           tabIndex={tabIndex}
@@ -1349,7 +1355,7 @@ export default function CompareGrid({
       return (
         <div
           key={`cell-${rowIndex}-${colIndex}`}
-          className={`dc-cell ${isMissing ? "dc-cell-missing" : ""}`}
+          className={`dc-cell ${isMissing ? "dc-cell-missing" : ""}${["take", "take_properties", "add_new_name"].includes(chosenKind(row)) && (row.merge_choice?.source || row.merge_choice?.source_id) === donor.source_id ? " is-chosen" : ""}`}
           role="gridcell"
           aria-colindex={colIndex + 1}
           tabIndex={tabIndex}
@@ -1740,7 +1746,7 @@ export default function CompareGrid({
                       role="columnheader"
                       aria-colindex={4}
                     >
-                      <span>{t("compare.column.choice")}</span>
+                      <span title={t("compare.column.choice.help")}>{t("compare.column.choice")}</span>
                     </div>
 
                     <div className={`dc-hcell dc-col-tg ${targetSource?.status === "missing" ? "dc-hcell-missing" : ""}`} role="columnheader" aria-colindex={5}>
