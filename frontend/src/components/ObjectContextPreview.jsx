@@ -6,7 +6,7 @@ import { Sheet, SheetTrigger, SheetContent, SheetHeader, SheetTitle, SheetDescri
 import { Button } from "./ui/button";
 import { TypeGlyph } from "./TypeGlyph";
 import { typeLabel } from "../graphPresentation";
-import { byId } from "../presentation";
+import { linksOf, byId } from "../presentation";
 import { highlightDax } from "../dax";
 import { objectName, readableText } from "../presentation";
 
@@ -29,8 +29,7 @@ export default function ObjectContextPreview({
   const description = readableText(node.description || properties.description);
 
   // Incoming: objects that reference or use this node
-  const incoming = edges.filter((e) => e.to_id === node.id);
-  const outgoing = edges.filter((e) => e.from_id === node.id);
+  const { incoming, outgoing } = linksOf(edges, node.id);
 
   const resolveNode = (id) => byId(nodes, id);
 

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Background, BaseEdge, Handle, MarkerType, MiniMap, Position, ReactFlow, getSmoothStepPath, useViewport } from "@xyflow/react";
 import { BadgeCheck, ChevronDown, ChevronRight, ChevronsDownUp, CircleX, Code, Copy, Crosshair, FilterX, ListFilter, Maximize, Minus, PenLine, Plus, Search, Shapes, SlidersHorizontal, TriangleAlert } from "lucide-react";
 import "@xyflow/react/dist/style.css";
@@ -14,11 +14,11 @@ import { Tooltip } from "./ui/tooltip";
 import { Popover } from "./ui/filter";
 import GraphDetails from "./GraphDetails";
 import ProvenanceLegend from "./ProvenanceLegend";
-import { TypeGlyph } from "./TypeGlyph";
+import { TypeGlyph, TypeIcon } from "./TypeGlyph";
 import { ARTIFACT_GROUPS, EDGE_TYPES, artifactColor, artifactGroup, middleEllipsis, typeLabel } from "../graphPresentation";
-import { buildExplorerGraph, layoutExplorerGraph, layoutArtifactGraph, layoutGraph, NODE_WIDTH, NODE_HEIGHT, GROUP_WIDTH, GROUP_HEIGHT } from "../graphLayout";
-import { objectName, scopeChoices, statusLabel, visualType } from "../presentation";
-import { hideLanes, layoutLineage, lineageOf, TWO_LINE_HEIGHT } from "../lineage";
+import { buildExplorerGraph, bundleExplorerEdges, layoutExplorerGraph, layoutArtifactGraph, layoutGraph, NODE_WIDTH, NODE_HEIGHT, GROUP_WIDTH, GROUP_HEIGHT } from "../graphLayout";
+import { formatCount, objectName, scopeChoices, statusLabel, visualType } from "../presentation";
+import { foldLineage, hideLanes, layoutLineage, lineageOf, TWO_LINE_HEIGHT } from "../lineage";
 import { groupVersions, versionNote } from "../versions";
 import ImpactMatrix from "./ImpactMatrix";
 import LaneChips from "./LaneChips";
@@ -48,11 +48,22 @@ const nameScale = (tier) => tier === "full" || tier === "far" ? 1 : 11 / (13 * N
 // Lineage fits no further out than the smallest zoom that still shows names (see GLYPH_ZOOM).
 const FULL_GRAPH_MIN_ZOOM = 0.55;
 const DETAIL_PANE_WIDTH = 360;
+const NAME_WIDTH_MAX = 320;
+// Room for a name and three inside counts.
+const GROUP_COUNTS_WIDTH = 224;
 // Large pictures render only what is in view (the whole project stays laid out and searchable).
 const VIEWPORT_ONLY_ABOVE = 400;
 // The pane overlays the canvas for one double-click window before it docks, so the second click of a
 // double-click still lands on the node that the first click selected.
 const DOCK_DELAY = 350;
+// Links between collapsed owners are all drawn up to this many; above it, only those of the selection.
+const BUNDLES_ALWAYS = 40;
+// Their counts are written out up to this many; above it, on the selection's links only.
+const BUNDLE_LABELS = 40;
+// Inside counts shown on an owner, in reading order.
+const COUNT_TYPES = ["TABLE", "COLUMN", "MEASURE", "PAGE", "VISUAL"];
+// Lanes with more objects than this pack the selection's chain together instead of dimming the rest.
+const TRACE_ABOVE = 80;
 const DEPENDENCY_EDGES = new Set(["DEPENDS_ON", "REFERENCES", "USES", "USES_MODEL"]);
 const STRUCTURE_EDGES = new Set(["CONTAINS", "BELONGS_TO"]);
 const STATUS_GLYPHS = { approved: BadgeCheck, rejected: CircleX, overridden: PenLine };
@@ -86,6 +97,8 @@ export function createGraphSession(selectedId = "") {
     hiddenTypes: [],
     // Lineage lanes switched off with the lane chips (shared by Lineage and Matrix).
     hiddenLanes: [],
+    // Lineage folds opened by the person (large pictures fold long lanes by owner).
+    unfolded: [],
     groupVersions: true,
     // Selecting an object hides what is not related to it. null: automatic, on for large pictures (issue #53).
     relatedOnly: null,
@@ -124,6 +137,7 @@ function normalizeGraphSession(value, selectedId) {
     expandedIds: Array.isArray(incoming.expandedIds) ? incoming.expandedIds.filter((id) => typeof id === "string") : null,
     hiddenTypes: Array.isArray(incoming.hiddenTypes) ? incoming.hiddenTypes.filter((type) => typeof type === "string") : [],
     hiddenLanes: Array.isArray(incoming.hiddenLanes) ? incoming.hiddenLanes.filter((lane) => typeof lane === "string") : [],
+    unfolded: Array.isArray(incoming.unfolded) ? incoming.unfolded.filter((id) => typeof id === "string") : [],
     groupVersions: typeof incoming.groupVersions === "boolean" ? incoming.groupVersions : defaults.groupVersions,
     relatedOnly: typeof incoming.relatedOnly === "boolean" ? incoming.relatedOnly : null,
     viewports: incoming.viewports && typeof incoming.viewports === "object" ? incoming.viewports : {},
@@ -135,12 +149,13 @@ function normalizeGraphSession(value, selectedId) {
 }
 
 /**
- * Lineage and Matrix read the whole factual structure of the scope (getLineage: compact, no object limit).
- * Suggestions, artifact/type/link filters and the other views use the scoped, limited getGraph slice.
+ * Containers, Lineage and Matrix read the whole factual structure of the scope (getLineage: compact, no
+ * object limit), so the default picture is the whole project and never a sample of it.
+ * Suggestions, artifact/type/link filters and Neighbourhood use the scoped, limited getGraph slice.
  */
 function wholeScope(session) {
   const { filters } = session;
-  return !session.centerId && ["full", "matrix"].includes(session.viewMode) && !filters.artifact && !filters.objectType && !filters.edgeType && (filters.status === "" || filters.status === "factual");
+  return !session.centerId && ["overview", "full", "matrix"].includes(session.viewMode) && !filters.artifact && !filters.objectType && !filters.edgeType && (filters.status === "" || filters.status === "factual");
 }
 
 
@@ -160,6 +175,7 @@ function nodeLabel(node, warning, isGroup) {
   const count = node?.explorerDescendantCount || node?.explorerChildCount || 0;
   const inside = isGroup && count ? `, ${count} inside` : "";
   const state = warning ? ", needs review" : node.status && node.status !== "factual" ? `, ${statusLabel(node.status).toLowerCase()}` : "";
+  if (node?.fold) return `${node.foldCount} ${typeLabel(node.type)} objects of ${objectName(node)}, folded. Press Enter to show them`;
   return `${kindLabel(node)} ${objectName(node)}${inside}${state}`;
 }
 
@@ -419,11 +435,22 @@ export default function GraphView({ transport, overview, snapshot, selectedId, c
     return hiddenSet.size ? list.filter((edge) => typedIds.has(edge.from_id) && typedIds.has(edge.to_id)) : list;
   }, [edges, versioned, hiddenSet, typedIds]);
   const laned = useMemo(() => viewMode === "full" && hiddenLanes.length ? hideLanes(typedNodes, typedEdges, hiddenLanes) : null, [viewMode, hiddenLanes, typedNodes, typedEdges]);
-  const shownNodes = laned ? laned.nodes : typedNodes;
-  const shownEdges = laned ? laned.edges : typedEdges;
+  const lanedNodes = laned ? laned.nodes : typedNodes;
+  const lanedEdges = laned ? laned.edges : typedEdges;
+  // A large lineage shows one row per owner in its long lanes; a click on a row opens it.
+  const folded = useMemo(() => viewMode === "full" ? foldLineage(lanedNodes, lanedEdges, graphSession.unfolded) : null, [viewMode, lanedNodes, lanedEdges, graphSession.unfolded]);
+  const shownNodes = folded ? folded.nodes : lanedNodes;
+  const shownEdges = folded ? folded.edges : lanedEdges;
   // Default expansion opens each model, unless that would show more than the readable budget.
   const defaultExpanded = useMemo(() => {
     const models = shownNodes.filter((node) => node.type === "MODEL").map((node) => node.id);
+    if (shownNodes.length <= AUTO_COLLAPSE_ABOVE) return models;
+    // A large project: count what the models own directly instead of building the whole picture twice.
+    if (shownNodes.length > 2000) {
+      const modelIds = new Set(models);
+      const owned = shownEdges.reduce((count, edge) => count + (edge.type === "CONTAINS" && modelIds.has(edge.from_id) ? 1 : 0), 0);
+      if (models.length + owned > AUTO_COLLAPSE_ABOVE) return [];
+    }
     return buildExplorerGraph(shownNodes, shownEdges, models).nodes.length > AUTO_COLLAPSE_ABOVE ? [] : models;
   }, [shownNodes, shownEdges]);
   const expandedIds = graphSession.expandedIds ?? defaultExpanded;
@@ -435,10 +462,25 @@ export default function GraphView({ transport, overview, snapshot, selectedId, c
   const layoutEdges = useMemo(() => overviewMode
     ? explorer.edges.filter((edge) => filters.edgeType || edge.type === "CONTAINS" || DEPENDENCY_EDGES.has(edge.type))
     : shownEdges, [overviewMode, explorer, filters.edgeType, shownEdges]);
-  const canvasEdges = useMemo(() => overviewMode && focusedId && !filters.edgeType
-    ? [...layoutEdges, ...explorer.edges.filter((edge) => edge.type !== "CONTAINS" && !DEPENDENCY_EDGES.has(edge.type) && (edge.from_id === focusedId || edge.to_id === focusedId))]
-    : layoutEdges, [overviewMode, focusedId, filters.edgeType, layoutEdges, explorer]);
-  const relatedOnly = graphSession.relatedOnly ?? canvasNodes.length > VIEWPORT_ONLY_ABOVE;
+  // What collapsed owners hide is still said: one counted link per pair of owners that are shown.
+  const bundles = useMemo(() => overviewMode && !filters.edgeType ? bundleExplorerEdges(explorer, shownEdges) : [], [overviewMode, filters.edgeType, explorer, shownEdges]);
+  const canvasEdges = useMemo(() => {
+    if (!overviewMode || filters.edgeType) return layoutEdges;
+    const ofSelection = (edge) => edge.from_id === focusedId || edge.to_id === focusedId;
+    const drawnBundles = bundles.length <= BUNDLES_ALWAYS ? bundles : focusedId ? bundles.filter(ofSelection) : [];
+    const selectionLinks = focusedId ? explorer.edges.filter((edge) => edge.type !== "CONTAINS" && !DEPENDENCY_EDGES.has(edge.type) && ofSelection(edge)) : [];
+    return selectionLinks.length || drawnBundles.length ? [...layoutEdges, ...selectionLinks, ...drawnBundles] : layoutEdges;
+  }, [overviewMode, focusedId, filters.edgeType, layoutEdges, explorer, bundles]);
+  // An opened model says which of its tables each report uses, so its own "report uses model" line,
+  // which would run through those tables, is laid out but not drawn.
+  const undrawn = useMemo(() => {
+    if (!overviewMode || !canvasEdges.some((edge) => edge.bundle)) return null;
+    const open = new Set(explorer.nodes.filter((node) => node.type === "MODEL" && node.explorerExpanded).map((node) => node.id));
+    const ids = new Set(layoutEdges.filter((edge) => edge.type === "USES_MODEL" && (open.has(edge.to_id) || open.has(edge.from_id))).map((edge) => edge.id));
+    return ids.size ? ids : null;
+  }, [overviewMode, canvasEdges, explorer, layoutEdges]);
+  // Automatic: on when the picture is too large to read the selection's chain in place.
+  const relatedOnly = graphSession.relatedOnly ?? canvasNodes.length > (lanesView ? TRACE_ABOVE : VIEWPORT_ONLY_ABOVE);
   // Lineage searches and lane choices are applied here, not by the request: they re-fit the canvas too.
   const canvasKey = JSON.stringify([graphKey, viewMode, direction, !overviewMode && grouped, searchHere ? filters.query : "", viewMode === "full" ? hiddenLanes : []]);
   const saveViewport = useCallback((viewport) => updateSession((current) => {
@@ -456,13 +498,15 @@ export default function GraphView({ transport, overview, snapshot, selectedId, c
     return { ...current, placements: { ...Object.fromEntries(recent), [canvasKey]: positions } };
   }), [canvasKey, updateSession]);
   const toggleGroup = useCallback((id) => {
+    canvasApi.current?.pin(id);
     updateSession((current) => {
       const expanded = new Set(current.expandedIds ?? defaultExpanded);
       if (expanded.has(id)) expanded.delete(id); else expanded.add(id);
       return { ...current, expandedIds: [...expanded] };
     });
+    // A picture that fits is fitted again; a larger one stays where it is and shows the owner that changed.
     setTimeout(() => {
-      canvasApi.current?.fit();
+      canvasApi.current?.settle(id);
     }, 60);
   }, [defaultExpanded, updateSession]);
   const error = graphError?.key === graphKey ? graphError.message : "";
@@ -470,7 +514,7 @@ export default function GraphView({ transport, overview, snapshot, selectedId, c
   const warningIds = useMemo(() => new Set((snapshot.conflicts || []).flatMap((item) => [item.target?.id || item.target || item.target_id || item.object_id, item.id, item.conflict_id].filter(Boolean))), [snapshot.conflicts]);
   const activeFilters = ["artifact", "modelId", "reportId", "edgeType", "objectType", "status"].filter((key) => Boolean(filters[key])).length;
   const hasFilters = Boolean(activeFilters || query || centerId || hiddenTypes.length > 0 || hiddenLanes.length > 0);
-  const reset = () => { updateSession((current) => ({ ...current, filters: { ...EMPTY_FILTERS }, query: "", centerId: "", depth: 1, limit: DEFAULT_LIMIT, result: null, expandedIds: null, hiddenTypes: [], hiddenLanes: [] })); setFocusedNode(null); };
+  const reset = () => { updateSession((current) => ({ ...current, filters: { ...EMPTY_FILTERS }, query: "", centerId: "", depth: 1, limit: DEFAULT_LIMIT, result: null, expandedIds: null, hiddenTypes: [], hiddenLanes: [], unfolded: [] })); setFocusedNode(null); };
   const center = useCallback((node) => {
     if (!node) return;
     updateSession((current) => ({ ...current, filters: { ...EMPTY_FILTERS }, query: "", centerId: node.id }));
@@ -527,11 +571,17 @@ export default function GraphView({ transport, overview, snapshot, selectedId, c
   }, [paneOpen, closeDetails]);
 
   const centerNode = centerId ? nodes.find((node) => node.id === centerId) : null;
-  const summary = loading && !graph ? "Loading graph…" : `${canvasNodes.length} ${canvasNodes.length === 1 ? "object" : "objects"} · ${canvasEdges.length} ${canvasEdges.length === 1 ? "link" : "links"}`;
+  const selectNode = useCallback((node) => {
+    if (!node?.fold) { setFocusedNode(node); return; }
+    setFocusedNode(null);
+    updateSession((current) => ({ ...current, unfolded: [...new Set([...(current.unfolded || []), node.id])] }));
+  }, [updateSession]);
+  const inside = folded ? ` · ${formatCount(folded.folded)} folded` : overviewMode && explorer.hiddenCount ? ` · ${formatCount(explorer.hiddenCount)} inside` : "";
+  const summary = loading && !graph ? "Loading graph…" : `${formatCount(canvasNodes.length)} ${canvasNodes.length === 1 ? "object" : "objects"}${inside} · ${formatCount(canvasEdges.length)} ${canvasEdges.length === 1 ? "link" : "links"}`;
   const summaryDetail = [
     overviewMode && explorer.hiddenCount ? `${explorer.hiddenCount} in collapsed groups` : "",
     hiddenTypes.length && typedNodes.length !== (versioned ? versioned.nodes : nodes).length ? `${(versioned ? versioned.nodes : nodes).length - typedNodes.length} hidden by type` : "",
-    laned ? `${typedNodes.length - shownNodes.length} in lanes switched off` : "",
+    laned ? `${typedNodes.length - lanedNodes.length} in lanes switched off` : "",
     versioned?.grouped ? `${nodes.length - versioned.nodes.length} version copies folded` : "",
     `${nodes.length} of ${graph?.total_nodes ?? 0} matching objects loaded`,
   ].filter(Boolean).join(" · ");
@@ -588,11 +638,12 @@ export default function GraphView({ transport, overview, snapshot, selectedId, c
         {viewMode === "matrix" ? <ImpactMatrix graph={graph} error={error} onRetry={loadGraph} query={query} hiddenLanes={hiddenLanes} groupVersions={graphSession.groupVersions} colors={colors} selectedId={focusedNode?.id} onSelect={setFocusedNode} />
           : error ? <div className="graph-empty" role="alert"><span className="empty-icon tone-bad" aria-hidden="true"><TriangleAlert /></span><h3>Graph unavailable</h3><p>{error}</p><Button variant="outline" onClick={loadGraph}>Retry graph</Button></div>
           : !graph ? <div className="graph-empty graph-loading" role="status"><p>Loading graph…</p></div>
-          : canvasNodes.length ? <GraphCanvas key={canvasKey} rawById={rawById} apiRef={canvasApi} overview={overviewMode} full={viewMode === "full"} grouped={!overviewMode && grouped} onCenter={center} onInspect={inspect} nodes={canvasNodes} edges={canvasEdges} layoutEdges={layoutEdges} relatedOnly={relatedOnly} selectedId={focusedNode?.id || centerId} docked={docked} warningIds={warningIds} direction={direction} showLabels={showLabels} colors={colors} onSelect={setFocusedNode} onToggleGroup={toggleGroup} viewport={graphSession.viewports[canvasKey]} onViewportChange={saveViewport} placements={graphSession.placements[canvasKey]} onPlacementsChange={savePlacements} />
+          : canvasNodes.length ? <GraphCanvas key={canvasKey} rawById={rawById} apiRef={canvasApi} overview={overviewMode} full={viewMode === "full"} grouped={!overviewMode && grouped} onCenter={center} onInspect={inspect} nodes={canvasNodes} edges={canvasEdges} layoutEdges={layoutEdges} undrawn={undrawn} relatedOnly={relatedOnly} selectedId={focusedNode?.id || centerId} docked={docked} warningIds={warningIds} direction={direction} showLabels={showLabels} colors={colors} onSelect={selectNode} onToggleGroup={toggleGroup} viewport={graphSession.viewports[canvasKey]} onViewportChange={saveViewport} placements={graphSession.placements[canvasKey]} onPlacementsChange={savePlacements} />
           : <div className="graph-empty"><span className="empty-icon" aria-hidden="true"><Search /></span><h3>No matching objects</h3><p>{hasFilters ? "Try another filter or clear the filters." : "Scan project sources to see their relationships."}</p>{hasFilters ? <Button variant="outline" onClick={reset}>Clear filters</Button> : null}</div>}
         <div className="graph-overlay graph-overlay-top" data-ui-actions="">
           {overviewMode && graphSession.expandedIds != null && explorer.collapsedCount < explorer.nodes.filter((node) => node.explorerChildCount > 0).length ? <Button variant="outline" size="xs" className="graph-overlay-button" onClick={() => updateSession({ expandedIds: null })}><ChevronsDownUp />Collapse all</Button> : null}
-          {graph?.truncated && viewMode !== "matrix" ? <div className="scope-notice">Showing {graph.nodes.length} of {graph.total_nodes} objects{limit < 1000 ? <> · <Button variant="link" size="xs" onClick={() => updateSession({ limit: Math.min(limit * 2, 1000) })}>Show more</Button></> : null}</div> : null}
+          {viewMode === "full" && graphSession.unfolded.length ? <Button variant="outline" size="xs" className="graph-overlay-button" onClick={() => updateSession({ unfolded: [] })}><ChevronsDownUp />Fold all</Button> : null}
+          {graph?.truncated && viewMode !== "matrix" && !wholeScope(graphSession) ? <div className="scope-notice">Showing {graph.nodes.length} of {graph.total_nodes} objects{limit < 1000 ? <> · <Button variant="link" size="xs" onClick={() => updateSession({ limit: Math.min(limit * 2, 1000) })}>Show more</Button></> : null}</div> : null}
         </div>
         {evidenceShown && viewMode !== "matrix" ? <div className="graph-overlay graph-overlay-key"><ProvenanceLegend /></div> : null}
       </div>
@@ -624,7 +675,7 @@ function nameRoom(width, isGroup, hasStatus) {
 }
 
 // Room for the "×2" / "1/2" version badge and its gap.
-const versionRoom = (node) => (node?.familySize > 1 ? 34 : 0);
+const versionRoom = (node) => (node?.familySize > 1 ? 34 : 0) + (node?.fold ? 14 + String(node.foldCount).length * 7 + 22 : 0);
 
 const SIDES = {
   LR: { forward: [Position.Right, Position.Left], backward: [Position.Left, Position.Right], same: [Position.Right, Position.Right] },
@@ -664,7 +715,7 @@ function edgeGeometry(source, target, direction, offset) {
   return { path, labelX: labelX + shiftX, labelY: labelY + shiftY };
 }
 
-function GraphCanvas({ rawById, apiRef, overview, full, grouped, onCenter, onInspect, nodes, edges, layoutEdges = edges, relatedOnly = false, selectedId, docked, warningIds, direction, showLabels, colors, onSelect, onToggleGroup, viewport, onViewportChange, placements, onPlacementsChange }) {
+function GraphCanvas({ rawById, apiRef, overview, full, grouped, onCenter, onInspect, nodes, edges, layoutEdges = edges, undrawn = null, relatedOnly = false, selectedId, docked, warningIds, direction, showLabels, colors, onSelect, onToggleGroup, viewport, onViewportChange, placements, onPlacementsChange }) {
   const [flow, setFlow] = useState(null);
   const [zoom, setZoom] = useState(viewport?.zoom || 1);
   const [tier, setTier] = useState(() => zoomTier(viewport?.zoom || 1));
@@ -682,13 +733,36 @@ function GraphCanvas({ rawById, apiRef, overview, full, grouped, onCenter, onIns
   const wrapper = useRef(null);
   const initialViewport = useRef(viewport);
   const previousPositions = useRef(new Map(Object.entries(placements || {})));
-  const sizeOf = useCallback((node) => overview && node.explorerChildCount > 0 ? { width: GROUP_WIDTH, height: GROUP_HEIGHT } : { width: NODE_WIDTH, height: NODE_HEIGHT }, [overview]);
+  // Owners of one type share one width: the widest name of that type, up to NAME_WIDTH_MAX, so a name is
+  // not cut while there is room and the columns stay aligned.
+  const ownerWidths = useMemo(() => {
+    const widths = new Map();
+    if (!overview) return widths;
+    nodes.forEach((node) => {
+      const isGroup = node.explorerChildCount > 0;
+      const base = isGroup ? GROUP_WIDTH : NODE_WIDTH;
+      const wanted = Math.ceil(measureName(objectName(node)) + base - nameRoom(base, isGroup, false) + 12);
+      const key = `${node.type}:${isGroup}`;
+      widths.set(key, Math.min(NAME_WIDTH_MAX, Math.max(widths.get(key) || (isGroup ? GROUP_COUNTS_WIDTH : base), wanted)));
+    });
+    return widths;
+    // fontsReady: names are measured again once the UI font has loaded.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [overview, nodes, fontsReady]);
+  const sizeOf = useCallback((node) => {
+    if (!overview) return { width: NODE_WIDTH, height: NODE_HEIGHT };
+    const isGroup = node.explorerChildCount > 0;
+    return { width: ownerWidths.get(`${node.type}:${isGroup}`) || (isGroup ? GROUP_WIDTH : NODE_WIDTH), height: isGroup ? GROUP_HEIGHT : NODE_HEIGHT };
+  }, [overview, ownerWidths]);
   // Lineage lanes (Model › Tables › Columns › Calculations › Visuals › … › Reports) for every view except Overview.
   const lineage = !overview && !grouped;
   const layout = useMemo(() => {
     if (lineage) return { ...layoutLineage(nodes, edges, direction, { measure: measureName, badge: versionRoom }), groups: [] };
     if (!overview) return grouped ? layoutArtifactGraph(nodes, edges, direction, sizeOf) : { ...layoutGraph(nodes, edges, direction, sizeOf), groups: [] };
-    const next = layoutExplorerGraph(nodes, layoutEdges, direction, previousPositions.current, sizeOf);
+    // A small picture keeps every placed object where it was and adds new ones around them. A large one is
+    // laid out afresh, in lineage order, and the viewport holds the opened owner still instead (see pin).
+    const fresh = nodes.length > AUTO_COLLAPSE_ABOVE;
+    const next = layoutExplorerGraph(nodes, layoutEdges, direction, fresh ? null : previousPositions.current, sizeOf, { reportsLast: fresh });
     previousPositions.current = new Map(next.nodes.map(({ node, position }) => [node.id, position]));
     return { ...next, groups: [] };
     // fontsReady: lane widths follow measured names.
@@ -702,8 +776,10 @@ function GraphCanvas({ rawById, apiRef, overview, full, grouped, onCenter, onIns
   const drawnEdges = useMemo(() => {
     if (edges === layoutEdges) return layout.edges;
     const laidOut = new Set(layoutEdges);
-    return [...layout.edges, ...edges.filter((edge) => !laidOut.has(edge) && rects.has(edge.from_id) && rects.has(edge.to_id)).map((edge) => ({ edge }))];
-  }, [edges, layoutEdges, layout, rects]);
+    const kept = undrawn ? layout.edges.filter(({ edge }) => !undrawn.has(edge.id)) : layout.edges;
+    return [...kept, ...edges.filter((edge) => !laidOut.has(edge) && rects.has(edge.from_id) && rects.has(edge.to_id)).map((edge) => ({ edge }))];
+  }, [edges, layoutEdges, layout, rects, undrawn]);
+  const bundleLabels = useMemo(() => edges.reduce((count, edge) => count + (edge.bundle ? 1 : 0), 0) <= BUNDLE_LABELS, [edges]);
   const byId = useMemo(() => new Map(nodes.map((node) => [node.id, node])), [nodes]);
   const reduced = prefersReducedMotion();
   const fitDuration = reduced ? 0 : 320;
@@ -733,15 +809,23 @@ function GraphCanvas({ rawById, apiRef, overview, full, grouped, onCenter, onIns
   // Large pictures keep their zoom and only pan the selection into view.
   const large = layout.nodes.length > VIEWPORT_ONLY_ABOVE;
   const latest = useRef(null);
-  latest.current = { flow, reveal, fitOptions, fitDuration, selectedId, large };
+  // Whether the whole picture is readable in the canvas as it is now.
+  const fitsWhole = () => {
+    const bounds = wrapper.current?.getBoundingClientRect();
+    if (!bounds || !rects.size) return true;
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    rects.forEach((rect) => { minX = Math.min(minX, rect.x); minY = Math.min(minY, rect.y); maxX = Math.max(maxX, rect.x + rect.width); maxY = Math.max(maxY, rect.y + rect.height); });
+    return (maxX - minX) * minFitZoom <= bounds.width * 0.9 && (maxY - minY) * minFitZoom <= bounds.height * 0.9;
+  };
+  latest.current = { flow, reveal, fitOptions, fitDuration, selectedId, large, fitsWhole, fit: () => flow?.fitView({ ...fitOptions, ...travel(fitDuration) }) };
   const wasDocked = useRef(docked);
   useEffect(() => {
     if (wasDocked.current === docked) return undefined;
     wasDocked.current = docked;
     const timer = setTimeout(() => {
       const current = latest.current;
-      if (current.large) { if (docked && current.selectedId) current.reveal(current.selectedId); }
-      else current.flow?.fitView({ ...current.fitOptions, ...travel(current.fitDuration) });
+      if (current.large || !current.fitsWhole()) { if (docked && current.selectedId) current.reveal(current.selectedId); }
+      else current.fit();
     }, 40);
     return () => clearTimeout(timer);
   }, [docked]);
@@ -752,10 +836,10 @@ function GraphCanvas({ rawById, apiRef, overview, full, grouped, onCenter, onIns
     return () => clearTimeout(timer);
   }, [docked, selectedId]);
 
-  // Lineage reads from the left: when the lanes cannot fit at a readable zoom, open at Models (top-left)
+  // Lineage and Containers read from the left: when the picture cannot fit at a readable zoom, open at Models (top-left)
   // instead of the middle of the picture. Estimated from the window, since the canvas is not measured yet.
   const leftAnchor = useMemo(() => {
-    if (!lineage || initialViewport.current || !layout.nodes.length || typeof window === "undefined") return null;
+    if ((!lineage && !overview) || initialViewport.current || !layout.nodes.length || typeof window === "undefined") return null;
     const xs = layout.nodes.map(({ position }) => position.x), ys = layout.nodes.map(({ position }) => position.y);
     const minX = Math.min(...xs), minY = Math.min(...ys) - 48;
     const spanX = Math.max(...layout.nodes.map(({ position, width }) => position.x + (width || NODE_WIDTH))) - minX;
@@ -765,17 +849,50 @@ function GraphCanvas({ rawById, apiRef, overview, full, grouped, onCenter, onIns
     // Only for the first paint of this canvas.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  const fit = useCallback(() => flow?.fitView({ ...fitOptions, ...travel(fitDuration) }), [flow, fitOptions, fitDuration]);
+  // The owner being opened or closed stays under the pointer while the picture is laid out again.
+  const pinned = useRef(null);
+  useLayoutEffect(() => {
+    const pin = pinned.current;
+    pinned.current = null;
+    const now = pin && rects.get(pin.id);
+    if (!now || !flow) return;
+    const { x, y, zoom: scale } = flow.getViewport();
+    const dx = (now.x - pin.rect.x) * scale, dy = (now.y - pin.rect.y) * scale;
+    if (dx || dy) flow.setViewport({ x: x - dx, y: y - dy, zoom: scale });
+  }, [rects, flow]);
+  // Fit: the whole picture when it is readable at that size; else fit the width and start at the top-left,
+  // where the lanes begin. A tall picture is never centred on its middle.
+  const fit = useCallback(() => {
+    const bounds = wrapper.current?.getBoundingClientRect();
+    if (!flow || !bounds || !rects.size) return;
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    rects.forEach((rect) => { minX = Math.min(minX, rect.x); minY = Math.min(minY, rect.y); maxX = Math.max(maxX, rect.x + rect.width); maxY = Math.max(maxY, rect.y + rect.height); });
+    const header = lineage ? 48 : 0;
+    const spanX = maxX - minX, spanY = maxY - minY + header;
+    const whole = Math.min(1, bounds.width * 0.9 / spanX, bounds.height * 0.9 / spanY);
+    if (whole >= minFitZoom || (!lineage && !overview)) { flow.fitView({ ...fitOptions, ...travel(fitDuration) }); return; }
+    const scale = Math.max(minFitZoom, Math.min(1, (bounds.width - 48) / spanX));
+    flow.setViewport({ x: 24 - minX * scale, y: 24 - (minY - header) * scale, zoom: scale }, travel(fitDuration));
+  }, [flow, fitOptions, fitDuration, rects, lineage, overview, minFitZoom]);
   useEffect(() => {
     if (!apiRef) return undefined;
     apiRef.current = {
       fit,
+      pin: (id) => { pinned.current = rects.has(id) ? { id, rect: rects.get(id) } : null; },
+      settle: (id) => {
+        const bounds = wrapper.current?.getBoundingClientRect();
+        if (!flow || !bounds) return;
+        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+        rects.forEach((rect) => { minX = Math.min(minX, rect.x); minY = Math.min(minY, rect.y); maxX = Math.max(maxX, rect.x + rect.width); maxY = Math.max(maxY, rect.y + rect.height); });
+        const fits = (maxX - minX) * minFitZoom <= bounds.width * 0.9 && (maxY - minY) * minFitZoom <= bounds.height * 0.9;
+        if (fits) fit(); else reveal(id);
+      },
       zoomIn: () => flow?.zoomIn(travel(stepDuration)),
       zoomOut: () => flow?.zoomOut(travel(stepDuration)),
       zoomReset: () => flow?.zoomTo(1, travel(stepDuration)),
     };
     return () => { apiRef.current = null; };
-  }, [apiRef, fit, flow, stepDuration]);
+  }, [apiRef, fit, flow, stepDuration, rects, minFitZoom, reveal]);
 
   // In lineage lanes a selection lights its whole chain: what feeds it and everything it feeds, to the report.
   const trace = useMemo(() => lineage && selectedId ? lineageOf(selectedId, drawnEdges) : null, [lineage, selectedId, drawnEdges]);
@@ -788,6 +905,26 @@ function GraphCanvas({ rawById, apiRef, overview, full, grouped, onCenter, onIns
     return ids;
   }, [edges, selectedId, trace]);
   const focusing = Boolean(selectedId) && rects.has(selectedId);
+  // Trace layout: when a selection hides everything unrelated, what is left is packed in its lanes around
+  // the selected object, which keeps its exact place. The big layout is never recomputed (issue #53): this
+  // is a second, small one shown over it, and clearing the selection puts everything back.
+  const packed = useMemo(() => {
+    if (!lineage || !relatedOnly || !focusing || !trace || connected.size >= layout.nodes.length) return null;
+    const members = layout.nodes.filter(({ node }) => connected.has(node.id)).map(({ node }) => node);
+    const links = edges.filter((edge) => connected.has(edge.from_id) && connected.has(edge.to_id));
+    const small = layoutLineage(members, links, direction, { measure: measureName, badge: versionRoom });
+    const own = small.nodes.find(({ node }) => node.id === selectedId);
+    const home = rects.get(selectedId);
+    if (!own || !home) return null;
+    const horizontal = direction !== "TB";
+    const shift = horizontal ? home.y - own.position.y : home.x - own.position.x;
+    return new Map(small.nodes.map(({ node, position, height }) => {
+      const rect = rects.get(node.id);
+      return [node.id, horizontal ? { ...rect, y: position.y + shift, height: height || rect.height } : { ...rect, x: position.x + shift }];
+    }));
+    // fontsReady: names are measured again once the UI font has loaded.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lineage, relatedOnly, focusing, trace, connected, layout, edges, direction, rects, selectedId, fontsReady]);
 
   // Everything that does not depend on the selection is built once per layout; a selection only
   // re-decorates the nodes it changes, so a click on a large picture stays cheap (issue #53).
@@ -820,9 +957,10 @@ function GraphCanvas({ rawById, apiRef, overview, full, grouped, onCenter, onIns
     if (item.type !== "brain") return item;
     const selected = item.id === selectedId;
     const related = !focusing || connected.has(item.id);
-    if (!selected && related) return item;
-    return { ...item, selected, className: related ? "" : "is-dimmed", hidden: !related && relatedOnly };
-  }), [baseNodes, selectedId, focusing, connected, relatedOnly]);
+    const place = related ? packed?.get(item.id) : null;
+    if (!selected && related && !place) return item;
+    return { ...item, selected, className: related ? "" : "is-dimmed", hidden: !related && relatedOnly, ...(place ? { position: { x: place.x, y: place.y } } : {}) };
+  }), [baseNodes, selectedId, focusing, connected, relatedOnly, packed]);
   const laneCount = layout.lanes?.length || 0;
 
   const baseEdges = useMemo(() => {
@@ -838,11 +976,15 @@ function GraphCanvas({ rawById, apiRef, overview, full, grouped, onCenter, onIns
       const geometry = edgeGeometry(rects.get(from), rects.get(to), direction, index * 10);
       return {
         edge, structure, warning,
-        classes: ["flow-edge", evidenceClass.toLowerCase(), structure ? "is-structure" : "", warning ? "warning" : ""].filter(Boolean),
+        classes: ["flow-edge", evidenceClass.toLowerCase(), structure ? "is-structure" : "", warning ? "warning" : "", edge.bundle ? "is-bundle" : ""].filter(Boolean),
         flow: {
           id: edge.id, source: from, target: to, type: "routed",
-          label: typeLabel(edge.type),
-          ariaLabel: `${objectName(byId.get(edge.from_id))} ${typeLabel(edge.type)} ${objectName(byId.get(edge.to_id))}`,
+          label: edge.bundle ? formatCount(edge.count) : typeLabel(edge.type),
+          ariaLabel: edge.bundle
+            ? `${formatCount(edge.count)} links between ${objectName(byId.get(edge.from_id))} and ${objectName(byId.get(edge.to_id))}`
+            : `${objectName(byId.get(edge.from_id))} ${typeLabel(edge.type)} ${objectName(byId.get(edge.to_id))}`,
+          // A bundle is as heavy as what it stands for: 1 link is a hairline, thousands are a band.
+          ...(edge.bundle ? { style: { strokeWidth: 1 + Math.min(3, Math.log10(edge.count)) } } : {}),
           data: geometry,
         },
       };
@@ -851,13 +993,19 @@ function GraphCanvas({ rawById, apiRef, overview, full, grouped, onCenter, onIns
   const flowEdges = useMemo(() => baseEdges.map(({ edge, structure, warning, classes, flow: base }) => {
     const onPath = trace ? trace.edgeIds.has(edge.id) : Boolean(selectedId) && (edge.from_id === selectedId || edge.to_id === selectedId);
     const tone = onPath ? "var(--brand)" : warning ? "var(--warn)" : "var(--graph-edge)";
+    // A link is drawn only between two objects that are shown: no loose ends when a selection hides the rest.
+    const loose = focusing && relatedOnly && !(connected.has(base.source) && connected.has(base.target));
+    const moved = !loose && packed && packed.has(base.source) && packed.has(base.target);
     return {
       ...base,
-      className: [...classes, onPath ? "on-path" : "", focusing && !onPath ? "is-dimmed" : "", (showLabels || (onPath && !structure && drawnEdges.length <= 12)) ? "show-label" : ""].filter(Boolean).join(" "),
-      markerEnd: structure && !onPath ? undefined : { type: MarkerType.ArrowClosed, color: tone, width: onPath ? 4 : 5.5, height: onPath ? 4 : 5.5 },
-      zIndex: onPath ? 1 : 0,
+      ...(loose ? { hidden: true } : {}),
+      ...(moved ? { data: edgeGeometry(packed.get(base.source), packed.get(base.target), direction, 0) } : {}),
+      className: [...classes, onPath ? "on-path" : "", focusing && !onPath ? "is-dimmed" : "", (showLabels || (edge.bundle && (bundleLabels || onPath)) || (onPath && !structure && drawnEdges.length <= 12)) ? "show-label" : ""].filter(Boolean).join(" "),
+      markerEnd: edge.bundle || (structure && !onPath) ? undefined : { type: MarkerType.ArrowClosed, color: tone, width: onPath ? 4 : 5.5, height: onPath ? 4 : 5.5 },
+      // Packed rows stand in one line: a link passes behind the objects between its ends, not across their names.
+      zIndex: onPath && !moved ? 1 : 0,
     };
-  }), [baseEdges, drawnEdges, selectedId, focusing, showLabels, trace]);
+  }), [baseEdges, drawnEdges, selectedId, focusing, showLabels, trace, bundleLabels, relatedOnly, connected, packed, direction]);
 
   // Arrow keys move to the connected object that lies in that direction (else the nearest object there).
   const step = useCallback((fromId, key) => {
@@ -904,7 +1052,8 @@ function GraphCanvas({ rawById, apiRef, overview, full, grouped, onCenter, onIns
   const onMove = useCallback((_, next) => { setTier(zoomTier(next.zoom)); setLabelsReadable(next.zoom >= LABEL_ZOOM); }, []);
   const [hoverId, setHoverId] = useState(null);
   const farLabels = far ? [...new Set([selectedId, hoverId])].filter((id) => id && rects.has(id)).map((id) => ({ id, rect: rects.get(id), node: byId.get(id) })) : [];
-  const showMinimap = flowNodes.length - laneCount > MINIMAP_ABOVE;
+  // A minimap of a tall strip of lanes is a line: it only helps when the picture has two real dimensions.
+  const showMinimap = flowNodes.length - laneCount > MINIMAP_ABOVE && (!lineage || layout.nodes.length <= VIEWPORT_ONLY_ABOVE);
   return <div ref={wrapper} className={`flow-wrap artifact-flow ${overview ? "explorer-flow" : ""} ${far ? "is-far" : scale !== 1 ? "is-mid" : ""} ${labelsReadable ? "" : "labels-off"} ${focusing ? "is-focusing" : ""}`} style={{ "--name-scale": scale }} role="region" aria-label="Directed project graph" aria-roledescription="graph" onKeyDown={onKeyDown}>
     <ReactFlow onInit={(instance) => {
       setFlow(instance);
@@ -914,10 +1063,12 @@ function GraphCanvas({ rawById, apiRef, overview, full, grouped, onCenter, onIns
       onNodeMouseEnter={(_, node) => setHoverId(node.id)} onNodeMouseLeave={() => setHoverId(null)}
       onMove={onMove} onMoveEnd={(_, nextViewport) => { setZoom(nextViewport.zoom); onViewportChange(nextViewport); }}
       onlyRenderVisibleElements={flowNodes.length > VIEWPORT_ONLY_ABOVE}
-      defaultViewport={initialViewport.current || leftAnchor || undefined} zoomOnDoubleClick={false} fitView={!initialViewport.current && !leftAnchor} fitViewOptions={fitOptions} minZoom={0.08} maxZoom={2}
+      defaultViewport={initialViewport.current || leftAnchor || undefined} zoomOnDoubleClick={false} fitView={!initialViewport.current && !leftAnchor} fitViewOptions={fitOptions} minZoom={0.2} maxZoom={2}
+      panOnScroll zoomOnPinch
       nodesDraggable={false} nodesConnectable={false} edgesFocusable={false} disableKeyboardA11y deleteKeyCode={null} selectionKeyCode={null} multiSelectionKeyCode={null} proOptions={{ hideAttribution: true }}>
       <Background gap={20} size={1.2} color="var(--grid-dot)" />
       {farLabels.length ? <FarLabels items={farLabels} /> : null}
+      {laneCount ? <StickyLanes lanes={layout.lanes} /> : null}
       {showMinimap ? <MiniMap pannable zoomable bgColor="var(--surface)" nodeColor={(node) => node.type === "lane" ? "transparent" : node.data?.color || "var(--artifact-other, #94a3b8)"} nodeStrokeColor={(node) => node.type === "lane" ? "transparent" : node.data?.color || "var(--artifact-other, #94a3b8)"} nodeBorderRadius={4} nodeClassName={(node) => node.type === "artifactGroup" ? "minimap-artifact-group" : ""} maskColor="var(--minimap-mask)" style={{ width: 168, height: 112 }} /> : null}
     </ReactFlow>
     <div className="graph-zoom-controls" data-ui-actions="">
@@ -949,6 +1100,7 @@ function BrainFlowNode({ data, selected }) {
   const vertical = data.direction === "TB";
   const count = node.explorerDescendantCount || 0;
   const stacked = node.familySize > 1 && node.versionCount > 1;
+  const insideCounts = COUNT_TYPES.filter((type) => node.explorerTypeCounts?.[type]).slice(0, 3).map((type) => [type, node.explorerTypeCounts[type]]);
 
   const daxFormula = node.expression || node.properties?.expression || null;
 
@@ -981,15 +1133,16 @@ function BrainFlowNode({ data, selected }) {
   return (
     <ContextMenu>
       <ContextMenuTrigger asChild>
-        <div className={`flow-node artifact-node ${data.isGroup ? "explorer-group-node" : ""} ${selected ? "selected" : ""} ${suggested ? "is-suggested" : ""} ${data.warning ? "has-warning" : ""} ${data.twoLine ? "is-two-line" : ""} ${stacked ? "is-stack" : ""}`} style={{ "--artifact-color": data.color }} title={`${kindLabel(node)} · ${name}${data.isGroup ? ` · ${count} inside` : ""}${data.versions ? `\n${data.versions}` : ""}`} data-type={node.type}>
+        <div className={`flow-node artifact-node ${node.fold ? "is-fold" : ""} ${data.isGroup ? "explorer-group-node" : ""} ${selected ? "selected" : ""} ${suggested ? "is-suggested" : ""} ${data.warning ? "has-warning" : ""} ${data.twoLine ? "is-two-line" : ""} ${stacked ? "is-stack" : ""}`} style={{ "--artifact-color": data.color }} title={node.fold ? `${formatCount(node.foldCount)} ${typeLabel(node.type)} of ${name}. Click to show them.` : `${kindLabel(node)} · ${name}${data.isGroup ? ` · ${count} inside` : ""}${data.versions ? `\n${data.versions}` : ""}`} data-type={node.type}>
           <Handle type="target" position={vertical ? Position.Top : Position.Left} className="flow-handle" isConnectable={false} />
           <TypeGlyph node={node} colors={data.colors} />
           <span className="flow-node-text">
             <span className="flow-node-name" translate="no" aria-hidden={data.displayName !== name || undefined}>{data.displayName}</span>
             {/* The shortened name is for the eye; the full name stays in the text for find-in-page and tests. */}
             {data.displayName !== name ? <span className="sr-only" translate="no">{name}</span> : null}
-            {data.isGroup ? <span className="flow-node-meta" data-ui-number="">{count} inside</span> : null}
+            {data.isGroup ? <span className="flow-node-meta" data-ui-number="">{insideCounts.length ? insideCounts.map(([type, value]) => <span key={type} className="flow-node-count" title={`${formatCount(value)} ${typeLabel(type)}`}><TypeIcon type={type} />{formatCount(value)}</span>) : `${count} inside`}</span> : null}
           </span>
+          {node.fold ? <span className="fold-count" data-ui-number="" aria-hidden="true">{formatCount(node.foldCount)}<ChevronRight /></span> : null}
           <VersionBadge node={node} note={data.versions} />
           {node.type === "MODEL" || node.type === "REPORT" ? <OriginBadge node={node} /> : null}
           {StatusIcon ? <span className={`flow-node-status ${data.warning ? "warning" : node.status}`} aria-hidden="true"><StatusIcon /></span> : null}
@@ -1042,8 +1195,16 @@ function RoutedEdge({ id, data, markerEnd, style, label, interactionWidth }) {
   return <BaseEdge id={id} path={data.path} markerEnd={markerEnd} style={style} label={label} labelX={data.labelX} labelY={data.labelY} labelBgPadding={[6, 3]} labelBgBorderRadius={4} interactionWidth={interactionWidth ?? 16} />;
 }
 
+// Lane names stay at the top edge of the canvas once their header has scrolled out of view.
+function StickyLanes({ lanes }) {
+  const { x, y, zoom } = useViewport();
+  const gone = lanes.filter((lane) => lane.y * zoom + y < 4);
+  if (!gone.length) return null;
+  return <div className="sticky-lanes" aria-hidden="true">{gone.map((lane) => <span key={lane.key} className="sticky-lane" style={{ left: lane.x * zoom + x, width: Math.max(lane.width * zoom, 60) }}><span>{lane.label}</span><span className="lineage-lane-count" data-ui-number="">{formatCount(lane.count)}</span></span>)}</div>;
+}
+
 function LaneHeader({ data }) {
-  return <div className="lineage-lane"><span>{data.label}</span><span className="lineage-lane-count" data-ui-number="">{data.count}</span></div>;
+  return <div className="lineage-lane"><span>{data.label}</span><span className="lineage-lane-count" data-ui-number="">{formatCount(data.count)}</span></div>;
 }
 
 const NODE_RENDERERS = { brain: BrainFlowNode, artifactGroup: ArtifactGroup, lane: LaneHeader };

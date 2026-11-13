@@ -75,7 +75,8 @@ if not exist "frontend\dist\index.html" (
 
 :: 5. Open browser and launch server
 echo [*] Launching browser and starting server on http://127.0.0.1:8000 ...
-start "" http://127.0.0.1:8000
+:: Open the browser when the server answers, not before (up to 30 s on a cold start).
+start "" /b powershell -NoProfile -WindowStyle Hidden -Command "for($i=0;$i -lt 120;$i++){try{Invoke-WebRequest -UseBasicParsing http://127.0.0.1:8000/api/health -TimeoutSec 1 | Out-Null; break}catch{Start-Sleep -Milliseconds 250}}; Start-Process 'http://127.0.0.1:8000'"
 python -m backend.cli.main serve %*
 
 pause

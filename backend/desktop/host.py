@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Any
 from collections.abc import Callable, Mapping
 from urllib.parse import unquote, urlsplit
+from socketserver import ThreadingMixIn
 from wsgiref.simple_server import WSGIServer, make_server
 
 from backend.api.app import BrainAPI, BrainApp
@@ -345,6 +346,8 @@ class DesktopController(DevCenterJSAPI):
         old_marker = self._marker_path
         old_connection_id = self._connection_id
         self._application = new_application
+        # Build the first answers (overview, review queue) while the window is still opening.
+        threading.Thread(target=self._prime, args=(new_application,), name="pbibrain-prime", daemon=True).start()
         self._repository = new_repository
         self._project = project
         self._project_service = service
@@ -373,6 +376,14 @@ class DesktopController(DevCenterJSAPI):
         except Exception as exc:
             return {"ok": False, "error": str(exc)}
 
+    @staticmethod
+    def _prime(application: BrainApp) -> None:
+        try:
+            application.prime()
+        except Exception:
+            # Priming is only a head start; the first real request builds the same answers.
+            pass
+
     def _close_project(self) -> None:
         application, repository, marker = self._application, self._repository, self._marker_path
         self._application = None
@@ -384,7 +395,14 @@ class DesktopController(DevCenterJSAPI):
         if marker is not None:
             self._remove_owned_marker(marker)
         if application is not None:
-            application.close()
+            # Let the request in flight finish before its store closes. Bounded, so a request that is itself
+            # waiting for the controller cannot keep the project open for ever.
+            held = application.request_lock.acquire(timeout=5)
+            try:
+                application.close()
+            finally:
+                if held:
+                    application.request_lock.release()
         if repository is not None:
             repository.close()
 
@@ -429,6 +447,9 @@ class DesktopApplication:
                     return self._json(start_response, 405, {"ok": False, "error": "method not allowed"})
                 return self._bootstrap(start_response)
             if path == "/api" or path.startswith("/api/"):
+                # The controller lock covers only the choice of the project application. The request then runs
+                # under that application's own lock (and its answer cache), so a slow request no longer holds up
+                # every other one. Closing a project waits for the request in flight (see _close_project).
                 with self.controller._lock:
                     application = self.controller.active_application()
                     if application is None:
@@ -439,7 +460,7 @@ class DesktopApplication:
                     requested_session = str(environ.get("HTTP_X_PBIBRAIN_SESSION") or "")
                     if requested_session and requested_session != self.controller._connection_id:
                         return self._json(start_response, 409, {"error": "Desktop session changed; reopen the project connection"})
-                    return application(environ, start_response)
+                return application(environ, start_response)
             if method != "GET":
                 return self._json(start_response, 405, {"ok": False, "error": "method not allowed"})
             return self._static(path, start_response)
@@ -517,15 +538,21 @@ class DesktopApplication:
         ]
 
 
+class _ThreadingServer(ThreadingMixIn, WSGIServer):
+    """One thread per request: files and cached answers do not wait behind a slow request."""
+
+    daemon_threads = True
+
+
 class DesktopServer:
-    """One serialized loopback server shared by onboarding and the open project."""
+    """One loopback server shared by onboarding and the open project."""
 
     def __init__(self, controller: DesktopController, *, host: str = "127.0.0.1", port: int = 0) -> None:
         if host not in {"127.0.0.1", "localhost"}:
             raise ValueError("PBIBrain desktop is local-only")
         self.controller = controller
         self.application = DesktopApplication(controller)
-        self._server: WSGIServer = make_server(host, int(port), self.application)
+        self._server: WSGIServer = make_server(host, int(port), self.application, server_class=_ThreadingServer)
         self.url = f"http://127.0.0.1:{self._server.server_port}"
         self.controller.attach_server(self.url)
         self._thread: threading.Thread | None = None

@@ -152,6 +152,20 @@ export function readableText(value, nodes = []) {
   return typeof value === "boolean" ? value ? "Yes" : "No" : String(value);
 }
 
+// Names are asked for inside sorts and on every render, and cleaning one costs several regular
+// expressions, so each distinct raw name is cleaned once.
+const CLEAN_NAMES = new Map();
+function cleanName(raw) {
+  if (typeof raw !== "string") return readableText(raw);
+  let name = CLEAN_NAMES.get(raw);
+  if (name === undefined) {
+    if (CLEAN_NAMES.size > 50000) CLEAN_NAMES.clear();
+    name = readableText(raw);
+    CLEAN_NAMES.set(raw, name);
+  }
+  return name;
+}
+
 export function objectName(node) {
   if (node?.type === "VISUAL") {
     const properties = node.properties || {};
@@ -165,7 +179,7 @@ export function objectName(node) {
     if (kind !== "Visual") return kind;
     return String(name || node.source_id || node.id || "Unnamed visual");
   }
-  return readableText(node?.name) || "Unnamed object";
+  return cleanName(node?.name) || "Unnamed object";
 }
 
 export function visualType(node) {
@@ -215,12 +229,21 @@ export function publicProperties(node) {
   }).filter(([label], index, list) => list.findIndex(([name]) => name === label) === index);
 }
 
-export function suggestionLabel(item) {
+const SUGGESTION_KINDS = { ROLE: "Table role", BUSINESS_CONCEPT: "Meaning", BEHAVIOR: "Behavior", ALIAS: "Alias", SELECTOR: "Selector" };
+
+// The kind, its label and the proposed value of a suggestion, kept apart so a row can show the
+// kind as a glyph and the value as text.
+export function suggestionParts(item) {
   const kind = item.assertion_type || item.properties?.assertion_type || item.item?.assertion_type || item.item?.properties?.assertion_type || item.type;
-  const label = { ROLE: "Table role", BUSINESS_CONCEPT: "Meaning", BEHAVIOR: "Behavior", ALIAS: "Alias", SELECTOR: "Selector" }[kind] || "Suggestion";
+  const label = SUGGESTION_KINDS[kind] || "Suggestion";
   const rawValue = item.value ?? item.meaning ?? item.properties?.meaning ?? item.item?.meaning ?? item.item?.properties?.meaning;
   const value = kind === "ROLE" && String(rawValue).toLowerCase() === "fact" ? "Fact table" : readableText(rawValue);
-  return `${label}: ${value || "Needs review"}`;
+  return { kind, label, value: value || "Needs review" };
+}
+
+export function suggestionLabel(item) {
+  const { label, value } = suggestionParts(item);
+  return `${label}: ${value}`;
 }
 
 
@@ -265,4 +288,26 @@ export function isBackendUnreachableError(err) {
   if (err?.status === 502 || err?.status === 503 || err?.status === 504) return true;
   const msg = typeof err === "string" ? err : err?.message || String(err);
   return /failed to fetch|fetch failed|networkerror|network request failed|econnrefused|connection refused|load failed|could not connect|cannot connect|unreachable/i.test(msg);
+}
+
+const COUNT_FORMAT = new Intl.NumberFormat("en-US");
+/** A count as people read it: 13,731, not 13731. */
+export function formatCount(value) {
+  const number = Number(value);
+  return Number.isFinite(number) ? COUNT_FORMAT.format(number) : String(value ?? "");
+}
+
+const EDGE_INDEX = new WeakMap();
+const NO_LINKS = Object.freeze({ incoming: Object.freeze([]), outgoing: Object.freeze([]) });
+/** The links into and out of one object, from an index built once per edge list (not a scan per call). */
+export function linksOf(edges, id) {
+  if (!Array.isArray(edges) || !edges.length) return NO_LINKS;
+  let index = EDGE_INDEX.get(edges);
+  if (!index) {
+    index = new Map();
+    const entry = (key) => { let item = index.get(key); if (!item) { item = { incoming: [], outgoing: [] }; index.set(key, item); } return item; };
+    for (const edge of edges) { entry(edge.to_id).incoming.push(edge); entry(edge.from_id).outgoing.push(edge); }
+    EDGE_INDEX.set(edges, index);
+  }
+  return index.get(id) || NO_LINKS;
 }

@@ -4,7 +4,7 @@ import CommonObjects from "./components/CommonObjects";
 import PendingChanges from "./components/PendingChanges";
 import { hasComparableSources } from "./commonality";
 import React, { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, ArrowRight, ArrowUpRight, Boxes, Calculator, Check, ChartColumn, ChevronDown, ChevronRight, CircleCheck, Clock, Cloud, Flame, Inbox, PanelLeft, ScanSearch, Copy, Bot, Database, FileText, FolderOpen, Moon, Plus, RefreshCw, RotateCcw, ScanLine, ShieldAlert, ShieldCheck, Sun, TriangleAlert, Waypoints, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, ArrowUpRight, Activity, Boxes, Calculator, Check, ChartColumn, ChevronDown, ChevronRight, CircleCheck, Clock, Cloud, Flame, Inbox, PanelLeft, ScanSearch, Copy, Bot, Database, FileText, Filter, FolderOpen, Lightbulb, Moon, Plus, RefreshCw, RotateCcw, ScanLine, ShieldAlert, ShieldCheck, Sun, Table2, Tag, TriangleAlert, Type, Waypoints, Workflow, X } from "lucide-react";
 import { ToastProvider, useToast } from "./components/ui/toast";
 import { SegmentedControl } from "./components/ui/segmented-control";
 import { Tooltip } from "./components/ui/tooltip";
@@ -19,7 +19,7 @@ import { MAKER_NAME, PRODUCT_CREDIT, PRODUCT_NAME } from "./brand";
 import { TypeGlyph, TypeIcon } from "./components/TypeGlyph";
 import { CloudSourcePicker } from "./components/CloudSourcePicker";
 import { highlightDax } from "./dax";
-import { byId, objectName, objectScope, originNote, readableText, publicProperties, scopeChoices, statusLabel, suggestionLabel, isBackendUnreachableError, sanitizeDoublePunctuation } from "./presentation";
+import { byId, objectName, objectScope, originNote, readableText, publicProperties, scopeChoices, statusLabel, suggestionLabel, suggestionParts, isBackendUnreachableError, sanitizeDoublePunctuation } from "./presentation";
 import { Button } from "./components/ui/button";
 import { Input } from "./components/ui/input";
 import { NativeSelect } from "./components/ui/native-select";
@@ -1932,7 +1932,7 @@ function ReviewQueue({ session, onSession, snapshot, loaded, loading, error, onR
         </div>
         <Card className="panel queue-panel" aria-busy={loading}>
           {loading ? <div className="queue-loading">{[0, 1, 2].map((index) => <Skeleton className="skeleton-row-item" key={index} />)}<p className="sr-only" role="status">Loading suggestions…</p></div> : filtered.length ? <>
-            <div className="review-columns" aria-hidden="true"><span>Object &amp; suggestion</span><span>Why review this?</span><span>Confidence</span><span>Decision</span></div>
+            <div className="review-columns is-pending" aria-hidden="true"><span>Object</span><span>Suggestion</span><span>Based on</span><span>Confidence</span><span>Decision</span></div>
             {issue === "low-evidence" ? (
               <div className="low-evidence-group" role="region" aria-label="Low evidence suggestions">
                 <div className="low-evidence-header">
@@ -2101,6 +2101,9 @@ function ReviewedItem({ entry, nodes, colors, onSelect, onUndo, disabled = false
   );
 }
 
+const SUGGESTION_ICONS = { ROLE: Table2, BUSINESS_CONCEPT: Lightbulb, BEHAVIOR: Activity, ALIAS: Tag, SELECTOR: Filter };
+const REVIEW_SOURCES = { object_name: [Type, "From the name"], name: [Type, "From the name"], description: [FileText, "From the description"], dax_ast: [Calculator, "From the formula"], dax_analysis: [Calculator, "From the formula"], rule: [Workflow, "From a rule"] };
+
 function ReviewItem({
   item,
   nodes,
@@ -2161,6 +2164,12 @@ function ReviewItem({
   const level = score === null ? "none" : score >= 80 ? "high" : score >= 50 ? "mid" : "low";
   const confidenceTip = explainConfidence(item, targetNode);
   const expression = targetNode?.expression ?? targetNode?.properties?.expression;
+  const parts = suggestionParts(item);
+  const chipKind = item.issue === "conflict" ? "Conflict" : item.issue === "stale" ? "Outdated" : parts.label;
+  const chipText = item.issue === "conflict" ? "Conflicting suggestions" : item.issue === "stale" ? "Outdated saved decision" : parts.value;
+  const chipTitle = item.issue === "conflict" || item.issue === "stale" ? chipText : `${parts.label}: ${parts.value}`;
+  const ChipIcon = item.issue === "conflict" || item.issue === "stale" ? TriangleAlert : SUGGESTION_ICONS[parts.kind] || Lightbulb;
+  const [SourceIcon, sourceText] = REVIEW_SOURCES[item.item?.properties?.candidate_source || item.properties?.candidate_source || item.source] || REVIEW_SOURCES.rule;
 
   return (
     <div
@@ -2194,13 +2203,19 @@ function ReviewItem({
             </span>
           </Button>
         </ObjectContextPreview>
-        <span className={`review-suggestion-chip review-suggestion issue-${item.issue}`}>
-          {item.issue === "conflict" ? "Conflicting suggestions" : item.issue === "stale" ? "Outdated saved decision" : suggestionLabel(item)}
+      </div>
+
+      <div className="review-suggestion-cell">
+        <span className={`review-suggestion-chip review-suggestion issue-${item.issue}`} title={chipTitle}>
+          <ChipIcon className="size-3.5" aria-hidden="true" />
+          <span className="sr-only">{chipKind}: </span>
+          <span className="review-suggestion-value">{chipText}</span>
         </span>
       </div>
 
-      <div className="review-evidence-summary">
-        <span>{readableText(reason, nodes)}</span>
+      <div className="review-evidence-summary" title={readableText(reason, nodes)}>
+        <SourceIcon className="size-3.5" aria-hidden="true" />
+        <span>{sourceText}</span>
       </div>
 
       <Tooltip content={confidenceTip}>
@@ -2219,6 +2234,7 @@ function ReviewItem({
         onStartEdit={onStartEdit}
         onCancelEdit={onCancelEdit}
         compact={true}
+        iconOnly={true}
       />
 
       {error ? <p className="review-decision-error" role="alert">{error}</p> : null}

@@ -287,7 +287,9 @@ _REVIEW_ITEM_FIELDS = ("candidate_id", "property", "value", "meaning", "assertio
 def _slim(record: Mapping[str, Any], fields: Sequence[str]) -> dict[str, Any]:
     properties = record.get("properties") if isinstance(record.get("properties"), Mapping) else {}
     slim = {key: record[key] for key in fields if record.get(key) is not None}
-    small = {key: value for key, value in properties.items() if isinstance(value, (str, int, float, bool)) and len(str(value)) <= 240}
+    # Hashes and fingerprints are for the scanner; no review screen reads them.
+    small = {key: value for key, value in properties.items()
+             if isinstance(value, (str, int, float, bool)) and len(str(value)) <= 240 and not key.endswith(("_hash", "_fingerprint"))}
     if small:
         slim["properties"] = small
     return slim
@@ -915,6 +917,11 @@ class BrainApp:
         local_hosts = {"127.0.0.1", "localhost", "::1"}
         status, payload = 200, None
         raw: bytes | None = None
+        # Liveness: answered without the request lock, so launchers can wait for the server even during a scan.
+        if method == "GET" and path == "/api/health":
+            body = b'{"ok": true}'
+            start_response("200 OK", [("Content-Type", "application/json; charset=utf-8"), ("Content-Length", str(len(body))), ("Cache-Control", "no-store")])
+            return [body]
         try:
             parsed_host = urlsplit(f"http://{host}")
             if parsed_host.hostname not in local_hosts or parsed_host.username or parsed_host.path:

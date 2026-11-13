@@ -54,7 +54,9 @@ export function flowEnds(edge, laneById) {
   return DEPENDENCY.has(edge.type) ? { from: edge.to_id, to: edge.from_id } : { from: edge.from_id, to: edge.to_id };
 }
 
-const compareName = (left, right) => objectName(left).localeCompare(objectName(right), undefined, { numeric: true, sensitivity: "base" }) || left.id.localeCompare(right.id);
+// One shared collator: localeCompare with options builds a new one on every call.
+const NAME_ORDER = new Intl.Collator(undefined, { numeric: true, sensitivity: "base" });
+const compareName = (left, right) => NAME_ORDER.compare(objectName(left), objectName(right)) || left.id.localeCompare(right.id);
 
 // Lane widths follow their longest name (LR): never narrower than a node, never wider than MAX_LANE_WIDTH.
 // A name that still does not fit wraps to a second line (TWO_LINE_HEIGHT) before it is shortened.
@@ -165,7 +167,7 @@ export function layoutLineage(nodes, edges, direction = "LR", { laneGap = 64, ro
       placed.push({ node, position: horizontal ? { x: cross, y: cursor } : { x: cursor, y: cross }, width, height, lines: lines.get(node.id) });
       cursor += horizontal ? height : width;
     });
-    lanes.push({ key: LANES[lane].key, label: LANES[lane].label, count: laneNodes[lane].length, index: lane, x: horizontal ? cross : -NODE_WIDTH - 40, y: horizontal ? -40 : cross, width: horizontal ? width : NODE_WIDTH });
+    lanes.push({ key: LANES[lane].key, label: LANES[lane].label, count: laneNodes[lane].reduce((sum, node) => sum + (node.foldCount || 1), 0), index: lane, x: horizontal ? cross : -NODE_WIDTH - 40, y: horizontal ? -40 : cross, width: horizontal ? width : NODE_WIDTH });
     cross += (horizontal ? width : laneHeight(lane)) + laneGap;
   });
 
@@ -256,4 +258,79 @@ export function hideLanes(nodes, edges, hiddenLanes) {
     }
   }
   return { nodes: shownNodes, edges: [...kept, ...through] };
+}
+
+// Folding (large pictures): a lane of thousands of rows is unreadable, so above FOLD_ABOVE objects a long
+// lane shows one row per owner ("Orders · 18 columns") and the links between rows are counted.
+export const FOLD_ABOVE = 400;
+const FOLD_LANE_ABOVE = 40;
+const FOLD_ROWS_MAX = 60;
+const NEVER_FOLDED = new Set(["model", "report"]);
+
+/**
+ * Fold the long lanes of a large lineage by owner. `unfolded` lists the fold ids the person opened.
+ * Returns null when nothing folds, else `{ nodes, edges, folded }` where a fold is a node
+ * `{ id: "fold:<lane>:<owner>", fold: true, foldCount, foldOwnerId, type, name }` and a link that stands
+ * for several is `{ bundle: true, count }`.
+ */
+export function foldLineage(nodes, edges, unfolded = []) {
+  if (nodes.length <= FOLD_ABOVE) return null;
+  const byId = new Map(nodes.map((node) => [node.id, node]));
+  const owner = new Map();
+  edges.forEach((edge) => {
+    if (!OWNERSHIP.has(edge.type) || !byId.has(edge.from_id) || !byId.has(edge.to_id)) return;
+    const [parent, child] = edge.type === "BELONGS_TO" ? [edge.to_id, edge.from_id] : [edge.from_id, edge.to_id];
+    if (!owner.has(child)) owner.set(child, parent);
+  });
+  const rootOf = (id) => {
+    let current = id, guard = 0;
+    while (owner.has(current) && guard++ < 8) current = owner.get(current);
+    return current === id ? "" : current;
+  };
+  const open = new Set(unfolded || []);
+  const lanes = LANES.map(() => []);
+  nodes.forEach((node) => lanes[laneOf(node)].push(node));
+  const foldOf = new Map();
+  const folds = [];
+  lanes.forEach((list, index) => {
+    const lane = LANES[index].key;
+    if (list.length <= FOLD_LANE_ABOVE || NEVER_FOLDED.has(lane)) return;
+    const groupBy = (keyOf) => {
+      const groups = new Map();
+      list.forEach((node) => { const key = keyOf(node); if (!groups.has(key)) groups.set(key, []); groups.get(key).push(node); });
+      return groups;
+    };
+    let groups = groupBy((node) => owner.get(node.id) || "");
+    // Still too many rows (a visual per page of every report): fold by the model or report instead.
+    if (groups.size > FOLD_ROWS_MAX) groups = groupBy((node) => rootOf(node.id));
+    groups.forEach((members, ownerId) => {
+      if (!ownerId || members.length < 2) return;
+      const id = `fold:${lane}:${ownerId}`;
+      if (open.has(id)) return;
+      const first = members[0];
+      folds.push({ id, type: first.type, name: objectName(byId.get(ownerId)), status: "factual", fold: true, foldCount: members.length, foldOwnerId: ownerId, foldLane: lane, model_id: first.model_id, report_id: first.report_id });
+      members.forEach((node) => foldOf.set(node.id, id));
+    });
+  });
+  if (!folds.length) return null;
+  const end = (id) => foldOf.get(id) || id;
+  const kept = [];
+  const counted = new Map();
+  edges.forEach((edge) => {
+    const from = end(edge.from_id), to = end(edge.to_id);
+    if (from === edge.from_id && to === edge.to_id) { kept.push(edge); return; }
+    if (from === to) return;
+    const ownership = OWNERSHIP.has(edge.type);
+    const key = `${ownership ? "own" : "use"}\u0000${from}\u0000${to}`;
+    const bundle = counted.get(key);
+    if (bundle) bundle.count += 1;
+    else counted.set(key, { id: `fold-link:${edge.type}:${from}>${to}`, type: edge.type, from_id: from, to_id: to, status: "factual", evidence_class: "FACT", bundle: !ownership, count: 1 });
+  });
+  // A fold keeps its place under its owner even when the owner's own row is folded too.
+  folds.forEach((fold) => {
+    const parent = end(fold.foldOwnerId);
+    const key = `own\u0000${parent}\u0000${fold.id}`;
+    if (byId.has(fold.foldOwnerId) && !counted.has(key)) counted.set(key, { id: `fold-link:CONTAINS:${parent}>${fold.id}`, type: "CONTAINS", from_id: parent, to_id: fold.id, status: "factual", evidence_class: "FACT", count: 1 });
+  });
+  return { nodes: [...nodes.filter((node) => !foldOf.has(node.id)), ...folds], edges: [...kept, ...counted.values()], folded: foldOf.size };
 }

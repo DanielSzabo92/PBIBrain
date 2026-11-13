@@ -18,7 +18,9 @@ const ROOTS = new Set(["MODEL", "REPORT"]);
 // Two roots are versions when this share of the smaller one's objects is also in the other.
 const FAMILY_OVERLAP = 0.5;
 const fold = (value) => String(value ?? "").trim().toLowerCase();
-const byName = (left, right) => objectName(left).localeCompare(objectName(right), undefined, { numeric: true, sensitivity: "base" }) || left.id.localeCompare(right.id);
+// One shared collator: localeCompare with options builds a new one on every call.
+const NAME_ORDER = new Intl.Collator(undefined, { numeric: true, sensitivity: "base" });
+const byName = (left, right) => NAME_ORDER.compare(objectName(left), objectName(right)) || left.id.localeCompare(right.id);
 
 /** The model or report an object belongs to: its report for report objects, else its model. */
 export function rootOf(node) {

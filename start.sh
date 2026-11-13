@@ -54,7 +54,13 @@ fi
 
 # 5. Open browser in background
 (
-    sleep 1.5
+    # Open the browser when the server answers, not after a fixed pause (up to 30 s on a cold start).
+    for _ in $(seq 1 120); do
+        if python -c "import urllib.request,sys; urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=1)" >/dev/null 2>&1; then
+            break
+        fi
+        sleep 0.25
+    done
     if command -v xdg-open >/dev/null 2>&1; then
         xdg-open "http://127.0.0.1:8000" >/dev/null 2>&1 || true
     elif command -v open >/dev/null 2>&1; then

@@ -44,8 +44,11 @@ function idKey(value) {
   return value == null ? "" : String(value);
 }
 
+// One collator for every comparison: localeCompare with options builds a new one per call, which made
+// ordering a few thousand objects take seconds.
+const TEXT_ORDER = new Intl.Collator(undefined, { numeric: true, sensitivity: "base" });
 function compareText(left, right) {
-  return String(left ?? "").localeCompare(String(right ?? ""), undefined, { numeric: true, sensitivity: "base" });
+  return TEXT_ORDER.compare(String(left ?? ""), String(right ?? ""));
 }
 
 function compareNodes(left, right) {
@@ -62,12 +65,18 @@ function compareEdges(left, right) {
 }
 
 function orderedNodes(nodes) {
+  // Each name is read once: objectName is too slow to call inside every comparison.
+  const named = [...(nodes || [])].filter(Boolean).map((node) => ({ node, name: objectName(node) }));
+  named.sort((left, right) => compareText(left.name, right.name)
+    || compareText(left.node.type, right.node.type)
+    || compareText(idKey(left.node.id), idKey(right.node.id)));
   const byId = new Map();
-  for (const node of [...(nodes || [])].filter(Boolean).sort(compareNodes)) {
+  for (const { node } of named) {
     const id = idKey(node.id);
     if (id && !byId.has(id)) byId.set(id, node);
   }
-  return [...byId.values()].sort(compareNodes);
+  // A Map keeps insertion order, and the nodes went in sorted.
+  return [...byId.values()];
 }
 
 function validEdges(edges, ids) {
@@ -92,13 +101,16 @@ function createsParentCycle(parent, child, parentOf) {
 function presentationForest(nodes, edges) {
   const ids = new Set(nodes.map((node) => idKey(node.id)));
   const byId = new Map(nodes.map((node) => [idKey(node.id), node]));
-  const candidates = validEdges(edges, ids)
-    .filter((edge) => edge.type === "CONTAINS" && idKey(edge.from_id) !== idKey(edge.to_id))
-    .sort((left, right) => {
-      const childOrder = compareNodes(byId.get(idKey(left.to_id)), byId.get(idKey(right.to_id)));
-      const parentOrder = compareNodes(byId.get(idKey(left.from_id)), byId.get(idKey(right.from_id)));
-      return childOrder || parentOrder || compareEdges(left, right);
-    });
+  // The nodes arrive in presentation order (orderedNodes), so a node's place in the list stands for
+  // the name comparison; nodes given in another order are compared by name as before.
+  const sorted = nodes.every((node, index) => index === 0 || compareNodes(nodes[index - 1], node) <= 0);
+  const place = new Map(nodes.map((node, index) => [idKey(node.id), index]));
+  const order = sorted
+    ? (left, right) => place.get(idKey(left)) - place.get(idKey(right))
+    : (left, right) => compareNodes(byId.get(idKey(left)), byId.get(idKey(right)));
+  const candidates = [...(edges || [])]
+    .filter((edge) => edge && edge.type === "CONTAINS" && ids.has(idKey(edge.from_id)) && ids.has(idKey(edge.to_id)) && idKey(edge.from_id) !== idKey(edge.to_id))
+    .sort((left, right) => order(left.to_id, right.to_id) || order(left.from_id, right.from_id) || compareEdges(left, right));
   const parentOf = new Map();
   const edgeByChild = new Map();
   for (const edge of candidates) {
@@ -110,7 +122,7 @@ function presentationForest(nodes, edges) {
   }
   const childrenById = new Map(nodes.map((node) => [idKey(node.id), []]));
   for (const [child, parent] of parentOf) childrenById.get(parent)?.push(child);
-  for (const children of childrenById.values()) children.sort((left, right) => compareNodes(byId.get(left), byId.get(right)));
+  for (const children of childrenById.values()) children.sort(order);
   return { parentOf, edgeByChild, childrenById };
 }
 
@@ -161,6 +173,7 @@ export function buildExplorerGraph(nodes, edges, expandedIds = []) {
   ordered.filter((node) => !forest.parentOf.has(idKey(node.id))).forEach((node) => visit(idKey(node.id)));
 
   const descendantMemo = new Map();
+  const typeById = new Map(ordered.map((node) => [idKey(node.id), node.type]));
   const visibleNodes = ordered.filter((node) => visible.has(idKey(node.id))).map((node) => {
     const id = idKey(node.id);
     const children = forest.childrenById.get(id) || [];
@@ -169,6 +182,8 @@ export function buildExplorerGraph(nodes, edges, expandedIds = []) {
       explorerParentId: forest.parentOf.get(id) ?? null,
       explorerChildCount: children.length,
       explorerDescendantCount: descendantCount(id, forest.childrenById, descendantMemo),
+      // What is inside, by object type: a collapsed owner shows these instead of its content.
+      explorerTypeCounts: children.length ? descendantTypes(id, forest.childrenById, typeById) : null,
       explorerExpanded: expanded.has(id),
     };
   });
@@ -178,9 +193,69 @@ export function buildExplorerGraph(nodes, edges, expandedIds = []) {
     nodes: visibleNodes,
     edges: visibleEdges,
     childrenById: forest.childrenById,
+    parentOf: forest.parentOf,
     hiddenCount: ordered.length - visibleNodes.length,
     collapsedCount,
   };
+}
+
+function descendantTypes(id, childrenById, typeById) {
+  const counts = {};
+  const seen = new Set();
+  const stack = [...(childrenById.get(id) || [])];
+  while (stack.length) {
+    const child = stack.pop();
+    if (seen.has(child)) continue;
+    seen.add(child);
+    const type = typeById.get(child);
+    counts[type] = (counts[type] || 0) + 1;
+    stack.push(...(childrenById.get(child) || []));
+  }
+  return counts;
+}
+
+/**
+ * Links between objects that are inside collapsed owners, lifted to the owners that are shown:
+ * one link per pair of visible owners, with the number of links it stands for. A pair that
+ * already has a direct visible link gets no bundle.
+ */
+export function bundleExplorerEdges(explorer, edges) {
+  if (!explorer?.nodes?.length || !explorer.hiddenCount) return [];
+  const visible = new Set(explorer.nodes.map((node) => idKey(node.id)));
+  const parentOf = explorer.parentOf || new Map();
+  const shownOwner = new Map();
+  const ownerOf = (id) => {
+    if (visible.has(id)) return id;
+    if (shownOwner.has(id)) return shownOwner.get(id);
+    const path = [];
+    let current = id;
+    while (current != null && !visible.has(current) && path.length < 64) {
+      path.push(current);
+      current = parentOf.get(current);
+    }
+    const owner = current != null && visible.has(current) ? current : null;
+    path.forEach((step) => shownOwner.set(step, owner));
+    return owner;
+  };
+  const direct = new Set();
+  const bundles = new Map();
+  for (const edge of edges) {
+    if (edge.type === "CONTAINS") continue;
+    const from = idKey(edge.from_id);
+    const to = idKey(edge.to_id);
+    if (visible.has(from) && visible.has(to)) {
+      direct.add(from < to ? `${from}\u0000${to}` : `${to}\u0000${from}`);
+      continue;
+    }
+    const source = ownerOf(from);
+    const target = ownerOf(to);
+    if (!source || !target || source === target) continue;
+    const key = source < target ? `${source}\u0000${target}` : `${target}\u0000${source}`;
+    const bundle = bundles.get(key);
+    if (bundle) bundle.count += 1;
+    else bundles.set(key, { id: `bundle:${source}>${target}`, type: "USES", from_id: source, to_id: target, status: "factual", bundle: true, count: 1, pair: key });
+  }
+  return [...bundles.values()].filter((bundle) => !direct.has(bundle.pair)).sort((left, right) => compareText(left.id, right.id));
 }
 
 // Reports use a model, but sit after that model in the containment hierarchy.
@@ -410,7 +485,7 @@ function anchoredExplorerPositions(ordered, forest, rawPositions, previousPositi
  * Lay out only the visible ownership forest. Dependency and evidence links
  * are routed after placement, so they cannot force ownership ranks apart.
  */
-export function layoutExplorerGraph(nodes, edges, direction = "LR", previousPositions = null, sizeOf = leafSize) {
+export function layoutExplorerGraph(nodes, edges, direction = "LR", previousPositions = null, sizeOf = leafSize, { reportsLast = false } = {}) {
   const ordered = orderedNodes(nodes);
   if (!ordered.length) return { nodes: [], edges: [] };
   const ids = new Set(ordered.map((node) => idKey(node.id)));
@@ -428,12 +503,23 @@ export function layoutExplorerGraph(nodes, edges, direction = "LR", previousPosi
   // A report uses its model, but that relationship is not ownership. Keep
   // CONTAINS as the explorer forest and add this reversed layout constraint so
   // the model still precedes the report without rewriting the factual arrow.
+  // reportsLast: reports stand after everything that is open inside the models (model › tables › columns ›
+  // reports, the lineage order), so an opened model never drops its tables among the reports.
+  let modelDepth = 0;
+  if (reportsLast) {
+    for (const id of ids) {
+      let depth = 0;
+      let current = id;
+      while (forest.parentOf.has(current) && depth < 16) { current = forest.parentOf.get(current); depth += 1; }
+      if (byId.get(current)?.type === "MODEL") modelDepth = Math.max(modelDepth, depth);
+    }
+  }
   valid.filter((edge) => edge.type === "USES_MODEL"
     && byId.get(idKey(edge.from_id))?.type === "REPORT"
     && byId.get(idKey(edge.to_id))?.type === "MODEL")
     .forEach((edge) => {
       const endpoints = layoutEndpoints(edge);
-      graph.setEdge({ ...endpoints, name: `explorer:scope:${idKey(edge.id)}:${idKey(edge.from_id)}:${idKey(edge.to_id)}` }, { weight: 3, minlen: 1 });
+      graph.setEdge({ ...endpoints, name: `explorer:scope:${idKey(edge.id)}:${idKey(edge.from_id)}:${idKey(edge.to_id)}` }, { weight: 3, minlen: 1 + modelDepth });
     });
   dagre.layout(graph);
   const rawLaidOut = ordered.map((node) => {
