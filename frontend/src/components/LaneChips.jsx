@@ -2,6 +2,7 @@ import React, { useMemo } from "react";
 import { ChevronRight } from "lucide-react";
 import { TypeGlyph } from "./TypeGlyph";
 import { LANES, laneOf } from "../lineage";
+import { formatCount } from "../presentation";
 
 // What each lane does in the Matrix when it is switched off (Models and Reports are its axes).
 const MATRIX_ROLE = {
@@ -46,7 +47,7 @@ export default function LaneChips({ nodes, hidden, matrix, colors, onChange }) {
         <button type="button" className="lane-chip" aria-pressed={shown} disabled={fixed} title={hint} onClick={() => toggle(lane.key)}>
           {lane.types[0] ? <TypeGlyph type={lane.types[0]} colors={colors} size="xs" /> : null}
           <span>{lane.label}</span>
-          <span className="lane-chip-count" data-ui-number="">{count}</span>
+          <span className="lane-chip-count" data-ui-number="">{formatCount(count)}</span>
         </button>
       </React.Fragment>;
     })}

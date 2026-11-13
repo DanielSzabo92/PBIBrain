@@ -81,7 +81,9 @@ Measured on the same 13,731-object project, before → after.
 | 20 | **Mostly** | "Open sample project" on the empty Overview adds a small retail model with its report and scans it; no validation claim, zero counts, "Queue is clear" or "No matching objects" before the first scan; launchers wait for the server | A populated graph in 2 clicks from a new project. Open: drop zone, scan progress by phase, recent projects |
 | 11 | **Partly** | A bulk approve or reject over more than 50 suggestions asks once more and names its scope; counts are formatted | Open: auto-accept, grouping by pattern, selection model |
 | 22 | **Partly** | Budget tests for overview, search and lineage on the 660-object fixture; browser tests for row overlap at four widths, deep links, the object tree and alias-free search | Open: the 13.7k fixture in CI, screenshot comparison |
-| 21 | **Partly** | Theme follows the operating system until the user picks one; "Match system theme" in the View menu | A light-mode OS starts light. Open: one list behaviour, axe on every view |
+| 21 | **Partly** | Theme follows the operating system until the user picks one; "Match system theme" in the View menu | A light-mode OS starts light. Open: one list behaviour |
+| 21 | **Mostly** | axe runs on Overview, Search, Graph, Inspector, Review and Settings in both themes (`e2e/a11yViews.spec.js`) | 12 runs, no violations |
+| 13 | **Mostly** | Object page: properties are a flat list, empty binding groups are not drawn; lane, type and group counts are formatted | No empty boxes on a visual or a measure page. Open: per-type pages, field wells |
 
 Everything else is open.
 

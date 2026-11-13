@@ -81,8 +81,9 @@ def sample_source() -> dict[str, Any]:
         "measures": [{"id": measure_id[name], "name": name, "description": description, "expression": expression}
                      for owner, name, description, expression in _MEASURES if owner == table],
     } for table, columns in _TABLES.items()]
-    relationships = [{"id": f"sample-rel-{index}", "name": f"{from_table} to {to_table}", "fromTable": from_table, "fromColumn": from_column, "toTable": to_table, "toColumn": to_column}
-                     for index, (from_table, from_column, to_table, to_column) in enumerate(_RELATIONSHIPS)]
+    # A relationship is shown by its id, so the id says what it joins.
+    relationships = [{"id": f"{from_table} to {to_table}", "fromTable": from_table, "fromColumn": from_column, "toTable": to_table, "toColumn": to_column}
+                     for from_table, from_column, to_table, to_column in _RELATIONSHIPS]
     sections = [{
         "id": f"sample-page-{_slug(page)}",
         "name": page,

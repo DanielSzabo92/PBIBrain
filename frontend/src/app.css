@@ -1875,3 +1875,11 @@ button.object-tree-twist:hover { background: var(--surface-3); color: var(--text
 .project-start > h2, .project-start > p { flex: 0 0 100%; }
 /* In a small window the minimap would cover the objects it maps (review 21). */
 @media (max-width: 1100px) { .react-flow__minimap { display: none; } }
+
+/* ---------- Inspector: no empty panels (review 13) ----------------------- */
+/* Properties are a plain list: a bordered grid drew an empty grey cell for every unused column. */
+.metadata-grid { gap: 12px 28px; overflow: visible; border: 0; border-radius: 0; background: none; }
+.metadata-grid > div { padding: 0; background: none; }
+/* A binding group with nothing in it says nothing; in the object page it is left out. */
+.object-workspace .visual-bindings .detail-section.is-empty { display: none; }
+.object-workspace .visual-bindings:not(:has(.detail-section:not(.is-empty))) { display: none; }

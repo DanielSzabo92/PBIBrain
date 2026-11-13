@@ -219,7 +219,7 @@ function TypesPopoverContent({ nodes, hiddenTypes, colors, onChange }) {
             <Checkbox id={id} aria-label={label} checked={!hidden.has(row.type)} onCheckedChange={(checked) => toggle(row.type, checked === true)} />
             <TypeGlyph type={row.type} node={row.node} colors={colors} size="sm" />
             <label htmlFor={id} translate="no">{label}</label>
-            <span className="graph-type-count" data-ui-number="">{row.count}</span>
+            <span className="graph-type-count" data-ui-number="">{formatCount(row.count)}</span>
             <button type="button" className="graph-type-only" aria-label={`Show only ${label}`} onClick={() => onChange(rows.map((item) => item.type).filter((type) => type !== row.type))}>Only</button>
           </li>;
         })}
@@ -1091,7 +1091,7 @@ function FarLabels({ items }) {
 }
 
 function ArtifactGroup({ data }) {
-  return <div className="artifact-group"><span className="artifact-group-title">{ARTIFACT_GROUPS[data.key].label}<span data-ui-number="">{data.count}</span></span></div>;
+  return <div className="artifact-group"><span className="artifact-group-title">{ARTIFACT_GROUPS[data.key].label}<span data-ui-number="">{formatCount(data.count)}</span></span></div>;
 }
 
 function BrainFlowNode({ data, selected }) {
