@@ -39,3 +39,18 @@ test("search lists project objects and no alias records", async ({ page }) => {
   await expect(page.locator(".search-result").first()).toBeVisible();
   await expect(page.locator(".search-result .result-type", { hasText: /^Alias$/ })).toHaveCount(0);
 });
+
+// Review 13: the page of a model or table is its table of contents, and a row opens that object.
+test("a model page lists its tables and a table row opens the table with its fields", async ({ page }) => {
+  await page.goto("/#/inspector");
+  const tree = page.getByRole("tree", { name: "Project objects" });
+  await tree.getByRole("treeitem").first().click();
+  const contents = page.locator(".object-contents");
+  await expect(contents.getByRole("heading", { name: /^Tables? / })).toBeVisible();
+  const first = contents.locator(".contents-row").first();
+  const name = await first.locator(".contents-name").innerText();
+  await first.click();
+  await expect(page.getByRole("heading", { name, exact: true }).first()).toBeVisible();
+  await expect(page.locator(".object-contents .contents-row").first()).toBeVisible();
+  await expect(page).toHaveURL(/#\/inspector\/.+table/);
+});

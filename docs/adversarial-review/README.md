@@ -91,6 +91,7 @@ Measured on the same 13,731-object project, before → after.
 | 19 | **Started** | Keep / Take / Skip tooltips name the models they act on | Open: bottom detail panel, stepper, one filter line |
 | 16 | **Partly** | A unit test fails the build when the entry script passes 420 kB or the stylesheet 230 kB, or when the graph library is preloaded (`test/bundleBudget.test.js`) | Open: splitting `App.jsx`, CSS ownership |
 | 13 | **Mostly** | A visual's page lists its fields by well (Axis, Values, Legend, …) in report order, with the aggregation and the shown name, when the report file records roles (`field_wells` in the object answer) | Open: per-type pages for tables and models |
+| 13 | **Fixed** | The page of a model, table, report or page has a Contents card: what it holds by kind, with data type or size, each row a link (`contents` in the object answer, `e2e/routes.spec.js`); the suggestion badge is no longer cut off | A model page lists its tables and relationships instead of "No description recorded" alone |
 
 Everything else is open.
 

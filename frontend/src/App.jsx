@@ -1,4 +1,5 @@
 import VisualBindings from "./components/VisualBindings";
+import ObjectContents from "./components/ObjectContents";
 import CommonObjects from "./components/CommonObjects";
 import PendingChanges from "./components/PendingChanges";
 import { hasComparableSources } from "./commonality";
@@ -21,7 +22,7 @@ import { TypeGlyph, TypeIcon } from "./components/TypeGlyph";
 import { CloudSourcePicker } from "./components/CloudSourcePicker";
 import { highlightDax } from "./dax";
 import { parseRoute, routeHash } from "./routes";
-import { byId, compactCount, foldSearchResults, formatCount, matchSnippet, objectName, objectScope, originNote, readableText, publicProperties, scopeChoices, statusLabel, suggestionLabel, suggestionParts, isBackendUnreachableError, sanitizeDoublePunctuation } from "./presentation";
+import { byId, compactCount, foldSearchResults, formatCount, formatPlural, matchSnippet, objectName, objectScope, originNote, readableText, publicProperties, scopeChoices, statusLabel, suggestionLabel, suggestionParts, isBackendUnreachableError, sanitizeDoublePunctuation } from "./presentation";
 import { Button } from "./components/ui/button";
 import { Input } from "./components/ui/input";
 import { NativeSelect } from "./components/ui/native-select";
@@ -1781,8 +1782,9 @@ function Inspector({ node, details, loading, error, snapshot, snapshotLoaded, sn
           {fields.length ? <dl className="metadata-grid">{fields.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl> : null}
         </Card>
         {expression ? <ExpressionBlock expression={formatValue(expression)} /> : null}
+        <ObjectContents groups={details?.contents} colors={colors} onSelect={(id) => onSelect(id, "inspector")} />
         <UsageRoles profile={details?.usage_roles} />
-        {candidates.length || warnings.length ? <Disclosure title="Review & evidence" badge={`${candidates.length} suggestions${warnings.length ? ` · ${warnings.length} warnings` : ""}`} className="object-metadata object-review panel" defaultOpen>{candidates.map((item) => { const itemId = item.id || item.target || itemTarget(item); return <div className="object-review-item" key={itemId}><CandidateActions item={item} node={node} onReview={onReview} disabled={scanning} isEditing={activeEditId === itemId} onStartEdit={() => setActiveEditId(itemId)} onCancelEdit={() => setActiveEditId(null)} /><EvidenceCard item={item} /></div>; })}{warnings.map((warning) => <div className="warning-card" key={warning.id || formatEvidence(warning.reason)}><strong><TriangleAlert aria-hidden="true" />Conflict</strong><p>{formatEvidence(warning.reason || warning.message || warning.description || "Conflicting evidence needs review.")}</p></div>)}</Disclosure> : null}
+        {candidates.length || warnings.length ? <Disclosure title="Review & evidence" badge={`${formatPlural(candidates.length, "suggestion")}${warnings.length ? ` · ${formatPlural(warnings.length, "warning")}` : ""}`} className="object-metadata object-review panel" defaultOpen>{candidates.map((item) => { const itemId = item.id || item.target || itemTarget(item); return <div className="object-review-item" key={itemId}><CandidateActions item={item} node={node} onReview={onReview} disabled={scanning} isEditing={activeEditId === itemId} onStartEdit={() => setActiveEditId(itemId)} onCancelEdit={() => setActiveEditId(null)} /><EvidenceCard item={item} /></div>; })}{warnings.map((warning) => <div className="warning-card" key={warning.id || formatEvidence(warning.reason)}><strong><TriangleAlert aria-hidden="true" />Conflict</strong><p>{formatEvidence(warning.reason || warning.message || warning.description || "Conflicting evidence needs review.")}</p></div>)}</Disclosure> : null}
         {snapshotError ? <div className="inline-error" role="alert"><p>{snapshotLoaded ? "Review evidence could not be refreshed. Showing last loaded evidence." : "Review evidence unavailable."} {readableText(snapshotError)}</p><Button variant="outline" size="sm" onClick={onEvidenceRetry}>Retry evidence</Button></div> : !snapshotLoaded ? <p className="muted-copy object-review" role="status">Loading review evidence…</p> : null}
         {connected.some((edge) => !usageTypes.has(edge.type) && edge.type !== "OBSERVED_WITH") ? <Disclosure title="Other relationships" className="object-metadata object-other panel"><RelationshipGroup title="Connected objects" nodeId={node.id} edges={connected.filter((edge) => !usageTypes.has(edge.type) && edge.type !== "OBSERVED_WITH")} nodes={relatedNodes} onSelect={onSelect} empty="No other relationships." colors={colors} /></Disclosure> : null}
         {observations.length ? <Disclosure title="Observed report usage" badge={observations.length} className="object-metadata object-observed panel">{observations.map((edge) => <div className="usage-row" key={edge.id}><span>{scopeName(edge.from_id === node.id ? edge.to_id : edge.from_id)}</span><strong>{formatValue(edge.properties?.count || edge.count || "observed")}</strong></div>)}<p className="footnote">Co-occurrence does not establish compatibility.</p></Disclosure> : null}

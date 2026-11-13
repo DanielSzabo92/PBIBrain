@@ -209,6 +209,48 @@ def field_wells(repository: GraphRepository, node: Node, store: OverrideStore | 
     return list(wells.values())
 
 
+_CONTAINERS = {"MODEL", "TABLE", "REPORT", "PAGE"}
+_CONTENT_ORDER = ["TABLE", "MEASURE", "COLUMN", "HIERARCHY", "RELATIONSHIP", "PAGE", "VISUAL"]
+MAX_CONTENT_ROWS = 300
+
+
+def contents(repository: GraphRepository, node: Node, edges: list[Edge]) -> list[dict[str, Any]] | None:
+    """What a model, table, report or page holds, by kind: the page of a container is its table of contents.
+
+    Each row is small (name, kind, data type, hidden, how many objects it holds itself); a kind
+    with more than ``MAX_CONTENT_ROWS`` objects is cut and says how many there are.
+    """
+
+    if node.type not in _CONTAINERS:
+        return None
+    held: dict[str, int] = {}
+    children: list[str] = []
+    for edge in edges:
+        if edge.type != "CONTAINS":
+            continue
+        held[edge.from_id] = held.get(edge.from_id, 0) + 1
+        if edge.from_id == node.id:
+            children.append(edge.to_id)
+    groups: dict[str, list[dict[str, Any]]] = {}
+    for child_id in dict.fromkeys(children):
+        child = repository.get_object(child_id)
+        if child is None or child.status == "candidate":
+            continue
+        row = {"id": child.id, "name": child.name, "type": child.type, "holds": held.get(child.id, 0)}
+        for key in ("data_type", "visual_type"):
+            if child.properties.get(key):
+                row[key] = child.properties[key]
+        if child.properties.get("is_hidden") or child.properties.get("hidden"):
+            row["hidden"] = True
+        groups.setdefault(child.type, []).append(row)
+    order = {kind: index for index, kind in enumerate(_CONTENT_ORDER)}
+    result = []
+    for kind in sorted(groups, key=lambda value: (order.get(value, len(order)), value)):
+        rows = sorted(groups[kind], key=lambda row: (str(row["name"]).casefold(), row["id"]))
+        result.append({"type": kind, "count": len(rows), "items": rows[:MAX_CONTENT_ROWS]})
+    return result
+
+
 def _usage_roles(repository: GraphRepository, node: Node, edges: list[Edge]) -> dict[str, Any] | None:
     from backend.inference.usage_roles import usage_profile
 
@@ -259,6 +301,7 @@ def inspect_object(
         "object": object_payload,
         "visual_bindings": visual_bindings(repository, node, all_edges, store) if node.type == "VISUAL" else None,
         "field_wells": field_wells(repository, node, store) if node.type == "VISUAL" else None,
+        "contents": contents(repository, node, all_edges),
         "identity": {
             key: object_payload.get(key)
             for key in ("id", "type", "name", "model_id", "report_id", "source_id", "status")

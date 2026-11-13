@@ -1914,3 +1914,19 @@ button.object-tree-twist:hover { background: var(--surface-3); color: var(--text
 .version-chip > svg { width: 12px; height: 12px; flex: none; }
 .object-actions { display: inline-flex; align-items: center; gap: 4px; }
 .binding-note { color: var(--text-3); font-size: var(--fs-meta); font-weight: 400; }
+
+/* Object page of a container: its table of contents. */
+.object-contents { padding: 18px 22px; }
+.contents-group + .contents-group { margin-top: 16px; }
+.contents-list { list-style: none; margin: 0 -8px; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); column-gap: 12px; }
+.contents-row { display: flex; align-items: center; gap: 8px; width: 100%; min-width: 0; height: 30px; padding: 0 8px; border: 0; border-radius: var(--radius-sm); background: none; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+.contents-row:hover { background: var(--row-hover); }
+.contents-row:focus-visible { outline: 2px solid var(--ring); outline-offset: -2px; }
+.contents-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.contents-row.is-hidden-object .contents-name { color: var(--text-3); }
+.contents-tag { flex: none; color: var(--text-3); font-size: var(--fs-meta); }
+.contents-meta { flex: none; margin-left: auto; color: var(--text-3); font-size: var(--fs-meta); font-variant-numeric: tabular-nums; }
+.contents-more { margin-top: 4px; padding: 2px 0; border: 0; background: none; color: var(--text-2); font: inherit; font-size: var(--fs-meta); cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+.contents-more:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+/* The disclosure header keeps its side margins without growing past the card. */
+.object-metadata > button { width: calc(100% - 40px); }
