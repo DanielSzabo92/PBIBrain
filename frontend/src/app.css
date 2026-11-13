@@ -1913,3 +1913,4 @@ button.object-tree-twist:hover { background: var(--surface-3); color: var(--text
 .version-chip { margin-left: 8px; }
 .version-chip > svg { width: 12px; height: 12px; flex: none; }
 .object-actions { display: inline-flex; align-items: center; gap: 4px; }
+.binding-note { color: var(--text-3); font-size: var(--fs-meta); font-weight: 400; }

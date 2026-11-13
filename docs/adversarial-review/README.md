@@ -90,6 +90,7 @@ Measured on the same 13,731-object project, before → after.
 | 20 | **Mostly** | The scan reports its result ("Scan complete: 13,731 objects in 21 s") and the status bar counts seconds while it runs | Open: drop zone, phases, recent projects |
 | 19 | **Started** | Keep / Take / Skip tooltips name the models they act on | Open: bottom detail panel, stepper, one filter line |
 | 16 | **Partly** | A unit test fails the build when the entry script passes 420 kB or the stylesheet 230 kB, or when the graph library is preloaded (`test/bundleBudget.test.js`) | Open: splitting `App.jsx`, CSS ownership |
+| 13 | **Mostly** | A visual's page lists its fields by well (Axis, Values, Legend, …) in report order, with the aggregation and the shown name, when the report file records roles (`field_wells` in the object answer) | Open: per-type pages for tables and models |
 
 Everything else is open.
 

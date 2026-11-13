@@ -177,6 +177,38 @@ def visual_bindings(repository: GraphRepository, node: Node, edges: list[Edge], 
     return groups
 
 
+_WELL_NAMES = {"category": "Axis", "value": "Values", "legend": "Legend", "tooltip": "Tooltips", "rows": "Rows", "columns": "Columns",
+               "small_multiples": "Small multiples", "details": "Details", "size": "Size", "play_axis": "Play axis", "target": "Target",
+               "trend": "Trend", "range": "Range", "location": "Location", "slicer_field": "Slicer field"}
+
+
+def field_wells(repository: GraphRepository, node: Node, store: OverrideStore | None) -> list[dict[str, Any]]:
+    """The fields of a visual by the well they sit in (Axis, Values, Legend), in the order of the report file.
+
+    Sort and conditional-formatting uses are not wells and are left out. Empty when the source
+    did not record roles; the caller then shows the plain column and measure lists.
+    """
+
+    wells: dict[str, dict[str, Any]] = {}
+    for item in node.properties.get("field_roles") or []:
+        if not isinstance(item, dict) or item.get("usage") != "projection" or item.get("hidden") is True:
+            continue
+        target = repository.get_object(str(item.get("object_id") or ""))
+        if target is None:
+            continue
+        role = str(item.get("role") or "field")
+        well = wells.setdefault(role, {"role": role, "label": _WELL_NAMES.get(role) or role.replace("_", " ").capitalize(), "fields": []})
+        if any(field["id"] == target.id for field in well["fields"]):
+            continue
+        field = _payload(target, store)
+        if item.get("aggregation"):
+            field["aggregation"] = item["aggregation"]
+        if item.get("display_name"):
+            field["shown_as"] = item["display_name"]
+        well["fields"].append(field)
+    return list(wells.values())
+
+
 def _usage_roles(repository: GraphRepository, node: Node, edges: list[Edge]) -> dict[str, Any] | None:
     from backend.inference.usage_roles import usage_profile
 
@@ -226,6 +258,7 @@ def inspect_object(
     return {
         "object": object_payload,
         "visual_bindings": visual_bindings(repository, node, all_edges, store) if node.type == "VISUAL" else None,
+        "field_wells": field_wells(repository, node, store) if node.type == "VISUAL" else None,
         "identity": {
             key: object_payload.get(key)
             for key in ("id", "type", "name", "model_id", "report_id", "source_id", "status")
