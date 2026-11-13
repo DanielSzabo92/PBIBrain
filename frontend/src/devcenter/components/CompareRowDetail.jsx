@@ -914,11 +914,7 @@ export default function CompareRowDetail({
             tabIndex={-1}
             className="text-base font-semibold m-0 truncate outline-none"
           >
-            {row.table && row.object_type !== "table"
-              ? formatDaxName(row.table, row.name)
-              : row.object_type === "table"
-                ? `'${row.name}'`
-                : formatObjectRef(row.name)}
+            {row.name}
           </h2>
           <div className="text-xs text-[var(--text-2)] mt-0.5 flex flex-wrap items-center gap-1.5">
             <span>

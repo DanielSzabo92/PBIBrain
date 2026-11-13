@@ -721,8 +721,11 @@
   border-radius: var(--r-md) 0 0 var(--r-md);
   background: var(--surface);
   box-shadow: var(--shadow-lg);
-  animation: sheet-in var(--dur, 150ms) var(--ease-out);
+  /* Slides in without a fade: text that fades in is below contrast for a moment. */
+  animation: dc-pane-in var(--dur, 150ms) var(--ease-out);
 }
+
+@keyframes dc-pane-in { from { transform: translateX(16px); } to { transform: none; } }
 
 .dc-row-pane-head {
   display: flex;
