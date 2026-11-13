@@ -105,6 +105,10 @@ export function createBrainTransport({ baseUrl = API_ROOT, fetcher = globalThis.
     getConfig() {
       return request("/config");
     },
+    /** Adds the bundled sample source to the project and returns the saved configuration. */
+    addSample() {
+      return request("/sample", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
+    },
     /** Whether each configured source path exists on disk. */
     getSourceStatus() {
       return request("/config/sources");

@@ -187,7 +187,8 @@ function DevCenterScreens({ onOpenProject }) {
 
   return (
     <div className="dc-root">
-      <Breadcrumb className="dc-breadcrumb" aria-label={t("work.breadcrumb")}>
+      {/* With one part the path only repeats the view title above it. */}
+      <Breadcrumb className={crumbs.length > 1 ? "dc-breadcrumb" : "dc-breadcrumb sr-only"} aria-label={t("work.breadcrumb")}>
         <BreadcrumbList>
           {crumbs.map((crumb, index) => (
             <React.Fragment key={crumb.label + index}>

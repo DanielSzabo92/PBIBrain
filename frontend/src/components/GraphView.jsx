@@ -1002,10 +1002,12 @@ function GraphCanvas({ rawById, apiRef, overview, full, grouped, onCenter, onIns
       ...(moved ? { data: edgeGeometry(packed.get(base.source), packed.get(base.target), direction, 0) } : {}),
       className: [...classes, onPath ? "on-path" : "", focusing && !onPath ? "is-dimmed" : "", (showLabels || (edge.bundle && (bundleLabels || onPath)) || (onPath && !structure && drawnEdges.length <= 12)) ? "show-label" : ""].filter(Boolean).join(" "),
       markerEnd: edge.bundle || (structure && !onPath) ? undefined : { type: MarkerType.ArrowClosed, color: tone, width: onPath ? 4 : 5.5, height: onPath ? 4 : 5.5 },
-      // Packed rows stand in one line: a link passes behind the objects between its ends, not across their names.
-      zIndex: onPath && !moved ? 1 : 0,
+      // A link passes behind the objects between its ends, never across their names. Links on the
+      // selected path are listed last, so they are drawn over the other links.
+      zIndex: 0,
+      onPath,
     };
-  }), [baseEdges, drawnEdges, selectedId, focusing, showLabels, trace, bundleLabels, relatedOnly, connected, packed, direction]);
+  }).sort((left, right) => Number(left.onPath) - Number(right.onPath)).map(({ onPath, ...flow }) => flow), [baseEdges, drawnEdges, selectedId, focusing, showLabels, trace, bundleLabels, relatedOnly, connected, packed, direction]);
 
   // Arrow keys move to the connected object that lies in that direction (else the nearest object there).
   const step = useCallback((fromId, key) => {

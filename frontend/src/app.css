@@ -1866,3 +1866,12 @@ button.object-tree-twist:hover { background: var(--surface-3); color: var(--text
 .inspector-layout > span:first-child { display: none; }
 .inspector-layout:has(> span:first-child) { grid-template-columns: minmax(0, 1fr); }
 .inspector-home-hint { margin: 4px 2px; font-size: var(--fs-meta); }
+
+/* A view fades in, so a switch reads as one surface changing rather than a jump (review 15). */
+@keyframes view-in { from { opacity: 0; } to { opacity: 1; } }
+.view-frame { animation: view-in 120ms var(--ease-out, ease-out); }
+@media (prefers-reduced-motion: reduce) { .view-frame { animation: none; } }
+.project-start { flex-direction: row; flex-wrap: wrap; align-items: center; }
+.project-start > h2, .project-start > p { flex: 0 0 100%; }
+/* In a small window the minimap would cover the objects it maps (review 21). */
+@media (max-width: 1100px) { .react-flow__minimap { display: none; } }

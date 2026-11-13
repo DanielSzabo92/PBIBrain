@@ -287,7 +287,7 @@ test("shared shadcn controls preserve search, full inspector, review, and source
   await expect(page.getByText("Focused view", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: /^Review queue/ }).click();
   await expect(page.getByRole("navigation").getByRole("button", { name: /^Review queue/ })).toHaveAttribute("aria-current", "page");
-  await expect(page.locator(".review-purpose")).toContainText("Approval");
+  await expect(page.locator(".review-purpose")).toContainText("to review");
   await page.getByRole("button", { name: "Settings", exact: true }).click();
     await page.getByRole("tab", { name: "Graph colors", exact: true }).click();
     await page.getByText("Customize colors", { exact: true }).click();

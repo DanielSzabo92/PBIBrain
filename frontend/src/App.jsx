@@ -9,6 +9,7 @@ import { SegmentedControl } from "./components/ui/segmented-control";
 import { Tooltip } from "./components/ui/tooltip";
 import ReviewDecision from "./components/ReviewDecision";
 import ObjectContextPreview from "./components/ObjectContextPreview";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent } from "./components/ui/dialog";
 import { isLowEvidence, explainConfidence } from "./reviewEvidence";
 import { brainTransport, normalizeSnapshot } from "./transport";
 import { desktopRequest, subscribeToDesktopBridge } from "./desktop";
@@ -51,6 +52,9 @@ import { commandFor, displayKeys, shortcutKeys } from "./shortcuts";
 import CommandPalette from "./components/CommandPalette";
 import InspectorEmpty from "./components/InspectorEmpty";
 import ExportDialog from "./components/ExportDialog";
+
+// Above this many suggestions a bulk approve or reject asks for confirmation.
+const BULK_CONFIRM_ABOVE = 50;
 
 const VIEWS = [
   ["overview", "Overview"],
@@ -290,7 +294,7 @@ function AppInner({ transport = brainTransport }) {
   const [graphSession, setGraphSession] = useState(startRoute.focus ? { centerId: startRoute.focus, selectionId: startRoute.focus } : null);
   const [reviewSession, setReviewSession] = useState({ issue: "ALL", objectType: "ALL", modelId: "ALL", reportId: "ALL", sort: "confidence-high" });
   const [inspectorOrigin, setInspectorOrigin] = useState("search");
-  const [selectedId, setSelectedId] = useState(null);
+  const [selectedId, setSelectedId] = useState(startRoute.selectedId);
   const [inspectedObject, setInspectedObject] = useState(null);
   const [inspectedDetails, setInspectedDetails] = useState(null);
   const [inspectorError, setInspectorError] = useState("");
@@ -750,10 +754,11 @@ function AppInner({ transport = brainTransport }) {
     [handleUndoReview, load, loadSnapshot, transport, toast],
   );
 
-  const navigate = useCallback((key) => {
-    setView(key);
-    if (key === "review") loadSnapshot().catch(() => {});
-  }, [loadSnapshot]);
+  const navigate = useCallback((key) => { setView(key); }, []);
+  // The review queue reads the snapshot however the view was reached: the sidebar, a link or Back.
+  useEffect(() => {
+    if (view === "review") loadSnapshot().catch(() => {});
+  }, [view, loadSnapshot]);
 
   const goBack = useCallback(() => {
     if (currentView.current !== "inspector" || !selectedId) return;
@@ -840,6 +845,16 @@ function AppInner({ transport = brainTransport }) {
   const failedNotice = /failed/i.test(String(notice));
   const hasSources = !config || !Array.isArray(config.sources) || config.sources.length > 0 || Boolean(activeProject?.source_count);
   const runScan = () => { if (!scanning && hasSources) applyScan(); };
+  // The sample: one click from an empty project to every view with content.
+  const openSample = async () => {
+    if (scanning || typeof transport.addSample !== "function") return;
+    try {
+      setConfig(await transport.addSample());
+      await applyScan();
+    } catch (cause) {
+      setOperationError(cause?.message || "The sample project could not be added");
+    }
+  };
   const openSettings = (tab = "project") => { setSettingsTab(tab); setView("config"); };
   commands.current.view = (key) => { navigate(key); if (key === "search") focusSearchField(); };
   commands.current.reload = () => { if (!loading && !scanning) reloadBrain(); };
@@ -970,7 +985,7 @@ function AppInner({ transport = brainTransport }) {
           {counts.objects > 0 && view !== "devcenter" ? <PendingChanges transport={transport} scanning={scanning} onScan={applyScan} /> : null}
           <div className="view-frame" key={view}>
             <Suspense fallback={<div className="view-loading" role="status"><RefreshCw className="spin" aria-hidden="true" />Loading view…</div>}>
-            {view === "overview" ? <Overview onSelect={selectNode} overview={overview} config={config} counts={counts} colors={graphColors} loading={loading} projectName={projectName} onView={navigate} onBrowseType={(objectType) => { setSearchSession({ query: "", modelId: "", reportId: "", objectType, result: null }); setView("search"); }} onSources={() => { setSettingsTab("project"); setView("config"); }} onSummary={() => { setSettingsTab("summary"); setView("config"); }} onScan={applyScan} scanning={scanning} scanLabel={activeProject ? "Scan project" : "Scan sources"} onReview={() => navigate("review")} transport={transport} onMerge={(modelIds) => { const names = modelIds.map((id) => (overview.model_objects || []).find((item) => item.id === id)?.name || id); setNotice(`Start a merge session with ${names.join(", ")}`); navigate("devcenter"); }} error={error || configError} onRetry={load} snapshot={snapshot} auditTrail={auditTrail} /> : null}
+            {view === "overview" ? <Overview onSelect={selectNode} overview={overview} config={config} counts={counts} colors={graphColors} loading={loading} projectName={projectName} onView={navigate} onBrowseType={(objectType) => { setSearchSession({ query: "", modelId: "", reportId: "", objectType, result: null }); setView("search"); }} onSources={() => { setSettingsTab("project"); setView("config"); }} onSample={openSample} onSummary={() => { setSettingsTab("summary"); setView("config"); }} onScan={applyScan} scanning={scanning} scanLabel={activeProject ? "Scan project" : "Scan sources"} onReview={() => navigate("review")} transport={transport} onMerge={(modelIds) => { const names = modelIds.map((id) => (overview.model_objects || []).find((item) => item.id === id)?.name || id); setNotice(`Start a merge session with ${names.join(", ")}`); navigate("devcenter"); }} error={error || configError} onRetry={load} snapshot={snapshot} auditTrail={auditTrail} /> : null}
             {view === "search" ? <div className="page page-narrow" data-ui-stack=""><SearchView session={searchSession} onSession={setSearchSession} colors={graphColors} transport={transport} overview={overview} onSelect={selectNode} /></div> : null}
             {view === "graph" ? <GraphView session={graphSession} onSession={setGraphSession} colors={graphColors} transport={transport} overview={overview} snapshot={snapshot} selectedId={selectedId} onSelect={selectNode} /> : null}
             {view === "inspector" ? <div className="inspector-layout">
@@ -1172,7 +1187,7 @@ function PageHeading({ kicker, title, description, action, children, quiet = fal
   );
 }
 
-function Overview({ overview, config, counts, colors, loading, projectName, onView, onBrowseType, onSources, onSummary, onScan, onReview, onSelect, onMerge, transport, scanning, scanLabel, error, onRetry, snapshot, auditTrail }) {
+function Overview({ overview, config, counts, colors, loading, projectName, onView, onBrowseType, onSources, onSample, onSummary, onScan, onReview, onSelect, onMerge, transport, scanning, scanLabel, error, onRetry, snapshot, auditTrail }) {
   // The seven model and report types show at once; meanings (aliases, roles, concepts…) open on demand.
   const [allTypes, setAllTypes] = useState(false);
   const hasObjects = counts.objects > 0;
@@ -1202,7 +1217,8 @@ function Overview({ overview, config, counts, colors, loading, projectName, onVi
   const lastScan = overview.last_scan;
   const validationState = overview.validation_state || "not_run";
   const validationLabel = { valid: "Graph validation passed", invalid: "Graph validation failed", warning: "Graph validation warnings", not_run: "Graph validation not run" }[validationState] || "Graph validation unavailable";
-  const issues = overview.validation_issues || [];
+  // Notes at INFO level (for example an object type the validator only passes through) are not issues to act on.
+  const issues = (overview.validation_issues || []).filter((item) => String(item.severity || "").toUpperCase() !== "INFO");
   const pending = counts.review;
   const ValidationIcon = validationState === "valid" ? ShieldCheck : ShieldAlert;
   const validationTone = { valid: "ok", invalid: "bad", warning: "warn" }[validationState] || "idle";
@@ -1414,6 +1430,7 @@ function Overview({ overview, config, counts, colors, loading, projectName, onVi
             {hasSources ? <ScanLine /> : <Plus />}
             {hasSources ? scanLabel : "Add sources"}
           </Button>
+          {!hasSources && onSample && config ? <Button variant="outline" size="lg" className="project-start-sample" onClick={onSample} disabled={scanning}><Boxes />Open sample project</Button> : null}
         </Card>
         <Card className="status-panel" role="region" aria-label="Project status">{sourcesRow}{notCheckedRow}</Card>
       </div> : <>
@@ -1923,8 +1940,13 @@ function ReviewQueue({ session, onSession, snapshot, loaded, loading, error, onR
     : null;
   const approvableItems = useMemo(() => filtered.filter((item) => item.issue !== "conflict" && item.issue !== "stale"), [filtered]);
 
-  const handleBulkAction = async (action, items) => {
+  // A bulk decision over many suggestions is asked for once more, with its scope named:
+  // "Approve all" and "Reject all" sit next to each other and one click decided thousands.
+  const [bulkConfirm, setBulkConfirm] = useState(null);
+  const handleBulkAction = async (action, items, confirmed = false) => {
     if (bulkBusy || scanning || !items?.length) return;
+    if (!confirmed && items.length > BULK_CONFIRM_ABOVE) { setBulkConfirm({ action, items }); return; }
+    setBulkConfirm(null);
     setBulkBusy(true);
     try {
       if (onBulkReview) {
@@ -2072,15 +2094,22 @@ function ReviewQueue({ session, onSession, snapshot, loaded, loading, error, onR
             <div className="queue-bulk-actions" data-ui-actions="">
               <Button variant="outline" size="sm" className="bulk-approve" disabled={bulkBusy || scanning} onClick={() => handleBulkAction("approve", approvableItems)}>
                 <Check className="size-4" aria-hidden="true" />
-                {hasFilters ? `Approve filtered (${approvableItems.length})` : `Approve all (${approvableItems.length})`}
+                {hasFilters ? `Approve filtered (${formatCount(approvableItems.length)})` : `Approve all (${formatCount(approvableItems.length)})`}
               </Button>
               <Button variant="ghost" size="sm" className="bulk-reject" disabled={bulkBusy || scanning} onClick={() => handleBulkAction("reject", approvableItems)}>
                 <X className="size-4" aria-hidden="true" />
-                {hasFilters ? `Reject filtered (${approvableItems.length})` : `Reject all (${approvableItems.length})`}
+                {hasFilters ? `Reject filtered (${formatCount(approvableItems.length)})` : `Reject all (${formatCount(approvableItems.length)})`}
               </Button>
             </div>
           ) : null}
         </div>
+        <AlertDialog open={Boolean(bulkConfirm)} onOpenChange={(open) => { if (!open) setBulkConfirm(null); }}>
+          {bulkConfirm ? <AlertDialogContent
+            title={`${bulkConfirm.action === "approve" ? "Approve" : "Reject"} ${formatCount(bulkConfirm.items.length)} suggestions?`}
+            description={`${bulkConfirm.items.length === approvableItems.length ? (hasFilters ? "Every suggestion that matches the current filters" : "Every open suggestion in the project") : "The listed suggestions"} will be ${bulkConfirm.action === "approve" ? "approved" : "rejected"}. Each decision can be changed later under Reviewed.`}
+            footer={<><AlertDialogCancel asChild><Button variant="outline">Cancel</Button></AlertDialogCancel><AlertDialogAction asChild><Button variant={bulkConfirm.action === "approve" ? "default" : "destructive"} onClick={() => handleBulkAction(bulkConfirm.action, bulkConfirm.items, true)}>{bulkConfirm.action === "approve" ? "Approve" : "Reject"} {formatCount(bulkConfirm.items.length)}</Button></AlertDialogAction></>}
+          /> : null}
+        </AlertDialog>
         <Card className="panel queue-panel" aria-busy={loading}>
           {loading ? <div className="queue-loading">{[0, 1, 2].map((index) => <Skeleton className="skeleton-row-item" key={index} />)}<p className="sr-only" role="status">Loading suggestions…</p></div> : filtered.length ? <>
             <div className="review-columns is-pending" aria-hidden="true"><span>Object</span><span>Suggestion</span><span>Based on</span><span>Confidence</span><span>Decision</span></div>
@@ -2185,7 +2214,7 @@ function ReviewQueue({ session, onSession, snapshot, loaded, loading, error, onR
               </>
             )}
             {moreRows}
-          </> : <EmptyState icon={hasFilters ? <ShieldCheck /> : <CircleCheck />} tone={hasFilters ? undefined : "ok"} title={hasFilters ? "No matching reviews" : "Queue is clear"} detail={hasFilters ? "Choose different filters to see the remaining reviews." : "All suggestions have been reviewed."} action={hasFilters ? <Button variant="outline" onClick={() => change({ issue: "ALL", objectType: "ALL", modelId: "ALL", reportId: "ALL" })}>Clear filters</Button> : null} />}
+          </> : <EmptyState icon={hasFilters ? <ShieldCheck /> : <CircleCheck />} tone={hasFilters || !overview?.counts?.nodes ? undefined : "ok"} title={hasFilters ? "No matching reviews" : overview?.counts?.nodes ? "Queue is clear" : "Nothing to review yet"} detail={hasFilters ? "Choose different filters to see the remaining reviews." : overview?.counts?.nodes ? "All suggestions have been reviewed." : "Suggestions appear after the first scan."} action={hasFilters ? <Button variant="outline" onClick={() => change({ issue: "ALL", objectType: "ALL", modelId: "ALL", reportId: "ALL" })}>Clear filters</Button> : null} />}
         </Card>
       </>
     )}

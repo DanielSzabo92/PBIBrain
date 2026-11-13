@@ -117,8 +117,15 @@ def get_overview(repository: GraphRepository, *, store: OverrideStore | None = N
         for node in sorted(measures, key=lambda node: (-inbound[node.id], node.name or "", node.id))[:5]
     ]
     hot: list[dict[str, Any]] = []
-    for item in sorted(review_items, key=lambda item: -degree[str(item.get("object_id") or item.get("target_id") or "")])[:5]:
+    seen_targets: set[str] = set()
+    for item in sorted(review_items, key=lambda item: -degree[str(item.get("object_id") or item.get("target_id") or "")]):
         target_id = str(item.get("object_id") or item.get("target_id") or "")
+        # One row per object: an object with three open suggestions is still one hot object.
+        if target_id in seen_targets:
+            continue
+        if len(hot) == 5:
+            break
+        seen_targets.add(target_id)
         target = names.get(target_id)
         hot.append({
             "id": item.get("id"), "target_id": target_id, "name": target.name if target else target_id,
@@ -742,6 +749,15 @@ class BrainApp:
                     if any(payload.get(key, current[key]) != current[key] for key in ("database", "identity_map")):
                         raise ValueError("Storage paths cannot change while the server is open; edit the config file and restart")
                     return 200, self.project.save_config(payload)
+            if method == "POST" and parts == ["sample"] and self.project is not None:
+                # One click to a project with content: the sample is written beside the config and added as a source.
+                from backend.sample_project import write_sample
+                sample = write_sample(self.project.config_path.parent / "sample")
+                current = self.project.get_config()
+                known = {path.resolve() for path in self.project.source_paths()}
+                if sample.resolve() not in known:
+                    current = self.project.save_config({**current, "sources": [*current.get("sources", []), str(sample)]})
+                return 200, current
             if method == "POST" and parts == ["scan"] and self.project is not None:
                 result = self.project.scan(self.api.repository)
                 if getattr(self, "_source_watcher", None) is not None:

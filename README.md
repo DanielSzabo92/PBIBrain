@@ -126,6 +126,8 @@ start.bat
 
 The script automatically sets up the Python virtual environment, builds the web interface (if not already built), starts the local server, and opens **`http://127.0.0.1:8000/`** in your browser.
 
+No Power BI project at hand? On the empty Overview choose **Open sample project**: a small retail model and its report are added and scanned, so every view has content to explore.
+
 ---
 
 ## Project Configuration (`brain.json`)
