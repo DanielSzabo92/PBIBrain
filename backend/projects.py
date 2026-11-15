@@ -28,6 +28,7 @@ from backend.project_cloud import (
     validate_cloud_sources,
 )
 from backend.scanner.pbip import is_pbip_source, read_model_folder, read_pbip_project, read_report_folder
+from backend.scanner.checkpoint import checkpoints
 from backend.scanner.pipeline import Scanner
 from backend.scanner.report_reader import ReportReader
 from backend.sync import preserve_review_statuses
@@ -214,9 +215,10 @@ class ProjectService:
     def __init__(self, config_path: str | Path = "config/brain.json", *, cloud: Any = None) -> None:
         # What a running scan is doing, read by the UI without waiting for the scan request.
         self.scan_progress: dict[str, Any] = {"running": False}
-        # The outcome of the last scan for each configured source (kept in memory, for Settings).
-        self.source_states: dict[str, dict[str, Any]] = {}
         self.config_store = ProjectConfigStore(config_path)
+        # The outcome of the last scan for each configured source, for Settings. Kept in a side
+        # file beside the project file so it survives a restart of the app.
+        self.source_states: dict[str, dict[str, Any]] = self._load_source_states()
         # The Development Center ``CloudService`` (or a callable that gives it). None: the
         # scan reads cloud items from the cache only, as in the stand-alone agent.
         self.cloud = cloud
@@ -227,6 +229,27 @@ class ProjectService:
 
     def get_config(self) -> dict[str, Any]:
         return self.config_store.get()
+
+    def _source_states_path(self) -> Path:
+        return self.config_path.with_name("source-states.json")
+
+    def _load_source_states(self) -> dict[str, dict[str, Any]]:
+        try:
+            value = json.loads(self._source_states_path().read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            return {}
+        if not isinstance(value, dict):
+            return {}
+        return {str(key): dict(state) for key, state in value.items() if isinstance(state, dict) and isinstance(state.get("state"), str)}
+
+    def _save_source_states(self) -> None:
+        # Best effort: Settings shows "not scanned" after a restart if this cannot be written.
+        try:
+            path = self._source_states_path()
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(json.dumps(self.source_states, indent=2, sort_keys=True), encoding="utf-8")
+        except OSError:
+            LOGGER.warning("The source scan states could not be saved", exc_info=True)
 
     def save_config(self, payload: Mapping[str, Any]) -> dict[str, Any]:
         return self.config_store.save(payload)
@@ -241,8 +264,8 @@ class ProjectService:
     def scan(self, repository: GraphRepository, *, cancel: Any = None, publish_lock: Any = None) -> ProjectScanResult:
         """Scan every source and publish one combined graph.
 
-        ``cancel`` (a ``threading.Event``) stops the scan between its phases, before anything is
-        published; the scan then raises ``ScanCancelled``. ``publish_lock`` is held only while the
+        ``cancel`` (a ``threading.Event``) stops the scan between its phases and, inside formula
+        analysis, between expressions, before anything is published; the scan then raises ``ScanCancelled``. ``publish_lock`` is held only while the
         graph is replaced, so a scan on a worker thread leaves the repository readable until then.
         """
 
@@ -266,12 +289,14 @@ class ProjectService:
             for state in states.values():
                 if state["state"] in {"waiting", "reading", "read"}:
                     state.update(state="not_scanned", detail=reason)
+            self._save_source_states()
             raise
         finally:
             self.scan_progress = {"running": False}
         for state in states.values():
             if state["state"] == "read":
                 state.update(state="scanned", scanned_at=result.scanned_at)
+        self._save_source_states()
         # The read-only snapshot MCP answers from while the app is closed (issue #18). A scan that
         # published its graph never fails because this extra copy could not be written.
         try:
@@ -374,7 +399,13 @@ class ProjectService:
                 overrides_path=project_paths["overrides"],
             )
             phase("Reading formulas and dependencies")
-            graph = scanner.scan(models, reports)
+
+            def cancelled() -> None:
+                if cancel is not None and cancel.is_set():
+                    raise ScanCancelled("The scan was cancelled")
+
+            with checkpoints(cancelled if cancel is not None else None):
+                graph = scanner.scan(models, reports)
             phase("Saving the graph")
             if not publish:
                 return graph

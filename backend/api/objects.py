@@ -159,7 +159,8 @@ def visual_bindings(repository: GraphRepository, node: Node, edges: list[Edge], 
             if edge.type == "CONTAINS" and edge.to_id == current and edge.from_id not in owners:
                 owners.add(edge.from_id)
                 frontier.append(edge.from_id)
-    group_types = {"COLUMN": "columns", "MEASURE": "measures", "VISUAL_CALCULATION": "calculations", "VISUAL_FILTER": "visual_filters", "PAGE_FILTER": "page_filters", "REPORT_FILTER": "report_filters"}
+    # A report-level measure is bound like a model measure, so it counts with the measures.
+    group_types = {"COLUMN": "columns", "MEASURE": "measures", "REPORT_MEASURE": "measures", "VISUAL_CALCULATION": "calculations", "VISUAL_FILTER": "visual_filters", "PAGE_FILTER": "page_filters", "REPORT_FILTER": "report_filters"}
     seen: set[str] = set()
     for edge in edges:
         if not (edge.from_id == node.id and edge.type in {"USES", "CONTAINS"}
@@ -168,7 +169,7 @@ def visual_bindings(repository: GraphRepository, node: Node, edges: list[Edge], 
         target = repository.get_object(edge.to_id)
         if target is None or target.id in seen or target.type not in group_types:
             continue
-        if target.type in {"COLUMN", "MEASURE", "VISUAL_CALCULATION"} and edge.from_id != node.id:
+        if target.type in {"COLUMN", "MEASURE", "REPORT_MEASURE", "VISUAL_CALCULATION"} and edge.from_id != node.id:
             continue
         seen.add(target.id)
         groups[group_types[target.type]].append(_payload(target, store))

@@ -8,6 +8,8 @@ semantic candidates.
 
 from __future__ import annotations
 
+from backend.scanner.checkpoint import checkpoint
+
 from dataclasses import dataclass, field, is_dataclass, asdict
 import hashlib
 import json
@@ -383,6 +385,7 @@ class DaxAnalyzer:
         target_nodes = [value if isinstance(value, Node) else node_from_dict(value) for value in target_values]
         result = DaxAnalysisBatch()
         for node in sorted(target_nodes, key=lambda item: str(item.id)):
+            checkpoint()
             if node.type not in _REFERENCE_OBJECT_TYPES or self._is_m_shared_expression(node) or self._is_m_partition(node):
                 continue
             expression = _node_value(node, "expression", "dax", "formula", "expression_text")

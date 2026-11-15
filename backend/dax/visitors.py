@@ -7,6 +7,7 @@ future grammar revision can change node classes without changing graph logic.
 from __future__ import annotations
 
 from dataclasses import dataclass, fields, is_dataclass
+from functools import lru_cache
 import re
 from typing import Any
 from collections.abc import Iterator, Mapping
@@ -28,8 +29,20 @@ _META_KEYS = {
 }
 
 
+_NON_ALNUM = re.compile(r"[^a-z0-9]+")
+
+
+@lru_cache(maxsize=8192)
+def _norm_text(value: str) -> str:
+    return _NON_ALNUM.sub("_", value.casefold()).strip("_")
+
+
 def _norm(value: Any) -> str:
-    return re.sub(r"[^a-z0-9]+", "_", str(value).casefold()).strip("_")
+    # AST keys repeat millions of times on a large project, so the result is memoized per text.
+    return _norm_text(value if isinstance(value, str) else str(value))
+
+
+_META_NORMS = frozenset(_norm(item) for item in _META_KEYS)
 
 
 def attr(value: Any, *names: str, default: Any = None) -> Any:
@@ -123,7 +136,7 @@ def iter_children(node: Any) -> Iterator[Any]:
         except TypeError:
             items = ()
     for key, child in items:
-        if _norm(key) in {_norm(item) for item in _META_KEYS}:
+        if _norm(key) in _META_NORMS:
             continue
         if isinstance(child, (list, tuple, set, frozenset)):
             for item in child:

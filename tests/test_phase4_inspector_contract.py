@@ -617,14 +617,15 @@ const staleSnapshot = normalizeSnapshot({
 if (staleSnapshot.review_items.length !== 1 || staleSnapshot.review_items[0].issue_type !== "stale" || staleSnapshot.stale_overrides.length !== 1) {
   throw new Error("stale review payload normalization failed");
 }
-const appSource = readFileSync("./src/App.jsx", "utf8");
-const itemImpactStart = appSource.indexOf("function itemImpact");
-const itemImpactEnd = appSource.indexOf("function dataCounts", itemImpactStart);
+const sharedSource = readFileSync("./src/views/shared.jsx", "utf8");
+const appSource = readFileSync("./src/views/ReviewQueue.jsx", "utf8");
+const itemImpactStart = sharedSource.indexOf("function itemImpact");
+const itemImpactEnd = sharedSource.indexOf("export function", itemImpactStart);
 const numberOr = (value, fallback = 0) => {
   const number = Number(value);
   return Number.isFinite(number) ? number : fallback;
 };
-const itemImpact = new Function("numberOr", `${appSource.slice(itemImpactStart, itemImpactEnd)}; return itemImpact;`)(numberOr);
+const itemImpact = new Function("numberOr", `${sharedSource.slice(itemImpactStart, itemImpactEnd)}; return itemImpact;`)(numberOr);
 if (itemImpact({ impact: "critical" }) !== 4 || itemImpact({ impact: "high" }) !== 3 || itemImpact({ impact: "normal" }) !== 2 || itemImpact({ impact: "low" }) !== 1) {
   throw new Error("string impact rank contract failed");
 }

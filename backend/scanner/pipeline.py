@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from backend.scanner.checkpoint import checkpoint
+
 import logging
 from datetime import datetime, UTC
 from pathlib import Path
@@ -177,8 +179,10 @@ class Scanner:
             analyze_dax=True,
         )
         _stamp_hashes(graph.nodes)
+        checkpoint()
         graph.load(self.repository)
         self.repository.last_scan = datetime.now(UTC).isoformat()
+        checkpoint()
         self._run_validation(graph)
         LOGGER.info("scan complete: %d nodes, %d factual edges", len(graph.nodes), len(graph.edges))
         return graph

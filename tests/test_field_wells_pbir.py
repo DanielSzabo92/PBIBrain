@@ -50,6 +50,12 @@ class FieldWellsOnPbirTests(unittest.TestCase):
         self.assertEqual(self.wells("timeslicer"), {"Slicer field": ["Time Calculation"]})
         self.assertEqual(self.wells("totalsales"), {"Values": ["Total Sales"]})
 
+    def test_a_report_measure_counts_with_the_bound_measures(self) -> None:
+        status, reply = self.app.handle("GET", "/api/object/" + quote(self.visuals["target"]["id"], safe=""))
+        self.assertEqual(status, 200)
+        bindings = reply.get("details", reply)["visual_bindings"]
+        self.assertEqual([measure["name"] for measure in bindings["measures"]], ["Sales Target"])
+
     def test_a_visual_without_fields_has_no_wells(self) -> None:
         self.assertEqual(self.wells("targetgroup"), {})
 

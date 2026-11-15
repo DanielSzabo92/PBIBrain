@@ -151,6 +151,34 @@ class BackgroundScanTests(unittest.TestCase):
             self.assertTrue(second["scan"]["detail"])
             app.close()
 
+            # A restart reads the same states back.
+            restarted = ProjectService(app.project.config_path)
+            self.assertEqual(restarted.source_states[str(broken)]["state"], "failed")
+
+    def test_a_cancel_during_formula_analysis_stops_at_the_next_expression(self) -> None:
+        from backend.dax.analyzer import DaxAnalyzer
+
+        with tempfile.TemporaryDirectory() as folder:
+            sample = write_sample(Path(folder) / "sample")
+            config = Path(folder) / "brain.json"
+            config.write_text(json.dumps({"version": 1, "name": "T", "sources": [str(sample)], "database": "brain.lbug", "identity_map": "identity.json"}), encoding="utf-8")
+            project = ProjectService(config)
+            cancel = threading.Event()
+            analysed: list[str] = []
+            analyse = DaxAnalyzer.analyze_object
+
+            def first_then_cancel(self, node, *args, **kwargs):
+                analysed.append(str(getattr(node, "id", node)))
+                cancel.set()  # the user presses Cancel while the first expression is analysed
+                return analyse(self, node, *args, **kwargs)
+
+            repository = GraphRepository(use_native=False)
+            with mock.patch.object(DaxAnalyzer, "analyze_object", first_then_cancel):
+                with self.assertRaises(projects.ScanCancelled):
+                    project.scan(repository, cancel=cancel)
+            self.assertEqual(len(analysed), 1, "the analysis stops before the next expression")
+            self.assertEqual(repository.all_nodes(), [], "nothing is published")
+
 
 if __name__ == "__main__":
     unittest.main()
