@@ -75,8 +75,8 @@ test("errorCopy gives the fixed text of a code and uses the backend message only
 });
 
 test("t replaces placeholders and tn picks the count form", () => {
-  assert.equal(t("work.target_model", { name: "Sales Master" }), "Target model: Sales Master");
-  assert.equal(t("work.target_model"), "Target model: {name}");
+  assert.equal(t("work.target", { model: "Sales Master", report: "Sales" }), "Target: Sales Master · Sales");
+  assert.equal(t("work.target"), "Target: {model} · {report}");
   assert.equal(t("no.such.key"), "no.such.key");
   assert.equal(tn("row.blocking", 1), "1 blocking item for this row.");
   assert.equal(tn("row.blocking", 3), "3 blocking items for this row.");

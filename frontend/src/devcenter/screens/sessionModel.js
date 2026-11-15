@@ -26,9 +26,8 @@ export function targetNames(session) {
 
 export function targetLine(session) {
   const names = targetNames(session);
-  const model = t("work.target_model", { name: names.model ?? t("shared.not_set") });
-  const report = names.reportNew ? t("work.target_report.new") : t("work.target_report", { name: names.report ?? t("shared.not_known") });
-  return `${model}. ${report}.`;
+  const report = names.reportNew ? t("work.target_report.new") : names.report ?? t("shared.not_known");
+  return t("work.target", { model: names.model ?? t("shared.not_set"), report });
 }
 
 const IMPACT_BLOCK_KINDS = new Set(["removed", "renamed", "need_missing", "need_clash"]);

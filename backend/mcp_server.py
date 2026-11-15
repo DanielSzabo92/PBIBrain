@@ -22,6 +22,8 @@ class BrainClient:
         if parsed.scheme != "http" or parsed.hostname not in {"127.0.0.1", "localhost", "::1"} or parsed.username or parsed.password or parsed.query or parsed.fragment or parsed.path not in {"", "/"}:
             raise ValueError("Brain URL must be a local HTTP server, for example http://127.0.0.1:8000")
         self.url = url.rstrip("/")
+        # The app's own page is served at the same address, so an object opens at app_url + "/#/inspector/<id>".
+        self.app_url = self.url
         self.opener = build_opener(ProxyHandler({}))
         self.session_id: str | None = None
 
@@ -128,6 +130,7 @@ class ProjectClient:
         self._snapshot: Any = None
         self._snapshot_key: tuple[int, int] | None = None
         self.source = "app"
+        self.app_url: str | None = None
 
     def _snapshot_client(self) -> Any:
         from backend.mcp_snapshot import SnapshotClient, snapshot_path
@@ -149,6 +152,7 @@ class ProjectClient:
         except RuntimeError:
             client = None  # the app crashed or closed without removing its marker
         self.source = "app" if client is not None else "snapshot"
+        self.app_url = getattr(client, "app_url", None)  # no page to link to while the app is closed
         return client if client is not None else self._snapshot_client()
 
     def get(self, path: str, **params: Any) -> dict[str, Any]:
@@ -178,7 +182,8 @@ INSTRUCTIONS = (
     "Every reply has 'freshness': source 'app' (the open PBIBrain app) or 'snapshot' (the last scan, "
     "app closed); stale=true lists source files changed since that scan. Every reply has 'budget': "
     "replies are compact by default (parser detail left out, kept under a fixed size); "
-    "budget.truncated means lists were cut, so page or narrow, or pass detail='full'."
+    "budget.truncated means lists were cut, so page or narrow, or pass detail='full'. "
+    "While the app is open, brain_object replies carry app_link, the object's page in PBIBrain: give it to the user as the link to the object."
 )
 
 

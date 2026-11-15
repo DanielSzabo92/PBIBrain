@@ -5,10 +5,14 @@ import { Tooltip } from "./ui/tooltip";
 import {
   POLL_MS, answerText, applyEvents, chatContext, contextChips, emptyAnswer, parseMarkdown, starterPrompts, toolLabel, transcriptMarkdown,
 } from "../chat";
+import { routeHash } from "../routes";
 
 // The docked chat panel (issue #7). Ctrl+J or the title bar button opens it on every view.
 // Answers stream in through short polls of the run's events; object links open the Inspector
 // (click) or the graph (the branch button next to the link).
+
+// A plain click is handled in the app; Ctrl, Shift or a middle click keeps the browser's own link behaviour.
+const plainClick = (event) => event.button === 0 && !event.ctrlKey && !event.metaKey && !event.shiftKey && !event.altKey;
 
 function Inline({ tokens, onObject, onGraph }) {
   return tokens.map((token, index) => {
@@ -19,10 +23,10 @@ function Inline({ tokens, onObject, onGraph }) {
       return (
         <span key={index} className="chat-object">
           <Tooltip content={`Open ${token.id} in the Inspector`}>
-            <button type="button" className="chat-object-link" onClick={() => onObject(token.id)}>{token.text}</button>
+            <a className="chat-object-link" href={routeHash({ view: "inspector", selectedId: token.id })} onClick={(event) => { if (plainClick(event)) { event.preventDefault(); onObject(token.id); } }}>{token.text}</a>
           </Tooltip>
           <Tooltip content="Show its lineage in the graph">
-            <button type="button" className="chat-object-graph" aria-label={`Show ${token.text} in the graph`} onClick={() => onGraph(token.id)}><GitBranch aria-hidden="true" /></button>
+            <a className="chat-object-graph" href={routeHash({ view: "graph", focus: token.id })} aria-label={`Show ${token.text} in the graph`} onClick={(event) => { if (plainClick(event)) { event.preventDefault(); onGraph(token.id); } }}><GitBranch aria-hidden="true" /></a>
           </Tooltip>
         </span>
       );
@@ -156,7 +160,7 @@ export default function ChatPanel({ open, onClose, transport, view, selection, o
   const fresh = () => { if (runId) return; setMessages([]); setConversationId(null); setRemoved(new Set()); setError(""); input.current?.focus(); };
   const copy = async () => {
     try {
-      await navigator.clipboard.writeText(transcriptMarkdown(messages));
+      await navigator.clipboard.writeText(transcriptMarkdown(messages, `${globalThis.location.origin}${globalThis.location.pathname}`));
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     } catch {

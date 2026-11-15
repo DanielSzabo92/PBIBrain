@@ -3,6 +3,7 @@ import { ReactFlow, Background, Controls } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { GitFork, Maximize2, RefreshCw } from "lucide-react";
 import { brainTransport } from "../transport";
+import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import { NativeSelect } from "./ui/native-select";
 import { Input } from "./ui/input";
@@ -13,6 +14,8 @@ import { formatObjectRef } from "../presentation.js";
 import ProvenanceLegend from "./ProvenanceLegend";
 import "../guard.css";
 
+// The Inspector reads; changes are made in Merge models or in Power BI Desktop.
+const READ_ONLY = "Read-only · Make changes in Merge models or Power BI Desktop.";
 const LABELS = { from_column_id: "Source column", to_column_id: "Target column", active: "Active relationship", cross_filter_direction: "Filter direction" };
 const CATEGORY = { DIRECT: "Direct change", STRUCTURAL: "Factual reference", POTENTIAL_BEHAVIORAL: "Inferred effect", CONDITIONAL: "Depends on context", UNKNOWN: "Unknown impact" };
 
@@ -117,9 +120,8 @@ export default function ImpactExplorer({ node, nodes = [], onSelect, transport =
           <div className="impact-explorer-head">
             <GitFork className="size-4 text-primary shrink-0" aria-hidden="true" />
             <h3 className="panel-title font-semibold text-sm">Impact Explorer</h3>
+            <Badge variant="outline" className="ml-auto" title={READ_ONLY}>Read-only</Badge>
           </div>
-          <p className="muted-copy compact">What breaks if I change this object? Explore downstream blast radius.</p>
-          <p className="text-xs text-muted-foreground mt-1">Read-only view · Changes can be made in Dev Center or Power BI Desktop.</p>
           <Button
             variant="outline"
             className="w-full justify-between mt-2"
@@ -141,7 +143,7 @@ export default function ImpactExplorer({ node, nodes = [], onSelect, transport =
               {node.type === "RELATIONSHIP" ? (
                 <div className="guard-fields impact-proposal-fields">
                   <p className="text-xs text-muted-foreground w-full mb-1">
-                    Read-only view · Changes can be made in Dev Center or Power BI Desktop.
+                    {READ_ONLY}
                   </p>
                   <label className="text-xs font-medium">
                     Proposed property

@@ -33,7 +33,24 @@ function RelatedObjects({ title, nodes = [], onSelect, colors }) {
  * Object details, docked to the right of the graph canvas (visual contract §11.2).
  * It is a complementary region, not a dialog: the graph stays usable beside it.
  */
-export default function GraphDetails({ node, settled = false, colors, transport, onClose, onSelect, onCenter, onInspect }) {
+// The selection's chain, one step per lane (Model › Table › Column › Measure › Visual › Page › Report).
+const PATH_SHOWN = 3;
+function ChainPath({ path, selectedId, colors, onSelect }) {
+  if (!path?.length) return null;
+  return <nav className="graph-path" aria-label="Lineage path">
+    <ol>
+      {path.map((step) => <li key={step.key} className="graph-path-step">
+        <span className="graph-path-lane">{step.label}</span>
+        {step.nodes.slice(0, PATH_SHOWN).map((item) => <Button key={item.id} variant="ghost" size="xs" className="graph-path-node" aria-current={item.id === selectedId ? "true" : undefined} onClick={() => onSelect(item)}>
+          <TypeGlyph node={item} colors={colors} size="sm" /><span translate="no">{objectName(item)}</span>
+        </Button>)}
+        {step.nodes.length > PATH_SHOWN ? <span className="graph-path-more">+{step.nodes.length - PATH_SHOWN} more</span> : null}
+      </li>)}
+    </ol>
+  </nav>;
+}
+
+export default function GraphDetails({ node, path = null, settled = false, colors, transport, onClose, onSelect, onCenter, onInspect }) {
   const [result, setResult] = useState(null);
   const [error, setError] = useState("");
   const [attempt, setAttempt] = useState(0);
@@ -68,6 +85,7 @@ export default function GraphDetails({ node, settled = false, colors, transport,
     </header>
     <div className="graph-detail-body" aria-busy={Boolean(!details && !error)}>
       {!details && !error ? <p role="status" className="detail-loading"><LoaderCircle className="size-4 spin" />Loading details…</p> : null}
+      <ChainPath path={path} selectedId={node.id} colors={colors} onSelect={onSelect} />
       {error ? <div role="alert" className="detail-error">{error}<Button variant="outline" size="sm" onClick={() => setAttempt((value) => value + 1)}>Retry details</Button></div> : null}
       <Tabs key={node.id} defaultValue="properties">
         <TabsList aria-label="Object details"><TabsTrigger value="properties">Properties</TabsTrigger><TabsTrigger value="lineage">Dependencies</TabsTrigger><TabsTrigger value="evidence">Evidence</TabsTrigger></TabsList>

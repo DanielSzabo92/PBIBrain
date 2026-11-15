@@ -211,6 +211,32 @@ export function lineageOf(id, flowEdges) {
   return { ids: new Set([...up.ids, ...down.ids]), edgeIds: new Set([...up.edgeIds, ...down.edgeIds]), upstream: up.ids, downstream: down.ids };
 }
 
+/**
+ * The selection's chain as a path, one step per lane in flow order (Model › Table › Column › Measure ›
+ * Visual › Page › Report): each step lists the chain's objects in that lane, the selection first.
+ * Context lanes ("Meaning") are left out. Returns [] when nothing but the selection is on the chain.
+ */
+export function chainPath(id, nodes, edges) {
+  const byId = new Map(nodes.map((node) => [node.id, node]));
+  if (!byId.has(id)) return [];
+  const laneById = new Map(nodes.map((node) => [node.id, laneOf(node)]));
+  const flow = edges.filter((edge) => byId.has(edge.from_id) && byId.has(edge.to_id)).map((edge) => ({ edge, ...flowEnds(edge, laneById) }));
+  const { ids } = lineageOf(id, flow);
+  if (ids.size < 2) return [];
+  const steps = new Map();
+  ids.forEach((member) => {
+    const lane = laneById.get(member);
+    if (lane === MEANING_LANE) return;
+    if (!steps.has(lane)) steps.set(lane, []);
+    steps.get(lane).push(byId.get(member));
+  });
+  return [...steps.entries()].sort(([left], [right]) => left - right).map(([lane, members]) => ({
+    key: LANES[lane].key,
+    label: LANES[lane].label,
+    nodes: members.sort((left, right) => Number(right.id === id) - Number(left.id === id) || compareName(left, right)),
+  }));
+}
+
 // Cap on the links drawn across hidden lanes, so switching off a busy lane never builds a hairball.
 const MAX_THROUGH_LINKS = 20000;
 

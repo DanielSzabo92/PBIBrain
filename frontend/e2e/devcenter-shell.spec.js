@@ -67,7 +67,7 @@ test.describe("screens and banners of sections 4.1 and 4.2", () => {
       await scenario(request, "default");
       await openDevCenter(page);
       await workReady(page);
-      await expect(page.getByText("Target model: Combined model. Target report: Combined report.")).toBeVisible();
+      await expect(page.getByText("Target: Combined model · Combined report")).toBeVisible();
       await expect(page.getByRole("button", { name: /^Valid with 1 warning\. Open the Plan tab$/ })).toBeVisible();
       await expect(tab(page, "Compare")).toHaveAttribute("aria-selected", "true");
       await expect(tab(page, "Agent")).toContainText("1");
@@ -285,7 +285,7 @@ test.describe("Sources tab and data refresh", () => {
     await dialog.getByRole("button", { name: "Set target" }).click();
     await expect(dialog).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Change target" })).toBeFocused();
-    await expect(page.getByText("Target model: Sales model. Target report: Combined report.")).toBeVisible();
+    await expect(page.getByText("Target: Sales model · Combined report")).toBeVisible();
   });
 
   test("stale_revision gives shared.stale and the refreshed view", async ({ page, request }) => {

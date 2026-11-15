@@ -14,9 +14,9 @@ const fixture = async (name) => JSON.parse(await readFile(new URL(`../../tests/f
 test("the target names come from the source list, because GET session has no name fields", async () => {
   const session = await fixture("default/session.json");
   assert.deepEqual(targetNames(session), { model: "Combined model", report: "Combined report", reportNew: false });
-  assert.equal(targetLine(session), "Target model: Combined model. Target report: Combined report.");
+  assert.equal(targetLine(session), "Target: Combined model · Combined report");
   const empty = { sources: [], target: { model: null, report: { mode: "new_empty" } } };
-  assert.equal(targetLine(empty), "Target model: Not set. Target report: new empty report.");
+  assert.equal(targetLine(empty), "Target: Not set · new empty report");
 });
 
 test("the plan status button uses GET plan counts when it has them", () => {

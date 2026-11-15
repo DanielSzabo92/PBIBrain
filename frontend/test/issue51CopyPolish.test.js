@@ -103,8 +103,8 @@ test("Issue #51: removal policy strings support dynamic object kind and effect t
 test("Issue #51: ImpactExplorer contains friendly read-only guidance", () => {
   const code = fs.readFileSync(path.join(__dirname, "../src/components/ImpactExplorer.jsx"), "utf8");
   assert.ok(
-    code.includes("Read-only view · Changes can be made in Dev Center or Power BI Desktop."),
-    "ImpactExplorer must include friendly read-only guidance"
+    code.includes("Read-only · Make changes in Merge models or Power BI Desktop.") && code.includes(">Read-only</Badge>"),
+    "ImpactExplorer must mark itself read-only and say where changes are made"
   );
 });
 

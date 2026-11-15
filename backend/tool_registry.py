@@ -46,7 +46,12 @@ def brain_tools(client: Any, freshness: Callable[[], dict[str, Any]]) -> list[To
 
     def brain_object(object_id: str, detail: str = "compact") -> dict[str, Any]:
         """Inspect an exact stable ID, its expression, dependencies, usage, and evidence."""
-        return reply("brain_object", detail, lambda: client.get("objects/" + quote(object_id, safe="")))
+        answer = reply("brain_object", detail, lambda: client.get("objects/" + quote(object_id, safe="")))
+        # The object's page in the open app (finding 10), so an agent can hand the user a link to it.
+        base = getattr(client, "app_url", None)
+        if isinstance(base, str) and base:
+            answer["app_link"] = f"{base}/#/inspector/{quote(object_id, safe='')}"
+        return answer
 
     def brain_context(target: str, task: str | None = None, detail: str = "compact") -> dict[str, Any]:
         """Retrieve a task-scoped evidence package for an exact object ID."""

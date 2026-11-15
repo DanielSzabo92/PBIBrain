@@ -203,6 +203,17 @@
 .detail-field-code dt { padding: 8px 12px; border-bottom: 1px solid var(--line); background: var(--surface-2); }
 .detail-expression { padding: 12px; font-family: var(--font-code); font-size: var(--fs-meta); line-height: 1.65; }
 .detail-section { margin-top: 18px; }
+.graph-path { margin-bottom: 12px; }
+.graph-path ol { display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; }
+.graph-path-step { position: relative; display: flex; flex-wrap: wrap; align-items: center; gap: 2px 4px; padding: 2px 0 2px 14px; }
+.graph-path-step::before { content: ""; position: absolute; left: 4px; top: 0; bottom: 0; width: 1px; background: var(--border); }
+.graph-path-step:first-child::before { top: 50%; }
+.graph-path-step:last-child::before { bottom: 50%; }
+.graph-path-lane { width: 100%; color: var(--text-2); font-size: var(--fs-small); }
+.graph-path-node { max-width: 100%; }
+.graph-path-node > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.graph-path-node[aria-current="true"] { font-weight: 600; background: var(--surface-2); }
+.graph-path-more { color: var(--text-2); font-size: var(--fs-small); }
 .detail-section h3 { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-size: var(--fs-body); font-weight: 600; }
 .detail-related {
   display: flex; justify-content: flex-start; gap: 10px; width: 100%; min-width: 0; height: auto; min-height: 38px; padding: 6px 8px; color: var(--text); text-align: left; white-space: normal; border-radius: var(--r-sm);

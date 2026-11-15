@@ -69,7 +69,6 @@ export function Inspector({ node, details, loading, error, snapshot, snapshotLoa
           const dependencies = outgoing.filter((edge) => usageTypes.has(edge.type) && !listed.has(edge.to_id));
           return listed.size && !dependencies.length ? null : <RelationshipGroup title={listed.size ? "Other dependencies" : "Dependencies"} nodeId={node.id} edges={dependencies} nodes={relatedNodes} onSelect={onSelect} empty="No direct dependencies recorded." colors={colors} />;
         })()}
-        <p className="footnote">Direct links from the latest scan.</p>
         <Suspense fallback={null}><ImpactExplorer node={node} nodes={relatedNodes} onSelect={onSelect} transport={transport} /></Suspense>
       </Card>
     </div>
@@ -82,7 +81,7 @@ export function UsageRoles({ profile }) {
   if (!facts.length) return null;
   return <Disclosure title="How it is used" badge={facts.length} className="object-metadata object-usage-roles panel" defaultOpen>
     {facts.map((fact) => <div className="usage-row" key={`${fact.code}-${fact.text}`}><span>{fact.text}</span></div>)}
-    <p className="footnote">{readableText(profile.basis)}</p>
+    <p className="footnote" title={readableText(profile.basis)}>Inferred from report bindings</p>
   </Disclosure>;
 }
 

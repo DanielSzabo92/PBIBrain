@@ -209,3 +209,26 @@ test("the graph works without a mouse: arrows follow links, Space expands, Enter
   await expect(page.getByRole("heading", { name: "Net Sales", exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Back to graph", exact: true })).toBeVisible();
 });
+
+// Finding 08: the pane gives the selection's chain as a path, one step per lane, and a click on a step
+// selects it; "Trace on select" is a toolbar toggle because it changes what a click does.
+test("the details pane lists the selection's chain as a path and the toolbar switches tracing", async ({ page }) => {
+  await openOverview(page);
+  await page.getByRole("tab", { name: "Lineage flow", exact: true }).click();
+  await still(page);
+  const trace = page.getByRole("button", { name: "Trace on select", exact: true });
+  await expect(trace).toHaveAttribute("aria-pressed", "false");
+  await page.getByRole("button", { name: "Measure Net Sales", exact: true }).click();
+  const path = detailsPane(page).getByRole("navigation", { name: "Lineage path" });
+  await expect(path).toBeVisible();
+  const lanes = await path.locator(".graph-path-lane").allTextContents();
+  expect(lanes.indexOf("Tables")).toBeGreaterThanOrEqual(0);
+  expect(lanes.indexOf("Tables")).toBeLessThan(lanes.indexOf("Calculations"));
+  await expect(path.locator('[aria-current="true"]')).toContainText("Net Sales");
+  await path.locator(".graph-path-step", { hasText: "Tables" }).locator(".graph-path-node").first().click();
+  await expect(detailsPane(page).locator(".graph-detail-kicker")).toContainText("Table");
+  await trace.click();
+  await expect(trace).toHaveAttribute("aria-pressed", "true");
+  await page.getByRole("button", { name: "Measure Net Sales", exact: true }).click();
+  await expect(page.locator(".react-flow__node-brain:not(.react-flow__node-hidden)").filter({ hasText: "Net Sales" }).first()).toBeVisible();
+});

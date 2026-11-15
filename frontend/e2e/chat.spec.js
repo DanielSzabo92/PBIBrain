@@ -55,8 +55,10 @@ test("chat is off until configured, then streams, calls tools, proposes, fails a
   // A tool call through the shared registry, and an object link into the Inspector.
   answer = await ask(page, "search net sales");
   await expect(answer.getByTestId("chat-tool")).toContainText("Searched objects");
-  const link = answer.getByRole("button", { name: "Net Sales", exact: true });
+  const link = answer.getByRole("link", { name: "Net Sales", exact: true });
   await expect(link).toBeVisible();
+  await expect(link).toHaveAttribute("href", /^#\/inspector\/.+/);
+  await expect(answer.getByRole("link", { name: "Show Net Sales in the graph" })).toHaveAttribute("href", /^#\/graph\?focus=/);
   await link.click();
   await expect(page.locator(".breadcrumb-view")).toHaveText("Inspector");
   await expect(page.locator("main")).toContainText("Net Sales");
