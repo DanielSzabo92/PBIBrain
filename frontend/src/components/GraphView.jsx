@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { Background, BaseEdge, Handle, MarkerType, MiniMap, Position, ReactFlow, getSmoothStepPath, useViewport } from "@xyflow/react";
+import { Background, BaseEdge, Handle, MarkerType, MiniMap, Position, ReactFlow, getSmoothStepPath, useReactFlow, useStore, useViewport } from "@xyflow/react";
 import { BadgeCheck, ChevronDown, ChevronRight, ChevronsDownUp, CircleX, Code, Copy, Crosshair, FilterX, ListFilter, Maximize, Minus, PenLine, Plus, Search, Shapes, SlidersHorizontal, TriangleAlert } from "lucide-react";
 import "@xyflow/react/dist/style.css";
 import { Button } from "./ui/button";
@@ -1083,8 +1083,17 @@ function GraphCanvas({ rawById, apiRef, onZoomChange, overview, full, grouped, o
   const onMove = useCallback((_, next) => { setTier(zoomTier(next.zoom)); setLabelsReadable(next.zoom >= LABEL_ZOOM); }, []);
   const [hoverId, setHoverId] = useState(null);
   const farLabels = far ? [...new Set([selectedId, hoverId])].filter((id) => id && rects.has(id)).map((id) => ({ id, rect: rects.get(id), node: byId.get(id) })) : [];
-  // A minimap of a tall strip of lanes is a line: it only helps when the picture has two real dimensions.
-  const showMinimap = flowNodes.length - laneCount > MINIMAP_ABOVE && (!lineage || layout.nodes.length <= VIEWPORT_ONLY_ABOVE);
+  // A minimap of a tall strip of lanes is a line: lanes get the scrubber below, free-form pictures the minimap.
+  const showMinimap = !laneCount && flowNodes.length > MINIMAP_ABOVE;
+  // Lanes are a tall strip: a scroll scrubber stands in for the minimap, with model and report blocks and the traced chain marked.
+  const scrub = useMemo(() => {
+    if (!laneCount || !rects.size) return null;
+    let minY = Infinity, maxY = -Infinity;
+    rects.forEach((rect) => { minY = Math.min(minY, rect.y); maxY = Math.max(maxY, rect.y + rect.height); });
+    const blocks = layout.nodes.filter(({ node }) => node.type === "MODEL" || node.type === "REPORT").map(({ node }) => ({ id: node.id, y: rects.get(node.id).y, kind: "block" }));
+    const chain = focusing ? [...connected].slice(0, 400).filter((id) => rects.has(id)).map((id) => ({ id, y: (packed?.get(id) || rects.get(id)).y, kind: id === selectedId ? "selected" : "chain" })) : [];
+    return { minY: Math.min(minY, 0), maxY, marks: [...blocks, ...chain] };
+  }, [laneCount, rects, layout, focusing, connected, packed, selectedId]);
   return <div ref={wrapper} className={`flow-wrap artifact-flow ${overview ? "explorer-flow" : ""} ${far ? "is-far" : scale !== 1 ? "is-mid" : ""} ${labelsReadable ? "" : "labels-off"} ${focusing ? "is-focusing" : ""}`} style={{ "--name-scale": scale }} role="region" aria-label="Directed project graph" aria-roledescription="graph" onKeyDown={onKeyDown}>
     <ReactFlow onInit={(instance) => {
       setFlow(instance);
@@ -1100,6 +1109,7 @@ function GraphCanvas({ rawById, apiRef, onZoomChange, overview, full, grouped, o
       <Background gap={20} size={1.2} color="var(--grid-dot)" />
       {farLabels.length ? <FarLabels items={farLabels} /> : null}
       {laneCount ? <StickyLanes lanes={layout.lanes} /> : null}
+      {scrub ? <LineageScrubber {...scrub} /> : null}
       {showMinimap ? <MiniMap pannable zoomable bgColor="var(--surface)" nodeColor={(node) => node.type === "lane" ? "transparent" : node.data?.color || "var(--artifact-other, #94a3b8)"} nodeStrokeColor={(node) => node.type === "lane" ? "transparent" : node.data?.color || "var(--artifact-other, #94a3b8)"} nodeBorderRadius={4} nodeClassName={(node) => node.type === "artifactGroup" ? "minimap-artifact-group" : ""} maskColor="var(--minimap-mask)" style={{ width: 168, height: 112 }} /> : null}
     </ReactFlow>
   </div>;
@@ -1225,6 +1235,46 @@ function StickyLanes({ lanes }) {
   const gone = lanes.filter((lane) => lane.y * zoom + y < 4);
   if (!gone.length) return null;
   return <div className="sticky-lanes" aria-hidden="true">{gone.map((lane) => <span key={lane.key} className="sticky-lane" style={{ left: lane.x * zoom + x, width: Math.max(lane.width * zoom, 60) }}><span>{lane.label}</span><span className="lineage-lane-count" data-ui-number="">{formatCount(lane.count)}</span></span>)}</div>;
+}
+
+const SCRUB_TOP = 34, SCRUB_BOTTOM = 8;
+/**
+ * The scrubber of a tall lineage strip (finding 07): the visible part as a thumb, model and report blocks
+ * and the selected chain as ticks. Click or drag moves the picture; the wheel and the keys still scroll it.
+ */
+function LineageScrubber({ minY, maxY, marks }) {
+  const { y, zoom } = useViewport();
+  const height = useStore((state) => state.height);
+  const flow = useReactFlow();
+  const drag = useRef(null);
+  const span = Math.max(1, maxY - minY);
+  const track = Math.max(0, height - SCRUB_TOP - SCRUB_BOTTOM);
+  if (!track || span * zoom <= height) return null;
+  const at = (contentY) => ((contentY - minY) / span) * track;
+  const top = Math.max(0, Math.min(track, at(-y / zoom)));
+  const bottom = Math.max(0, Math.min(track, at((height - y) / zoom)));
+  const thumb = Math.max(12, bottom - top);
+  const scrollTo = (offset) => {
+    const view = flow.getViewport();
+    const contentY = minY + (offset / track) * span;
+    flow.setViewport({ x: view.x, y: -contentY * view.zoom, zoom: view.zoom });
+  };
+  const offsetOf = (event) => event.clientY - event.currentTarget.getBoundingClientRect().top;
+  const down = (event) => {
+    const offset = offsetOf(event);
+    const grab = offset >= top && offset <= top + thumb ? offset - top : thumb / 2;
+    drag.current = grab;
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+    scrollTo(offset - grab);
+    event.preventDefault();
+  };
+  const move = (event) => { if (drag.current !== null) scrollTo(offsetOf(event) - drag.current); };
+  const up = () => { drag.current = null; };
+  return <div className="lineage-scrubber nodrag nopan nowheel" style={{ top: SCRUB_TOP, height: track }} aria-hidden="true" data-testid="lineage-scrubber"
+    onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up}>
+    {marks.map((mark) => <span key={`${mark.kind}:${mark.id}`} className={`lineage-scrub-mark is-${mark.kind}`} style={{ top: at(mark.y) }} />)}
+    <span className="lineage-scrub-thumb" style={{ top, height: thumb }} />
+  </div>;
 }
 
 function LaneHeader({ data }) {

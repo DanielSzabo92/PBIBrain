@@ -149,6 +149,11 @@ test("project color mapping persists through reload and drives nodes, minimap, a
     await page.getByRole("tab", { name: "Lineage flow", exact: true }).click();
     const visual = page.locator('.flow-node[data-type="VISUAL"]').first();
     await expect(visual.locator(".type-glyph")).toHaveCSS("color", "rgb(52, 211, 153)");
+    // Lanes have a scroll scrubber instead of a minimap; grouped by ownership the picture is free-form again.
+    await expect(page.locator(".react-flow__minimap")).toHaveCount(0);
+    await page.getByRole("button", { name: "Display", exact: true }).click();
+    await page.getByRole("checkbox", { name: "Group by ownership" }).check();
+    await page.keyboard.press("Escape");
     await expect.poll(() => page.locator(".react-flow__minimap-node:not(.minimap-artifact-group)").evaluateAll((elements) => elements.filter((element) => getComputedStyle(element).fill === "rgb(52, 211, 153)").length)).toBe(2);
     await openTypes(page);
     await expect(page.getByLabel("Graph color legend").locator(".graph-type-row").filter({ hasText: "Visual" }).locator(".type-glyph")).toHaveCSS("color", "rgb(52, 211, 153)");

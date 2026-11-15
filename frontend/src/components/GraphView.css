@@ -363,3 +363,11 @@ td:hover > .mx-mark { transform: scale(1.2); }
 .version-single-list [data-slot="native-select-wrapper"] { flex: 0 0 210px; width: 210px; }
 .version-single-list { max-height: 38vh; overflow-y: auto; padding-right: 4px; }
 .version-group-list { max-height: 30vh; overflow-y: auto; }
+/* Lineage scroll scrubber (finding 07): a tall strip of lanes gets this instead of a minimap. */
+.lineage-scrubber { position: absolute; right: 4px; z-index: 6; width: 12px; border-radius: 6px; background: color-mix(in srgb, var(--surface-2) 85%, transparent); cursor: pointer; touch-action: none; }
+.lineage-scrub-thumb { position: absolute; left: 1px; right: 1px; border-radius: 5px; background: color-mix(in srgb, var(--text-3) 45%, transparent); }
+.lineage-scrubber:hover .lineage-scrub-thumb { background: color-mix(in srgb, var(--text-3) 65%, transparent); }
+.lineage-scrub-mark { position: absolute; left: 2px; right: 2px; height: 2px; margin-top: -1px; border-radius: 1px; pointer-events: none; }
+.lineage-scrub-mark.is-block { background: var(--line-strong); }
+.lineage-scrub-mark.is-chain { background: color-mix(in srgb, var(--brand) 70%, transparent); }
+.lineage-scrub-mark.is-selected { left: 0; right: 0; height: 3px; background: var(--brand); }

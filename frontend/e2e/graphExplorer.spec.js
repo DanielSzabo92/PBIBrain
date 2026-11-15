@@ -232,3 +232,31 @@ test("the details pane lists the selection's chain as a path and the toolbar swi
   await page.getByRole("button", { name: "Measure Net Sales", exact: true }).click();
   await expect(page.locator(".react-flow__node-brain:not(.react-flow__node-hidden)").filter({ hasText: "Net Sales" }).first()).toBeVisible();
 });
+
+// Finding 07: a lineage strip taller than the canvas gets a scroll scrubber instead of a minimap. A click on the
+// track moves the picture there; model and report blocks and the selected chain are marked on it.
+test("tall lineage lanes have a scroll scrubber that moves the picture and marks the selection", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.route(/\/api\/lineage(\?|$)/, async (route) => {
+    const body = await (await route.fetch()).json();
+    const filler = Array.from({ length: 160 }, (_, index) => ({ id: `filler-${index}`, name: `Filler ${String(index).padStart(3, "0")}`, type: "TABLE", status: "factual", artifact_group: "model" }));
+    await route.fulfill({ json: { ...body, nodes: [...body.nodes, ...filler], total_nodes: (body.total_nodes || body.nodes.length) + filler.length } });
+  });
+  await page.goto("/");
+  await page.getByRole("button", { name: "Graph", exact: true }).click();
+  await page.getByRole("tab", { name: "Lineage flow", exact: true }).click();
+  const scrubber = page.getByTestId("lineage-scrubber");
+  await expect(scrubber).toBeVisible();
+  await expect(page.locator(".react-flow__minimap")).toHaveCount(0);
+  await still(page);
+  const transform = () => page.locator(".react-flow__viewport").evaluate((node) => node.style.transform);
+  const before = await transform();
+  const box = await scrubber.boundingBox();
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height * 0.9);
+  await expect.poll(transform).not.toBe(before);
+  await expect(scrubber.locator(".lineage-scrub-mark.is-block").first()).toBeAttached();
+  await page.mouse.click(box.x + box.width / 2, box.y + 2);
+  await still(page);
+  await page.getByRole("button", { name: "Measure Net Sales", exact: true }).click();
+  await expect(scrubber.locator(".lineage-scrub-mark.is-selected")).toHaveCount(1);
+});
