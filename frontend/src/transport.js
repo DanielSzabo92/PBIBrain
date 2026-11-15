@@ -105,12 +105,24 @@ export function createBrainTransport({ baseUrl = API_ROOT, fetcher = globalThis.
     getConfig() {
       return request("/config");
     },
+    /** Adds the bundled sample source to the project and returns the saved configuration. */
+    addSample() {
+      return request("/sample", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
+    },
+    /** Whether each configured source path exists on disk. */
+    getSourceStatus() {
+      return request("/config/sources");
+    },
     saveConfig(config) {
       return request("/config", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(config),
       });
+    },
+    /** What the running scan is doing: { running, phase, done, total }. Answered while the scan request is open. */
+    scanStatus() {
+      return request("/scan/status");
     },
     scan() {
       return request("/scan", {
@@ -124,6 +136,8 @@ export function createBrainTransport({ baseUrl = API_ROOT, fetcher = globalThis.
       if (modelId) params.set("model_id", modelId);
       if (reportId) params.set("report_id", reportId);
       if (objectType) params.set("object_type", objectType);
+      // The search page lists project objects; alias and concept records repeat their names.
+      else params.set("kind", "objects");
       return request(`/search?${params}`);
     },
     getGraph({ centerId = "", modelId = "", reportId = "", depth = 1, limit = 100, query = "", artifact = "", objectType = "", status = "", edgeType = "" } = {}) {

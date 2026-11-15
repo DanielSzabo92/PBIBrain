@@ -177,6 +177,80 @@ def visual_bindings(repository: GraphRepository, node: Node, edges: list[Edge], 
     return groups
 
 
+_WELL_NAMES = {"category": "Axis", "value": "Values", "legend": "Legend", "tooltip": "Tooltips", "rows": "Rows", "columns": "Columns",
+               "small_multiples": "Small multiples", "details": "Details", "size": "Size", "play_axis": "Play axis", "target": "Target",
+               "trend": "Trend", "range": "Range", "location": "Location", "slicer_field": "Slicer field"}
+
+
+def field_wells(repository: GraphRepository, node: Node, store: OverrideStore | None) -> list[dict[str, Any]]:
+    """The fields of a visual by the well they sit in (Axis, Values, Legend), in the order of the report file.
+
+    Sort and conditional-formatting uses are not wells and are left out. Empty when the source
+    did not record roles; the caller then shows the plain column and measure lists.
+    """
+
+    wells: dict[str, dict[str, Any]] = {}
+    for item in node.properties.get("field_roles") or []:
+        if not isinstance(item, dict) or item.get("usage") != "projection" or item.get("hidden") is True:
+            continue
+        target = repository.get_object(str(item.get("object_id") or ""))
+        if target is None:
+            continue
+        role = str(item.get("role") or "field")
+        well = wells.setdefault(role, {"role": role, "label": _WELL_NAMES.get(role) or role.replace("_", " ").capitalize(), "fields": []})
+        if any(field["id"] == target.id for field in well["fields"]):
+            continue
+        field = _payload(target, store)
+        if item.get("aggregation"):
+            field["aggregation"] = item["aggregation"]
+        if item.get("display_name"):
+            field["shown_as"] = item["display_name"]
+        well["fields"].append(field)
+    return list(wells.values())
+
+
+_CONTAINERS = {"MODEL", "TABLE", "REPORT", "PAGE"}
+_CONTENT_ORDER = ["TABLE", "MEASURE", "COLUMN", "HIERARCHY", "RELATIONSHIP", "PAGE", "VISUAL"]
+MAX_CONTENT_ROWS = 300
+
+
+def contents(repository: GraphRepository, node: Node, edges: list[Edge]) -> list[dict[str, Any]] | None:
+    """What a model, table, report or page holds, by kind: the page of a container is its table of contents.
+
+    Each row is small (name, kind, data type, hidden, how many objects it holds itself); a kind
+    with more than ``MAX_CONTENT_ROWS`` objects is cut and says how many there are.
+    """
+
+    if node.type not in _CONTAINERS:
+        return None
+    held: dict[str, int] = {}
+    children: list[str] = []
+    for edge in edges:
+        if edge.type != "CONTAINS":
+            continue
+        held[edge.from_id] = held.get(edge.from_id, 0) + 1
+        if edge.from_id == node.id:
+            children.append(edge.to_id)
+    groups: dict[str, list[dict[str, Any]]] = {}
+    for child_id in dict.fromkeys(children):
+        child = repository.get_object(child_id)
+        if child is None or child.status == "candidate":
+            continue
+        row = {"id": child.id, "name": child.name, "type": child.type, "holds": held.get(child.id, 0)}
+        for key in ("data_type", "visual_type"):
+            if child.properties.get(key):
+                row[key] = child.properties[key]
+        if child.properties.get("is_hidden") or child.properties.get("hidden"):
+            row["hidden"] = True
+        groups.setdefault(child.type, []).append(row)
+    order = {kind: index for index, kind in enumerate(_CONTENT_ORDER)}
+    result = []
+    for kind in sorted(groups, key=lambda value: (order.get(value, len(order)), value)):
+        rows = sorted(groups[kind], key=lambda row: (str(row["name"]).casefold(), row["id"]))
+        result.append({"type": kind, "count": len(rows), "items": rows[:MAX_CONTENT_ROWS]})
+    return result
+
+
 def _usage_roles(repository: GraphRepository, node: Node, edges: list[Edge]) -> dict[str, Any] | None:
     from backend.inference.usage_roles import usage_profile
 
@@ -226,6 +300,8 @@ def inspect_object(
     return {
         "object": object_payload,
         "visual_bindings": visual_bindings(repository, node, all_edges, store) if node.type == "VISUAL" else None,
+        "field_wells": field_wells(repository, node, store) if node.type == "VISUAL" else None,
+        "contents": contents(repository, node, all_edges),
         "identity": {
             key: object_payload.get(key)
             for key in ("id", "type", "name", "model_id", "report_id", "source_id", "status")

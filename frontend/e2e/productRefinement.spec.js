@@ -14,7 +14,7 @@ function issueValue(item) {
 
 test("review queue explains snapshot failure and retries into a loaded state", async ({ page }) => {
   let failSnapshot = true;
-  await page.route("**/api/brain", async (route) => {
+  await page.route("**/api/brain**", async (route) => {
     if (failSnapshot) {
       return route.fulfill({ status: 503, json: { error: "Review snapshot interrupted" } });
     }
@@ -100,7 +100,7 @@ test("canonical pending count drives the review badge and View › Reload data r
   expect(overview.review_count).toBeGreaterThan(0);
 
   let snapshotRequests = 0;
-  await page.route("**/api/brain", async (route) => {
+  await page.route("**/api/brain**", async (route) => {
     snapshotRequests += 1;
     return route.continue();
   });
@@ -125,7 +125,7 @@ test("successful review stays successful when the follow-up snapshot refresh fai
     reviewRequests += 1;
     return route.continue();
   });
-  await page.route("**/api/brain", async (route) => {
+  await page.route("**/api/brain**", async (route) => {
     if (reviewPosted) return route.fulfill({ status: 503, json: { error: "Refresh interrupted" } });
     return route.continue();
   });
@@ -153,7 +153,7 @@ test("a scan started from Overview reloads the review queue after navigation dur
   let releaseScan;
   let scanResponseReady = false;
   let snapshotRequests = 0;
-  await page.route("**/api/brain", async (route) => {
+  await page.route("**/api/brain**", async (route) => {
     snapshotRequests += 1;
     return route.continue();
   });

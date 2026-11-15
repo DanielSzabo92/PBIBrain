@@ -39,6 +39,6 @@ export default defineConfig({
   workers: 1,
   timeout: 30000,
   reporter: "list",
-  use: { baseURL: "http://127.0.0.1:8765", channel: process.env.PLAYWRIGHT_CHANNEL || undefined, viewport: { width: 1440, height: 1000 }, trace: "retain-on-failure", screenshot: "only-on-failure" },
+  use: { baseURL: "http://127.0.0.1:8765", channel: process.env.PLAYWRIGHT_CHANNEL || undefined, viewport: { width: 1440, height: 1000 }, colorScheme: "dark", trace: "retain-on-failure", screenshot: "only-on-failure" },
   webServer: [graphWebServer, devcenterWebServer, chatWebServer],
 });

@@ -152,6 +152,20 @@ export function readableText(value, nodes = []) {
   return typeof value === "boolean" ? value ? "Yes" : "No" : String(value);
 }
 
+// Names are asked for inside sorts and on every render, and cleaning one costs several regular
+// expressions, so each distinct raw name is cleaned once.
+const CLEAN_NAMES = new Map();
+function cleanName(raw) {
+  if (typeof raw !== "string") return readableText(raw);
+  let name = CLEAN_NAMES.get(raw);
+  if (name === undefined) {
+    if (CLEAN_NAMES.size > 50000) CLEAN_NAMES.clear();
+    name = readableText(raw);
+    CLEAN_NAMES.set(raw, name);
+  }
+  return name;
+}
+
 export function objectName(node) {
   if (node?.type === "VISUAL") {
     const properties = node.properties || {};
@@ -165,7 +179,7 @@ export function objectName(node) {
     if (kind !== "Visual") return kind;
     return String(name || node.source_id || node.id || "Unnamed visual");
   }
-  return readableText(node?.name) || "Unnamed object";
+  return cleanName(node?.name) || "Unnamed object";
 }
 
 export function visualType(node) {
@@ -215,12 +229,21 @@ export function publicProperties(node) {
   }).filter(([label], index, list) => list.findIndex(([name]) => name === label) === index);
 }
 
-export function suggestionLabel(item) {
+const SUGGESTION_KINDS = { ROLE: "Table role", BUSINESS_CONCEPT: "Meaning", BEHAVIOR: "Behavior", ALIAS: "Alias", SELECTOR: "Selector" };
+
+// The kind, its label and the proposed value of a suggestion, kept apart so a row can show the
+// kind as a glyph and the value as text.
+export function suggestionParts(item) {
   const kind = item.assertion_type || item.properties?.assertion_type || item.item?.assertion_type || item.item?.properties?.assertion_type || item.type;
-  const label = { ROLE: "Table role", BUSINESS_CONCEPT: "Meaning", BEHAVIOR: "Behavior", ALIAS: "Alias", SELECTOR: "Selector" }[kind] || "Suggestion";
+  const label = SUGGESTION_KINDS[kind] || "Suggestion";
   const rawValue = item.value ?? item.meaning ?? item.properties?.meaning ?? item.item?.meaning ?? item.item?.properties?.meaning;
   const value = kind === "ROLE" && String(rawValue).toLowerCase() === "fact" ? "Fact table" : readableText(rawValue);
-  return `${label}: ${value || "Needs review"}`;
+  return { kind, label, value: value || "Needs review" };
+}
+
+export function suggestionLabel(item) {
+  const { label, value } = suggestionParts(item);
+  return `${label}: ${value}`;
 }
 
 
@@ -265,4 +288,78 @@ export function isBackendUnreachableError(err) {
   if (err?.status === 502 || err?.status === 503 || err?.status === 504) return true;
   const msg = typeof err === "string" ? err : err?.message || String(err);
   return /failed to fetch|fetch failed|networkerror|network request failed|econnrefused|connection refused|load failed|could not connect|cannot connect|unreachable/i.test(msg);
+}
+
+const COUNT_FORMAT = new Intl.NumberFormat("en-US");
+/** A count as people read it: 13,731, not 13731. */
+export function formatCount(value) {
+  const number = Number(value);
+  return Number.isFinite(number) ? COUNT_FORMAT.format(number) : String(value ?? "");
+}
+
+const EDGE_INDEX = new WeakMap();
+const NO_LINKS = Object.freeze({ incoming: Object.freeze([]), outgoing: Object.freeze([]) });
+/** The links into and out of one object, from an index built once per edge list (not a scan per call). */
+export function linksOf(edges, id) {
+  if (!Array.isArray(edges) || !edges.length) return NO_LINKS;
+  let index = EDGE_INDEX.get(edges);
+  if (!index) {
+    index = new Map();
+    const entry = (key) => { let item = index.get(key); if (!item) { item = { incoming: [], outgoing: [] }; index.set(key, item); } return item; };
+    for (const edge of edges) { entry(edge.to_id).incoming.push(edge); entry(edge.from_id).outgoing.push(edge); }
+    EDGE_INDEX.set(edges, index);
+  }
+  return index.get(id) || NO_LINKS;
+}
+
+/** A count that must fit a badge: 87, 1.2k, 11.5k, 2.4M. */
+export function compactCount(value) {
+  const number = Number(value) || 0;
+  if (number < 1000) return String(number);
+  const [scaled, unit] = number < 1e6 ? [number / 1e3, "k"] : [number / 1e6, "M"];
+  return `${scaled < 100 ? Math.floor(scaled * 10) / 10 : Math.floor(scaled)}${unit}`;
+}
+
+/**
+ * Folds copies of one object across models or reports into one row: eight versions of a model
+ * otherwise put the same name on screen eight times. Objects that share a name inside one
+ * model are different objects and stay apart.
+ * @returns {{ item: object, copies: object[] }[]} in the order of the first copy.
+ */
+export function foldSearchResults(items, objectOf = (item) => item) {
+  const groups = new Map();
+  for (const item of items || []) {
+    const object = objectOf(item);
+    const key = `${object.type}\u0000${String(object.name || "").toLowerCase()}`;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(item);
+  }
+  const rows = [];
+  for (const copies of groups.values()) {
+    const scopes = copies.map((item) => { const object = objectOf(item); return object.report_id || object.model_id || ""; });
+    const distinct = new Set(scopes).size === copies.length && !scopes.includes("");
+    if (copies.length > 1 && distinct) rows.push({ item: copies[0], copies });
+    else for (const item of copies) rows.push({ item, copies: [item] });
+  }
+  const order = new Map((items || []).map((item, index) => [item, index]));
+  return rows.sort((a, b) => order.get(a.item) - order.get(b.item));
+}
+
+/**
+ * The line of a matched text that holds the query, cut around it, as [before, hit, after].
+ * Empty when the text does not hold the query as typed.
+ */
+export function matchSnippet(text, query, width = 90) {
+  const value = String(text || ""), needle = String(query || "").trim();
+  if (!needle) return null;
+  const at = value.toLowerCase().indexOf(needle.toLowerCase());
+  if (at < 0) return null;
+  const lineStart = value.lastIndexOf("\n", at) + 1;
+  const lineEnd = value.indexOf("\n", at + needle.length);
+  const line = value.slice(lineStart, lineEnd < 0 ? value.length : lineEnd);
+  const offset = at - lineStart;
+  const start = Math.max(0, Math.min(offset - Math.floor((width - needle.length) / 3), line.length - width));
+  const cut = line.slice(start, start + width);
+  const hit = offset - start;
+  return [(start > 0 ? "…" : "") + cut.slice(0, hit).trimStart(), cut.slice(hit, hit + needle.length), cut.slice(hit + needle.length) + (start + width < line.length ? "…" : "")];
 }

@@ -97,3 +97,12 @@ export function middleEllipsis(text, maxWidth, measure) {
   }
   return build(low);
 }
+
+/** The type name for a count: 1 Table, 240 Tables, 2,400 Aliases. */
+export function pluralType(type, count) {
+  const label = typeLabel(type);
+  if (count === 1) return label;
+  if (/(s|x|ch|sh)$/i.test(label)) return `${label}es`;
+  if (/[^aeiou]y$/i.test(label)) return `${label.slice(0, -1)}ies`;
+  return `${label}s`;
+}

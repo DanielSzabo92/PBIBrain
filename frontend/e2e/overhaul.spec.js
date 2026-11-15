@@ -176,8 +176,21 @@ test("large native scans load whole in Lineage and search finds any object", asy
   }
 });
 
-test("dark default and flat selection remain clear during keyboard navigation", async ({ page }) => {
+test("theme follows the system until the user picks one", async ({ page }) => {
   await page.emulateMedia({ colorScheme: "light" });
+  await page.goto("/");
+  await expect(page.locator("html")).not.toHaveClass(/dark/);
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+  await page.emulateMedia({ colorScheme: "dark" });
+  await expect(page.locator("html")).toHaveClass("dark");
+  await page.getByRole("button", { name: "Switch to light theme" }).click();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+  await page.reload();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+  await page.evaluate(() => localStorage.removeItem("pbibrain-theme"));
+});
+
+test("dark default and flat selection remain clear during keyboard navigation", async ({ page }) => {
   await page.goto("/");
   await expect(page.locator("html")).toHaveClass("dark");
   await expect(page.locator("html")).toHaveCSS("color-scheme", "dark");

@@ -62,6 +62,13 @@ class AnswerCacheTests(unittest.TestCase):
         call(self.app, "/api/search", "q=Sales")
         self.assertEqual(2, len(self.handled))
 
+    def test_scan_time_and_validation_result_set_as_attributes_drop_the_cached_answer(self):
+        call(self.app, "/api/overview")
+        self.repository.last_scan = "2026-11-12T10:00:00+00:00"
+        self.assertEqual("2026-11-12T10:00:00+00:00", call(self.app, "/api/overview")[1]["last_scan"])
+        self.repository.validation_result = {"state": "invalid", "issues": []}
+        self.assertEqual("invalid", call(self.app, "/api/overview")[1]["validation_state"])
+
     def test_requests_that_are_not_pure_reads_are_never_cached(self):
         call(self.app, "/api/config")
         call(self.app, "/api/config")

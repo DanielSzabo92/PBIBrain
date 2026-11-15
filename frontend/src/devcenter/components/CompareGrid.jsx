@@ -138,6 +138,12 @@ function GridShortcutsHelp() {
   );
 }
 
+// The choice of a row, so the grid can mark the cell the result comes from.
+function chosenKind(row) {
+  const raw = row?.merge_choice ? row.merge_choice.kind || row.merge_choice.choice : null;
+  return raw ? normalizeChoiceKind(raw) : null;
+}
+
 export default function CompareGrid({
   session,
   tabState = {},
@@ -1150,15 +1156,12 @@ export default function CompareGrid({
         >
           <ObjIcon className="dc-obj-icon" aria-hidden="true" />
           <div className="dc-obj-box">
-            <span className="dc-obj-name">
-              {row.table && row.object_type !== "table"
-                ? formatDaxName(row.table, row.name)
-                : row.object_type === "table"
-                  ? `'${row.name}'`
-                  : formatObjectRef(row.name)}
+            {/* Names read as in the rest of the app: the name, then its kind and table. The DAX spelling is the tooltip. */}
+            <span className="dc-obj-name" title={row.table && row.object_type !== "table" ? formatDaxName(row.table, row.name) : row.object_type === "table" ? `'${row.name}'` : formatObjectRef(row.name)}>
+              {row.name}
             </span>
             <span className="dc-obj-meta">
-              {row.object_type}
+              {row.object_type}{row.table && row.object_type !== "table" ? ` · ${row.table}` : ""}
             </span>
           </div>
         </div>
@@ -1216,10 +1219,13 @@ export default function CompareGrid({
       const choiceKind = rawKind ? normalizeChoiceKind(rawKind) : null;
       const isSaved = lastSavedRowKey === row.row_key;
 
-      const hasDonor = donors.some((d) => {
+      const takeDonor = donors.find((d) => {
         const cell = getCellData(d.source_id);
         return cell && cell.state !== "missing";
       });
+      const hasDonor = Boolean(takeDonor);
+      const targetName = targetSource?.display_name || "the target model";
+      const takeName = takeDonor ? takeDonor.display_name || takeDonor.name || "the source model" : "";
 
       return (
         <div
@@ -1247,7 +1253,7 @@ export default function CompareGrid({
                   e.stopPropagation();
                   handleSingleRowChoice(row, "keep");
                 }}
-                title="Keep target (K)"
+                title={`Keep the version in ${targetName} (K)`}
                 aria-keyshortcuts="k"
               >
                 Keep
@@ -1260,7 +1266,7 @@ export default function CompareGrid({
                   e.stopPropagation();
                   handleSingleRowChoice(row, "take");
                 }}
-                title={hasDonor ? "Take from donor (T)" : "No donor available"}
+                title={hasDonor ? `Take the version from ${takeName} (T)` : "No other model has this object"}
                 aria-keyshortcuts="t"
               >
                 Take
@@ -1273,7 +1279,7 @@ export default function CompareGrid({
                   e.stopPropagation();
                   handleSingleRowChoice(row, "skip");
                 }}
-                title="Skip (S)"
+                title="Decide later; nothing changes for this object (S)"
                 aria-keyshortcuts="s"
               >
                 Skip
@@ -1310,7 +1316,7 @@ export default function CompareGrid({
       return (
         <div
           key={`cell-${rowIndex}-4`}
-          className={`dc-cell dc-col-tg ${isMissing ? "dc-cell-missing" : ""}`}
+          className={`dc-cell dc-col-tg ${isMissing ? "dc-cell-missing" : ""}${chosenKind(row) === "keep" ? " is-chosen" : ""}`}
           role="gridcell"
           aria-colindex={5}
           tabIndex={tabIndex}
@@ -1349,7 +1355,7 @@ export default function CompareGrid({
       return (
         <div
           key={`cell-${rowIndex}-${colIndex}`}
-          className={`dc-cell ${isMissing ? "dc-cell-missing" : ""}`}
+          className={`dc-cell ${isMissing ? "dc-cell-missing" : ""}${["take", "take_properties", "add_new_name"].includes(chosenKind(row)) && (row.merge_choice?.source || row.merge_choice?.source_id) === donor.source_id ? " is-chosen" : ""}`}
           role="gridcell"
           aria-colindex={colIndex + 1}
           tabIndex={tabIndex}
@@ -1740,7 +1746,7 @@ export default function CompareGrid({
                       role="columnheader"
                       aria-colindex={4}
                     >
-                      <span>{t("compare.column.choice")}</span>
+                      <span title={t("compare.column.choice.help")}>{t("compare.column.choice")}</span>
                     </div>
 
                     <div className={`dc-hcell dc-col-tg ${targetSource?.status === "missing" ? "dc-hcell-missing" : ""}`} role="columnheader" aria-colindex={5}>

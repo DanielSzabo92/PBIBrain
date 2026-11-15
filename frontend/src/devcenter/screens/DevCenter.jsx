@@ -9,21 +9,34 @@ import { t } from "../copy.js";
 import { createDevCenterHttp } from "../httpClient.js";
 import { createDevCenterStore } from "../store.js";
 import { DevCenterProvider, useAction, useDevCenterState, useDevCenterStore } from "../useDevCenter.js";
+import { shared } from "../sharedStore.js";
 import SessionList from "./SessionList.jsx";
 import CreateSession from "./CreateSession.jsx";
 import WorkArea from "./WorkArea.jsx";
 import "./screens.css";
 
-let sharedStore = null;
 
 // One store for the app window. The open session stays open while the user goes to other sidebar items.
 export function devCenterStore() {
-  if (!sharedStore) sharedStore = createDevCenterStore({ http: createDevCenterHttp(), api: () => globalThis.pywebview?.api ?? null });
-  return sharedStore;
+  if (!shared.store) shared.store = createDevCenterStore({ http: createDevCenterHttp(), api: () => globalThis.pywebview?.api ?? null });
+  return shared.store;
 }
 
 // The last tab and the marks filter of each session, in memory only (UI design 2).
 const tabMemory = new Map();
+
+/** The session skeleton; after five seconds it says why it may be slow instead of staying silent. */
+function SessionLoading() {
+  const [slow, setSlow] = useState(false);
+  useEffect(() => {
+    const timer = setTimeout(() => setSlow(true), 5000);
+    return () => clearTimeout(timer);
+  }, []);
+  return <div className="dc-page">
+    <Skeleton label={t("work.loading")} />
+    {slow ? <p className="dc-loading-slow" role="status">{t("work.loading.slow")}</p> : null}
+  </div>;
+}
 
 export default function DevCenter({ onOpenProject }) {
   const [store] = useState(devCenterStore);
@@ -173,7 +186,7 @@ function DevCenterScreens({ onOpenProject }) {
   const showList = () => setView("list");
   const showWork = () => setView("work");
 
-  if (view === null) return <div className="dc-page"><Skeleton label={t("work.loading")} /></div>;
+  if (view === null) return <SessionLoading />;
 
   const activeSession = session ? (sessionOverrides[sessionId] ? { ...session, ...sessionOverrides[sessionId] } : session) : null;
 
@@ -187,7 +200,8 @@ function DevCenterScreens({ onOpenProject }) {
 
   return (
     <div className="dc-root">
-      <Breadcrumb className="dc-breadcrumb" aria-label={t("work.breadcrumb")}>
+      {/* With one part the path only repeats the view title above it. */}
+      <Breadcrumb className={crumbs.length > 1 ? "dc-breadcrumb" : "dc-breadcrumb sr-only"} aria-label={t("work.breadcrumb")}>
         <BreadcrumbList>
           {crumbs.map((crumb, index) => (
             <React.Fragment key={crumb.label + index}>
@@ -240,7 +254,7 @@ function DevCenterScreens({ onOpenProject }) {
             onDeleteSession={handleDelete}
           />
         ) : (
-          <div className="dc-page"><Skeleton label={t("work.loading")} /></div>
+          <SessionLoading />
         )
       ) : null}
     </div>

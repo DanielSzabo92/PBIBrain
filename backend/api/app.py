@@ -104,19 +104,34 @@ def get_overview(repository: GraphRepository, *, store: OverrideStore | None = N
         if edge.type != "CONTAINS" and edge.evidence_class not in {"INFERRED", "OBSERVED"}:
             inbound[edge.to_id] += 1
     measures = [node for node in nodes if node.type in {"MEASURE", "CALCULATION_ITEM"}]
+    names = {node.id: node for node in nodes}
+
+    def scope_of(node: Any) -> str:
+        """Where an object lives, as names: "Sales Analytics / Orders". Tells apart objects with one name."""
+
+        owners = [names.get(getattr(node, key, None) or node.properties.get(key) or "") for key in ("model_id", "report_id", "table_id", "page_id")]
+        return " / ".join(owner.name for owner in owners if owner is not None and owner.id != node.id and owner.name)
+
     top_measures = [
-        {**_root_summary(node), "type": node.type, "count": inbound[node.id]}
+        {**_root_summary(node), "type": node.type, "count": inbound[node.id], "scope": scope_of(node)}
         for node in sorted(measures, key=lambda node: (-inbound[node.id], node.name or "", node.id))[:5]
     ]
-    names = {node.id: node for node in nodes}
     hot: list[dict[str, Any]] = []
-    for item in sorted(review_items, key=lambda item: -degree[str(item.get("object_id") or item.get("target_id") or "")])[:5]:
+    seen_targets: set[str] = set()
+    for item in sorted(review_items, key=lambda item: -degree[str(item.get("object_id") or item.get("target_id") or "")]):
         target_id = str(item.get("object_id") or item.get("target_id") or "")
+        # One row per object: an object with three open suggestions is still one hot object.
+        if target_id in seen_targets:
+            continue
+        if len(hot) == 5:
+            break
+        seen_targets.add(target_id)
         target = names.get(target_id)
         hot.append({
             "id": item.get("id"), "target_id": target_id, "name": target.name if target else target_id,
             "type": target.type if target else "OBJECT", "kind": item.get("issue_type", "candidate"),
             "label": item.get("value") or item.get("meaning"), "degree": degree[target_id],
+            "scope": scope_of(target) if target else "",
         })
     validation = getattr(repository, "validation_result", None)
     validation_state = getattr(repository, "validation_state", None)
@@ -287,7 +302,9 @@ _REVIEW_ITEM_FIELDS = ("candidate_id", "property", "value", "meaning", "assertio
 def _slim(record: Mapping[str, Any], fields: Sequence[str]) -> dict[str, Any]:
     properties = record.get("properties") if isinstance(record.get("properties"), Mapping) else {}
     slim = {key: record[key] for key in fields if record.get(key) is not None}
-    small = {key: value for key, value in properties.items() if isinstance(value, (str, int, float, bool)) and len(str(value)) <= 240}
+    # Hashes and fingerprints are for the scanner; no review screen reads them.
+    small = {key: value for key, value in properties.items()
+             if isinstance(value, (str, int, float, bool)) and len(str(value)) <= 240 and not key.endswith(("_hash", "_fingerprint"))}
     if small:
         slim["properties"] = small
     return slim
@@ -716,6 +733,13 @@ class BrainApp:
                 if set(payload) != {"before", "after"} or any(not isinstance(item, str) for item in payload.values()):
                     raise ValueError("INVALID_COMPARE_REQUEST")
                 return 200, self.api.compare_prepared_snapshots(payload["before"], payload["after"])
+            if method == "GET" and parts == ["config", "sources"] and self.project is not None:
+                # Whether each configured path is there, so a wrong path shows before any scan runs.
+                config = self.project.get_config()
+                found = []
+                for value, resolved in zip(config.get("sources", []), self.project.source_paths()):
+                    found.append({"path": value, "exists": resolved.exists(), "kind": "folder" if resolved.is_dir() else "file" if resolved.is_file() else "missing"})
+                return 200, {"sources": found}
             if parts == ["config"] and self.project is not None:
                 if method == "GET":
                     return 200, self.project.get_config()
@@ -725,6 +749,15 @@ class BrainApp:
                     if any(payload.get(key, current[key]) != current[key] for key in ("database", "identity_map")):
                         raise ValueError("Storage paths cannot change while the server is open; edit the config file and restart")
                     return 200, self.project.save_config(payload)
+            if method == "POST" and parts == ["sample"] and self.project is not None:
+                # One click to a project with content: the sample is written beside the config and added as a source.
+                from backend.sample_project import write_sample
+                sample = write_sample(self.project.config_path.parent / "sample")
+                current = self.project.get_config()
+                known = {path.resolve() for path in self.project.source_paths()}
+                if sample.resolve() not in known:
+                    current = self.project.save_config({**current, "sources": [*current.get("sources", []), str(sample)]})
+                return 200, current
             if method == "POST" and parts == ["scan"] and self.project is not None:
                 result = self.project.scan(self.api.repository)
                 if getattr(self, "_source_watcher", None) is not None:
@@ -741,6 +774,7 @@ class BrainApp:
                     limit=int(str(self._query_values(query, "limit") or "50")),
                     offset=int(str(self._query_values(query, "offset") or "0")),
                     store=self.api.overrides,
+                    project_objects_only=str(self._query_values(query, "kind") or "") == "objects",
                 )
             if method == "GET" and parts == ["overview"]:
                 return 200, self.api.get_overview()
@@ -915,6 +949,11 @@ class BrainApp:
         local_hosts = {"127.0.0.1", "localhost", "::1"}
         status, payload = 200, None
         raw: bytes | None = None
+        # Liveness: answered without the request lock, so launchers can wait for the server even during a scan.
+        if method == "GET" and path == "/api/health":
+            body = b'{"ok": true}'
+            start_response("200 OK", [("Content-Type", "application/json; charset=utf-8"), ("Content-Length", str(len(body))), ("Cache-Control", "no-store")])
+            return [body]
         try:
             parsed_host = urlsplit(f"http://{host}")
             if parsed_host.hostname not in local_hosts or parsed_host.username or parsed_host.path:
@@ -947,7 +986,10 @@ class BrainApp:
                 key = f"{path}?{query}" if method == "GET" and path.startswith(self._CACHED_ROUTES) else None
                 # A cached answer needs no lock: a slow request must not hold up the rest of the UI.
                 cached = self._cached_answer(key, self._graph_stamp()) if key else None
-                if cached is not None:
+                if method == "GET" and path == "/api/scan/status":
+                    # What the running scan is doing; the scan itself holds the request lock.
+                    status, payload = 200, dict(getattr(self.project, "scan_progress", None) or {"running": False})
+                elif cached is not None:
                     status, raw = cached
                 else:
                     with self.request_lock:

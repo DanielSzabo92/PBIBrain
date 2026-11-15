@@ -1,15 +1,17 @@
 import VisualBindings from "./components/VisualBindings";
-import ImpactExplorer from "./components/ImpactExplorer";
+import ObjectContents from "./components/ObjectContents";
 import CommonObjects from "./components/CommonObjects";
 import PendingChanges from "./components/PendingChanges";
 import { hasComparableSources } from "./commonality";
 import React, { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, ArrowRight, ArrowUpRight, Boxes, Calculator, Check, ChartColumn, ChevronDown, ChevronRight, CircleCheck, Clock, Cloud, Flame, Inbox, PanelLeft, ScanSearch, Copy, Bot, Database, FileText, FolderOpen, Moon, Plus, RefreshCw, RotateCcw, ScanLine, ShieldAlert, ShieldCheck, Sun, TriangleAlert, Waypoints, X } from "lucide-react";
+import { groupReviewItems, GROUP_ABOVE } from "./reviewGroups.js";
+import { ArrowLeft, ArrowRight, ArrowUpRight, Activity, Boxes, Calculator, Check, ChartColumn, ChevronDown, ChevronRight, CircleCheck, Clock, Cloud, Flame, Inbox, PanelLeft, ScanSearch, Copy, Bot, Database, FileText, Filter, FolderOpen, Lightbulb, Link2, Moon, Plus, RefreshCw, RotateCcw, ScanLine, ShieldAlert, ShieldCheck, Sun, Table2, Tag, TriangleAlert, Type, Waypoints, Workflow, X } from "lucide-react";
 import { ToastProvider, useToast } from "./components/ui/toast";
 import { SegmentedControl } from "./components/ui/segmented-control";
 import { Tooltip } from "./components/ui/tooltip";
 import ReviewDecision from "./components/ReviewDecision";
 import ObjectContextPreview from "./components/ObjectContextPreview";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent } from "./components/ui/dialog";
 import { isLowEvidence, explainConfidence } from "./reviewEvidence";
 import { brainTransport, normalizeSnapshot } from "./transport";
 import { desktopRequest, subscribeToDesktopBridge } from "./desktop";
@@ -19,7 +21,8 @@ import { MAKER_NAME, PRODUCT_CREDIT, PRODUCT_NAME } from "./brand";
 import { TypeGlyph, TypeIcon } from "./components/TypeGlyph";
 import { CloudSourcePicker } from "./components/CloudSourcePicker";
 import { highlightDax } from "./dax";
-import { byId, objectName, objectScope, originNote, readableText, publicProperties, scopeChoices, statusLabel, suggestionLabel, isBackendUnreachableError, sanitizeDoublePunctuation } from "./presentation";
+import { parseRoute, routeHash } from "./routes";
+import { byId, compactCount, foldSearchResults, formatCount, formatPlural, matchSnippet, objectName, objectScope, originNote, readableText, publicProperties, scopeChoices, statusLabel, suggestionLabel, suggestionParts, isBackendUnreachableError, sanitizeDoublePunctuation } from "./presentation";
 import { Button } from "./components/ui/button";
 import { Input } from "./components/ui/input";
 import { NativeSelect } from "./components/ui/native-select";
@@ -36,16 +39,24 @@ const ModelSummary = lazy(() => import("./components/ModelSummary"));
 const DocumentationExport = lazy(() => import("./components/DocumentationExport"));
 const ChatPanel = lazy(() => import("./components/ChatPanel"));
 const AISettings = lazy(() => import("./components/AISettings"));
-import DevCenter, { devCenterStore } from "./devcenter/screens/DevCenter.jsx";
+// It draws with the graph library, which the first screen does not need.
+const ImpactExplorer = lazy(() => import("./components/ImpactExplorer"));
+const ObjectTree = lazy(() => import("./components/ObjectTree"));
+// Merge models is about a fifth of the code and most sessions never open it.
+const DevCenter = lazy(() => import("./devcenter/screens/DevCenter.jsx"));
+import { shared as devCenterShared } from "./devcenter/sharedStore.js";
 import { Switch } from "./components/ui/switch";
 import { setSlashSearchEnabled, slashGoesToSearch, slashSearchEnabled } from "./devcenter/preferences.js";
 import { t as devCopy } from "./devcenter/copy.js";
-import { artifactColor, artifactStyle, normalizeColors, typeLabel } from "./graphPresentation";
+import { artifactColor, artifactStyle, normalizeColors, pluralType, typeLabel } from "./graphPresentation";
 import { AppMenuBar, ShortcutsDialog, StatusBar } from "./components/AppShell";
 import { commandFor, displayKeys, shortcutKeys } from "./shortcuts";
 import CommandPalette from "./components/CommandPalette";
 import InspectorEmpty from "./components/InspectorEmpty";
 import ExportDialog from "./components/ExportDialog";
+
+// Above this many suggestions a bulk approve or reject asks for confirmation.
+const BULK_CONFIRM_ABOVE = 50;
 
 const VIEWS = [
   ["overview", "Overview"],
@@ -136,6 +147,21 @@ function searchObject(item) {
   return item?.object && typeof item.object === "object" ? item.object : item;
 }
 
+/** Why a row matched when its name does not show it: the matching line of the formula or description. */
+function searchSnippet(item, query) {
+  const evidence = (item?.match?.evidence || []).find((entry) => /expression|description/i.test(entry.field || ""));
+  const first = item?.match?.evidence?.[0]?.field || "";
+  if (!evidence || first === "name") return null;
+  const parts = matchSnippet(evidence.value, query);
+  return parts ? { parts, formula: /expression/i.test(evidence.field) } : null;
+}
+
+/** A name with the typed query marked in it. */
+function Marked({ text, query }) {
+  const parts = matchSnippet(text, query, 400);
+  return parts ? <>{parts[0]}<mark>{parts[1]}</mark>{parts[2]}</> : text;
+}
+
 function searchMatch(item) {
   const match = item?.match || {};
   const field = match.evidence?.[0]?.field || match.field || item?.match_field || "";
@@ -144,20 +170,44 @@ function searchMatch(item) {
 
 const THEME_KEY = "pbibrain-theme";
 
-function readTheme() {
-  try { return globalThis.localStorage?.getItem(THEME_KEY) === "light" ? "light" : "dark"; } catch { return "dark"; }
+const LIGHT_QUERY = "(prefers-color-scheme: light)";
+
+/** The saved choice, or "system" when the user never chose (or chose to follow the OS). */
+function readThemeChoice() {
+  try {
+    const saved = globalThis.localStorage?.getItem(THEME_KEY);
+    return saved === "light" || saved === "dark" ? saved : "system";
+  } catch { return "system"; }
 }
 
+function systemTheme() {
+  try { return globalThis.matchMedia?.(LIGHT_QUERY).matches ? "light" : "dark"; } catch { return "dark"; }
+}
+
+/** Theme follows the operating system until the user picks light or dark; "system" hands it back. */
 function useTheme() {
-  const [theme, setTheme] = useState(readTheme);
+  const [choice, setChoice] = useState(readThemeChoice);
+  const [system, setSystem] = useState(systemTheme);
+  useEffect(() => {
+    const query = globalThis.matchMedia?.(LIGHT_QUERY);
+    if (!query?.addEventListener) return undefined;
+    const onChange = () => setSystem(query.matches ? "light" : "dark");
+    query.addEventListener("change", onChange);
+    return () => query.removeEventListener("change", onChange);
+  }, []);
+  const theme = choice === "system" ? system : choice;
   useEffect(() => {
     const root = document.documentElement;
     root.classList.toggle("dark", theme === "dark");
     if (theme === "light") root.dataset.theme = "light";
     else delete root.dataset.theme;
-    try { globalThis.localStorage?.setItem(THEME_KEY, theme); } catch { /* Storage can be unavailable. */ }
-  }, [theme]);
-  return [theme, () => setTheme((current) => current === "dark" ? "light" : "dark")];
+    try {
+      if (choice === "system") globalThis.localStorage?.removeItem(THEME_KEY);
+      else globalThis.localStorage?.setItem(THEME_KEY, choice);
+    } catch { /* Storage can be unavailable. */ }
+  }, [theme, choice]);
+  const toggle = useCallback(() => setChoice(theme === "dark" ? "light" : "dark"), [theme]);
+  return [theme, toggle, choice, setChoice];
 }
 
 const SIDEBAR_KEY = "pbibrain-sidebar";
@@ -196,7 +246,7 @@ function AppInner({ transport = brainTransport }) {
   const [auditTrail, setAuditTrail] = useState([]);
   const compactNav = useCompactNav();
   const desktopHost = Boolean(globalThis.__PBIBRAIN_DESKTOP__);
-  const [theme, toggleTheme] = useTheme();
+  const [theme, toggleTheme, themeChoice, setThemeChoice] = useTheme();
   const [sidebarCollapsed, toggleSidebar] = useSidebar();
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
@@ -235,16 +285,18 @@ function AppInner({ transport = brainTransport }) {
   const [config, setConfig] = useState(null);
   const [configError, setConfigError] = useState("");
   const graphColors = useMemo(() => normalizeColors(config?.graph_colors), [config?.graph_colors]);
-  const [view, setView] = useState("overview");
+  // The page opens where its address points: a reload or a pasted link lands on the same view.
+  const [startRoute] = useState(() => parseRoute(globalThis.location?.hash));
+  const [view, setView] = useState(startRoute.view);
   const currentView = useRef(view);
   currentView.current = view;
-  const [searchSession, setSearchSession] = useState({ query: "", modelId: "", reportId: "", result: null });
+  const [searchSession, setSearchSession] = useState({ query: startRoute.query, modelId: "", reportId: "", result: null });
   const [inspectorSession, setInspectorSession] = useState({ query: "", modelId: "", reportId: "", objectType: "MEASURE", result: null });
-  const [settingsTab, setSettingsTab] = useState("project");
-  const [graphSession, setGraphSession] = useState(null);
+  const [settingsTab, setSettingsTab] = useState(startRoute.settingsTab || "project");
+  const [graphSession, setGraphSession] = useState(startRoute.focus ? { centerId: startRoute.focus, selectionId: startRoute.focus } : null);
   const [reviewSession, setReviewSession] = useState({ issue: "ALL", objectType: "ALL", modelId: "ALL", reportId: "ALL", sort: "confidence-high" });
   const [inspectorOrigin, setInspectorOrigin] = useState("search");
-  const [selectedId, setSelectedId] = useState(null);
+  const [selectedId, setSelectedId] = useState(startRoute.selectedId);
   const [inspectedObject, setInspectedObject] = useState(null);
   const [inspectedDetails, setInspectedDetails] = useState(null);
   const [inspectorError, setInspectorError] = useState("");
@@ -434,6 +486,43 @@ function AppInner({ transport = brainTransport }) {
     }
   }, [loadSnapshot, recordRecentObject, transport, view]);
 
+  // Address <-> state. Moving to another view or object adds a history entry, so Back returns to it;
+  // typing a query or refocusing the graph only rewrites the current entry.
+  const selectedRef = useRef(selectedId);
+  selectedRef.current = selectedId;
+  const selectRef = useRef(selectNode);
+  selectRef.current = selectNode;
+  const applyRoute = useCallback((route) => {
+    if (route.view === "inspector") {
+      if (route.selectedId && route.selectedId !== selectedRef.current) selectRef.current(route.selectedId, "inspector");
+      else {
+        if (!route.selectedId) { setSelectedId(null); setInspectedObject(null); }
+        setView("inspector");
+      }
+      return;
+    }
+    setView(route.view);
+    if (route.view === "config") setSettingsTab(route.settingsTab || "project");
+    if (route.view === "search") setSearchSession((current) => current.query === route.query ? current : { ...current, query: route.query, selectedId: null, scrollY: 0 });
+    if (route.view === "graph" && route.focus) setGraphSession((current) => current?.centerId === route.focus ? current : { ...(current || {}), centerId: route.focus, selectionId: route.focus });
+  }, []);
+  useEffect(() => {
+    if (startRoute.view === "inspector" && startRoute.selectedId) selectRef.current(startRoute.selectedId, "inspector", "inspector");
+    const onMove = () => applyRoute(parseRoute(globalThis.location.hash));
+    globalThis.addEventListener("popstate", onMove);
+    return () => globalThis.removeEventListener("popstate", onMove);
+  }, [applyRoute, startRoute]);
+  const hash = routeHash({ view, selectedId, settingsTab, query: searchSession.query, focus: graphSession?.centerId || "" });
+  const place = `${view}|${view === "inspector" ? selectedId || "" : ""}`;
+  const lastPlace = useRef(place);
+  useEffect(() => {
+    const samePlace = lastPlace.current === place;
+    lastPlace.current = place;
+    const current = globalThis.location?.hash || "";
+    if (current === hash || (!current && hash === "#/")) return;
+    try { globalThis.history?.[samePlace ? "replaceState" : "pushState"](null, "", hash); } catch { /* A sandboxed frame can refuse history changes. */ }
+  }, [hash, place]);
+
   const applyScan = useCallback(async () => {
     if (scanInFlight.current) return;
     scanInFlight.current = true;
@@ -442,6 +531,7 @@ function AppInner({ transport = brainTransport }) {
     setOperationError("");
     invalidateProjectRequests();
     setSnapshotLoading(false);
+    const started = Date.now();
     try {
       const result = await transport.scan();
       selectionRequest.current += 1;
@@ -458,7 +548,9 @@ function AppInner({ transport = brainTransport }) {
       setGraphSession(null);
       setInspectorSession((current) => ({ ...current, result: null, revision: (current.revision || 0) + 1 }));
       setSearchSession((current) => ({ ...current, result: null, selectedId: null, scrollY: 0, revision: (current.revision || 0) + 1 }));
-      setNotice("Scan complete");
+      const objects = result?.overview?.counts?.nodes;
+      const seconds = Math.max(1, Math.round((Date.now() - started) / 1000));
+      setNotice(objects ? `Scan complete: ${formatCount(objects)} objects in ${seconds} s` : "Scan complete");
       await load();
       if (currentView.current === "review") await loadSnapshot();
     } catch (cause) {
@@ -667,10 +759,11 @@ function AppInner({ transport = brainTransport }) {
     [handleUndoReview, load, loadSnapshot, transport, toast],
   );
 
-  const navigate = useCallback((key) => {
-    setView(key);
-    if (key === "review") loadSnapshot().catch(() => {});
-  }, [loadSnapshot]);
+  const navigate = useCallback((key) => { setView(key); }, []);
+  // The review queue reads the snapshot however the view was reached: the sidebar, a link or Back.
+  useEffect(() => {
+    if (view === "review") loadSnapshot().catch(() => {});
+  }, [view, loadSnapshot]);
 
   const goBack = useCallback(() => {
     if (currentView.current !== "inspector" || !selectedId) return;
@@ -694,6 +787,12 @@ function AppInner({ transport = brainTransport }) {
     const onKey = (event) => {
       if (event.defaultPrevented) return;
       if (slashGoesToSearch(event)) { event.preventDefault(); setView("search"); focusSearchField(); return; }
+      // Alt+Left / Alt+Right walk the history, also in the desktop window, which has no browser chrome.
+      if (event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey && (event.key === "ArrowLeft" || event.key === "ArrowRight") && !/^(INPUT|TEXTAREA|SELECT)$/.test(event.target?.tagName || "")) {
+        event.preventDefault();
+        if (event.key === "ArrowLeft") globalThis.history.back(); else globalThis.history.forward();
+        return;
+      }
       const command = commandFor(event);
       if (!command) return;
       if (document.querySelector("[role=dialog], [role=alertdialog]") && command !== "shortcuts") return;
@@ -751,11 +850,21 @@ function AppInner({ transport = brainTransport }) {
   const failedNotice = /failed/i.test(String(notice));
   const hasSources = !config || !Array.isArray(config.sources) || config.sources.length > 0 || Boolean(activeProject?.source_count);
   const runScan = () => { if (!scanning && hasSources) applyScan(); };
+  // The sample: one click from an empty project to every view with content.
+  const openSample = async () => {
+    if (scanning || typeof transport.addSample !== "function") return;
+    try {
+      setConfig(await transport.addSample());
+      await applyScan();
+    } catch (cause) {
+      setOperationError(cause?.message || "The sample project could not be added");
+    }
+  };
   const openSettings = (tab = "project") => { setSettingsTab(tab); setView("config"); };
   commands.current.view = (key) => { navigate(key); if (key === "search") focusSearchField(); };
   commands.current.reload = () => { if (!loading && !scanning) reloadBrain(); };
   commands.current.scan = runScan;
-  const lastScan = overview.last_scan ? `Scanned ${formatDate(overview.last_scan)}` : overview.scan_state === "not_scanned" ? "Not scanned" : "Last scan time unknown";
+  const lastScan = overview.last_scan ? `Scanned ${formatDate(overview.last_scan)}` : overview.scan_state === "not_scanned" || !counts.objects ? "Not scanned" : "Last scan time unknown";
   const viewLabel = VIEWS.find(([key]) => key === view)?.[1];
   // What the chat's selection chip shows: the graph's selected node on the graph, else the inspected object.
   const graphPick = view === "graph" && graphSession?.selectionId ? graphSession.selectionId : null;
@@ -778,6 +887,7 @@ function AppInner({ transport = brainTransport }) {
       { separator: true },
       { label: "Side bar", keys: shortcutKeys("sidebar"), checked: !sidebarCollapsed, onSelect: toggleSidebar },
       { label: "Dark theme", keys: shortcutKeys("theme"), checked: theme === "dark", onSelect: toggleTheme },
+      { label: "Match system theme", checked: themeChoice === "system", onSelect: () => setThemeChoice(themeChoice === "system" ? theme : "system") },
       { label: "Graph colors…", onSelect: () => openSettings("colors") },
       { separator: true },
       { label: "Chat", keys: shortcutKeys("chat"), checked: chatOpen, onSelect: commands.current.chat },
@@ -813,7 +923,7 @@ function AppInner({ transport = brainTransport }) {
                 <Button variant="ghost" key={key} aria-current={view === key ? "page" : undefined} className={`nav-button ${view === key ? "active" : ""} ${key === "config" ? "nav-settings" : ""}`} tooltip={`${label} (${keys})`} onClick={() => navigate(key)} title={compactNav || sidebarCollapsed ? undefined : `${label} (${keys})`}>
                   <NavIcon name={key} />
                   <span className="nav-label">{label}</span>
-                  {key === "review" && pending > 0 ? <span className="nav-count" data-ui-number="">{pending > 99 ? "99+" : pending}</span> : null}
+                  {key === "review" && pending > 0 ? <span className="nav-count" data-ui-number="">{compactCount(pending)}</span> : null}
                 </Button>
               );
             })}
@@ -880,13 +990,16 @@ function AppInner({ transport = brainTransport }) {
           {counts.objects > 0 && view !== "devcenter" ? <PendingChanges transport={transport} scanning={scanning} onScan={applyScan} /> : null}
           <div className="view-frame" key={view}>
             <Suspense fallback={<div className="view-loading" role="status"><RefreshCw className="spin" aria-hidden="true" />Loading view…</div>}>
-            {view === "overview" ? <Overview onSelect={selectNode} overview={overview} config={config} counts={counts} colors={graphColors} loading={loading} projectName={projectName} onView={navigate} onBrowseType={(objectType) => { setSearchSession({ query: "", modelId: "", reportId: "", objectType, result: null }); setView("search"); }} onSources={() => { setSettingsTab("project"); setView("config"); }} onSummary={() => { setSettingsTab("summary"); setView("config"); }} onScan={applyScan} scanning={scanning} scanLabel={activeProject ? "Scan project" : "Scan sources"} onReview={() => navigate("review")} transport={transport} onMerge={(modelIds) => { const names = modelIds.map((id) => (overview.model_objects || []).find((item) => item.id === id)?.name || id); setNotice(`Start a merge session with ${names.join(", ")}`); navigate("devcenter"); }} error={error || configError} onRetry={load} snapshot={snapshot} auditTrail={auditTrail} /> : null}
+            {view === "overview" ? <Overview onSelect={selectNode} overview={overview} config={config} counts={counts} colors={graphColors} loading={loading} projectName={projectName} onView={navigate} onBrowseType={(objectType) => { setSearchSession({ query: "", modelId: "", reportId: "", objectType, result: null }); setView("search"); }} onSources={() => { setSettingsTab("project"); setView("config"); }} onSample={openSample} onSummary={() => { setSettingsTab("summary"); setView("config"); }} onScan={applyScan} scanning={scanning} scanLabel={activeProject ? "Scan project" : "Scan sources"} onReview={() => navigate("review")} transport={transport} onMerge={(modelIds) => { const names = modelIds.map((id) => (overview.model_objects || []).find((item) => item.id === id)?.name || id); setNotice(`Start a merge session with ${names.join(", ")}`); navigate("devcenter"); }} error={error || configError} onRetry={load} snapshot={snapshot} auditTrail={auditTrail} /> : null}
             {view === "search" ? <div className="page page-narrow" data-ui-stack=""><SearchView session={searchSession} onSession={setSearchSession} colors={graphColors} transport={transport} overview={overview} onSelect={selectNode} /></div> : null}
             {view === "graph" ? <GraphView session={graphSession} onSession={setGraphSession} colors={graphColors} transport={transport} overview={overview} snapshot={snapshot} selectedId={selectedId} onSelect={selectNode} /> : null}
-            {view === "inspector" ? <div className="page page-wide" data-ui-stack="">{selectedId ? <><Button variant="ghost" size="sm" className="inspector-back" onClick={() => { if (inspectorOrigin === "inspector") { setSelectedId(null); setInspectedObject(null); } else setView(inspectorOrigin); }}><ArrowLeft aria-hidden="true" />{inspectorOrigin === "search" ? "Back to search results" : inspectorOrigin === "inspector" ? "Inspect another object" : `Back to ${VIEWS.find(([key]) => key === inspectorOrigin)?.[1]?.toLowerCase() || "overview"}`}</Button><Inspector key={selectedId} transport={transport} scanning={scanning} colors={graphColors} node={selected} details={inspectedDetails} loading={Boolean(selectedId && !inspectedDetails && !inspectorError)} error={inspectorError} snapshot={snapshot} snapshotLoaded={snapshotLoaded} snapshotError={snapshotError} onEvidenceRetry={() => loadSnapshot().catch(() => {})} overview={overview} onSelect={selectNode} onRetry={() => selectNode(selectedId)} onReview={review} onGraph={() => setView("graph")} /></> : <InspectorEmpty overview={overview} colors={graphColors} recentObjects={recentObjects} onSelect={(id) => { setInspectorOrigin("inspector"); selectNode(id); }} onOpenSearch={() => { setView("search"); focusSearchField(); }} onOpenPalette={() => setPaletteOpen(true)} onOpenGraph={() => setView("graph")} />}</div> : null}
+            {view === "inspector" ? <div className="inspector-layout">
+              {counts.objects > 0 ? <Suspense fallback={<aside className="object-tree" />}><ObjectTree transport={transport} colors={graphColors} selectedId={selectedId} refreshKey={overview.last_scan} onSelect={(id) => selectNode(id, "inspector", inspectorOrigin === "inspector" || !selectedId ? "inspector" : inspectorOrigin)} /></Suspense> : <span />}
+              <div className="inspector-main page page-wide" data-ui-stack="">{selectedId ? <><Button variant="ghost" size="sm" className="inspector-back" onClick={() => { if (inspectorOrigin === "inspector") { setSelectedId(null); setInspectedObject(null); } else setView(inspectorOrigin); }}><ArrowLeft aria-hidden="true" />{inspectorOrigin === "search" ? "Back to search results" : inspectorOrigin === "inspector" ? "Inspect another object" : `Back to ${VIEWS.find(([key]) => key === inspectorOrigin)?.[1]?.toLowerCase() || "overview"}`}</Button><Inspector key={selectedId} transport={transport} scanning={scanning} colors={graphColors} node={selected} details={inspectedDetails} loading={Boolean(selectedId && !inspectedDetails && !inspectorError)} error={inspectorError} snapshot={snapshot} snapshotLoaded={snapshotLoaded} snapshotError={snapshotError} onEvidenceRetry={() => loadSnapshot().catch(() => {})} overview={overview} onSelect={selectNode} onRetry={() => selectNode(selectedId)} onReview={review} onGraph={() => setView("graph")} /></> : <InspectorEmpty overview={overview} colors={graphColors} recentObjects={recentObjects} onSelect={(id) => { setInspectorOrigin("inspector"); selectNode(id); }} onOpenSearch={() => { setView("search"); focusSearchField(); }} onOpenPalette={() => setPaletteOpen(true)} onOpenGraph={() => setView("graph")} />}</div>
+            </div> : null}
             {view === "review" ? <div className="page page-wide" data-ui-stack=""><ReviewQueue colors={graphColors} scanning={scanning} session={reviewSession} onSession={setReviewSession} snapshot={snapshot} loaded={snapshotLoaded} loading={!snapshotLoaded && (snapshotLoading || !snapshotError)} error={snapshotError} onRetry={() => loadSnapshot().catch(() => {})} overview={overview} onSelect={selectNode} onReview={review} onBulkReview={bulkReview} auditTrail={auditTrail} onUndoReview={handleUndoReview} /></div> : null}
             {view === "devcenter" ? <DevCenter onOpenProject={closeDesktopProject} /> : null}
-            {view === "config" ? <div className="page page-narrow" data-ui-stack=""><PageHeading title="Settings" description="Manage project sources, graph appearance, model context, documentation, and the AI provider of the chat." />{configError && !config ? <Card className="panel"><EmptyState icon={<TriangleAlert />} tone="bad" title="Project settings unavailable" detail="Retry to load your saved sources and appearance." action={<Button variant="outline" onClick={load}>Retry settings</Button>} /></Card> : <Tabs value={settingsTab} onValueChange={setSettingsTab} className="settings-tabs">
+            {view === "config" ? <div className="page page-narrow" data-ui-stack=""><PageHeading quiet title="Settings" />{configError && !config ? <Card className="panel"><EmptyState icon={<TriangleAlert />} tone="bad" title="Project settings unavailable" detail="Retry to load your saved sources and appearance." action={<Button variant="outline" onClick={load}>Retry settings</Button>} /></Card> : <Tabs value={settingsTab} onValueChange={setSettingsTab} className="settings-tabs">
               <TabsList aria-label="Settings sections"><TabsTrigger value="project">Project</TabsTrigger><TabsTrigger value="colors">Graph colors</TabsTrigger><TabsTrigger value="summary">Model summary / agent context</TabsTrigger><TabsTrigger value="documentation">Documentation export</TabsTrigger><TabsTrigger value="ai">AI provider</TabsTrigger><TabsTrigger value="keyboard">Keyboard</TabsTrigger></TabsList>
               <TabsContent value="ai"><Suspense fallback={<ViewLoading />}><AISettings transport={transport} /></Suspense></TabsContent>
               <TabsContent value="colors"><Suspense fallback={<ViewLoading />}><GraphColors config={config} transport={transport} overview={overview} onSaved={setConfig} /></Suspense></TabsContent>
@@ -904,7 +1017,7 @@ function AppInner({ transport = brainTransport }) {
           onMerge={() => navigate("devcenter")} onSettings={() => openSettings("ai")} />
       </Suspense> : null}
       </div>
-      <StatusBar connection={connection} projectName={projectName} counts={counts} pending={pending} onReview={() => navigate("review")} scanning={scanning} lastScan={lastScan} notice={notice} noticeFailed={failedNotice} theme={theme} onTheme={toggleTheme} onShortcuts={() => setShortcutsOpen(true)} onScan={runScan} />
+      <StatusBar connection={connection} projectName={projectName} counts={counts} pending={pending} onReview={() => navigate("review")} scanning={scanning} scanStatus={transport?.scanStatus} lastScan={lastScan} notice={notice} noticeFailed={failedNotice} theme={theme} onTheme={toggleTheme} onShortcuts={() => setShortcutsOpen(true)} onScan={runScan} />
       <ShortcutsDialog open={shortcutsOpen} onOpenChange={setShortcutsOpen} />
       <CommandPalette
         open={paletteOpen}
@@ -932,7 +1045,7 @@ function AppInner({ transport = brainTransport }) {
           setExportTab("summary");
           setExportOpen(true);
         }}
-        activeSession={typeof devCenterStore === "function" ? devCenterStore()?.getState?.()?.session : null}
+        activeSession={devCenterShared.store?.getState?.()?.session ?? null}
       />
       <ExportDialog
         open={exportOpen}
@@ -1054,7 +1167,18 @@ function DesktopProjectView({ api, project, overview, config, transport, scannin
   </>;
 }
 
-function PageHeading({ kicker, title, description, action, children }) {
+/** The last part of a path: the file or folder name, which is what tells sources apart. */
+function sourceName(path) {
+  return String(path || "").replace(/[\\/]+$/, "").split(/[\\/]/).pop() || "";
+}
+function pathExample() {
+  return /win/i.test(globalThis.navigator?.platform || "") ? "C:\\Reports\\Finance\\Finance.pbip" : "/home/me/reports/Finance/Finance.pbip";
+}
+
+// `quiet`: the view header bar already names the view, so the page keeps its h1 for structure and
+// assistive tech only and spends no space on a second title or a sentence that restates it.
+function PageHeading({ kicker, title, description, action, children, quiet = false }) {
+  if (quiet) return <h1 className="sr-only" tabIndex={-1}>{title}</h1>;
   return (
     <div className="page-heading">
       <div className="page-heading-copy">
@@ -1068,7 +1192,9 @@ function PageHeading({ kicker, title, description, action, children }) {
   );
 }
 
-function Overview({ overview, config, counts, colors, loading, projectName, onView, onBrowseType, onSources, onSummary, onScan, onReview, onSelect, onMerge, transport, scanning, scanLabel, error, onRetry, snapshot, auditTrail }) {
+function Overview({ overview, config, counts, colors, loading, projectName, onView, onBrowseType, onSources, onSample, onSummary, onScan, onReview, onSelect, onMerge, transport, scanning, scanLabel, error, onRetry, snapshot, auditTrail }) {
+  // The seven model and report types show at once; meanings (aliases, roles, concepts…) open on demand.
+  const [allTypes, setAllTypes] = useState(false);
   const hasObjects = counts.objects > 0;
   if (isBackendUnreachableError(error) && !hasObjects) {
     return (
@@ -1096,7 +1222,8 @@ function Overview({ overview, config, counts, colors, loading, projectName, onVi
   const lastScan = overview.last_scan;
   const validationState = overview.validation_state || "not_run";
   const validationLabel = { valid: "Graph validation passed", invalid: "Graph validation failed", warning: "Graph validation warnings", not_run: "Graph validation not run" }[validationState] || "Graph validation unavailable";
-  const issues = overview.validation_issues || [];
+  // Notes at INFO level (for example an object type the validator only passes through) are not issues to act on.
+  const issues = (overview.validation_issues || []).filter((item) => String(item.severity || "").toUpperCase() !== "INFO");
   const pending = counts.review;
   const ValidationIcon = validationState === "valid" ? ShieldCheck : ShieldAlert;
   const validationTone = { valid: "ok", invalid: "bad", warning: "warn" }[validationState] || "idle";
@@ -1126,7 +1253,7 @@ function Overview({ overview, config, counts, colors, loading, projectName, onVi
   const unreviewedOnHot = useMemo(() => {
     if (Array.isArray(overview?.hot_unreviewed)) {
       return overview.hot_unreviewed.map((item) => ({
-        item: { id: item.id, kind: item.kind, meaning: item.label }, targetId: item.target_id, degree: item.degree || 0,
+        item: { id: item.id, kind: item.kind, meaning: item.label, scope: item.scope }, targetId: item.target_id, degree: item.degree || 0,
         targetNode: { id: item.target_id, name: item.name, type: item.type },
       }));
     }
@@ -1275,20 +1402,25 @@ function Overview({ overview, config, counts, colors, loading, projectName, onVi
   const PRIMARY = ["MODEL", "TABLE", "COLUMN", "MEASURE", "REPORT", "PAGE", "VISUAL"];
   const typeCounts = Object.entries(overview.object_counts || {}).filter(([, count]) => count > 0).sort(([a], [b]) => { const ia = PRIMARY.indexOf(a), ib = PRIMARY.indexOf(b); return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || a.localeCompare(b); });
 
+  const otherTypes = typeCounts.filter(([type]) => !PRIMARY.includes(type)).length;
+
   return <div className="page page-overview" data-ui-stack="">
-    <header className="overview-hero">
+    <header className={`overview-hero ${hasObjects && !loading ? "is-quiet" : ""}`}>
       <div className="overview-hero-copy">
-        <h1>Overview</h1>
+        <h1 className={hasObjects && !loading ? "sr-only" : undefined} tabIndex={-1}>Overview</h1>
         {loading ? (
           <p className="hero-meta muted">{scanning ? "Scanning project…" : "Loading project…"}</p>
         ) : hasObjects ? (
-          <p className="hero-meta muted">{lastScan ? `Last scan ${formatDate(lastScan)}` : "Project indexed"}</p>
+          <p className="hero-meta muted sr-only">{lastScan ? `Last scan ${formatDate(lastScan)}` : "Project indexed"}</p>
         ) : (
           <p className="hero-meta">Connect your Power BI sources to build the project brain.</p>
         )}
       </div>
     </header>
-    {hasObjects && typeCounts.length ? <nav className="type-strip" aria-label="Objects by type">{typeCounts.map(([type, count]) => <Tooltip key={type} content={`Browse ${count.toLocaleString()} ${typeLabel(type).toLowerCase()} objects`}><button type="button" className="type-strip-item" onClick={() => onBrowseType(type)}><TypeGlyph type={type} colors={colors} size="sm" /><span className="type-strip-count" data-ui-number="">{count.toLocaleString()}</span><span className="type-strip-label">{typeLabel(type)}</span></button></Tooltip>)}</nav> : null}
+    {hasObjects && typeCounts.length ? <nav className="type-strip" aria-label="Objects by type">
+      {typeCounts.filter(([type]) => allTypes || PRIMARY.includes(type)).map(([type, count]) => <Tooltip key={type} content={`Browse ${formatCount(count)} ${pluralType(type, count).toLowerCase()}`}><button type="button" className="type-strip-item" onClick={() => onBrowseType(type)}><TypeGlyph type={type} colors={colors} size="sm" /><span className="type-strip-count" data-ui-number="">{formatCount(count)}</span><span className="type-strip-label">{pluralType(type, count)}</span></button></Tooltip>)}
+      {otherTypes ? <button type="button" className="type-strip-item type-strip-more" aria-expanded={allTypes} onClick={() => setAllTypes((open) => !open)}>{allTypes ? "Fewer" : `+${otherTypes} more`}</button> : null}
+    </nav> : null}
     {loading && !hasObjects ? <div className="overview-loading"><Skeleton className="skeleton-search" /><Skeleton className="skeleton-panel" /><p role="status" className="sr-only">{scanning ? "Scanning sources…" : "Loading project…"}</p></div> : !hasObjects ?
       <div className="overview-grid">
         <Card className="project-start" role="region" aria-labelledby="project-start-title">
@@ -1303,15 +1435,16 @@ function Overview({ overview, config, counts, colors, loading, projectName, onVi
             {hasSources ? <ScanLine /> : <Plus />}
             {hasSources ? scanLabel : "Add sources"}
           </Button>
+          {!hasSources && onSample && config ? <Button variant="outline" size="lg" className="project-start-sample" onClick={onSample} disabled={scanning}><Boxes />Open sample project</Button> : null}
         </Card>
-        <Card className="status-panel" role="region" aria-label="Project status">{validationWidget}{sourcesRow}{notCheckedRow}</Card>
+        <Card className="status-panel" role="region" aria-label="Project status">{sourcesRow}{notCheckedRow}</Card>
       </div> : <>
         <Card className="status-panel" role="region" aria-label="Project status">
           <div className={`status-row ${pending ? "tone-brand" : "tone-ok"}`}>
-            {pending ? <span className="status-icon status-icon-count" aria-hidden="true"><Inbox /><b data-ui-number="">{pending > 99 ? "99+" : pending}</b></span> : <CircleCheck className="status-icon" aria-hidden="true" />}
+            {pending ? <span className="status-icon status-icon-count" aria-hidden="true"><Inbox /></span> : <CircleCheck className="status-icon" aria-hidden="true" />}
             <div className="status-copy">
               <h2>{validationState === "invalid" ? "Resolve graph issues before review" : pending ? "Ready for review" : "No pending reviews"}</h2>
-              <p>{pending ? <><span className="sr-only">{pending} {pending === 1 ? "open item" : "open items"}. </span>Check suggested meanings and resolve uncertain matches.</> : "All suggestions have been reviewed."}{counts.warnings || counts.stale ? <span className="review-card-split"><span>{counts.candidates} suggestions</span>{counts.warnings ? <span>{counts.warnings} conflicts</span> : null}{counts.stale ? <span>{counts.stale} outdated decisions</span> : null}</span> : null}</p>
+              <p>{pending ? <><span className="sr-only">{pending} {pending === 1 ? "open item" : "open items"}. </span><span className="review-card-split"><span data-ui-number="">{formatCount(counts.candidates)} {counts.candidates === 1 ? "suggestion" : "suggestions"}</span>{counts.warnings ? <span data-ui-number="">{formatCount(counts.warnings)} conflicts</span> : null}{counts.stale ? <span data-ui-number="">{formatCount(counts.stale)} outdated decisions</span> : null}</span></> : "All suggestions have been reviewed."}</p>
             </div>
             <div className="status-actions"><Button variant={pending ? "default" : "outline"} size="sm" onClick={onReview}>Open review queue <ArrowRight aria-hidden="true" /></Button></div>
           </div>
@@ -1339,8 +1472,9 @@ function Overview({ overview, config, counts, colors, loading, projectName, onVi
                       <Button variant="link" size="sm" className="widget-link" onClick={() => onSelect(node.id, "inspector")} tooltip={node.name}>
                         {node.name}
                       </Button>
+                      {node.scope ? <span className="widget-scope muted">{node.scope}</span> : null}
                     </div>
-                    <span className="widget-metric">{count} {count === 1 ? "reference" : "references"}</span>
+                    <span className="widget-metric" data-ui-number="">{formatCount(count)} {count === 1 ? "use" : "uses"}</span>
                   </li>
                 ))}
               </ul>
@@ -1366,10 +1500,11 @@ function Overview({ overview, config, counts, colors, loading, projectName, onVi
                       <Button variant="link" size="sm" className="widget-link" onClick={() => onSelect(targetId, "inspector")} tooltip={targetNode ? targetNode.name : targetId}>
                         {targetNode ? targetNode.name : targetId}
                       </Button>
-                      <span className="badge-tag">{item.kind === "conflict" ? "conflict" : item.meaning || "suggestion"}</span>
+                      {item.scope ? <span className="widget-scope muted">{item.scope}</span> : null}
+                      {item.kind === "conflict" ? <span className="badge-tag">conflict</span> : null}
                     </div>
                     <div className="widget-row-actions">
-                      <span className="widget-metric">{degree} links</span>
+                      <span className="widget-metric" data-ui-number="">{formatCount(degree)} links</span>
                       <Button variant="ghost" size="sm" onClick={onReview}>Review</Button>
                     </div>
                   </li>
@@ -1380,7 +1515,7 @@ function Overview({ overview, config, counts, colors, loading, projectName, onVi
             )}
           </Card>
 
-          <Card className="overview-widget" role="region" aria-label="Recently changed">
+          {recentChanges.length ? <Card className="overview-widget" role="region" aria-label="Recently changed">
             <div className="widget-head">
               <div className="widget-title">
                 <Clock className="status-icon" aria-hidden="true" />
@@ -1406,7 +1541,7 @@ function Overview({ overview, config, counts, colors, loading, projectName, onVi
             ) : (
               <p className="widget-empty muted">No recent changes or review actions yet. Decisions will appear here as items are reviewed.</p>
             )}
-          </Card>
+          </Card> : null}
         </div>
 
         {transport && hasComparableSources(overview) && !scanning ? <CommonObjects transport={transport} colors={colors} onSelect={onSelect} onMerge={onMerge} refreshKey={overview.last_scan} /> : null}
@@ -1471,30 +1606,50 @@ function SearchView({ transport, overview, onSelect, colors, session, onSession,
   const models = scopeOptions(overview, "model");
   const reports = scopeOptions(overview, "report");
   const scopeName = (object) => [...models, ...reports].find((item) => item.id === (object.report_id || object.model_id))?.name;
+  const [unfolded, setUnfolded] = useState(() => new Set());
+  const folded = useMemo(() => foldSearchResults(result?.items || [], searchObject), [result]);
   return <div ref={panel}>
-    <PageHeading title={browse ? "Browse objects" : "Search"} description={browse ? "Choose an object to inspect its formula, dependencies, and report usage." : "Find objects by name, description, or part of a DAX formula."} />
+    <PageHeading quiet title={browse ? "Browse objects" : "Search"} />
     <Card className="panel search-panel" aria-busy={loading}>
       <div className="search-toolbar" data-ui-actions="">
-        <Label htmlFor={inputId} className="search-query-label">{browse ? "Filter by name or formula" : "Name or formula"}</Label>
+        <Label htmlFor={inputId} className="sr-only">{browse ? "Filter by name or formula" : "Name or formula"}</Label>
         <div className="search-field"><NavIcon name="search" size={18} /><Input id={inputId} type="search" value={query} onChange={(event) => change({ query: event.target.value })} onKeyDown={(event) => { if (event.key === "Escape") { event.preventDefault(); if (query) change({ query: "" }); else event.target.blur(); } else if (event.key === "Enter") runSearch(); else if (event.key === "ArrowDown" && moveInList(panel.current?.querySelector(".search-results"), "first")) event.preventDefault(); }} placeholder={browse ? "Filter objects by name…" : "Measure, table, column, or visual…"} aria-label="Search objects" />{loading && active ? <RefreshCw className="search-spinner spin" aria-hidden="true" /> : null}</div>
         <div className="search-filters">
-          <Label className="select-field"><span>Model</span><NativeSelect aria-label="Model" value={modelId} onChange={(event) => change({ modelId: event.target.value, reportId: "" })}><option value="">All models</option>{models.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</NativeSelect></Label>
-          <Label className="select-field"><span>Report</span><NativeSelect aria-label="Report" value={reportId} onChange={(event) => change({ reportId: event.target.value, modelId: "" })}><option value="">All reports</option>{reports.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</NativeSelect></Label>
-          <Label className="select-field"><span>Type</span><NativeSelect aria-label="Search object type" value={objectType} onChange={(event) => change({ objectType: event.target.value })}><option value="">All types</option>{Object.keys(overview.object_counts || {}).filter((type) => !new Set(["ALIAS", "BUSINESS_CONCEPT", "ROLE", "BEHAVIOR", "CONFLICT", "SELECTOR", "SELECTOR_OPTION", "SEMANTIC_ASSERTION"]).has(type)).sort().map((type) => <option key={type} value={type}>{typeLabel(type)}</option>)}</NativeSelect></Label>
+          <Label className="select-field"><span className="sr-only">Model</span><NativeSelect aria-label="Model" value={modelId} onChange={(event) => change({ modelId: event.target.value, reportId: "" })}><option value="">All models</option>{models.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</NativeSelect></Label>
+          <Label className="select-field"><span className="sr-only">Report</span><NativeSelect aria-label="Report" value={reportId} onChange={(event) => change({ reportId: event.target.value, modelId: "" })}><option value="">All reports</option>{reports.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</NativeSelect></Label>
+          <Label className="select-field"><span className="sr-only">Type</span><NativeSelect aria-label="Search object type" value={objectType} onChange={(event) => change({ objectType: event.target.value })}><option value="">All types</option>{Object.keys(overview.object_counts || {}).filter((type) => !new Set(["ALIAS", "BUSINESS_CONCEPT", "ROLE", "BEHAVIOR", "CONFLICT", "SELECTOR", "SELECTOR_OPTION", "SEMANTIC_ASSERTION"]).has(type)).sort().map((type) => <option key={type} value={type}>{typeLabel(type)}</option>)}</NativeSelect></Label>
           {modelId || reportId || objectType ? <Button variant="ghost" size="sm" className="clear-filters" onClick={() => change({ modelId: "", reportId: "", objectType: "" })}><X />Clear filters</Button> : null}
         </div>
-      </div>
-      <div className="search-status" role="status" aria-live="polite">
-        {active ? loading ? "Searching…" : result ? (
-          (result.total === 0 || result.items.length === 0)
-            ? (!query.trim() ? "No objects" : "No matches")
-            : `${result.items.length} of ${result.total} ${!query.trim() ? (result.total === 1 ? "object" : "objects") : (result.total === 1 ? "match" : "matches")}`
-        ) : "" : "Search by name, paste part of a formula, or choose a filter."}
+        <div className="search-status" role="status" aria-live="polite">
+          {active ? loading ? "Searching…" : result ? (
+            (result.total === 0 || result.items.length === 0)
+              ? (!query.trim() ? "No objects" : "No matches")
+              : `${result.items.length} of ${formatCount(result.total)} ${!query.trim() ? (result.total === 1 ? "object" : "objects") : (result.total === 1 ? "match" : "matches")}`
+          ) : "" : ""}
+        </div>
       </div>
       {error ? <div className="search-error" role="alert"><TriangleAlert aria-hidden="true" /><span>{readableText(error.message)}</span><Button variant="outline" size="sm" onClick={() => runSearch(error.offset)}>Retry search</Button></div> : null}
       {!active ? <EmptyState icon={<NavIcon name="search" size={20} />} title="What are you looking for?" detail="Find a measure to inspect its formula and dependencies." action={<p className="empty-hint"><kbd>Ctrl</kbd><kbd>K</kbd> jumps here from anywhere</p>} /> : null}
       {active && !loading && !result?.items?.length && !error ? <EmptyState icon={<NavIcon name="search" size={20} />} title="No matches" detail="Try a shorter name or clear the filters." /> : null}
-      {active && result?.items?.length ? <div className="search-results" onKeyDown={(event) => listKeys(event, () => panel.current?.querySelector(".search-field input")?.focus())}>{result.items.map((item) => { const object = searchObject(item); const color = artifactColor(object, colors); const match = browse && !query.trim() ? "" : searchMatch(item); return <Button variant="ghost" key={object.id} data-result-id={object.id} className="search-result" style={{ "--artifact-color": color }} onClick={() => { onSession((current) => ({ ...current, selectedId: object.id, scrollY: contentScroller().scrollTop })); onSelect(object.id, "inspector"); }}><TypeGlyph node={object} colors={colors} size="sm" /><span className="result-type">{typeLabel(object.type)}</span><span className="result-copy"><strong>{labelFor(object)}</strong><small>{scopeName(object) || readableText(object.description) || typeLabel(object.type)}</small></span>{match ? <span className="result-match">{match}</span> : null}<ChevronRight className="result-chevron" aria-hidden="true" /></Button>; })}</div> : null}
+      {active && result?.items?.length ? <div className="search-results" onKeyDown={(event) => listKeys(event, () => panel.current?.querySelector(".search-field input")?.focus())}>{folded.map(({ item, copies }) => {
+        const first = searchObject(item);
+        const open = copies.length > 1 && unfolded.has(first.id);
+        const shown = copies.length > 1 && !open ? [item] : copies;
+        return shown.map((entry, index) => {
+          const object = searchObject(entry);
+          const color = artifactColor(object, colors);
+          const snippet = browse && !query.trim() ? null : searchSnippet(entry, query);
+          const lead = copies.length > 1 && index === 0;
+          const where = lead && !open ? `${copies.length} ${first.report_id ? "reports" : "models"}` : scopeName(object) || readableText(object.description) || "";
+          return <Button variant="ghost" key={object.id} data-result-id={object.id} className={`search-result ${copies.length > 1 && index ? "is-copy" : ""}`} style={{ "--artifact-color": color }} onClick={() => { onSession((current) => ({ ...current, selectedId: object.id, scrollY: contentScroller().scrollTop })); onSelect(object.id, "inspector"); }}>
+            <TypeGlyph node={object} colors={colors} size="sm" />
+            <span className="result-type sr-only">{typeLabel(object.type)}</span>
+            <span className="result-copy"><strong><Marked text={labelFor(object)} query={query.trim()} /></strong>{where ? <small>{where}</small> : null}{snippet ? <code className={`result-snippet ${snippet.formula ? "is-formula" : ""}`}>{snippet.parts[0]}<mark>{snippet.parts[1]}</mark>{snippet.parts[2]}</code> : null}</span>
+            {lead ? <span role="button" tabIndex={-1} className="result-fold" aria-label={open ? "Show one row" : `Show all ${copies.length}`} title={open ? "Show one row" : `Show all ${copies.length}`} onClick={(event) => { event.stopPropagation(); setUnfolded((current) => { const next = new Set(current); if (next.has(first.id)) next.delete(first.id); else next.add(first.id); return next; }); }}>×{copies.length}<ChevronDown className={open ? "is-open" : ""} aria-hidden="true" /></span> : <span />}
+            <ChevronRight className="result-chevron" aria-hidden="true" />
+          </Button>;
+        });
+      })}</div> : null}
       {active && result?.has_more ? <div className="search-footer"><Button variant="outline" size="sm" disabled={loading} onClick={() => runSearch(Number(result.offset || 0) + Number(result.limit || 50))}>{pending ? "Loading…" : "More results"}</Button></div> : null}
     </Card>
   </div>;
@@ -1532,6 +1687,15 @@ function ConfigView({ transport, config, onSaved, onScan, scanning }) {
     const next = { ...defaults, ...loaded };
     setDraft({ ...next, sources: Array.isArray(loaded.sources) ? loaded.sources : [] });
   }, [config]);
+  // Which saved paths exist on disk: a wrong path is flagged here, before a scan fails on it.
+  const [sourceStatus, setSourceStatus] = useState({});
+  const savedSources = JSON.stringify(config?.sources || []);
+  useEffect(() => {
+    let active = true;
+    if (typeof transport.getSourceStatus !== "function") return undefined;
+    transport.getSourceStatus().then((result) => { if (active) setSourceStatus(Object.fromEntries((result?.sources || []).map((item) => [item.path, Boolean(item.exists)]))); }).catch(() => {});
+    return () => { active = false; };
+  }, [transport, savedSources]);
   if (!draft) return <Card className="panel"><EmptyState title="Loading configuration" detail="Reading the local project settings." /></Card>;
   const updateSource = (index, value) => setDraft((current) => ({ ...current, sources: current.sources.map((source, sourceIndex) => sourceIndex === index ? value : source) }));
   const dirty = draft.name !== config?.name || JSON.stringify(draft.sources) !== JSON.stringify(config?.sources || []);
@@ -1548,9 +1712,18 @@ function ConfigView({ transport, config, onSaved, onScan, scanning }) {
         <Label className="config-field"><span>Project name</span><Input value={draft.name || ""} onChange={(event) => setDraft({ ...draft, name: event.target.value })} placeholder="Finance reporting" /></Label>
       </div>
       <div className="settings-section config-section">
-        <div className="settings-section-copy"><h3>Power BI inputs</h3><p>Use full Windows paths for PBIP projects or model JSON files.</p></div>
+        <div className="settings-section-copy"><h3>Power BI inputs</h3><p>PBIP project folders or model JSON files, as full paths.</p></div>
         <div className="source-editor">
-          {draft.sources.length ? <div className="source-list">{draft.sources.map((source, index) => <div className="source-row" key={index}><FileText className="source-icon" aria-hidden="true" /><Input value={source} onChange={(event) => updateSource(index, event.target.value)} placeholder="C:\\Reports\\Finance\\Finance.pbip" aria-label={`Source ${index + 1}`} /><Button variant="ghost" size="icon-sm" onClick={() => setDraft({ ...draft, sources: draft.sources.filter((_, sourceIndex) => sourceIndex !== index) })} aria-label={`Remove source ${index + 1}`}><X /></Button></div>)}</div> : <EmptyState icon={<FileText />} title="No sources" detail="Add a PBIP project or model JSON file." />}
+          {draft.sources.length ? <div className="source-list">{draft.sources.map((source, index) => {
+            const state = source === config?.sources?.[index] ? sourceStatus[source] : undefined;
+            const tone = state === undefined ? "unknown" : state ? "ok" : "bad";
+            return <div className={`source-row source-${tone}`} key={index}>
+              <span className="source-state" role="img" aria-label={tone === "ok" ? "Found" : tone === "bad" ? "Not found at this path" : "Not checked yet"} title={tone === "ok" ? "Found" : tone === "bad" ? "Not found at this path" : "Not checked yet"} />
+              <strong className="source-name" title={source}>{sourceName(source) || "New source"}</strong>
+              <Input value={source} onChange={(event) => updateSource(index, event.target.value)} placeholder={pathExample()} aria-label={`Source ${index + 1}`} aria-invalid={tone === "bad" || undefined} />
+              <Button variant="ghost" size="icon-sm" onClick={() => setDraft({ ...draft, sources: draft.sources.filter((_, sourceIndex) => sourceIndex !== index) })} aria-label={`Remove source ${index + 1}`}><X /></Button>
+            </div>;
+          })}</div> : <EmptyState icon={<FileText />} title="No sources" detail="Add a PBIP project or model JSON file." />}
           <Button variant="outline" size="sm" className="add-source" onClick={() => setDraft({ ...draft, sources: [...draft.sources, ""] })}><Plus />Add source</Button>
         </div>
       </div>
@@ -1598,7 +1771,7 @@ function Inspector({ node, details, loading, error, snapshot, snapshotLoaded, sn
   const color = artifactColor(node, colors);
   const scopeTrail = [node.model_id, node.report_id, properties.table_id].filter((id) => id && id !== node.id).map(scopeName).filter(Boolean);
   return <>
-    <PageHeading title={labelFor(node)} description={scopeTrail.join(" · ")} action={<Button variant="outline" onClick={onGraph}><Waypoints />Show in graph</Button>}>
+    <PageHeading title={labelFor(node)} description={scopeTrail.join(" · ")} action={<span className="object-actions"><CopyLinkButton /><Button variant="outline" onClick={onGraph}><Waypoints />Show in graph</Button></span>}>
       <div className="object-summary-state" style={{ "--artifact-color": color }}><span className="type-chip" style={artifactStyle(node, colors)}><TypeIcon type={node.type} />{typeLabel(node.type)}</span><StatusBadge value={node.status} /></div>
     </PageHeading>
     <div className="object-workspace">
@@ -1609,19 +1782,20 @@ function Inspector({ node, details, loading, error, snapshot, snapshotLoaded, sn
           {fields.length ? <dl className="metadata-grid">{fields.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl> : null}
         </Card>
         {expression ? <ExpressionBlock expression={formatValue(expression)} /> : null}
+        <ObjectContents groups={details?.contents} colors={colors} onSelect={(id) => onSelect(id, "inspector")} />
         <UsageRoles profile={details?.usage_roles} />
-        {candidates.length || warnings.length ? <Disclosure title="Review & evidence" badge={`${candidates.length} suggestions${warnings.length ? ` · ${warnings.length} warnings` : ""}`} className="object-metadata object-review panel" defaultOpen>{candidates.map((item) => { const itemId = item.id || item.target || itemTarget(item); return <div className="object-review-item" key={itemId}><CandidateActions item={item} node={node} onReview={onReview} disabled={scanning} isEditing={activeEditId === itemId} onStartEdit={() => setActiveEditId(itemId)} onCancelEdit={() => setActiveEditId(null)} /><EvidenceCard item={item} /></div>; })}{warnings.map((warning) => <div className="warning-card" key={warning.id || formatEvidence(warning.reason)}><strong><TriangleAlert aria-hidden="true" />Conflict</strong><p>{formatEvidence(warning.reason || warning.message || warning.description || "Conflicting evidence needs review.")}</p></div>)}</Disclosure> : null}
+        {candidates.length || warnings.length ? <Disclosure title="Review & evidence" badge={`${formatPlural(candidates.length, "suggestion")}${warnings.length ? ` · ${formatPlural(warnings.length, "warning")}` : ""}`} className="object-metadata object-review panel" defaultOpen>{candidates.map((item) => { const itemId = item.id || item.target || itemTarget(item); return <div className="object-review-item" key={itemId}><CandidateActions item={item} node={node} onReview={onReview} disabled={scanning} isEditing={activeEditId === itemId} onStartEdit={() => setActiveEditId(itemId)} onCancelEdit={() => setActiveEditId(null)} /><EvidenceCard item={item} /></div>; })}{warnings.map((warning) => <div className="warning-card" key={warning.id || formatEvidence(warning.reason)}><strong><TriangleAlert aria-hidden="true" />Conflict</strong><p>{formatEvidence(warning.reason || warning.message || warning.description || "Conflicting evidence needs review.")}</p></div>)}</Disclosure> : null}
         {snapshotError ? <div className="inline-error" role="alert"><p>{snapshotLoaded ? "Review evidence could not be refreshed. Showing last loaded evidence." : "Review evidence unavailable."} {readableText(snapshotError)}</p><Button variant="outline" size="sm" onClick={onEvidenceRetry}>Retry evidence</Button></div> : !snapshotLoaded ? <p className="muted-copy object-review" role="status">Loading review evidence…</p> : null}
         {connected.some((edge) => !usageTypes.has(edge.type) && edge.type !== "OBSERVED_WITH") ? <Disclosure title="Other relationships" className="object-metadata object-other panel"><RelationshipGroup title="Connected objects" nodeId={node.id} edges={connected.filter((edge) => !usageTypes.has(edge.type) && edge.type !== "OBSERVED_WITH")} nodes={relatedNodes} onSelect={onSelect} empty="No other relationships." colors={colors} /></Disclosure> : null}
         {observations.length ? <Disclosure title="Observed report usage" badge={observations.length} className="object-metadata object-observed panel">{observations.map((edge) => <div className="usage-row" key={edge.id}><span>{scopeName(edge.from_id === node.id ? edge.to_id : edge.from_id)}</span><strong>{formatValue(edge.properties?.count || edge.count || "observed")}</strong></div>)}<p className="footnote">Co-occurrence does not establish compatibility.</p></Disclosure> : null}
       </div>
       <Card className="panel object-lineage">
         <h2 className="panel-title">Lineage &amp; usage</h2>
-        <VisualBindings bindings={details?.visual_bindings} onSelect={(item) => onSelect(item.id, "inspector")} />
+        <VisualBindings bindings={details?.visual_bindings} wells={details?.field_wells} onSelect={(item) => onSelect(item.id, "inspector")} />
         <RelationshipGroup title="Used by" nodeId={node.id} edges={incoming.filter((edge) => usageTypes.has(edge.type))} nodes={relatedNodes} onSelect={onSelect} empty="No direct uses recorded." colors={colors} />
         <RelationshipGroup title="Dependencies" nodeId={node.id} edges={outgoing.filter((edge) => usageTypes.has(edge.type))} nodes={relatedNodes} onSelect={onSelect} empty="No direct dependencies recorded." colors={colors} />
         <p className="footnote">Direct links from the latest scan.</p>
-        <ImpactExplorer node={node} nodes={relatedNodes} onSelect={onSelect} transport={transport} />
+        <Suspense fallback={null}><ImpactExplorer node={node} nodes={relatedNodes} onSelect={onSelect} transport={transport} /></Suspense>
       </Card>
     </div>
   </>;
@@ -1707,7 +1881,7 @@ function reviewKeys(event, onCancelEdit) {
 const REVIEW_PAGE = 50;
 
 function ReviewQueue({ session, onSession, snapshot, loaded, loading, error, onRetry, overview, onSelect, onReview, onBulkReview, scanning, colors, auditTrail = [], onUndoReview }) {
-  const { issue = "ALL", objectType = "ALL", modelId = "ALL", reportId = "ALL", sort = "confidence-high", tab = "queue" } = session;
+  const { issue = "ALL", objectType = "ALL", modelId = "ALL", reportId = "ALL", sort = "confidence-high", tab = "queue", group = "" } = session;
   const change = (values) => onSession((current) => ({ ...current, ...values }));
   const panel = useRef(null);
   const toast = useToast();
@@ -1771,9 +1945,18 @@ function ReviewQueue({ session, onSession, snapshot, loaded, loading, error, onR
     ? <div ref={more} className="queue-more"><Button variant="ghost" size="sm" onClick={() => setShown((count) => count + REVIEW_PAGE)}>Show more ({(longest - shown).toLocaleString()} left)</Button></div>
     : null;
   const approvableItems = useMemo(() => filtered.filter((item) => item.issue !== "conflict" && item.issue !== "stale"), [filtered]);
+  // A long queue opens as patterns (one rule, one basis, one object type), decided once each.
+  const grouping = issue === "low-evidence" ? "none" : group || (filtered.length > GROUP_ABOVE ? "pattern" : "none");
+  const groups = useMemo(() => grouping === "pattern" ? groupReviewItems(filtered, (item) => byId(snapshot.nodes, itemTarget(item))) : [], [grouping, filtered, snapshot.nodes]);
+  const [openGroup, setOpenGroup] = useState({ key: "", shown: REVIEW_PAGE });
 
-  const handleBulkAction = async (action, items) => {
+  // A bulk decision over many suggestions is asked for once more, with its scope named:
+  // "Approve all" and "Reject all" sit next to each other and one click decided thousands.
+  const [bulkConfirm, setBulkConfirm] = useState(null);
+  const handleBulkAction = async (action, items, confirmed = false, scope = "") => {
     if (bulkBusy || scanning || !items?.length) return;
+    if (!confirmed && items.length > BULK_CONFIRM_ABOVE) { setBulkConfirm({ action, items, scope }); return; }
+    setBulkConfirm(null);
     setBulkBusy(true);
     try {
       if (onBulkReview) {
@@ -1850,15 +2033,63 @@ function ReviewQueue({ session, onSession, snapshot, loaded, loading, error, onR
     }
   }
 
+  const reviewRow = (item) => (
+    <ReviewItem
+      colors={colors}
+      key={item.id || `${item.issue}-${itemTarget(item)}`}
+      item={item}
+      nodes={snapshot.nodes}
+      edges={snapshot.edges}
+      disabled={scanning}
+      isEditing={activeEditId === (item.id || itemTarget(item))}
+      onStartEdit={() => setActiveEditId(item.id || itemTarget(item))}
+      onCancelEdit={() => setActiveEditId(null)}
+      onSelect={(id, nextView) => {
+        change({ selectedId: item.id || itemTarget(item), scrollY: contentScroller().scrollTop });
+        onSelect(id, nextView);
+      }}
+      onReview={onReview}
+    />
+  );
+  const percent = (value) => `${Math.round(value * 100)} %`;
+  const groupList = grouping === "pattern" ? <div className="review-groups">
+    <div className="review-group-columns" aria-hidden="true"><span>Pattern</span><span>Suggestions</span><span>Confidence</span><span>Decision</span></div>
+    {groups.map((entry) => {
+      const open = openGroup.key === entry.key;
+      const count = entry.items.length;
+      const label = `${entry.title}${entry.scope ? ` · ${entry.scope}` : ""}`;
+      return <section className={`review-group${open ? " is-open" : ""}`} key={entry.key} aria-label={label}>
+        <div className="review-group-head">
+          <button type="button" className="review-group-toggle" aria-expanded={open} onClick={() => setOpenGroup(open ? { key: "", shown: REVIEW_PAGE } : { key: entry.key, shown: REVIEW_PAGE })}>
+            <ChevronRight className={open ? "is-open" : ""} aria-hidden="true" />
+            <span className="review-group-title">{entry.title}</span>
+            {entry.scope ? <span className="review-group-scope">{entry.scope}</span> : null}
+          </button>
+          <span className="review-group-count" data-ui-number="">{formatCount(count)}{entry.names && entry.names < count ? <small> · {formatCount(entry.names)} names</small> : null}</span>
+          <span className="review-group-confidence" data-ui-number="">{entry.bulk ? (entry.low === entry.high ? percent(entry.high) : `${percent(entry.low)} – ${percent(entry.high)}`) : "—"}</span>
+          <span className="review-group-actions" data-ui-actions="">
+            {entry.bulk ? <>
+              <Button variant="outline" size="sm" className="group-approve" disabled={bulkBusy || scanning} aria-label={`Approve ${formatCount(count)}: ${label}`} onClick={() => handleBulkAction("approve", entry.items, false, label)}><Check aria-hidden="true" />Approve</Button>
+              <Button variant="ghost" size="sm" className="group-reject" disabled={bulkBusy || scanning} aria-label={`Reject ${formatCount(count)}: ${label}`} onClick={() => handleBulkAction("reject", entry.items, false, label)}><X aria-hidden="true" />Reject</Button>
+            </> : <small>One at a time</small>}
+          </span>
+        </div>
+        {open ? <>
+          <div className="queue-list" onKeyDown={(e) => reviewKeys(e, () => setActiveEditId(null))}>{entry.items.slice(0, openGroup.shown).map(reviewRow)}</div>
+          {count > openGroup.shown ? <div className="queue-more"><Button variant="ghost" size="sm" onClick={() => setOpenGroup((current) => ({ ...current, shown: current.shown + REVIEW_PAGE }))}>Show more ({formatCount(count - openGroup.shown)} left)</Button></div> : null}
+        </> : null}
+      </section>;
+    })}
+  </div> : null;
   const scopes = [...scopeOptions(overview, "model"), ...scopeOptions(overview, "report"), ...snapshot.nodes];
   const scopeName = (id, kind, index) => scopes.find((node) => node.id === id)?.name || `${kind} ${index + 1}`;
   const hasFilters = issue !== "ALL" || objectType !== "ALL" || modelId !== "ALL" || reportId !== "ALL";
   return <div ref={panel}>
     <div className="queue-header-row">
-      <PageHeading title="Review queue" description="Confirm suggested meanings with the evidence behind each one." />
+      <PageHeading quiet title="Review queue" />
       <SegmentedControl
         options={[
-          { value: "queue", label: `To review (${filtered.length})` },
+          { value: "queue", label: `To review (${formatCount(filtered.length)})` },
           { value: "reviewed", label: `Reviewed (${allReviewed.length})` },
         ]}
         value={tab}
@@ -1909,30 +2140,38 @@ function ReviewQueue({ session, onSession, snapshot, loaded, loading, error, onR
       </>
     ) : (
       <>
-        <p className="review-purpose"><span className="queue-count"><strong data-ui-number="">{loading ? "…" : filtered.length}</strong>{loading ? "Loading…" : " to review"}</span><span className="review-purpose-copy">Approval saves a trusted label for search and context; rejection excludes it. Power BI files stay unchanged.</span><span className="review-keys" aria-hidden="true"><kbd>J</kbd><kbd>K</kbd> move <kbd>A</kbd> approve <kbd>R</kbd> reject</span></p>
+        <p className="review-purpose"><span className="queue-count"><strong data-ui-number="">{loading ? "…" : formatCount(filtered.length)}</strong>{loading ? "Loading…" : " to review"}</span><span className="review-purpose-copy" /><span className="review-keys" aria-hidden="true"><kbd>J</kbd><kbd>K</kbd> move <kbd>A</kbd> approve <kbd>R</kbd> reject</span></p>
         <div className="queue-toolbar" data-ui-actions="">
           <Label className="select-field"><span>Issue</span><NativeSelect aria-label="Issue" value={issue} onChange={(event) => change({ issue: event.target.value })}><option value="ALL">All issues</option><option value="candidate">Suggestions</option><option value="low-evidence">Low evidence</option><option value="conflict">Conflicts</option><option value="stale">Outdated decisions</option></NativeSelect></Label>
           <Label className="select-field"><span>Object</span><NativeSelect aria-label="Object" value={objectType} onChange={(event) => change({ objectType: event.target.value })}><option value="ALL">All types</option>{types.map((type) => <option key={type} value={type}>{typeLabel(type)}</option>)}</NativeSelect></Label>
           {models.length > 1 ? <Label className="select-field"><span>Model</span><NativeSelect aria-label="Model" value={modelId} onChange={(event) => change({ modelId: event.target.value, reportId: "ALL" })}><option value="ALL">All models</option>{models.map((value, index) => <option key={value} value={value}>{scopeName(value, "Model", index)}</option>)}</NativeSelect></Label> : null}
           {reports.length > 1 ? <Label className="select-field"><span>Report</span><NativeSelect aria-label="Report" value={reportId} onChange={(event) => change({ reportId: event.target.value, modelId: "ALL" })}><option value="ALL">All reports</option>{reports.map((value, index) => <option key={value} value={value}>{scopeName(value, "Report", index)}</option>)}</NativeSelect></Label> : null}
           {hasFilters ? <Button variant="ghost" size="sm" onClick={() => change({ issue: "ALL", objectType: "ALL", modelId: "ALL", reportId: "ALL" })}><X />Clear filters</Button> : null}
+          {issue !== "low-evidence" && filtered.length > 1 ? <Label className="select-field select-group"><span>Group</span><NativeSelect aria-label="Group" value={grouping} onChange={(event) => change({ group: event.target.value })}><option value="pattern">By pattern</option><option value="none">No grouping</option></NativeSelect></Label> : null}
           <Label className="select-field select-sort"><span>Sort</span><NativeSelect aria-label="Sort" value={sort} onChange={(event) => change({ sort: event.target.value })}><option value="confidence-high">Most certain first</option><option value="confidence-low">Least certain first</option><option value="impact-high">Highest impact first</option><option value="impact-low">Lowest impact first</option></NativeSelect></Label>
-          {approvableItems.length > 0 ? (
+          {approvableItems.length > 0 && grouping !== "pattern" ? (
             <div className="queue-bulk-actions" data-ui-actions="">
               <Button variant="outline" size="sm" className="bulk-approve" disabled={bulkBusy || scanning} onClick={() => handleBulkAction("approve", approvableItems)}>
                 <Check className="size-4" aria-hidden="true" />
-                {hasFilters ? `Approve filtered (${approvableItems.length})` : `Approve all (${approvableItems.length})`}
+                {hasFilters ? `Approve filtered (${formatCount(approvableItems.length)})` : `Approve all (${formatCount(approvableItems.length)})`}
               </Button>
               <Button variant="ghost" size="sm" className="bulk-reject" disabled={bulkBusy || scanning} onClick={() => handleBulkAction("reject", approvableItems)}>
                 <X className="size-4" aria-hidden="true" />
-                {hasFilters ? `Reject filtered (${approvableItems.length})` : `Reject all (${approvableItems.length})`}
+                {hasFilters ? `Reject filtered (${formatCount(approvableItems.length)})` : `Reject all (${formatCount(approvableItems.length)})`}
               </Button>
             </div>
           ) : null}
         </div>
+        <AlertDialog open={Boolean(bulkConfirm)} onOpenChange={(open) => { if (!open) setBulkConfirm(null); }}>
+          {bulkConfirm ? <AlertDialogContent
+            title={`${bulkConfirm.action === "approve" ? "Approve" : "Reject"} ${formatCount(bulkConfirm.items.length)} suggestions?`}
+            description={`${bulkConfirm.scope ? `Every suggestion in “${bulkConfirm.scope}”` : bulkConfirm.items.length === approvableItems.length ? (hasFilters ? "Every suggestion that matches the current filters" : "Every open suggestion in the project") : "The listed suggestions"} will be ${bulkConfirm.action === "approve" ? "approved" : "rejected"}. Each decision can be changed later under Reviewed.`}
+            footer={<><AlertDialogCancel asChild><Button variant="outline">Cancel</Button></AlertDialogCancel><AlertDialogAction asChild><Button variant={bulkConfirm.action === "approve" ? "default" : "destructive"} onClick={() => handleBulkAction(bulkConfirm.action, bulkConfirm.items, true)}>{bulkConfirm.action === "approve" ? "Approve" : "Reject"} {formatCount(bulkConfirm.items.length)}</Button></AlertDialogAction></>}
+          /> : null}
+        </AlertDialog>
         <Card className="panel queue-panel" aria-busy={loading}>
-          {loading ? <div className="queue-loading">{[0, 1, 2].map((index) => <Skeleton className="skeleton-row-item" key={index} />)}<p className="sr-only" role="status">Loading suggestions…</p></div> : filtered.length ? <>
-            <div className="review-columns" aria-hidden="true"><span>Object &amp; suggestion</span><span>Why review this?</span><span>Confidence</span><span>Decision</span></div>
+          {loading ? <div className="queue-loading">{[0, 1, 2].map((index) => <Skeleton className="skeleton-row-item" key={index} />)}<p className="sr-only" role="status">Loading suggestions…</p></div> : filtered.length && groupList ? groupList : filtered.length ? <>
+            <div className="review-columns is-pending" aria-hidden="true"><span>Object</span><span>Suggestion</span><span>Based on</span><span>Confidence</span><span>Decision</span></div>
             {issue === "low-evidence" ? (
               <div className="low-evidence-group" role="region" aria-label="Low evidence suggestions">
                 <div className="low-evidence-header">
@@ -2034,12 +2273,22 @@ function ReviewQueue({ session, onSession, snapshot, loaded, loading, error, onR
               </>
             )}
             {moreRows}
-          </> : <EmptyState icon={hasFilters ? <ShieldCheck /> : <CircleCheck />} tone={hasFilters ? undefined : "ok"} title={hasFilters ? "No matching reviews" : "Queue is clear"} detail={hasFilters ? "Choose different filters to see the remaining reviews." : "All suggestions have been reviewed."} action={hasFilters ? <Button variant="outline" onClick={() => change({ issue: "ALL", objectType: "ALL", modelId: "ALL", reportId: "ALL" })}>Clear filters</Button> : null} />}
+          </> : <EmptyState icon={hasFilters ? <ShieldCheck /> : <CircleCheck />} tone={hasFilters || !overview?.counts?.nodes ? undefined : "ok"} title={hasFilters ? "No matching reviews" : overview?.counts?.nodes ? "Queue is clear" : "Nothing to review yet"} detail={hasFilters ? "Choose different filters to see the remaining reviews." : overview?.counts?.nodes ? "All suggestions have been reviewed." : "Suggestions appear after the first scan."} action={hasFilters ? <Button variant="outline" onClick={() => change({ issue: "ALL", objectType: "ALL", modelId: "ALL", reportId: "ALL" })}>Clear filters</Button> : null} />}
         </Card>
       </>
     )}
     </>}
   </div>;
+}
+
+/** Copies the address of the current place; the hash route opens the same object for a colleague on the same project. */
+function CopyLinkButton() {
+  const toast = useToast();
+  const copy = async () => {
+    try { await navigator.clipboard.writeText(globalThis.location.href); toast.show({ tone: "ok", text: "Link copied" }); }
+    catch { toast.show({ tone: "warn", text: "The link could not be copied" }); }
+  };
+  return <Button variant="ghost" size="icon" className="copy-link" aria-label="Copy link to this object" title="Copy link to this object" onClick={copy}><Link2 /></Button>;
 }
 
 function ReviewedItem({ entry, nodes, colors, onSelect, onUndo, disabled = false }) {
@@ -2101,6 +2350,9 @@ function ReviewedItem({ entry, nodes, colors, onSelect, onUndo, disabled = false
   );
 }
 
+const SUGGESTION_ICONS = { ROLE: Table2, BUSINESS_CONCEPT: Lightbulb, BEHAVIOR: Activity, ALIAS: Tag, SELECTOR: Filter };
+const REVIEW_SOURCES = { object_name: [Type, "From the name"], name: [Type, "From the name"], description: [FileText, "From the description"], dax_ast: [Calculator, "From the formula"], dax_analysis: [Calculator, "From the formula"], rule: [Workflow, "From a rule"] };
+
 function ReviewItem({
   item,
   nodes,
@@ -2161,6 +2413,12 @@ function ReviewItem({
   const level = score === null ? "none" : score >= 80 ? "high" : score >= 50 ? "mid" : "low";
   const confidenceTip = explainConfidence(item, targetNode);
   const expression = targetNode?.expression ?? targetNode?.properties?.expression;
+  const parts = suggestionParts(item);
+  const chipKind = item.issue === "conflict" ? "Conflict" : item.issue === "stale" ? "Outdated" : parts.label;
+  const chipText = item.issue === "conflict" ? "Conflicting suggestions" : item.issue === "stale" ? "Outdated saved decision" : parts.value;
+  const chipTitle = item.issue === "conflict" || item.issue === "stale" ? chipText : `${parts.label}: ${parts.value}`;
+  const ChipIcon = item.issue === "conflict" || item.issue === "stale" ? TriangleAlert : SUGGESTION_ICONS[parts.kind] || Lightbulb;
+  const [SourceIcon, sourceText] = REVIEW_SOURCES[item.item?.properties?.candidate_source || item.properties?.candidate_source || item.source] || REVIEW_SOURCES.rule;
 
   return (
     <div
@@ -2194,13 +2452,19 @@ function ReviewItem({
             </span>
           </Button>
         </ObjectContextPreview>
-        <span className={`review-suggestion-chip review-suggestion issue-${item.issue}`}>
-          {item.issue === "conflict" ? "Conflicting suggestions" : item.issue === "stale" ? "Outdated saved decision" : suggestionLabel(item)}
+      </div>
+
+      <div className="review-suggestion-cell">
+        <span className={`review-suggestion-chip review-suggestion issue-${item.issue}`} title={chipTitle}>
+          <ChipIcon className="size-3.5" aria-hidden="true" />
+          <span className="sr-only">{chipKind}: </span>
+          <span className="review-suggestion-value">{chipText}</span>
         </span>
       </div>
 
-      <div className="review-evidence-summary">
-        <span>{readableText(reason, nodes)}</span>
+      <div className="review-evidence-summary" title={readableText(reason, nodes)}>
+        <SourceIcon className="size-3.5" aria-hidden="true" />
+        <span>{sourceText}</span>
       </div>
 
       <Tooltip content={confidenceTip}>
@@ -2219,6 +2483,7 @@ function ReviewItem({
         onStartEdit={onStartEdit}
         onCancelEdit={onCancelEdit}
         compact={true}
+        iconOnly={true}
       />
 
       {error ? <p className="review-decision-error" role="alert">{error}</p> : null}
