@@ -5,6 +5,16 @@ import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
+// Tests that load another project put the fixture back in a finally. A test that times out can be cut
+// off before that runs, which left every later spec on the wrong project, so afterEach repeats it.
+let restore = null;
+test.afterEach(async ({ request }) => {
+  if (!restore) return;
+  await request.post("/api/config", { data: restore });
+  await request.post("/api/scan", { data: {} });
+  restore = null;
+});
+
 const noInternals = async (page) => {
   const text = await page.locator("main").innerText();
   expect(text).not.toMatch(/(?:model|table|report|semantic|edge):[\w-]|Canonical ID|Source ID|source_hash|raw_metadata|"extractor"|\{"/);
@@ -150,6 +160,7 @@ test("failed decisions remain reviewable and command buttons work without WebGL"
 test("large native scans load whole in Lineage and search finds any object", async ({ page, request }) => {
   test.setTimeout(60000);
   const original = await (await request.get("/api/config")).json();
+  restore = original;
   const folder = await mkdtemp(path.join(tmpdir(), "pbibrain-large-ui-"));
   const source = path.join(folder, "large-model.json");
   await writeFile(source, JSON.stringify({ models: [{ id: "capacity", name: "Capacity planning", tables: [{ id: "plans", name: "Plans", columns: [{ id: "amount", name: "Amount", dataType: "Double" }], measures: Array.from({ length: 180 }, (_, index) => ({ id: `scenario-${index}`, name: `Scenario ${String(index).padStart(3, "0")}`, expression: `SUM('Plans'[Amount]) * ${index + 1}` })) }] }] }));
@@ -173,6 +184,7 @@ test("large native scans load whole in Lineage and search finds any object", asy
   } finally {
     await request.post("/api/config", { data: original });
     await request.post("/api/scan", { data: {} });
+    restore = null;
   }
 });
 
@@ -214,6 +226,7 @@ test("dark default and flat selection remain clear during keyboard navigation", 
 test("native scan exposes full report hierarchy and matching visual bindings", async ({ page, request }) => {
   test.setTimeout(60000);
   const original = await (await request.get("/api/config")).json();
+  restore = original;
   const folder = await mkdtemp(path.join(tmpdir(), "pbibrain-hierarchy-ui-"));
   const source = path.join(folder, "hierarchy.json");
   const fixture = JSON.parse(execFileSync("python", ["-c", "import json; from tests.test_report_hierarchy import hierarchy_sources; m,r=hierarchy_sources(); print(json.dumps({'models':[m], 'reports':[r]}))"], { cwd: fileURLToPath(new URL("../..", import.meta.url)), encoding: "utf8" }));
@@ -266,12 +279,14 @@ test("native scan exposes full report hierarchy and matching visual bindings", a
   } finally {
     await request.post("/api/config", { data: original });
     await request.post("/api/scan", { data: {} });
+    restore = null;
   }
 });
 
 test("shared meaning suggestions keep separate decisions through reload and rescan", async ({ page, request }) => {
   test.setTimeout(60000);
   const original = await (await request.get("/api/config")).json();
+  restore = original;
   const folder = await mkdtemp(path.join(tmpdir(), "pbibrain-shared-review-"));
   const source = path.join(folder, "shared.json");
   const fixture = JSON.parse(execFileSync("python", ["-c", "import json; from tests.test_shared_semantic_review import SOURCE; print(json.dumps(SOURCE))"], { cwd: fileURLToPath(new URL("../..", import.meta.url)), encoding: "utf8" }));
@@ -300,6 +315,7 @@ test("shared meaning suggestions keep separate decisions through reload and resc
   } finally {
     await request.post("/api/config", { data: original });
     await request.post("/api/scan", { data: {} });
+    restore = null;
   }
 });
 
