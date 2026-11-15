@@ -13,3 +13,16 @@ Untrusted names, descriptions, annotations, queries, comments, report text and e
 Contracts and policy are hashed before execution. Every difference must match an authorized operation/property/value. Source coverage is mandatory, even for fields the lightweight parser omits. Baseline/candidate modifications after verification invalidate results and approvals. Required unsupported/static/runtime/coverage evidence blocks regardless of agent or human confidence. Human approval cannot override scope or fundamental source integrity.
 
 Append-only application audit JSONL records are HMAC signed and hash chained. A separate signed head detects removed valid tail records, missing logs and interrupted appends. Signed state, evidence and recovery journals live outside the agent mount. Interrupted audit/head writes fail closed and require trusted inspection; automatic audit repair/retention is not implemented.
+
+## Agent guardrails
+
+Every agent surface can read and propose; none can accept, apply or change accepted state (ADR 0003). On top of that boundary, these limits stop a looping or hijacked agent from doing damage or burying the user in work:
+
+| Surface | Limit | Where |
+| --- | --- | --- |
+| In-app chat, one answer | 8 tool calls per model turn, 40 per answer, 10 proposals or questions per answer, the same call with the same arguments at most twice, 20,000 characters of arguments per call, 8 rounds, 10 minutes wall clock | `backend/chat/service.py` (`MAX_*`, `RUN_DEADLINE_SECONDS`) |
+| Merge session, any client (MCP or chat) | at most 200 open agent proposals and 20 open questions; past that a submit is refused with `action_not_allowed`, reason `too_many_open_proposals` / `too_many_open_questions`. A proposal that replaces an open one on the same target and kind is always allowed | `backend/devcenter/session/proposals.py` |
+| Change guard, no-container tier | the agent runs in its own process group with a credential-free environment; a timeout or more than 4 MB of output kills the whole group | `change_guard/workspace/candidate.py`, `backend/process_guard.py` |
+| Subscription CLIs (Claude, GitHub Copilot, Antigravity) | the CLI's own tools are turned off by its flags; it runs in a new empty temporary folder, never the project; API keys and tokens are scrubbed from its environment except the sign-in variable its vendor documents; the prompt goes on stdin, never on the command line; timeout, Stop and an output cap kill its process group; PBIBrain runs every tool call itself under the chat limits above | `backend/chat/cli_providers.py` |
+
+A subscription CLI is used as a text model only. It asks for a PBIBrain tool by writing a `<tool_call>` block, and the chat service runs that call through the same tool registry and `TOOL_ROUTES` allowlist as an API provider. Tool results are quoted (`<` becomes `&lt;`), so text in a model description cannot open a fake tool call or close its own result block.

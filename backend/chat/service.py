@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import json
 import threading
+import time
 import uuid
 from collections import OrderedDict
 from pathlib import Path
@@ -36,6 +37,15 @@ MAX_HISTORY_MESSAGES = 60
 KEPT_CONVERSATIONS = 10
 KEPT_RUNS = 5
 PROPOSAL_TOOLS = {"proposal_submit": "proposal", "question_ask": "question"}
+
+# Guardrails of one answer (a run). A model that loops, floods or stalls is cut off here, whatever
+# the provider: these limits hold for API providers and for the subscription CLIs alike.
+MAX_TOOL_CALLS_PER_ROUND = 8      # tool calls the model may ask for in one turn; the rest are refused
+MAX_TOOL_CALLS_PER_RUN = 40       # tool calls in one answer
+MAX_PROPOSALS_PER_RUN = 10        # proposal_submit + question_ask in one answer
+MAX_SAME_CALL = 2                 # the same tool with the same arguments, before it is refused
+MAX_TOOL_INPUT_CHARS = 20_000     # JSON size of one tool call's arguments
+RUN_DEADLINE_SECONDS = 600        # wall clock of one answer; the provider is stopped after it
 
 SYSTEM_RULES = (
     "You are the chat panel inside PBIBrain, a desktop app for Power BI models and reports. "
@@ -113,13 +123,27 @@ def context_text(context: Mapping[str, Any] | None) -> str:
 
 
 class ChatRun:
-    def __init__(self, run_id: str, conversation_id: str) -> None:
+    def __init__(self, run_id: str, conversation_id: str, *, deadline_seconds: float | None = None) -> None:
         self.id = run_id
         self.conversation_id = conversation_id
         self.events: list[dict[str, Any]] = []
         self.done = False
         self.stop = threading.Event()
         self._lock = threading.Lock()
+        self.deadline = time.monotonic() + (RUN_DEADLINE_SECONDS if deadline_seconds is None else deadline_seconds)
+        self.timed_out = False
+        # Guardrail counters (see the MAX_* limits).
+        self.tool_calls = 0
+        self.proposals = 0
+        self.seen_calls: dict[str, int] = {}
+
+    def should_stop(self) -> bool:
+        """The Stop button, or the run's wall-clock deadline."""
+
+        if not self.stop.is_set() and time.monotonic() > self.deadline:
+            self.timed_out = True
+            self.stop.set()
+        return self.stop.is_set()
 
     def emit(self, event: dict[str, Any]) -> None:
         with self._lock:
@@ -244,16 +268,19 @@ class ChatService:
             for _ in range(MAX_TOOL_ROUNDS):
                 final: dict[str, Any] | None = None
                 partial: list[str] = []
-                for event in provider.stream(system=self._system(), messages=history, tools=tools, should_stop=run.stop.is_set):
+                for event in provider.stream(system=self._system(), messages=history, tools=tools, should_stop=run.should_stop):
                     if event["type"] == "text":
                         partial.append(event["text"])
                         run.emit({"type": "text", "text": event["text"]})
                     elif event["type"] == "message":
                         final = event
-                if final is None or final["stop_reason"] == "stopped" or run.stop.is_set():
+                if final is None or final["stop_reason"] == "stopped" or run.should_stop():
                     if partial:
                         history.append({"role": "assistant", "content": [{"type": "text", "text": "".join(partial)}]})
                     stop_reason = "stopped"
+                    if run.timed_out:
+                        stop_reason = "time_limit"
+                        run.emit({"type": "error", "message": f"The chat stopped after {round(RUN_DEADLINE_SECONDS / 60)} minutes. Ask again to go on."})
                     return
                 content = final["content"]
                 if content:
@@ -268,8 +295,12 @@ class ChatService:
                 if stop_reason == "max_tokens":
                     run.emit({"type": "error", "message": "The answer was cut off before a tool call was complete."})
                     return
-                results = [self._call(run, block, allowed) for block in uses]
+                results = [self._call(run, block, allowed, index) for index, block in enumerate(uses)]
                 history.append({"role": "user", "content": results})
+                if run.tool_calls >= MAX_TOOL_CALLS_PER_RUN:
+                    stop_reason = "tool_limit"
+                    run.emit({"type": "error", "message": f"The chat stopped after {MAX_TOOL_CALLS_PER_RUN} tool calls. Ask again to go on."})
+                    return
             stop_reason = "tool_limit"
             run.emit({"type": "error", "message": f"The chat stopped after {MAX_TOOL_ROUNDS} rounds of tool calls. Ask again to go on."})
         except ProviderError as exc:
@@ -282,7 +313,32 @@ class ChatService:
             self._trim(history)
             run.emit({"type": "done", "stop_reason": stop_reason})
 
-    def _call(self, run: ChatRun, block: Mapping[str, Any], allowed: set[str]) -> dict[str, Any]:
+    @staticmethod
+    def _guard(run: ChatRun, name: str, arguments: Mapping[str, Any], index: int) -> str | None:
+        """The guardrail refusal for one tool call, or None. Counts the call when it may run."""
+
+        try:
+            key = name + "\x00" + json.dumps(arguments, sort_keys=True, ensure_ascii=False, default=str)
+        except (TypeError, ValueError):
+            return "The tool arguments could not be read."
+        if len(key) > MAX_TOOL_INPUT_CHARS:
+            return f"The tool arguments are longer than {MAX_TOOL_INPUT_CHARS} characters. Send a smaller request."
+        if index >= MAX_TOOL_CALLS_PER_ROUND:
+            return f"Only {MAX_TOOL_CALLS_PER_ROUND} tool calls run per turn. Read these results, then call again if needed."
+        if run.tool_calls >= MAX_TOOL_CALLS_PER_RUN:
+            return f"The tool call limit of this answer ({MAX_TOOL_CALLS_PER_RUN}) is reached. Answer with what you have."
+        if run.seen_calls.get(key, 0) >= MAX_SAME_CALL:
+            return "You already made this exact call. Use its earlier result instead of calling again."
+        if name in PROPOSAL_TOOLS and run.proposals >= MAX_PROPOSALS_PER_RUN:
+            return (f"This answer already made {MAX_PROPOSALS_PER_RUN} proposals or questions. Stop proposing and "
+                    "tell the user what is waiting for review.")
+        run.tool_calls += 1
+        run.seen_calls[key] = run.seen_calls.get(key, 0) + 1
+        if name in PROPOSAL_TOOLS:
+            run.proposals += 1
+        return None
+
+    def _call(self, run: ChatRun, block: Mapping[str, Any], allowed: set[str], index: int = 0) -> dict[str, Any]:
         name = str(block.get("name") or "")
         arguments = block.get("input") if isinstance(block.get("input"), Mapping) else {}
         run.emit({"type": "tool_call", "id": block.get("id"), "name": name, "input": dict(arguments)})
@@ -293,6 +349,8 @@ class ChatService:
             error = f"Unknown tool {name}. Use only the tools you were given."
         elif "__invalid_json__" in arguments:
             error = "The tool arguments were not valid JSON."
+        elif (refused := self._guard(run, name, arguments, index)) is not None:
+            error = refused
         else:
             try:
                 result = tool(**arguments)

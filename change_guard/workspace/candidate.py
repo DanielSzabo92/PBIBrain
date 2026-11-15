@@ -8,6 +8,7 @@ import subprocess
 import uuid
 from backend.snapshots.manifest import source_manifest, safe_path, EXCLUDED_DIRECTORIES, SourceIntegrityError, content_hash, utc_now
 from backend.snapshots.safety import assert_no_credentials
+from backend.process_guard import DEFAULT_MAX_OUTPUT, ProcessLimit, run_bounded
 from change_guard.audit.records import durable_write
 
 
@@ -103,8 +104,9 @@ class LocalCopyIsolation:
 
     backend = LOCAL_COPY_BACKEND
 
-    def __init__(self, *, timeout: int = 300) -> None:
+    def __init__(self, *, timeout: int = 300, max_output: int = DEFAULT_MAX_OUTPUT) -> None:
         self.timeout = timeout
+        self.max_output = max_output
 
     def _receipt(self, candidate: Path, manifest: list[dict], **values) -> dict:
         return {"isolation_version": 1, "backend": LOCAL_COPY_BACKEND, "isolation_strength": "WEAKER_NO_CONTAINER",
@@ -125,10 +127,11 @@ class LocalCopyIsolation:
             raise ValueError("Exact argument list required")
         environment = {name: os.environ[name] for name in _LOCAL_ENVIRONMENT if name in os.environ}
         environment["PBI_GUARD_CANDIDATE"] = str(candidate)
+        # The whole process group is killed on a timeout or a flood of output: an agent's helpers never outlive it.
         try:
-            process = subprocess.run(command, cwd=candidate, env=environment, capture_output=True, timeout=self.timeout, check=False)
-        except subprocess.TimeoutExpired as error:
-            raise IsolationUnavailable("Agent process timed out and was terminated") from error
+            process = run_bounded(command, cwd=candidate, env=environment, timeout=self.timeout, max_output=self.max_output)
+        except ProcessLimit as error:
+            raise IsolationUnavailable(f"Agent process was terminated: {error.reason}") from error
         except OSError as error:
             raise IsolationUnavailable("Agent process could not start") from error
         manifest = assert_candidate_integrity(candidate)

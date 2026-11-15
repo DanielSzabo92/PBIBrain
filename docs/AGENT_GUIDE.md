@@ -164,6 +164,23 @@ sets `has_more` and `next_offset` to continue after the last kept item. The budg
 are a tested contract on a 500-measure, 50-page project (`tests/test_mcp_snapshot.py`);
 a new tool adds its row to `TOOL_BUDGETS` in `backend/mcp_budget.py`.
 
+## In-app chat with a subscription
+
+Settings, AI provider offers, besides an API key or a local endpoint, three subscriptions that
+need no API key. PBIBrain starts the vendor's own signed-in command-line program:
+
+| Provider | Program | Sign in once |
+| --- | --- | --- |
+| Claude subscription | `claude` (Claude Code) | run `claude` and log in with your Claude plan (or `claude setup-token`, kept as `CLAUDE_CODE_OAUTH_TOKEN`) |
+| GitHub Copilot subscription (the one VS Code uses) | `copilot` (GitHub Copilot CLI) | run `copilot` and log in with the GitHub account of your Copilot plan |
+| Google Antigravity subscription | `agy` (Antigravity CLI) | run `agy` and log in with your Google account |
+
+Leave Program empty to find it on PATH, or give its full path. Leave Model empty for the plan's
+default. The CLI's own tools (shell, file edits, web) are turned off; it only answers, and the
+chat runs the PBIBrain tools for it under the usual limits (see `docs/SECURITY_BOUNDARIES.md`,
+Agent guardrails). Test connection sends a short multi-line prompt. The vendors' headless
+flags can change between versions; when a test fails after a CLI update, update PBIBrain too.
+
 ## Markdown export
 
 Export the canonical project snapshot with the CLI:

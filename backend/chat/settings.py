@@ -17,13 +17,18 @@ from typing import Any
 from collections.abc import Mapping
 from urllib.parse import urlsplit
 
+from .cli_providers import PRESETS as CLI_PRESETS, find_program, validate_command, validate_model
 from .credentials import CredentialStore, credential_name
 
 PROVIDERS: dict[str, dict[str, Any]] = {
-    "anthropic": {"label": "Anthropic", "base_url": "https://api.anthropic.com", "model": "claude-opus-5-5", "needs_key": True},
+    "anthropic": {"label": "Anthropic API key", "base_url": "https://api.anthropic.com", "model": "claude-opus-5-5", "needs_key": True},
     "openai": {"label": "OpenAI-compatible endpoint", "base_url": "https://api.openai.com/v1", "model": "", "needs_key": False},
     "local": {"label": "Local endpoint (Ollama, LM Studio)", "base_url": "http://localhost:11434/v1", "model": "llama3.1",
               "needs_key": False},
+    # Subscriptions through the vendor's signed-in CLI (backend/chat/cli_providers.py): no key, no URL;
+    # an empty model means the CLI's own default.
+    **{name: {"label": preset["label"], "base_url": "", "model": "", "needs_key": False, "kind": "cli",
+              "executable": preset["executable"], "sign_in": preset["sign_in"]} for name, preset in CLI_PRESETS.items()},
 }
 DEFAULT_PROVIDER = "anthropic"
 MAX_KEY_CHARS = 512
@@ -81,11 +86,21 @@ class ChatSettings:
             base_url = _clean_url(raw.get("base_url")) or defaults["base_url"]
         except ValueError:
             base_url = defaults["base_url"]
+        if is_cli(provider):
+            base_url = ""
+            try:
+                command = validate_command(provider, str(raw.get("command") or ""))
+            except ValueError:
+                command = ""
+        else:
+            command = ""
         return {"enabled": raw.get("enabled") is True, "provider": provider,
-                "model": str(raw.get("model") or defaults["model"]).strip(), "base_url": base_url}
+                "model": str(raw.get("model") or defaults["model"]).strip(), "base_url": base_url, "command": command}
 
     def api_key(self, settings: Mapping[str, Any] | None = None) -> str | None:
         current = settings or self.stored()
+        if is_cli(current["provider"]):
+            return None  # a subscription CLI signs in by itself; no key is ever sent to it
         try:
             return self.store.get(credential_name(current["provider"], current["base_url"]))
         except OSError:
@@ -100,7 +115,9 @@ class ChatSettings:
         reason = ""
         if not current["enabled"]:
             reason = "Chat is off. Turn it on in Settings, AI provider."
-        elif not current["model"]:
+        elif is_cli(current["provider"]) and find_program(current["provider"], current["command"]) is None:
+            reason = f"The {PROVIDERS[current['provider']]['executable']} program was not found. {PROVIDERS[current['provider']]['sign_in']}"
+        elif not current["model"] and not is_cli(current["provider"]):
             reason = "Choose a model in Settings, AI provider."
         elif needs_key and not has_key:
             reason = "Save an API key in Settings, AI provider."
@@ -112,11 +129,13 @@ class ChatSettings:
             "ready": not reason,
             "reason": reason,
             "providers": [{"id": key, "label": value["label"], "base_url": value["base_url"], "model": value["model"],
-                           "needs_key": value["needs_key"]} for key, value in PROVIDERS.items()],
+                           "needs_key": value["needs_key"], "kind": value.get("kind", "api"),
+                           **({"executable": value["executable"], "sign_in": value["sign_in"]} if value.get("kind") == "cli" else {})}
+                          for key, value in PROVIDERS.items()],
         }
 
     def save(self, payload: Mapping[str, Any]) -> dict[str, Any]:
-        allowed = {"enabled", "provider", "model", "base_url", "api_key", "clear_key"}
+        allowed = {"enabled", "provider", "model", "base_url", "api_key", "clear_key", "command"}
         unknown = set(payload) - allowed
         if unknown:
             raise ValueError(f"Unknown AI setting: {sorted(unknown)[0]}")
@@ -124,7 +143,9 @@ class ChatSettings:
             current = self.stored()
             provider = str(payload.get("provider", current["provider"]))
             if provider not in PROVIDERS:
-                raise ValueError("The provider must be anthropic, openai or local")
+                raise ValueError("The provider must be one of: " + ", ".join(PROVIDERS))
+            if is_cli(provider):
+                return self._save_cli(payload, current, provider)
             if provider != current["provider"] and "base_url" not in payload:
                 base_url = PROVIDERS[provider]["base_url"]
             else:
@@ -144,13 +165,36 @@ class ChatSettings:
                 self.store.delete(name)
             elif isinstance(key, str) and key.strip():
                 self.store.set(name, key.strip())
-            data = self._file()
-            data["ai"] = {"enabled": enabled, "provider": provider, "model": model, "base_url": base_url}
-            if self.path is None:
-                self._memory = data
-            else:
-                self.path.parent.mkdir(parents=True, exist_ok=True)
-                temporary = self.path.with_suffix(".tmp")
-                temporary.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-                temporary.replace(self.path)
+            self._write({"enabled": enabled, "provider": provider, "model": model, "base_url": base_url})
         return self.public()
+
+    def _save_cli(self, payload: Mapping[str, Any], current: Mapping[str, Any], provider: str) -> dict[str, Any]:
+        """A subscription CLI: no key and no URL are accepted; the model and the program path are checked."""
+
+        if isinstance(payload.get("api_key"), str) and payload["api_key"].strip():
+            raise ValueError("This provider uses your subscription sign-in in its own program. It takes no API key.")
+        if str(payload.get("base_url") or "").strip():
+            raise ValueError("This provider runs a program on this computer. It takes no base URL.")
+        same = provider == current["provider"]
+        model = validate_model(str(payload.get("model", current["model"] if same else "")))
+        command = validate_command(provider, str(payload.get("command", current["command"] if same else "")))
+        enabled = payload.get("enabled", current["enabled"])
+        if not isinstance(enabled, bool):
+            raise ValueError("enabled must be true or false")
+        self._write({"enabled": enabled, "provider": provider, "model": model, "base_url": "", "command": command})
+        return self.public()
+
+    def _write(self, ai: Mapping[str, Any]) -> None:
+        data = self._file()
+        data["ai"] = dict(ai)
+        if self.path is None:
+            self._memory = data
+        else:
+            self.path.parent.mkdir(parents=True, exist_ok=True)
+            temporary = self.path.with_suffix(".tmp")
+            temporary.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+            temporary.replace(self.path)
+
+
+def is_cli(provider: str) -> bool:
+    return PROVIDERS.get(provider, {}).get("kind") == "cli"

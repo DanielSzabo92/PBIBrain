@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Check, KeyRound, PlugZap, TriangleAlert } from "lucide-react";
+import { Check, KeyRound, PlugZap, ShieldCheck, TriangleAlert } from "lucide-react";
 import { Button } from "./ui/button";
 import { Card } from "./ui/card";
 import { Input } from "./ui/input";
@@ -23,7 +23,7 @@ export default function AISettings({ transport, onSaved }) {
 
   const accept = (next) => {
     setSettings(next);
-    setDraft({ enabled: next.enabled, provider: next.provider, model: next.model, base_url: next.base_url });
+    setDraft({ enabled: next.enabled, provider: next.provider, model: next.model, base_url: next.base_url, command: next.command || "" });
     onSaved?.(next);
   };
   useEffect(() => {
@@ -39,10 +39,16 @@ export default function AISettings({ transport, onSaved }) {
   const provider = providers.find((item) => item.id === draft.provider) || providers[0];
   const changeProvider = (id) => {
     const next = providers.find((item) => item.id === id);
-    setDraft((current) => ({ ...current, provider: id, model: next?.model || "", base_url: next?.base_url || "" }));
+    setDraft((current) => ({ ...current, provider: id, model: next?.model || "", base_url: next?.base_url || "", command: "" }));
     setTest(null);
   };
 
+  const cli = provider?.kind === "cli";
+  // A subscription CLI takes no key and no URL: send only what it accepts.
+  const fields = (values) => {
+    const { base_url: _url, command, ...rest } = values;
+    return cli ? { ...rest, command: command || "" } : { ...rest, base_url: values.base_url };
+  };
   const sameEndpoint = draft.provider === settings.provider && draft.base_url === settings.base_url;
   const keySaved = settings.has_key && sameEndpoint;
 
@@ -50,8 +56,8 @@ export default function AISettings({ transport, onSaved }) {
   const save = async (extra = {}) => {
     setBusy(true); setError(""); setNotice(""); setTest(null);
     try {
-      const body = { ...draft, ...extra };
-      if (apiKey.trim()) {
+      const body = fields({ ...draft, ...extra });
+      if (apiKey.trim() && !cli) {
         body.api_key = apiKey.trim();
         body.enabled = true;
       }
@@ -73,8 +79,8 @@ export default function AISettings({ transport, onSaved }) {
     setDraft((current) => ({ ...current, enabled: checked }));
     setError(""); setNotice(""); setTest(null);
     try {
-      const body = { ...draft, enabled: checked };
-      if (apiKey.trim()) body.api_key = apiKey.trim();
+      const body = fields({ ...draft, enabled: checked });
+      if (apiKey.trim() && !cli) body.api_key = apiKey.trim();
       const next = await transport.saveChatSettings(body);
       // Keep edits made while this save was in flight (a provider picked right after the switch);
       // only the switch takes the saved value.
@@ -123,10 +129,19 @@ export default function AISettings({ transport, onSaved }) {
         </div>
         <div className="config-field">
           <Label htmlFor="ai-model"><span>Model</span></Label>
-          <Input id="ai-model" value={draft.model} disabled={busy} placeholder={provider?.model || "model name"} spellCheck={false}
+          <Input id="ai-model" value={draft.model} disabled={busy} placeholder={cli ? "Default of your plan" : provider?.model || "model name"} spellCheck={false}
             onChange={(event) => setDraft((current) => ({ ...current, model: event.target.value }))} />
         </div>
-        <div className="config-field">
+        {cli ? <div className="config-field">
+          <Label htmlFor="ai-command"><span>Program (optional)</span></Label>
+          <Input id="ai-command" value={draft.command || ""} disabled={busy} placeholder={`${provider.executable} (found on PATH)`} spellCheck={false}
+            aria-describedby="ai-cli-hint" onChange={(event) => setDraft((current) => ({ ...current, command: event.target.value }))} />
+          <p id="ai-cli-hint" className="ai-key-hint">
+            <ShieldCheck aria-hidden="true" className="ai-key-icon" />
+            <span>{provider.sign_in} PBIBrain runs it in an empty folder with its own tools turned off: it reads and proposes only through the chat's PBIBrain tools, and never gets an API key.</span>
+          </p>
+        </div> : null}
+        {cli ? null : <><div className="config-field">
           <Label htmlFor="ai-base-url"><span>Base URL</span></Label>
           <Input id="ai-base-url" value={draft.base_url} disabled={busy} placeholder={provider?.base_url} spellCheck={false}
             onChange={(event) => setDraft((current) => ({ ...current, base_url: event.target.value }))} />
@@ -139,12 +154,12 @@ export default function AISettings({ transport, onSaved }) {
             <KeyRound aria-hidden="true" className="ai-key-icon" />
             <span>The key is stored in {storeLabel}{settings.key_persistent ? "" : ". It is kept only until PBIBrain closes"}, never in brain.json. A key belongs to its provider and base URL: change the URL and you type the key again.</span>
           </p>
-        </div>
+        </div></>}
       </div>
     </div>
     <div className="config-actions" data-ui-actions="">
       <Button onClick={() => save()} disabled={busy}>{busy ? "Saving…" : "Save"}</Button>
-      <Button variant="outline" onClick={runTest} disabled={busy || !draft.model}><PlugZap />Test connection</Button>
+      <Button variant="outline" onClick={runTest} disabled={busy || (!draft.model && !cli)}><PlugZap />Test connection</Button>
       {keySaved ? <Button variant="ghost" onClick={() => save({ clear_key: true })} disabled={busy}>Remove key</Button> : null}
       {status.ready ? (
         <span className="success-text" data-testid="ai-status"><Check aria-hidden="true" />The chat is ready.</span>

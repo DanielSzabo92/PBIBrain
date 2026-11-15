@@ -228,6 +228,12 @@ class OpenAICompatibleProvider:
 
 
 def create_provider(settings: Mapping[str, Any], api_key: str | None) -> Any:
+    from .cli_providers import PRESETS, SubscriptionCLIProvider
+
+    if settings["provider"] in PRESETS:
+        # A subscription through the vendor's signed-in CLI; never given an API key.
+        return SubscriptionCLIProvider(preset=settings["provider"], model=settings.get("model") or "",
+                                       command=settings.get("command") or "")
     if settings["provider"] == "anthropic":
         return AnthropicProvider(model=settings["model"], api_key=api_key, base_url=settings["base_url"])
     return OpenAICompatibleProvider(model=settings["model"], api_key=api_key, base_url=settings["base_url"])

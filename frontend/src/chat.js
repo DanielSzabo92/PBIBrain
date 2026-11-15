@@ -255,6 +255,13 @@ export function getAIStatus({ draft, settings, provider, apiKey = "", keySaved =
   if (!draft.enabled) {
     return { ready: false, message: "Chat is off. Turn it on in Settings, AI provider." };
   }
+  // A subscription CLI signs in by itself and uses its plan's default model when none is given.
+  if (provider?.kind === "cli") {
+    if (settings && settings.provider === draft.provider && settings.reason && !settings.ready && settings.enabled) {
+      return { ready: false, message: settings.reason };
+    }
+    return { ready: true, message: "The chat is ready." };
+  }
   if (!draft.model?.trim()) {
     return { ready: false, message: "Choose a model in Settings, AI provider." };
   }

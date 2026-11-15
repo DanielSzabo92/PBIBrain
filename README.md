@@ -54,7 +54,7 @@ The web and desktop workbench features **7 dedicated views** designed for Power 
 - **Settings:** Customize project paths, graph color palettes, and configure local or cloud AI providers.
 
 **Built-in Productivity Features:**
-- **In-App AI Chat (`Ctrl+J`):** Docked conversational panel supporting Anthropic, OpenAI-compatible APIs, or local LLMs (Ollama) with context chips for active selections.
+- **In-App AI Chat (`Ctrl+J`):** Docked conversational panel supporting Anthropic, OpenAI-compatible APIs, local LLMs (Ollama), or your existing Claude, GitHub Copilot (VS Code) or Google Antigravity subscription through its signed-in CLI, with context chips for active selections. The agent can read and propose, never apply, and runs under fixed limits (see `docs/SECURITY_BOUNDARIES.md`).
 - **Command Palette (`Ctrl+K`):** Fast keyboard-first navigation and action launcher.
 - **Documentation Export:** Generate complete, styled PDF or Markdown project documentation with table of contents, diagrams, and measure catalogues.
 

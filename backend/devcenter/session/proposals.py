@@ -41,6 +41,10 @@ from backend.devcenter.session.store import utc_now
 from backend.devcenter.common import query_value as _one
 
 CONFIDENCE_THRESHOLD = 0.9
+# A runaway agent cannot bury the user in review work: past these counts a submit is refused until
+# the user decides some. A proposal that replaces an open one on the same target and kind is free.
+MAX_OPEN_AGENT_PROPOSALS = 200
+MAX_OPEN_AGENT_QUESTIONS = 20
 
 STATUS_PROPOSED = "proposed"
 STATUS_ACCEPTED = "accepted"
@@ -508,6 +512,11 @@ def proposal_submit(devcenter: Any, body: Any) -> dict[str, Any]:
             if found:
                 raise DevCenterError("naming_rule_violation", "The name breaks a confirmed naming rule.",
                                      {"rule_ids": [item["rule_id"] for item in found], "rules": found})
+        open_agent = [item for item in open_proposals(document) if item.get("author", AUTHOR_AGENT) == AUTHOR_AGENT]
+        if len(open_agent) >= MAX_OPEN_AGENT_PROPOSALS and not any(
+                (item["target_id"], item["kind"]) == (target, kind) for item in open_agent):
+            raise not_allowed("Too many agent proposals wait for the user. Wait until the user decides some of them.",
+                              "too_many_open_proposals", limit=MAX_OPEN_AGENT_PROPOSALS)
         check = _object_check(devcenter, document, kind, target, payload) if kind in OBJECT_KINDS else None
         proposal = {
             "id": "p-" + uuid.uuid4().hex[:12],
@@ -563,6 +572,10 @@ def question_ask(devcenter: Any, body: Any) -> dict[str, Any]:
     target = body["target"]
     with devcenter._lock:
         _check_revision(devcenter, body)
+        waiting = [item for item in devcenter._require_open().document.get("questions") or [] if item.get("status") == QUESTION_OPEN]
+        if len(waiting) >= MAX_OPEN_AGENT_QUESTIONS:
+            raise not_allowed("Too many questions wait for the user. Wait until the user answers some of them.",
+                              "too_many_open_questions", limit=MAX_OPEN_AGENT_QUESTIONS)
         question = {
             "id": "q-" + uuid.uuid4().hex[:12],
             "target_id": target,
