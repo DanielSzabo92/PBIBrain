@@ -12,11 +12,11 @@ function issueValue(item) {
   return "candidate";
 }
 
-test("review queue explains snapshot failure and retries into a loaded state", async ({ page }) => {
+test("review queue explains a failed page and retries into a loaded state", async ({ page }) => {
   let failSnapshot = true;
-  await page.route("**/api/brain", async (route) => {
+  await page.route("**/api/review/page**", async (route) => {
     if (failSnapshot) {
-      return route.fulfill({ status: 503, json: { error: "Review snapshot interrupted" } });
+      return route.fulfill({ status: 503, json: { error: "Review page interrupted" } });
     }
     return route.continue();
   });
@@ -24,7 +24,7 @@ test("review queue explains snapshot failure and retries into a loaded state", a
   await page.goto("/");
   await page.getByRole("navigation").getByRole("button", { name: /^Review queue/ }).click();
   await expect(page.getByRole("heading", { name: "Review queue unavailable", exact: true })).toBeVisible();
-  await expect(page.getByRole("alert")).toContainText("Review snapshot interrupted");
+  await expect(page.getByRole("alert")).toContainText("Review page interrupted");
 
   failSnapshot = false;
   await page.getByRole("button", { name: "Retry review queue", exact: true }).click();
@@ -92,16 +92,16 @@ test("review filters and sort survive an inspector visit and restore target focu
   await expect.poll(() => page.locator(".review-target").evaluateAll((nodes, id) => nodes.some((node) => node.dataset.reviewId === id && document.activeElement === node), reviewId)).toBe(true);
 });
 
-test("canonical pending count drives the review badge and View › Reload data refreshes its snapshot", async ({ page, request }) => {
+test("canonical pending count drives the review badge and View › Reload data refreshes its pages", async ({ page, request }) => {
   const overviewResponse = await request.get("/api/overview");
   expect(overviewResponse.ok()).toBeTruthy();
   const overview = await overviewResponse.json();
   expect(typeof overview.review_count).toBe("number");
   expect(overview.review_count).toBeGreaterThan(0);
 
-  let snapshotRequests = 0;
-  await page.route("**/api/brain", async (route) => {
-    snapshotRequests += 1;
+  let pageRequests = 0;
+  await page.route("**/api/review/page**", async (route) => {
+    pageRequests += 1;
     return route.continue();
   });
   await page.goto("/");
@@ -109,15 +109,15 @@ test("canonical pending count drives the review badge and View › Reload data r
   await expect(reviewNav.locator(".nav-count")).toHaveText(String(overview.review_count));
   await reviewNav.click();
   await expect(page.locator(".queue-panel")).toBeVisible();
-  const loadedRequests = snapshotRequests;
+  const loadedRequests = pageRequests;
 
   await page.getByRole("menuitem", { name: "View" }).click();
   await page.getByRole("menuitem", { name: /^Reload data/ }).click();
-  await expect.poll(() => snapshotRequests).toBeGreaterThan(loadedRequests);
+  await expect.poll(() => pageRequests).toBeGreaterThan(loadedRequests);
   await expect(page.locator(".queue-panel")).toBeVisible();
 });
 
-test("successful review stays successful when the follow-up snapshot refresh fails", async ({ page }) => {
+test("successful review stays successful when the follow-up page refresh fails", async ({ page }) => {
   let reviewPosted = false;
   let reviewRequests = 0;
   await page.route("**/api/review", async (route) => {
@@ -125,7 +125,7 @@ test("successful review stays successful when the follow-up snapshot refresh fai
     reviewRequests += 1;
     return route.continue();
   });
-  await page.route("**/api/brain", async (route) => {
+  await page.route("**/api/review/page**", async (route) => {
     if (reviewPosted) return route.fulfill({ status: 503, json: { error: "Refresh interrupted" } });
     return route.continue();
   });
@@ -140,7 +140,7 @@ test("successful review stays successful when the follow-up snapshot refresh fai
   await expect(approve).toBeVisible();
   await approve.click();
 
-  await expect(page.locator(".toast")).toContainText("Suggestion approved");
+  await expect(page.locator("[data-sonner-toast]").first()).toContainText("Suggestion approved");
   await expect(page.getByText("Review failed. Try again.", { exact: true })).toHaveCount(0);
   await expect(page.locator(".review-item").first()).toBeVisible();
   await expect(page.getByRole("heading", { name: "Review refresh failed", exact: true })).toBeVisible();
@@ -152,9 +152,9 @@ test("successful review stays successful when the follow-up snapshot refresh fai
 test("a scan started from Overview reloads the review queue after navigation during the scan", async ({ page }) => {
   let releaseScan;
   let scanResponseReady = false;
-  let snapshotRequests = 0;
-  await page.route("**/api/brain", async (route) => {
-    snapshotRequests += 1;
+  let pageRequests = 0;
+  await page.route("**/api/review/page**", async (route) => {
+    pageRequests += 1;
     return route.continue();
   });
   await page.route("**/api/scan", async (route) => {
@@ -172,10 +172,10 @@ test("a scan started from Overview reloads the review queue after navigation dur
   const approve = page.locator(".review-item").first().getByRole("button", { name: "Approve", exact: true });
   await expect(approve).toBeVisible();
   await expect(approve).toBeDisabled();
-  const reviewLoadRequests = snapshotRequests;
+  const reviewLoadRequests = pageRequests;
 
   releaseScan();
-  await expect.poll(() => snapshotRequests).toBeGreaterThan(reviewLoadRequests);
+  await expect.poll(() => pageRequests).toBeGreaterThan(reviewLoadRequests);
   await expect(page.getByRole("heading", { name: "Review queue unavailable", exact: true })).toHaveCount(0);
   await expect(page.locator(".queue-panel")).toBeVisible();
   await expect(page.locator(".review-item").first()).toBeVisible();
@@ -190,29 +190,9 @@ test("a delayed review response cannot overwrite a newer successful scan generat
   let reviewReady = false;
   let reviewSettled = false;
   await page.route("**/api/review", async (route) => {
+    // The decision answers late, after a newer scan has replaced the graph.
     const response = await route.fetch();
     const body = await response.json();
-    const snapshot = body.snapshot || body.brain || {};
-    const markerTarget = snapshot.nodes?.[0]?.id || "stale-generation-target";
-    body.snapshot = {
-      ...snapshot,
-      review_items: [
-        ...(Array.isArray(snapshot.review_items) ? snapshot.review_items : []),
-        {
-          id: "stale-generation-review",
-          review_id: "stale-generation-review",
-          target_id: markerTarget,
-          object_id: markerTarget,
-          issue_type: "candidate",
-          assertion_type: "BUSINESS_CONCEPT",
-          type: "BUSINESS_CONCEPT",
-          value: "STALE_GENERATION_MARKER",
-          confidence: 0.01,
-          status: "candidate",
-          evidence: [],
-        },
-      ],
-    };
     reviewReady = true;
     await new Promise((resolve) => { releaseReview = resolve; });
     await route.fulfill({ json: body });
@@ -228,14 +208,14 @@ test("a delayed review response cannot overwrite a newer successful scan generat
 
   await page.getByRole("navigation").getByRole("button", { name: "Overview", exact: true }).click();
   await page.getByRole("button", { name: "Scan sources", exact: true }).click();
-  await expect(page.locator(".toast")).toContainText("Scan complete", { timeout: 60000 });
+  // The scan reports in the status bar; review decisions report in toasts.
+  await expect(page.locator(".statusbar-notice")).toContainText("Scan complete", { timeout: 60000 });
 
   releaseReview();
   await expect.poll(() => reviewSettled).toBe(true);
-  await expect(page.locator(".toast")).toContainText("Scan complete");
-  await expect(page.locator(".toast")).not.toContainText("Suggestion approved");
+  await expect(page.locator(".statusbar-notice")).toContainText("Scan complete");
+  await expect(page.getByRole("region", { name: "Notifications" })).not.toContainText("Suggestion approved");
 
   await page.getByRole("navigation").getByRole("button", { name: /^Review queue/ }).click();
   await expect(page.locator(".queue-panel")).toBeVisible();
-  await expect(page.getByText("Meaning: STALE_GENERATION_MARKER", { exact: true })).toHaveCount(0);
 });

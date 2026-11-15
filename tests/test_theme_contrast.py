@@ -293,7 +293,10 @@ class NewTokenContrastTest(unittest.TestCase):
     def test_destructive_fill_no_longer_uses_white_on_bad_in_dark(self) -> None:
         # U-fix-1: white text on --bad is 2.61:1 in the dark theme. The Button uses --bad-ink.
         self.assertEqual(round(contrast((255, 255, 255), self.color("dark", "bad")), 2), 2.61)
-        app_css = (THEME_CSS.parent / "app.css").read_text(encoding="utf-8")
+        # app.css is a list of imports, one file per view or component.
+        index = THEME_CSS.parent / "app.css"
+        imports = re.findall(r'@import "\./([^"]+)";', index.read_text(encoding="utf-8"))
+        app_css = "\n".join((index.parent / name).read_text(encoding="utf-8") for name in imports)
         rule = re.search(r"\.ui-button-destructive\s*\{([^}]*)\}", app_css)
         self.assertIsNotNone(rule)
         self.assertIn("color: var(--bad-ink)", rule.group(1))

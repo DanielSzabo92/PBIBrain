@@ -48,8 +48,8 @@ observed, and inferred meaning only becomes trusted through explicit review.
   BI sources stay untouched.
 - Used beside Power BI Desktop, Tabular Editor / DAX Studio and VS Code
   _(inferred from the audience)_.
-- Desktop window minimum is about 1024 px wide (see `app.css` breakpoint
-  comment); narrow layouts exist for resilience, not as a primary target.
+- Desktop window minimum is about 1024 px wide (see the breakpoints in
+  `src/styles/responsive.css`); narrow layouts exist for resilience, not as a primary target.
 
 ## Capabilities and Constraints
 

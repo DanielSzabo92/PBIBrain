@@ -11,7 +11,7 @@
 
 ## Solution
 
-1. **A large fixture in the repo's test tooling.** Promote the generator used for this review (`docs/adversarial-review/evidence/large_project_server.py`: 8 models × 30 tables × 18 columns × 300 measures, 24 reports × 6 pages × 10 visuals → 13.7k objects, 42k relationships) to `tests/large_project.py`, parameterised (`--scale 1|5|20`). Add a second, PBIP/TMDL-based variant so the real reader is exercised.
+1. **A large fixture in the repo's test tooling.** Promote the generator used for this review (the review's one-off script, since promoted to `tools/large_project.py`: 8 models × 30 tables × 18 columns × 300 measures, 24 reports × 6 pages × 10 visuals → 13.7k objects, 42k relationships) to `tests/large_project.py`, parameterised (`--scale 1|5|20`). Add a second, PBIP/TMDL-based variant so the real reader is exercised.
 2. **Backend budgets (pytest, marked `perf`):**
 
    | Endpoint | Budget at 13.7k objects |

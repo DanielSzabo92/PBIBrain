@@ -5,6 +5,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { SHORTCUTS, VIEW_ORDER, commandFor } from "../src/shortcuts.js";
 import { t as devCopy } from "../src/devcenter/copy.js";
+import { appSource as readAppSource } from "./appSource.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -41,12 +42,12 @@ test("graph details tab is renamed from Lineage to Dependencies", () => {
 });
 
 test("Inspector lineage card is renamed to avoid collision with graph tabs", () => {
-  const appSource = fs.readFileSync(path.join(__dirname, "../src/App.jsx"), "utf-8");
+  const appSource = readAppSource();
   assert.match(appSource, /<h2 className="panel-title">Lineage &amp; usage<\/h2>/);
 });
 
 test("Settings tabs include Keyboard and have consolidated export naming", () => {
-  const appSource = fs.readFileSync(path.join(__dirname, "../src/App.jsx"), "utf-8");
+  const appSource = readAppSource();
   assert.match(appSource, /<TabsTrigger value="summary">Model summary \/ agent context<\/TabsTrigger>/);
   assert.match(appSource, /<TabsTrigger value="documentation">Documentation export<\/TabsTrigger>/);
   assert.match(appSource, /<TabsTrigger value="keyboard">Keyboard<\/TabsTrigger>/);

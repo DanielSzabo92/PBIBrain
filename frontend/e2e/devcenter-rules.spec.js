@@ -31,8 +31,16 @@ async function noOverflow(page) {
 }
 
 async function checkPage(page) {
-  expect(await axeViolations(page)).toEqual([]);
   await noOverflow(page);
+  // With all 8 rules the table is taller than the window: the last row sits at the pane's scroll edge and
+  // axe reads that clipped button as an obscured target. axe checks the page with the whole table in view.
+  const size = page.viewportSize();
+  await page.setViewportSize({ width: size.width, height: 1400 });
+  try {
+    expect(await axeViolations(page)).toEqual([]);
+  } finally {
+    await page.setViewportSize(size);
+  }
 }
 
 async function workReady(page, name = "Sales and finance merge") {
@@ -47,7 +55,7 @@ test.describe("status filters and rule groups", () => {
     await scenario(request, "default");
     await openDevCenter(page);
     await workReady(page);
-    await tab(page, "Sources").click();
+    await tab(page, "Naming rules").click();
 
     await expect(page.getByRole("heading", { name: "Naming rules for Combined model" })).toBeVisible();
 
@@ -103,13 +111,13 @@ test.describe("status filters and rule groups", () => {
     await scenario(request, "default");
     await openDevCenter(page);
     await workReady(page);
-    await tab(page, "Sources").click();
+    await tab(page, "Naming rules").click();
 
     // Confirm the single rejected rule so rejected becomes 0.
     const rejectedBtn = page.getByRole("button", { name: "Rejected (1)" });
     await rejectedBtn.click();
     await page.getByRole("button", { name: "Confirm again: Key columns end with Key." }).click();
-    await expect(page.locator(".ui-toast-region")).toContainText("Rule confirmed");
+    await expect(page.locator('section[aria-live="polite"][aria-label="Notifications"]')).toContainText("Rule confirmed");
 
     // Rejected is now empty (0).
     await expect(page.getByText("No rejected rules.")).toBeVisible();
@@ -127,12 +135,12 @@ test.describe("actions by status and confirm selected", () => {
     await scenario(request, "default");
     await openDevCenter(page);
     await workReady(page);
-    await tab(page, "Sources").click();
+    await tab(page, "Naming rules").click();
 
     // 1. Confirm a proposed rule directly.
     const rule1Confirm = page.getByRole("button", { name: "Confirm: Measures with currency format end with Amt." });
     await rule1Confirm.click();
-    await expect(page.locator(".ui-toast-region")).toContainText("Rule confirmed: Measures with currency format end with Amt.");
+    await expect(page.locator('section[aria-live="polite"][aria-label="Notifications"]')).toContainText("Rule confirmed: Measures with currency format end with Amt.");
     await expect(page.getByRole("button", { name: "Proposed (2)" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Confirmed (5)" })).toBeVisible();
 
@@ -141,14 +149,14 @@ test.describe("actions by status and confirm selected", () => {
     const rule2Row = page.locator('tr[data-rule="nr-000000000002"]');
     await rule2Row.getByRole("button", { name: "More actions: Measure names use Title Case." }).click();
     await page.getByRole("menuitem", { name: "Reject" }).click();
-    await expect(page.locator(".ui-toast-region")).toContainText("Rule rejected: Measure names use Title Case.");
+    await expect(page.locator('section[aria-live="polite"][aria-label="Notifications"]')).toContainText("Rule rejected: Measure names use Title Case.");
     await expect(page.getByRole("button", { name: "Confirmed (4)" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Rejected (2)" })).toBeVisible();
 
     // 3. Confirm again from rejected status.
     await page.getByRole("button", { name: "Rejected (2)" }).click();
     await page.getByRole("button", { name: "Confirm again: Measure names use Title Case." }).click();
-    await expect(page.locator(".ui-toast-region")).toContainText("Rule confirmed: Measure names use Title Case.");
+    await expect(page.locator('section[aria-live="polite"][aria-label="Notifications"]')).toContainText("Rule confirmed: Measure names use Title Case.");
     await expect(page.getByRole("button", { name: "Confirmed (5)" })).toBeVisible();
   });
 
@@ -156,7 +164,7 @@ test.describe("actions by status and confirm selected", () => {
     await scenario(request, "default");
     await openDevCenter(page);
     await workReady(page);
-    await tab(page, "Sources").click();
+    await tab(page, "Naming rules").click();
 
     // Select two proposed rules using checkboxes.
     const check1 = page.getByRole("checkbox", { name: "Select rule Measures with currency format end with Amt." });
@@ -174,7 +182,7 @@ test.describe("actions by status and confirm selected", () => {
     await bulkBtn.click();
 
     // Expect the failure message matching copy rules.confirm_selected.stopped.
-    await expect(page.locator(".ui-toast-region")).toContainText("1 of 2 rules confirmed. Measures with percent format end with %. was not confirmed: Rule conflict with model.");
+    await expect(page.locator('section[aria-live="polite"][aria-label="Notifications"]')).toContainText("1 of 2 rules confirmed. Measures with percent format end with %. was not confirmed: Rule conflict with model.");
     await checkPage(page);
   });
 });
@@ -184,7 +192,7 @@ test.describe("rule editor in side pane", () => {
     await scenario(request, "default");
     await openDevCenter(page);
     await workReady(page);
-    await tab(page, "Sources").click();
+    await tab(page, "Naming rules").click();
 
     await page.getByRole("button", { name: "Add rule" }).click();
 
@@ -236,7 +244,7 @@ test.describe("rule editor in side pane", () => {
     await scenario(request, "default");
     await openDevCenter(page);
     await workReady(page);
-    await tab(page, "Sources").click();
+    await tab(page, "Naming rules").click();
 
     // Go to Confirmed filter.
     await page.getByRole("button", { name: "Confirmed (4)" }).click();
@@ -254,7 +262,7 @@ test.describe("rule editor in side pane", () => {
     await page.getByLabel("Value").fill("Total");
 
     await page.getByRole("button", { name: "Save rule" }).click();
-    await expect(page.locator(".ui-toast-region")).toContainText("Rule saved.");
+    await expect(page.locator('section[aria-live="polite"][aria-label="Notifications"]')).toContainText("Rule saved.");
     await expect(pane).toHaveCount(0);
   });
 });
@@ -264,7 +272,7 @@ test.describe("delete user rule", () => {
     await scenario(request, "default");
     await openDevCenter(page);
     await workReady(page);
-    await tab(page, "Sources").click();
+    await tab(page, "Naming rules").click();
 
     // Rule nr-4 is a user rule in Confirmed status.
     await page.getByRole("button", { name: "Confirmed (4)" }).click();
@@ -292,7 +300,7 @@ test.describe("delete user rule", () => {
     await page.getByRole("menuitem", { name: "Delete" }).click();
     await dialog.getByRole("button", { name: "Delete rule" }).click();
 
-    await expect(page.locator(".ui-toast-region")).toContainText("Rule deleted.");
+    await expect(page.locator('section[aria-live="polite"][aria-label="Notifications"]')).toContainText("Rule deleted.");
     await expect(userRuleRow).toHaveCount(0);
     await checkPage(page);
   });
@@ -303,7 +311,7 @@ test.describe("copy rules from dialog", () => {
     await scenario(request, "default");
     await openDevCenter(page);
     await workReady(page);
-    await tab(page, "Sources").click();
+    await tab(page, "Naming rules").click();
 
     await page.getByRole("button", { name: "Copy rules from" }).click();
 
@@ -330,7 +338,7 @@ test.describe("copy rules from dialog", () => {
     await expect(copyConfirmBtn).toBeEnabled();
 
     await copyConfirmBtn.click();
-    await expect(page.locator(".ui-toast-region")).toContainText("Copied 2 rules.");
+    await expect(page.locator('section[aria-live="polite"][aria-label="Notifications"]')).toContainText("Copied 2 rules.");
     await expect(dialog).toHaveCount(0);
 
     // Filter toolbar count updates.
@@ -344,7 +352,7 @@ test.describe("empty, no target, detection, and locked states", () => {
     await setRules(request, { target: null });
     await openDevCenter(page);
     await workReady(page);
-    await tab(page, "Sources").click();
+    await tab(page, "Naming rules").click();
 
     await expect(page.getByRole("heading", { name: "No target model" })).toBeVisible();
     await expect(page.getByText("Set a target model to see its naming rules.")).toBeVisible();
@@ -358,7 +366,7 @@ test.describe("empty, no target, detection, and locked states", () => {
     await setRules(request, { rules: [] });
     await openDevCenter(page);
     await workReady(page);
-    await tab(page, "Sources").click();
+    await tab(page, "Naming rules").click();
 
     await expect(page.getByRole("heading", { name: "No naming patterns found" })).toBeVisible();
     await expect(page.getByText("Combined model has too few objects with the same pattern. Add a rule or copy rules from a different model.")).toBeVisible();
@@ -372,7 +380,7 @@ test.describe("empty, no target, detection, and locked states", () => {
     await request.post("/__test__/delay", { data: { path: "/api/devcenter/naming-rules", ms: 1200, once: true } });
     await openDevCenter(page);
     await workReady(page);
-    await tab(page, "Sources").click();
+    await tab(page, "Naming rules").click();
 
     await expect(page.getByRole("heading", { name: "Finding naming patterns" })).toBeVisible();
     await expect(page.getByText("PBIBrain reads the names in Combined model.")).toBeVisible();
@@ -385,7 +393,7 @@ test.describe("empty, no target, detection, and locked states", () => {
     await scenario(request, "locked");
     await openDevCenter(page);
     await workReady(page);
-    await tab(page, "Sources").click();
+    await tab(page, "Naming rules").click();
 
     // Toolbar buttons are disabled with aria-describedby pointing to dc-locked-reason.
     const addRuleBtn = page.getByRole("button", { name: "Add rule" });
@@ -412,7 +420,7 @@ for (const theme of ["dark", "light"]) {
     await scenario(request, "default");
     await openDevCenter(page);
     await workReady(page);
-    await tab(page, "Sources").click();
+    await tab(page, "Naming rules").click();
 
     await expect(page.getByRole("heading", { name: "Naming rules for Combined model" })).toBeVisible();
     await checkPage(page);

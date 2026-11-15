@@ -177,7 +177,6 @@ export default function ApplyFlowDialog({
   const titleRef = useRef(null);
 
   const approvals = kind === "apply" ? approvalItems(bound.preview, bound.plan) : [];
-  const deletes = kind === "apply" ? deletedNames(bound.plan).length : 0;
   const running = phase === "running";
   const fileCount = bound.preview?.non_canonical_files?.length ?? 0;
   const prechecks = kind === "apply" ? applyPreChecks(bound.preview, bound.plan) : [];

@@ -26,9 +26,8 @@ export function targetNames(session) {
 
 export function targetLine(session) {
   const names = targetNames(session);
-  const model = t("work.target_model", { name: names.model ?? t("shared.not_set") });
-  const report = names.reportNew ? t("work.target_report.new") : t("work.target_report", { name: names.report ?? t("shared.not_known") });
-  return `${model}. ${report}.`;
+  const report = names.reportNew ? t("work.target_report.new") : names.report ?? t("shared.not_known");
+  return t("work.target", { model: names.model ?? t("shared.not_set"), report });
 }
 
 const IMPACT_BLOCK_KINDS = new Set(["removed", "renamed", "need_missing", "need_clash"]);
@@ -341,7 +340,7 @@ export function createStepError(step, draft) {
 }
 
 // The target model choices of step 2 (UI design 4.1, Issue #50).
-// Safe copies are listed first with "(Recommended)" on the first source, followed by Empty,
+// Safe copies are listed first with a "Recommended" badge on the first source, followed by Empty,
 // and risky in-place writes are placed at the bottom with warning tone and badge.
 export function targetModelItems(sources = []) {
   const modelSources = sources.filter((source) => MODEL_KINDS.has(source.kind));
@@ -352,7 +351,8 @@ export function targetModelItems(sources = []) {
     const isRecommended = index === 0;
     copyItems.push({
       value: `copy:${source.key}`,
-      label: isRecommended ? t("create.target.copy_recommended", { source: source.name }) : t("create.target.copy", { source: source.name }),
+      // The badge says "Recommended"; the label does not repeat it.
+      label: t("create.target.copy", { source: source.name }),
       help: t("create.target.copy.help", { source: source.name }),
       recommended: isRecommended,
       badgeLabel: isRecommended ? t("create.target.recommended_badge") : undefined,

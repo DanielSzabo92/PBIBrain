@@ -4,12 +4,11 @@ import React, { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Maximize2, Table2, ZoomIn, ZoomOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/result-panel";
-import { NODE_HEIGHT, layoutGraph, routePath } from "../../../graphLayout.js";
+import { layoutGraph, routePath } from "../../../graphLayout.js";
 import { t } from "../../copy.js";
-import ImpactNode, { IMPACT_NODE_HEIGHT } from "../../components/ImpactNode.jsx";
+import ImpactNode, { IMPACT_NODE_HEIGHT, IMPACT_NODE_WIDTH } from "../../components/ImpactNode.jsx";
 import { GRAPH_LIMIT, buildImpactGraph, graphKeyTarget, graphTabOrder } from "./impactModel.js";
 import ProvenanceLegend from "@/components/ProvenanceLegend";
-
 
 const ZOOMS = [0.5, 0.67, 0.8, 1, 1.25];
 

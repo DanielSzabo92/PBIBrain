@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import gc
+import gzip
 import json
 import mimetypes
 import threading
+import time
 from collections import Counter
 from pathlib import Path
 from typing import Any
@@ -27,8 +30,12 @@ from .objects import (
     search_objects,
 )
 from .queries import validate_selection
+from .review_page import ReviewIndex, matching_decision_ids, review_page
 from .review import (
+    DEFAULT_AUTO_ACCEPT_THRESHOLD,
+    DecisionMarks,
     OverrideStore,
+    apply_auto_accept,
     apply_overrides_to_dict,
     approve,
     approve_many,
@@ -40,6 +47,7 @@ from .review import (
     remove_override,
     reopen,
     reopen_many,
+    restore_statuses,
 )
 
 
@@ -55,6 +63,11 @@ def _last_scan(repository: GraphRepository) -> Any:
 
         return datetime.fromtimestamp(Path(path).stat().st_mtime, tz=timezone.utc).isoformat(timespec="seconds")
     return None
+
+
+# How many validation issues the overview lists; the rest are counted.
+_OVERVIEW_CONFLICTS = 5000
+_OVERVIEW_ISSUES = 50
 
 
 def _default_overrides_path() -> Path:
@@ -104,25 +117,62 @@ def get_overview(repository: GraphRepository, *, store: OverrideStore | None = N
         if edge.type != "CONTAINS" and edge.evidence_class not in {"INFERRED", "OBSERVED"}:
             inbound[edge.to_id] += 1
     measures = [node for node in nodes if node.type in {"MEASURE", "CALCULATION_ITEM"}]
+    names = {node.id: node for node in nodes}
+
+    def scope_of(node: Any) -> str:
+        """Where an object lives, as names: "Sales Analytics / Orders". Tells apart objects with one name."""
+
+        owners = [names.get(getattr(node, key, None) or node.properties.get(key) or "") for key in ("model_id", "report_id", "table_id", "page_id")]
+        return " / ".join(owner.name for owner in owners if owner is not None and owner.id != node.id and owner.name)
+
     top_measures = [
-        {**_root_summary(node), "type": node.type, "count": inbound[node.id]}
+        {**_root_summary(node), "type": node.type, "count": inbound[node.id], "scope": scope_of(node)}
         for node in sorted(measures, key=lambda node: (-inbound[node.id], node.name or "", node.id))[:5]
     ]
-    names = {node.id: node for node in nodes}
     hot: list[dict[str, Any]] = []
-    for item in sorted(review_items, key=lambda item: -degree[str(item.get("object_id") or item.get("target_id") or "")])[:5]:
+    seen_targets: set[str] = set()
+    for item in sorted(review_items, key=lambda item: -degree[str(item.get("object_id") or item.get("target_id") or "")]):
         target_id = str(item.get("object_id") or item.get("target_id") or "")
+        # One row per object: an object with three open suggestions is still one hot object.
+        if target_id in seen_targets:
+            continue
+        if len(hot) == 5:
+            break
+        seen_targets.add(target_id)
         target = names.get(target_id)
         hot.append({
             "id": item.get("id"), "target_id": target_id, "name": target.name if target else target_id,
             "type": target.type if target else "OBJECT", "kind": item.get("issue_type", "candidate"),
             "label": item.get("value") or item.get("meaning"), "degree": degree[target_id],
+            "scope": scope_of(target) if target else "",
         })
+    # Objects the graph marks with a warning, and the newest saved decisions for "Recent changes":
+    # the screens read these here instead of downloading every suggestion.
+    conflict_targets = sorted({str(item.get("object_id") or item.get("target_id")) for item in review_items
+                               if item.get("issue_type") == "conflict" and (item.get("object_id") or item.get("target_id"))})
+    conflict_targets += [node.id for node in nodes if node.type == "CONFLICT"]
+    recent_overrides = []
+    for record in store.records() if store is not None else []:
+        target_id = str(record.get("target_id") or record.get("target") or record.get("id") or "")
+        if not target_id or any(entry["target_id"] == target_id for entry in recent_overrides):
+            continue
+        target = names.get(target_id)
+        recent_overrides.append({"target_id": target_id, "name": target.name if target else target_id,
+                                 "type": target.type if target else "OBJECT", "status": record.get("status") or "override"})
+        if len(recent_overrides) == 5:
+            break
     validation = getattr(repository, "validation_result", None)
     validation_state = getattr(repository, "validation_state", None)
     if validation_state is None:
         validation_state = getattr(validation, "state", "not_run") if validation is not None else "not_run"
     validation_payload = validation.to_dict() if hasattr(validation, "to_dict") else validation if isinstance(validation, Mapping) else {}
+    # Every screen loads the overview. A scan can report thousands of issues (one per object in a
+    # dependency cycle), so it carries the first ones, issues to act on before notes, and the count.
+    actionable: list[Any] = []
+    notes: list[Any] = []
+    for item in validation_payload.get("issues", []) or []:
+        is_note = isinstance(item, Mapping) and str(item.get("severity", "")).upper() == "INFO"
+        (notes if is_note else actionable).append(item)
     return {
         "models": sum(1 for node in nodes if node.type == "MODEL"),
         "reports": sum(1 for node in nodes if node.type == "REPORT"),
@@ -149,9 +199,12 @@ def get_overview(repository: GraphRepository, *, store: OverrideStore | None = N
         "measure_count": len(measures),
         "top_measures": top_measures,
         "hot_unreviewed": hot,
+        "conflict_targets": conflict_targets[:_OVERVIEW_CONFLICTS],
+        "recent_overrides": recent_overrides,
         "review_counts": review_counts,
         "validation_state": str(validation_state),
-        "validation_issues": validation_payload.get("issues", []),
+        "validation_issues": [*actionable, *notes][:_OVERVIEW_ISSUES],
+        "validation_issue_count": len(actionable),
     }
 
 
@@ -182,8 +235,10 @@ def get_context(
     return build_context(repository, target, task, store=store)
 
 
-def _snapshot(repository: GraphRepository, store: OverrideStore | None = None) -> dict[str, Any]:
+def _snapshot(repository: GraphRepository, store: OverrideStore | None = None, marks: DecisionMarks | None = None) -> dict[str, Any]:
     """Build the JSON shape consumed by the local Inspector."""
+
+    auto = marks.auto if marks is not None else frozenset()
 
     nodes = repository.all_nodes()
     edges = repository.all_edges()
@@ -224,6 +279,8 @@ def _snapshot(repository: GraphRepository, store: OverrideStore | None = None) -
         if target_node is not None:
             record["model_id"] = target_node.get("model_id")
             record["report_id"] = target_node.get("report_id")
+        if str(candidate_id) in auto:
+            record["decided_by"] = "auto"  # accepted by the auto-accept setting, not by a person
         if edge.get("type") == "CONFLICTS_WITH":
             conflicts.setdefault(str(candidate_id), record)
         else:
@@ -287,20 +344,22 @@ _REVIEW_ITEM_FIELDS = ("candidate_id", "property", "value", "meaning", "assertio
 def _slim(record: Mapping[str, Any], fields: Sequence[str]) -> dict[str, Any]:
     properties = record.get("properties") if isinstance(record.get("properties"), Mapping) else {}
     slim = {key: record[key] for key in fields if record.get(key) is not None}
-    small = {key: value for key, value in properties.items() if isinstance(value, (str, int, float, bool)) and len(str(value)) <= 240}
+    # Hashes and fingerprints are for the scanner; no review screen reads them.
+    small = {key: value for key, value in properties.items()
+             if isinstance(value, (str, int, float, bool)) and len(str(value)) <= 240 and not key.endswith(("_hash", "_fingerprint"))}
     if small:
         slim["properties"] = small
     return slim
 
 
-def _review_snapshot(repository: GraphRepository, store: OverrideStore | None = None) -> dict[str, Any]:
+def _review_snapshot(repository: GraphRepository, store: OverrideStore | None = None, marks: DecisionMarks | None = None) -> dict[str, Any]:
     """The snapshot for the review screens: the same shape as the full one, without the heavy parts.
 
     The full snapshot of a 14,000-object project is 163 MB (parse trees, raw source, each piece of
     evidence three times). The screens need names, scopes, formulas and the suggestions themselves.
     """
 
-    full = _snapshot(repository, store)
+    full = _snapshot(repository, store, marks)
     items: list[dict[str, Any]] = []
     for item in full["review_items"]:
         slim = {key: value for key, value in item.items() if key != "item"}
@@ -343,15 +402,132 @@ class BrainAPI:
         self._owns_repository = repository is None
         self.repository = repository or GraphRepository(database_path, use_native=use_native)
         self.overrides = OverrideStore(overrides_path or _default_overrides_path())
+        marks_path = self.overrides.path.with_name("review-marks.json") if self.overrides.path is not None else None
+        self.marks = DecisionMarks(marks_path)
+        self.review_settings: dict[str, Any] = {"auto_accept": False, "auto_accept_threshold": DEFAULT_AUTO_ACCEPT_THRESHOLD}
+        # The statuses each recent bulk decision replaced, by undo token.
+        self._bulk_undo: dict[str, dict[str, Any]] = {}
+        # The open suggestions of the current graph state, cut into pages per request (finding 01).
+        self._review_index: tuple[tuple[Any, ...], ReviewIndex] | None = None
+        self._review_index_lock = threading.Lock()
         self.prepared_snapshots: dict[str, Any] = {}
 
     def get_overview(self) -> dict[str, Any]:
         return get_overview(self.repository, store=self.overrides)
 
-    def get_snapshot(self, view: str | None = None) -> dict[str, Any]:
-        if view == "review":
-            return _review_snapshot(self.repository, self.overrides)
-        return _snapshot(self.repository, self.overrides)
+    def review_index(self) -> ReviewIndex:
+        """Built once per graph and decision state; every page and bulk decision by view reads it."""
+
+        stamp = (id(self.repository), getattr(self.repository, "revision", 0), getattr(self.overrides, "revision", 0), getattr(self.marks, "revision", 0))
+        with self._review_index_lock:
+            if self._review_index is None or self._review_index[0] != stamp:
+                self._review_index = (stamp, ReviewIndex(_review_snapshot(self.repository, self.overrides, self.marks)))
+            return self._review_index[1]
+
+    def get_review_page(self, params: Mapping[str, Any]) -> dict[str, Any]:
+        return review_page(self.review_index(), params)
+
+    def get_snapshot(self) -> dict[str, Any]:
+        """The whole graph with its suggestions: for export and agents. The screens read pages instead."""
+
+        return _snapshot(self.repository, self.overrides, self.marks)
+
+    def sync_auto_accept(self, settings: Mapping[str, Any] | None = None) -> dict[str, int]:
+        """Apply the auto-accept setting to the graph: after a scan, at start and when the setting changes."""
+
+        if settings is not None:
+            self.review_settings = {
+                "auto_accept": bool(settings.get("auto_accept", False)),
+                "auto_accept_threshold": float(settings.get("auto_accept_threshold", DEFAULT_AUTO_ACCEPT_THRESHOLD)),
+            }
+        return apply_auto_accept(
+            self.repository,
+            self.marks,
+            enabled=self.review_settings["auto_accept"],
+            threshold=self.review_settings["auto_accept_threshold"],
+        )
+
+    def _person_decided(self, result: Mapping[str, Any]) -> None:
+        """Tell the marks that a person decided the records in ``result``."""
+
+        keys = [
+            str((record.get("properties") or {}).get("candidate_id") or record.get("id"))
+            for record in [*result.get("nodes", []), *result.get("edges", [])]
+        ]
+        if keys:
+            self.marks.decided_by_person(keys, str(result.get("status", "")))
+
+    def _bulk_review(self, action: str, payload: Mapping[str, Any]) -> dict[str, Any]:
+        """One decision over many suggestions: one write, one undo token.
+
+        The suggestions are named by ``items`` or chosen on the server by ``filter`` (the review
+        queue's own filters). ``reply: "summary"`` leaves the snapshot out of the answer; the page
+        reloads its slim view instead of receiving the full one.
+        """
+
+        summary = payload.get("reply") == "summary"
+
+        def answer(result: dict[str, Any]) -> dict[str, Any]:
+            if summary:
+                return {"result": {key: value for key, value in result.items() if key not in {"nodes", "edges", "previous"}}}
+            result.pop("previous", None)
+            return {"result": result, "snapshot": self.get_snapshot()}
+
+        token = payload.get("token") or payload.get("undo_token")
+        if action in {"reopen", "undo"} and token:
+            entry = self._bulk_undo.pop(str(token), None)
+            if entry is None:
+                raise KeyError(f"bulk decision not found: {token}")
+            result = restore_statuses(self.repository, entry["previous"])
+            self.marks.decided_by_person(entry["keys"], "candidate")
+            return answer({**result, "status": "candidate"})
+
+        items = payload.get("items") or payload.get("item_ids") or []
+        view = payload.get("view")
+        if view is not None:
+            # What the review page shows for these filters (and pattern or section), decided on the server.
+            if not isinstance(view, Mapping):
+                raise ValueError("unsupported review view filter")
+            # ``except``: rows the reviewer unticked after "Select all".
+            skipped = {str(value) for value in payload.get("except") or []}
+            items = [identifier for identifier in matching_decision_ids(self.review_index(), view) if identifier not in skipped]
+        selector = payload.get("filter")
+        if selector is not None:
+            if not isinstance(selector, Mapping) or set(selector) - {"object_type", "model_id", "report_id", "issue_type", "min_confidence", "max_confidence"}:
+                raise ValueError("unsupported review filter")
+            chosen = {key: value for key, value in selector.items() if value not in (None, "", "ALL")}
+            # Conflicts and outdated decisions need a choice each; a filter never decides them in bulk.
+            items = [
+                item["candidate_id"] or item["id"]
+                for item in get_review_queue(self.repository, self.overrides, **chosen)
+                if item.get("issue_type") == "candidate"
+            ]
+        item_ids = [
+            str(x.get("candidate_id") or x.get("target") or x.get("id") or x) if isinstance(x, Mapping) else str(x)
+            for x in items
+        ]
+        if action == "approve":
+            result = approve_many(self.repository, item_ids)
+        elif action == "reject":
+            result = reject_many(self.repository, item_ids)
+        elif action in {"reopen", "undo"}:
+            result = reopen_many(self.repository, item_ids)
+        else:
+            raise ValueError(f"unsupported review action: {action}")
+        self._person_decided(result)
+        if result["count"]:
+            import secrets
+
+            undo_token = secrets.token_hex(8)
+            keys = [
+                str((record.get("properties") or {}).get("candidate_id") or record.get("id"))
+                for record in [*result["nodes"], *result["edges"]]
+            ]
+            self._bulk_undo[undo_token] = {"previous": result["previous"], "keys": keys}
+            while len(self._bulk_undo) > 20:
+                del self._bulk_undo[next(iter(self._bulk_undo))]
+            result["undo_token"] = undo_token
+        return answer(result)
 
     def search_objects(
         self,
@@ -448,28 +624,21 @@ class BrainAPI:
         payload = dict(payload or {})
         action = str(action).casefold()
         items = payload.get("items") or payload.get("item_ids")
-        if item_id == "bulk" or (isinstance(items, (list, tuple)) and len(items) > 0):
-            item_ids = [
-                str(x.get("candidate_id") or x.get("target") or x.get("id") or x)
-                if isinstance(x, Mapping)
-                else str(x)
-                for x in (items or [])
-            ]
-            if action == "approve":
-                result = approve_many(self.repository, item_ids)
-                return {"result": result, "snapshot": self.get_snapshot()}
-            if action == "reject":
-                result = reject_many(self.repository, item_ids)
-                return {"result": result, "snapshot": self.get_snapshot()}
-            if action in {"reopen", "undo"}:
-                result = reopen_many(self.repository, item_ids)
-                return {"result": result, "snapshot": self.get_snapshot()}
+        if item_id == "bulk" or (isinstance(items, (list, tuple)) and len(items) > 0) or payload.get("filter") is not None or payload.get("view") is not None:
+            return self._bulk_review(action, payload)
         item_id = str(payload.get("candidate_id") or item_id)
+
+        def reply(result: dict[str, Any]) -> dict[str, Any]:
+            # ``reply: "summary"``: the page reloads the rows it shows; it does not need the whole graph back.
+            if payload.get("reply") == "summary":
+                return {"result": {key: value for key, value in result.items() if key not in {"nodes", "edges", "previous"}}}
+            return {"result": result, "snapshot": self.get_snapshot()}
+
         if item_id.startswith("override:") and action in {"approve", "reject", "remove", "resolve"}:
             result = self.remove_override(item_id, payload.get("override_property") or payload.get("property"))
             if action == "resolve":
                 result["status"] = "resolved"
-            return {"result": result, "snapshot": self.get_snapshot()}
+            return reply(result)
         if item_id.startswith("override:") and action in {"reopen", "undo"}:
             target = payload.get("target") or (item_id.split(":", 2)[1] if item_id.count(":") >= 1 else "")
             prop = payload.get("override_property") or payload.get("property") or (item_id.split(":", 2)[2] if item_id.count(":") >= 2 else "")
@@ -478,18 +647,20 @@ class BrainAPI:
                 result = self.overrides.put(target, prop, rec.get("value"), status=rec.get("status", "overridden"), evidence=rec.get("evidence"))
             else:
                 result = self.remove_override(item_id, prop)
-            return {"result": result, "snapshot": self.get_snapshot()}
+            return reply(result)
         if action in {"remove", "resolve"}:
             result = self.remove_override(item_id, payload.get("override_property") or payload.get("property"))
             if action == "resolve":
                 result["status"] = "resolved"
-            return {"result": result, "snapshot": self.get_snapshot()}
+            return reply(result)
         if action == "approve":
             result = approve(self.repository, item_id)
-            return {"result": result, "snapshot": self.get_snapshot()}
+            self._person_decided(result)
+            return reply(result)
         if action == "reject":
             result = reject(self.repository, item_id)
-            return {"result": result, "snapshot": self.get_snapshot()}
+            self._person_decided(result)
+            return reply(result)
         if action in {"reopen", "undo"}:
             if self.overrides and payload.get("previous_override"):
                 prev = payload["previous_override"]
@@ -503,7 +674,8 @@ class BrainAPI:
             elif self.overrides and payload.get("remove_override"):
                 self.overrides.remove(item_id, payload.get("property"))
             result = reopen(self.repository, item_id)
-            return {"result": result, "snapshot": self.get_snapshot()}
+            self._person_decided(result)
+            return reply(result)
         if action == "edit":
             changes = payload.get("changes")
             if changes is not None and not isinstance(changes, Mapping):
@@ -516,7 +688,7 @@ class BrainAPI:
                 value=payload.get("value"),
                 store=self.overrides,
             )
-            return {"result": result, "snapshot": self.get_snapshot()}
+            return reply(result)
         if action in {"override", "apply_override"}:
             patch = payload.get("patch")
             if patch is not None and not isinstance(patch, Mapping):
@@ -529,7 +701,7 @@ class BrainAPI:
                 patch=patch,
                 store=self.overrides,
             )
-            return {"result": result, "snapshot": self.get_snapshot()}
+            return reply(result)
         raise ValueError(f"unsupported review action: {action}")
 
     def close(self) -> None:
@@ -552,10 +724,23 @@ class BrainApp:
         self.static_dir = Path(static_dir).resolve() if static_dir else None
         # One request at a time: the chat worker (issue #7) calls handle() from its own thread.
         self.request_lock = threading.RLock()
+        # The background scan: its thread, its cancel flag and how the last one ended.
+        self._scan_thread: threading.Thread | None = None
+        self._scan_cancel: threading.Event | None = None
+        self._scan_outcome: dict[str, Any] | None = None
+        self._scan_number = 0
+        # Set between a background scan publishing its graph and the new answers being built: requests are
+        # then answered from the previous graph's answers instead of waiting for the rebuild (review 04).
+        self._answering_previous = False
+        self._watcher_lock = threading.Lock()
+        self._last_request = time.monotonic()
         self._chat: Any = None
         self._devcenter: Any = None
         # Answers to read-only graph requests, kept until the graph or the decisions change.
         self._answers: dict[str, tuple[tuple[Any, ...], int, bytes]] = {}
+        # Compressed copies of cached answers and UI files, by the identity of the bytes they were made from.
+        self._compressed: dict[Any, tuple[bytes, bytes]] = {}
+        self._compressed_lock = threading.Lock()
         self._answers_lock = threading.Lock()
 
     @property
@@ -635,7 +820,7 @@ class BrainApp:
     def _cached_answer(self, key: str, stamp: tuple[Any, ...]) -> tuple[int, bytes] | None:
         with self._answers_lock:
             found = self._answers.get(key)
-            if found is None or found[0] != stamp:
+            if found is None or (found[0] != stamp and not self._answering_previous):
                 return None
             self._answers[key] = self._answers.pop(key)  # most recently used last
             return found[1], found[2]
@@ -645,17 +830,146 @@ class BrainApp:
             return
         with self._answers_lock:
             self._answers.pop(key, None)
-            for stale in [name for name, value in self._answers.items() if value[0] != stamp]:
-                del self._answers[stale]
+            if not self._answering_previous:
+                for stale in [name for name, value in self._answers.items() if value[0] != stamp]:
+                    del self._answers[stale]
             while len(self._answers) >= self._CACHE_ENTRIES:
                 del self._answers[next(iter(self._answers))]
             self._answers[key] = (stamp, status, raw)
+
+    def scan_status(self) -> dict[str, Any]:
+        """What the running scan is doing, and how the last background scan ended."""
+
+        payload = dict(getattr(self.project, "scan_progress", None) or {"running": False})
+        thread = self._scan_thread
+        if thread is not None and thread.is_alive():
+            payload["running"] = True
+            if self._scan_cancel is not None and self._scan_cancel.is_set():
+                payload["cancelling"] = True
+        if self._scan_outcome is not None:
+            payload["last"] = dict(self._scan_outcome)
+        return payload
+
+    def start_scan(self) -> dict[str, Any]:
+        """Scan on a worker thread. The request returns at once and the page polls ``/api/scan/status``.
+
+        The worker holds the request lock only while the new graph is published, so every other
+        request is answered from the previous graph while sources are read and formulas analysed.
+        """
+
+        if self._scan_thread is not None and self._scan_thread.is_alive():
+            raise ValueError("A scan is already running")
+        project, repository = self.project, self.api.repository
+        cancel = threading.Event()
+        self._scan_cancel, self._scan_outcome = cancel, None
+        self._scan_number += 1
+        number = self._scan_number
+        project.scan_progress = {"running": True, "phase": "Reading sources", "done": 0, "total": 0}
+
+        def work() -> None:
+            from datetime import datetime, timezone
+
+            from backend.projects import ScanCancelled
+
+            outcome: dict[str, Any] = {"scan": number}
+            try:
+                app = self
+
+                class Publishing:
+                    """The request lock, taken to publish; from then on reads get the previous answers."""
+
+                    def __enter__(self) -> None:
+                        app.request_lock.acquire()
+                        app._answering_previous = True
+
+                    def __exit__(self, *_: Any) -> None:
+                        app.request_lock.release()
+
+                # Automatic garbage collection waits until the scan ends: over the millions of objects a scan
+                # makes it stopped every thread for 0.2-0.7 s about 17 times per scan of the large project,
+                # and requests answered meanwhile waited for it (review 04). Memory grew 14 MB without it.
+                collecting = gc.isenabled()
+                gc.disable()
+                try:
+                    result = project.scan(repository, cancel=cancel, publish_lock=Publishing())
+                    with self.request_lock:
+                        self._sync_review_settings()
+                        if getattr(self, "_source_watcher", None) is not None:
+                            self._source_watcher.reset()
+                    self._warm_answers()
+                finally:
+                    self._answering_previous = False
+                    if collecting:
+                        # What the scan left goes to the permanent generation, so turning collection back on
+                        # does not stop every thread for a pass over all of it (0.27 s); it is collected
+                        # once nobody is waiting for an answer.
+                        gc.freeze()
+                        gc.enable()
+                        self._collect_when_idle()
+                outcome.update(state="done", source_count=result.source_count)
+            except ScanCancelled:
+                outcome.update(state="cancelled")
+            except Exception as error:  # noqa: BLE001 - reported to the page, which shows it
+                outcome.update(state="failed", error=str(error))
+            outcome["finished_at"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
+            self._scan_outcome = outcome
+
+        self._scan_thread = threading.Thread(target=work, name="pbibrain-scan", daemon=True)
+        self._scan_thread.start()
+        return {"running": True, "scan": number}
+
+    def _sync_review_settings(self, config: Mapping[str, Any] | None = None) -> None:
+        """Apply the project's auto-accept setting; a project without the setting leaves the graph alone."""
+
+        if config is None:
+            config = self.project.get_config() if self.project is not None else {}
+        settings = config.get("review")
+        if settings is None and not self.api.marks.auto:
+            return
+        self.api.sync_auto_accept(settings or {})
+
+    _IDLE_SECONDS = 2.0
+
+    def _collect_when_idle(self) -> None:
+        """Collect the garbage a scan froze once no request has come for a while."""
+
+        def collect() -> None:
+            while time.monotonic() - self._last_request < self._IDLE_SECONDS or self._scan_running():
+                time.sleep(0.5)
+            gc.unfreeze()
+            gc.collect()
+
+        threading.Thread(target=collect, name="pbibrain-collect", daemon=True).start()
+
+    def _scan_running(self) -> bool:
+        return bool((getattr(self.project, "scan_progress", None) or {}).get("running"))
+
+    _WARM_ROUTES = ("/api/overview", "/api/search?q=a")
+
+    def _warm_answers(self) -> None:
+        """Build the answers the page asks for first after a scan, before the scan says it is done."""
+
+        for target in self._WARM_ROUTES:
+            path, _, query = target.partition("?")
+            try:
+                with self.request_lock:
+                    stamp = self._graph_stamp()
+                    with self._reading():
+                        status, payload = self.handle("GET", target)
+                    self._store_answer(f"{path}?{query}", stamp, status, json.dumps(payload, ensure_ascii=False, sort_keys=True).encode("utf-8"))
+            except Exception:  # a failed warm-up only means the first request builds it
+                pass
+        try:
+            self.api.review_index()
+        except Exception:
+            pass
 
     def prime(self) -> None:
         """Build the Overview answer ahead of the first request, so the first screen does not wait for it."""
 
         try:
             with self.request_lock:
+                self._sync_review_settings()  # a scan from the command line may have left new suggestions
                 stamp = self._graph_stamp()
                 with self._reading():
                     status, payload = self.handle("GET", "/api/overview")
@@ -716,6 +1030,17 @@ class BrainApp:
                 if set(payload) != {"before", "after"} or any(not isinstance(item, str) for item in payload.values()):
                     raise ValueError("INVALID_COMPARE_REQUEST")
                 return 200, self.api.compare_prepared_snapshots(payload["before"], payload["after"])
+            if method == "GET" and parts == ["config", "sources"] and self.project is not None:
+                # Whether each configured path is there, so a wrong path shows before any scan runs.
+                config = self.project.get_config()
+                found = []
+                states = getattr(self.project, "source_states", None) or {}
+                for value, resolved in zip(config.get("sources", []), self.project.source_paths()):
+                    entry = {"path": value, "exists": resolved.exists(), "kind": "folder" if resolved.is_dir() else "file" if resolved.is_file() else "missing"}
+                    if isinstance(states.get(value), Mapping):
+                        entry["scan"] = dict(states[value])  # what the last scan did with this source
+                    found.append(entry)
+                return 200, {"sources": found}
             if parts == ["config"] and self.project is not None:
                 if method == "GET":
                     return 200, self.project.get_config()
@@ -724,9 +1049,30 @@ class BrainApp:
                     current = self.project.get_config()
                     if any(payload.get(key, current[key]) != current[key] for key in ("database", "identity_map")):
                         raise ValueError("Storage paths cannot change while the server is open; edit the config file and restart")
-                    return 200, self.project.save_config(payload)
+                    saved = self.project.save_config(payload)
+                    if saved.get("review") != current.get("review"):
+                        self._sync_review_settings(saved)
+                    return 200, saved
+            if method == "POST" and parts == ["sample"] and self.project is not None:
+                # One click to a project with content: the sample is written beside the config and added as a source.
+                from backend.sample_project import write_sample
+                sample = write_sample(self.project.config_path.parent / "sample")
+                current = self.project.get_config()
+                known = {path.resolve() for path in self.project.source_paths()}
+                if sample.resolve() not in known:
+                    current = self.project.save_config({**current, "sources": [*current.get("sources", []), str(sample)]})
+                return 200, current
+            if method == "POST" and parts == ["scan", "cancel"] and self.project is not None:
+                if self._scan_cancel is not None:
+                    self._scan_cancel.set()
+                return 200, self.scan_status()
+            if method == "POST" and parts == ["scan"] and self.project is not None and self._json_body(body).get("background"):
+                return 200, self.start_scan()
             if method == "POST" and parts == ["scan"] and self.project is not None:
+                if self._scan_thread is not None and self._scan_thread.is_alive():
+                    raise ValueError("A scan is already running")
                 result = self.project.scan(self.api.repository)
+                self._sync_review_settings()
                 if getattr(self, "_source_watcher", None) is not None:
                     self._source_watcher.reset()  # the scan is the new baseline; check again
                 return 200, {"overview": self.api.get_overview(), "source_count": result.source_count}
@@ -741,6 +1087,7 @@ class BrainApp:
                     limit=int(str(self._query_values(query, "limit") or "50")),
                     offset=int(str(self._query_values(query, "offset") or "0")),
                     store=self.api.overrides,
+                    project_objects_only=str(self._query_values(query, "kind") or "") == "objects",
                 )
             if method == "GET" and parts == ["overview"]:
                 return 200, self.api.get_overview()
@@ -748,10 +1095,12 @@ class BrainApp:
                 # Issue #17: project files changed outside the app since the last scan, with Breaks and Needs.
                 if self.project is None:
                     raise ValueError("pending-changes needs an open project")
-                # A background watcher does the work, so a slow preview scan never blocks this read.
-                if getattr(self, "_source_watcher", None) is None:
-                    from backend.pending_changes import DEFAULT_IDLE_SECONDS, SourceWatcher
-                    self._source_watcher = SourceWatcher(self.project.config_path, project=self.project, idle_timeout=DEFAULT_IDLE_SECONDS)
+                # A background watcher does the work, so a slow preview scan never blocks this read. It is
+                # answered without the request lock, so it needs its own to start the watcher once.
+                with self._watcher_lock:
+                    if getattr(self, "_source_watcher", None) is None:
+                        from backend.pending_changes import DEFAULT_IDLE_SECONDS, SourceWatcher
+                        self._source_watcher = SourceWatcher(self.project.config_path, project=self.project, idle_timeout=DEFAULT_IDLE_SECONDS)
                 return 200, self._source_watcher.read()
             if method == "GET" and parts == ["model-summary"]:
                 from backend.model_summary import build_model_summary
@@ -780,8 +1129,7 @@ class BrainApp:
                 data = result.pop("data")
                 return 200, {**result, "bytes": len(data), "content_base64": base64.b64encode(data).decode("ascii")}
             if method == "GET" and parts == ["brain"]:
-                view = self._query_values(query, "view")
-                return 200, self.api.get_snapshot(str(view) if view else None)
+                return 200, self.api.get_snapshot()
             if method == "GET" and parts == ["objects"]:
                 object_type = self._query_values(query, "object_type") or self._query_values(query, "type")
                 return 200, self.api.search_objects(
@@ -852,6 +1200,9 @@ class BrainApp:
                     if value is not None:
                         params[key] = int(str(value))
                 return 200, self.api.get_graph(**{key: value for key, value in params.items() if value is not None})
+            if method == "GET" and parts == ["review", "page"]:
+                keys = ("tab", "issue", "object_type", "model_id", "report_id", "sort", "section", "pattern", "grouping", "offset", "limit", "rows", "target")
+                return 200, self.api.get_review_page({key: self._query_values(query, key) for key in keys if self._query_values(query, key) is not None})
             if method == "GET" and parts == ["review"]:
                 params: dict[str, Any] = {
                     "object_type": self._query_values(query, "object_type") or self._query_values(query, "type"),
@@ -887,7 +1238,7 @@ class BrainApp:
                 payload = self._json_body(body)
                 action = str(payload.pop("action", ""))
                 items = payload.get("items") or payload.get("item_ids")
-                if items is not None:
+                if items is not None or payload.get("filter") is not None or payload.get("view") is not None or payload.get("token") or payload.get("undo_token"):
                     return 200, self.api.apply_review("bulk", action, payload)
                 item_id = str(payload.get("candidate_id") or payload.get("target") or "")
                 if not item_id:
@@ -907,6 +1258,7 @@ class BrainApp:
             return 503, {"error": str(exc)}
 
     def __call__(self, environ: Mapping[str, Any], start_response: Any) -> list[bytes]:
+        self._last_request = time.monotonic()
         method = str(environ.get("REQUEST_METHOD", "GET"))
         path = str(environ.get("PATH_INFO", "/"))
         query = str(environ.get("QUERY_STRING", ""))
@@ -915,6 +1267,11 @@ class BrainApp:
         local_hosts = {"127.0.0.1", "localhost", "::1"}
         status, payload = 200, None
         raw: bytes | None = None
+        # Liveness: answered without the request lock, so launchers can wait for the server even during a scan.
+        if method == "GET" and path == "/api/health":
+            body = b'{"ok": true}'
+            start_response("200 OK", [("Content-Type", "application/json; charset=utf-8"), ("Content-Length", str(len(body))), ("Cache-Control", "no-store")])
+            return [body]
         try:
             parsed_host = urlsplit(f"http://{host}")
             if parsed_host.hostname not in local_hosts or parsed_host.username or parsed_host.path:
@@ -941,13 +1298,21 @@ class BrainApp:
                     if asset.is_file():
                         raw = asset.read_bytes()
                         mime = mimetypes.guess_type(asset.name)[0] or "application/octet-stream"
-                        start_response("200 OK", [("Content-Type", mime), ("Content-Length", str(len(raw))), ("X-Content-Type-Options", "nosniff")])
+                        headers = [("Content-Type", mime), ("X-Content-Type-Options", "nosniff")]
+                        raw = self._encoded(environ, raw, headers, key=(str(asset), asset.stat().st_mtime_ns))
+                        start_response("200 OK", [*headers, ("Content-Length", str(len(raw)))])
                         return [raw]
                 target = f"{path}?{query}" if query else path
                 key = f"{path}?{query}" if method == "GET" and path.startswith(self._CACHED_ROUTES) else None
                 # A cached answer needs no lock: a slow request must not hold up the rest of the UI.
                 cached = self._cached_answer(key, self._graph_stamp()) if key else None
-                if cached is not None:
+                if method == "GET" and path == "/api/scan/status":
+                    # What the running scan is doing; the scan itself holds the request lock.
+                    status, payload = 200, self.scan_status()
+                elif method == "GET" and path == "/api/pending-changes":
+                    # Read from the file watcher's own state, so a scan publishing its graph does not hold it up.
+                    status, payload = self.handle(method, target, body)
+                elif cached is not None:
                     status, raw = cached
                 else:
                     with self.request_lock:
@@ -967,7 +1332,9 @@ class BrainApp:
         status_text = {200: "OK", 204: "No Content", 400: "Bad Request", 403: "Forbidden", 404: "Not Found", 405: "Method Not Allowed", 413: "Payload Too Large", 415: "Unsupported Media Type", 503: "Service Unavailable"}.get(status, "Error")
         if raw is None or status != 200:
             raw = b"" if payload is None else json.dumps(payload, ensure_ascii=False, sort_keys=True).encode("utf-8")
-        headers = [("Content-Type", "application/json"), ("Content-Length", str(len(raw))), ("Cache-Control", "no-store"), ("X-Content-Type-Options", "nosniff")]
+        headers = [("Content-Type", "application/json"), ("Cache-Control", "no-store"), ("X-Content-Type-Options", "nosniff")]
+        raw = self._encoded(environ, raw, headers)
+        headers.append(("Content-Length", str(len(raw))))
         if origin and status != 403:
             headers.extend([("Access-Control-Allow-Origin", origin), ("Vary", "Origin")])
         if method == "OPTIONS":
@@ -975,7 +1342,37 @@ class BrainApp:
         start_response(f"{status} {status_text}", headers)
         return [raw]
 
+    _COMPRESS_ABOVE = 1024
+
+    def _encoded(self, environ: Mapping[str, Any], raw: bytes, headers: list[tuple[str, str]], key: Any = None) -> bytes:
+        """gzip an answer over 1 kB when the client accepts it (finding 04): lineage 7.5 MB travels as a few hundred kB.
+
+        A cached answer is the same bytes object each time, so its compressed copy is made once.
+        """
+
+        if len(raw) <= self._COMPRESS_ABOVE or "gzip" not in str(environ.get("HTTP_ACCEPT_ENCODING", "")):
+            return raw
+        key = key if key is not None else id(raw)
+        with self._compressed_lock:
+            found = self._compressed.get(key)
+        # An identity key is only good while the same bytes object is alive; a file key carries its modification time.
+        if found is not None and (found[0] is raw or not isinstance(key, int)):
+            packed = found[1]
+        else:
+            packed = gzip.compress(raw, compresslevel=5)
+            with self._compressed_lock:
+                self._compressed[key] = (raw, packed)
+                while len(self._compressed) > 32:
+                    del self._compressed[next(iter(self._compressed))]
+        headers.extend([("Content-Encoding", "gzip"), ("Vary", "Accept-Encoding")])
+        return packed
+
     def close(self) -> None:
+        # A running scan is stopped before its repository is closed under it.
+        if self._scan_thread is not None and self._scan_thread.is_alive():
+            if self._scan_cancel is not None:
+                self._scan_cancel.set()
+            self._scan_thread.join(timeout=60)
         self.api.close()
 
 

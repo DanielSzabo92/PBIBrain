@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { hideLanes, layoutLineage, lineageOf, laneOf, LANES, MAX_LANE_WIDTH, THROUGH, TWO_LINE_HEIGHT } from "../src/lineage.js";
+import { chainPath, hideLanes, layoutLineage, lineageOf, laneOf, LANES, MAX_LANE_WIDTH, THROUGH, TWO_LINE_HEIGHT } from "../src/lineage.js";
 import { buildImpactMatrix } from "../src/matrix.js";
 import { groupVersions, versionFamilies } from "../src/versions.js";
 
@@ -48,6 +48,14 @@ test("selecting an object traces what feeds it and what it feeds, but not its si
   const { ids } = lineageOf("x", layout.edges);
   for (const id of ["x", "c", "t", "m", "y", "v", "p", "r"]) assert.ok(ids.has(id), id);
   for (const id of ["c2", "unused", "v2", "z"]) assert.ok(!ids.has(id), id);
+});
+
+test("the chain of a selection reads as a path, one step per lane in flow order", () => {
+  const path = chainPath("x", nodes, edges);
+  assert.deepEqual(path.map((step) => step.label), ["Models", "Tables", "Columns", "Calculations", "Visuals", "Pages", "Page filters", "Reports"]);
+  assert.deepEqual(path.find((step) => step.key === "calc").nodes.map((item) => item.id), ["x", "y"], "the selection leads its step");
+  assert.ok(!path.flatMap((step) => step.nodes).some((item) => ["c2", "unused", "v2", "z"].includes(item.id)));
+  assert.deepEqual(chainPath("missing", nodes, edges), []);
 });
 
 test("impact matrix marks direct, indirect and filter use, and knows unbound blocks", () => {
@@ -157,4 +165,37 @@ test("lineage traces a visual back to the data source its table's partition read
   // Hiding the Queries lane bridges source → table.
   const hidden = hideLanes(sourced, links, ["query"]);
   assert.ok(hidden.edges.some((item) => item.type === THROUGH && [item.from_id, item.to_id].includes("sql") && [item.from_id, item.to_id].includes("t")));
+});
+
+test("a folded model is titled by the name its versions share, and the user can correct the folding", async () => {
+  const { versionTitle, withVersionLink } = await import("../src/versions.js");
+  assert.equal(versionTitle(["Sales Analytics v2", "Sales Analytics"]), "Sales Analytics");
+  assert.equal(versionTitle(["Sales Analytics (copy)"]), "Sales Analytics");
+  assert.equal(versionTitle(["Sales - DEV 2024-05-01"]), "Sales");
+  assert.equal(versionTitle(["v2"]), "v2", "a name that is only a marker stays");
+
+  const model = (id, name) => [
+    { id, type: "MODEL", name },
+    { id: `${id}:t`, type: "TABLE", name: "Sales", model_id: id },
+    { id: `${id}:m`, type: "MEASURE", name: "Total", model_id: id, table_id: `${id}:t` },
+  ];
+  const nodes = [...model("a", "Sales"), ...model("b", "Sales v2"), ...model("c", "Finance")];
+  const sizes = (links) => [...versionFamilies(nodes, links).families.values()].map((members) => members.map((member) => member.id).sort().join("+")).sort();
+  assert.deepEqual(sizes(null), ["a+b", "c"]);
+
+  const folded = groupVersions(nodes, []).nodes.find((node) => node.type === "MODEL" && node.versionCount === 2);
+  assert.equal(folded.name, "Sales · 2 versions");
+  assert.equal(folded.id, "a", "the folded node still opens its first version");
+
+  // "Not a version": the pair is never folded again.
+  const apart = withVersionLink(null, "different", "a", "b");
+  assert.deepEqual(sizes(apart), ["a", "b", "c"]);
+  assert.equal(groupVersions(nodes, [], apart).grouped, false);
+  // "Is a version of": folded whatever the names say; the opposite statement about the pair is dropped.
+  const joined = withVersionLink(withVersionLink(apart, "same", "c", "a"), "same", "b", "a");
+  assert.deepEqual(joined.different, []);
+  assert.deepEqual(sizes(joined), ["a+b+c"]);
+  // A "different" pair is not joined through a third model either.
+  const guarded = withVersionLink(withVersionLink(null, "different", "a", "b"), "same", "a", "c");
+  assert.deepEqual(sizes(withVersionLink(guarded, "same", "b", "c")), ["a+c", "b"]);
 });

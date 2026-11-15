@@ -17,7 +17,7 @@ import {
   Target,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { FilterButton, FilterChip, Popover } from "@/components/ui/filter";
+import { FilterButton, Popover } from "@/components/ui/filter";
 import { EmptyState } from "@/components/ui/result-panel";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { Tooltip } from "@/components/ui/tooltip";
@@ -136,6 +136,12 @@ function GridShortcutsHelp() {
       </div>
     </Popover>
   );
+}
+
+// The choice of a row, so the grid can mark the cell the result comes from.
+function chosenKind(row) {
+  const raw = row?.merge_choice ? row.merge_choice.kind || row.merge_choice.choice : null;
+  return raw ? normalizeChoiceKind(raw) : null;
 }
 
 export default function CompareGrid({
@@ -1123,7 +1129,7 @@ export default function CompareGrid({
         >
           <input
             type="checkbox"
-            tabIndex={0}
+            tabIndex={tabIndex}
             checked={isSelected}
             aria-label={t("compare.select_row", { name: row.name })}
             aria-keyshortcuts="Space"
@@ -1150,15 +1156,12 @@ export default function CompareGrid({
         >
           <ObjIcon className="dc-obj-icon" aria-hidden="true" />
           <div className="dc-obj-box">
-            <span className="dc-obj-name">
-              {row.table && row.object_type !== "table"
-                ? formatDaxName(row.table, row.name)
-                : row.object_type === "table"
-                  ? `'${row.name}'`
-                  : formatObjectRef(row.name)}
+            {/* Names read as in the rest of the app: the name, then its kind and table. The DAX spelling is the tooltip. */}
+            <span className="dc-obj-name" title={row.table && row.object_type !== "table" ? formatDaxName(row.table, row.name) : row.object_type === "table" ? `'${row.name}'` : formatObjectRef(row.name)}>
+              {row.name}
             </span>
             <span className="dc-obj-meta">
-              {row.object_type}
+              {row.object_type}{row.table && row.object_type !== "table" ? ` · ${row.table}` : ""}
             </span>
           </div>
         </div>
@@ -1216,10 +1219,13 @@ export default function CompareGrid({
       const choiceKind = rawKind ? normalizeChoiceKind(rawKind) : null;
       const isSaved = lastSavedRowKey === row.row_key;
 
-      const hasDonor = donors.some((d) => {
+      const takeDonor = donors.find((d) => {
         const cell = getCellData(d.source_id);
         return cell && cell.state !== "missing";
       });
+      const hasDonor = Boolean(takeDonor);
+      const targetName = targetSource?.display_name || "the target model";
+      const takeName = takeDonor ? takeDonor.display_name || takeDonor.name || "the source model" : "";
 
       return (
         <div
@@ -1241,39 +1247,42 @@ export default function CompareGrid({
             <div className="dc-mc-toggle-group" role="group" aria-label={t("compare.column.choice")}>
               <button
                 type="button"
+                tabIndex={tabIndex}
                 className={`dc-mc-btn ${choiceKind === "keep" ? "is-active" : ""}`}
                 disabled={changeDisabled}
                 onClick={(e) => {
                   e.stopPropagation();
                   handleSingleRowChoice(row, "keep");
                 }}
-                title="Keep target (K)"
+                title={`Keep the version in ${targetName} (K)`}
                 aria-keyshortcuts="k"
               >
                 Keep
               </button>
               <button
                 type="button"
+                tabIndex={tabIndex}
                 className={`dc-mc-btn ${choiceKind === "take" ? "is-active" : ""}`}
                 disabled={changeDisabled || !hasDonor}
                 onClick={(e) => {
                   e.stopPropagation();
                   handleSingleRowChoice(row, "take");
                 }}
-                title={hasDonor ? "Take from donor (T)" : "No donor available"}
+                title={hasDonor ? `Take the version from ${takeName} (T)` : "No other model has this object"}
                 aria-keyshortcuts="t"
               >
                 Take
               </button>
               <button
                 type="button"
+                tabIndex={tabIndex}
                 className={`dc-mc-btn ${choiceKind === "skip" ? "is-active" : ""}`}
                 disabled={changeDisabled}
                 onClick={(e) => {
                   e.stopPropagation();
                   handleSingleRowChoice(row, "skip");
                 }}
-                title="Skip (S)"
+                title="Decide later; nothing changes for this object (S)"
                 aria-keyshortcuts="s"
               >
                 Skip
@@ -1281,7 +1290,7 @@ export default function CompareGrid({
             </div>
             {isSaved ? (
               <span className="dc-mc-saved">
-                Saved · <button type="button" className="dc-link dc-mc-undo-btn" onClick={(e) => { e.stopPropagation(); handleUndoSingle(row.row_key); }}>Undo</button>
+                Saved · <button type="button" tabIndex={tabIndex} className="dc-link dc-mc-undo-btn" onClick={(e) => { e.stopPropagation(); handleUndoSingle(row.row_key); }}>Undo</button>
               </span>
             ) : choiceKind && !["keep", "take", "skip"].includes(choiceKind) ? (
               <Tooltip content={mc}>
@@ -1310,7 +1319,7 @@ export default function CompareGrid({
       return (
         <div
           key={`cell-${rowIndex}-4`}
-          className={`dc-cell dc-col-tg ${isMissing ? "dc-cell-missing" : ""}`}
+          className={`dc-cell dc-col-tg ${isMissing ? "dc-cell-missing" : ""}${chosenKind(row) === "keep" ? " is-chosen" : ""}`}
           role="gridcell"
           aria-colindex={5}
           tabIndex={tabIndex}
@@ -1349,7 +1358,7 @@ export default function CompareGrid({
       return (
         <div
           key={`cell-${rowIndex}-${colIndex}`}
-          className={`dc-cell ${isMissing ? "dc-cell-missing" : ""}`}
+          className={`dc-cell ${isMissing ? "dc-cell-missing" : ""}${["take", "take_properties", "add_new_name"].includes(chosenKind(row)) && (row.merge_choice?.source || row.merge_choice?.source_id) === donor.source_id ? " is-chosen" : ""}`}
           role="gridcell"
           aria-colindex={colIndex + 1}
           tabIndex={tabIndex}
@@ -1547,6 +1556,13 @@ export default function CompareGrid({
             {t("compare.filter.changed")}
           </Button>
 
+          {/* One filter line: each control shows its own value, so the filters are not repeated as chips below. */}
+          {hasActiveFilters ? (
+            <button type="button" className="dc-link text-xs" id="clearf" onClick={clearAllFilters}>
+              {t("shared.clear_filters")}
+            </button>
+          ) : null}
+
           <span className="dc-spacer" />
 
           <GridShortcutsHelp />
@@ -1554,64 +1570,6 @@ export default function CompareGrid({
           {modeControl}
         </div>
       )}
-
-      {/* Active filter chips */}
-      {hasActiveFilters ? (
-        <div className="dc-chips">
-          {stateFilter === "notsame" ? (
-            <FilterChip
-              label="State: not same"
-              onRemove={() => setStateFilter("all")}
-            />
-          ) : stateFilter && stateFilter !== "all" ? (
-            <FilterChip
-              label={`State: ${stateWord(stateFilter)}`}
-              onRemove={() => setStateFilter("all")}
-            />
-          ) : null}
-
-          {typeFilters.map((tp) => (
-            <FilterChip
-              key={tp}
-              label={`Type: ${tp}`}
-              onRemove={() => setTypeFilters((list) => list.filter((x) => x !== tp))}
-            />
-          ))}
-
-          {marksFilter ? (
-            <FilterChip
-              label={t("work.compare.marks")}
-              onRemove={() => setMarksFilter(false)}
-            />
-          ) : null}
-
-          {changedFilter ? (
-            <FilterChip
-              label="Changed since last check"
-              onRemove={() => setChangedFilter(false)}
-            />
-          ) : null}
-
-          {debouncedQ ? (
-            <FilterChip
-              label={`Name contains "${debouncedQ}"`}
-              onRemove={() => {
-                setQ("");
-                setDebouncedQ("");
-              }}
-            />
-          ) : null}
-
-          <button
-            type="button"
-            className="dc-link text-xs"
-            id="clearf"
-            onClick={clearAllFilters}
-          >
-            {t("shared.clear_filters")}
-          </button>
-        </div>
-      ) : null}
 
       {/* Main Area: Grid + Side Pane */}
       <div className={`dc-compare-area ${activeRow ? "with-pane" : ""}`}>
@@ -1740,7 +1698,7 @@ export default function CompareGrid({
                       role="columnheader"
                       aria-colindex={4}
                     >
-                      <span>{t("compare.column.choice")}</span>
+                      <span title={t("compare.column.choice.help")}>{t("compare.column.choice")}</span>
                     </div>
 
                     <div className={`dc-hcell dc-col-tg ${targetSource?.status === "missing" ? "dc-hcell-missing" : ""}`} role="columnheader" aria-colindex={5}>

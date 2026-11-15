@@ -56,25 +56,29 @@ test.describe("Apply preview and confirm dialog", () => {
     await openPlan(page);
     await openApplyDialog(page);
     const box = dialog(page).getByRole("checkbox", { name: /I approve them/ });
-    await expect(dialog(page).getByRole("heading", { name: "Apply the plan to Combined model?" })).toBeVisible();
+    await expect(dialog(page).getByRole("heading", { name: "Apply to Combined model and Combined report?" })).toBeVisible();
     await expect(dialog(page).locator('[data-severity="not_checked"]').first()).toContainText("Budget");
     await expect(box).toBeFocused();
     const confirm = dialog(page).locator('[data-confirm="apply"]');
     await expect(confirm).toBeDisabled();
-    await expect(confirm).toHaveAttribute("data-variant", "default");
+    // Apply writes the files, so its confirm is always destructive (Format is the only plain one).
+    await expect(confirm).toHaveAttribute("data-variant", "destructive");
     await box.click();
     await expect(confirm).toBeEnabled();
     expect(await axeViolations(page)).toEqual([]);
   });
 
-  test("with no approval items there is no checkbox, Cancel has the focus, and a delete makes the confirm destructive", async ({ page, request }) => {
+  test("with no approval items there is no checkbox, Cancel has the focus, and deletes are listed first", async ({ page, request }) => {
     await scenario(request, "apply-ready");
     await openPlan(page);
     await expect(strip(page).getByRole("button", { name: "Apply plan" })).toHaveAttribute("data-variant", "destructive");
     await openApplyDialog(page);
     await expect(dialog(page).getByRole("checkbox")).toHaveCount(0);
     await expect(dialog(page).getByRole("button", { name: "Cancel" })).toBeFocused();
-    await expect(dialog(page).locator('[data-apply="deletes"]')).toHaveText("Deletes 1 object: Region.");
+    // Deletes come first, with the qualified name, so a column cannot be mistaken for another of the same name.
+    const deletes = dialog(page).locator('[data-apply="deletes"]');
+    await expect(deletes).toContainText("Deletes 1 object:");
+    await expect(deletes.getByRole("listitem")).toHaveText(["Customer[Region]"]);
     const confirm = dialog(page).locator('[data-confirm="apply"]');
     await expect(confirm).toBeEnabled();
     await expect(confirm).toHaveAttribute("data-variant", "destructive");
@@ -194,7 +198,7 @@ test.describe("Undo, format only, and change report", () => {
     await expect(dialog(page).locator(".dc-apply-step")).toHaveCount(3);
     await expect(dialog(page)).toHaveAttribute("data-phase", "result", { timeout: 8000 });
     await expect(dialog(page).getByRole("heading", { name: "Apply undone" })).toBeFocused();
-    await expect(page.locator(".ui-toast-text").filter({ hasText: /^Apply undone\. The target files are the same as before/ })).toBeVisible();
+    await expect(page.locator("[data-sonner-toast] [data-title]").filter({ hasText: /^Apply undone\. The target files are the same as before/ })).toBeVisible();
     await dialog(page).getByRole("button", { name: "Close" }).click();
     await expect(strip(page).getByRole("button", { name: "Undo apply" })).toHaveCount(0);
   });
@@ -245,13 +249,13 @@ test.describe("Undo, format only, and change report", () => {
     });
     await expect(dialog(page).locator('[data-report="name"]')).toHaveText(`Sales and finance merge change report ${today}.md`);
     await dialog(page).getByRole("button", { name: "Save change report" }).click();
-    const toast = page.locator(".ui-toast").filter({ hasText: "Change report saved" });
+    const toast = page.locator("[data-sonner-toast]").filter({ hasText: "Change report saved" });
     await expect(toast).toBeVisible();
     await expect(toast.getByRole("button", { name: "Show in folder" })).toBeVisible();
 
     await fault(request, { method: "change_report_write", code: "not_found", message: "No report.", details: { reason: "no_apply" } });
     await strip(page).getByRole("button", { name: "Write change report" }).click();
     await dialog(page).getByRole("button", { name: "Save change report" }).click();
-    await expect(page.locator(".ui-toast-text").filter({ hasText: /^Could not save the change report\./ })).toBeVisible();
+    await expect(page.locator("[data-sonner-toast] [data-title]").filter({ hasText: /^Could not save the change report\./ })).toBeVisible();
   });
 });

@@ -3,6 +3,7 @@ import test from "node:test";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { appSource as readAppSource } from "./appSource.js";
 
 const SRC = fileURLToPath(new URL("../src/", import.meta.url));
 
@@ -57,7 +58,7 @@ test("Issue #49: GraphView resolves axe nested-interactive violation and lintapp
 });
 
 test("Issue #49: Icon-only controls use Tooltip primitives", async () => {
-  const appCode = await readFile(path.join(SRC, "App.jsx"), "utf8");
+  const appCode = readAppSource();
 
   // 1. Dev Center sidebar rail at narrow widths has tooltip
   assert.ok(
@@ -150,7 +151,7 @@ test("Issue #49: Dev Center placeholder contrast meets WCAG AA (>= 4.5:1) and co
 });
 
 test("Issue #49: Search inputs clear on Esc when text present, and blur when empty", async () => {
-  const appCode = await readFile(path.join(SRC, "App.jsx"), "utf8");
+  const appCode = readAppSource();
   const gridCode = await readFile(path.join(SRC, "devcenter/components/CompareGrid.jsx"), "utf8");
   const inputCode = await readFile(path.join(SRC, "components/ui/input.jsx"), "utf8");
 

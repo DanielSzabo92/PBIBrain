@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Menubar as MenubarPrimitive } from "radix-ui";
-import { Check, CircleCheck, Keyboard, Moon, Sun, TriangleAlert } from "lucide-react";
+import { Check, ChevronsUpDown, CircleCheck, Keyboard, Moon, Sun, TriangleAlert } from "lucide-react";
+import { Menu } from "./ui/menu";
 import BrandMark from "./BrandMark";
 import { PRODUCT_CREDIT } from "../brand";
 import { Dialog, DialogContent } from "./ui/dialog";
@@ -34,7 +35,7 @@ function MenuItem({ item }) {
   );
 }
 
-export function AppMenuBar({ menus, projectName, children }) {
+export function AppMenuBar({ menus, projectName, projectMenu, onProjectMenu, children }) {
   const [value, setValue] = useState("");
   const bar = useRef(null);
   useEffect(() => {
@@ -82,23 +83,28 @@ export function AppMenuBar({ menus, projectName, children }) {
         ))}
       </MenubarPrimitive.Root>
       <div className="app-titlebar-center">{children}</div>
-      <Tooltip content={projectName}><span className="app-titlebar-project">{projectName}</span></Tooltip>
+      {projectMenu ? (
+        // The project name is the project switcher: recent projects and "Open another project…".
+        <Menu align="end" label="Switch project" groups={projectMenu} onOpenChange={(open) => { if (open) onProjectMenu?.(); }}
+          trigger={<button type="button" className="app-titlebar-project app-titlebar-switch" title={projectName} aria-label={`Project ${projectName}. Switch project`}><span>{projectName}</span><ChevronsUpDown aria-hidden="true" /></button>} />
+      ) : <Tooltip content={projectName}><span className="app-titlebar-project">{projectName}</span></Tooltip>}
     </header>
   );
 }
 
-export function StatusBar({ connection, projectName, counts, pending, onReview, scanning, lastScan, notice, noticeFailed, theme, onTheme, onShortcuts, onScan }) {
+export function StatusBar({ connection, projectName, counts, pending, onReview, scanning, scanStatus, onCancelScan, lastScan, notice, noticeFailed, theme, onTheme, onShortcuts, onScan }) {
   const label = connection === "loading" ? "Loading" : connection === "error" ? "Offline" : "Connected";
   const countsText = connection === "loading"
     ? "Loading project…"
     : connection === "error"
       ? "Service unreachable"
+      : !counts.objects ? "No data yet"
       : `${counts.models} ${counts.models === 1 ? "model" : "models"} · ${counts.reports} ${counts.reports === 1 ? "report" : "reports"} · ${counts.objects.toLocaleString()} objects · ${counts.edges.toLocaleString()} relationships`;
   const isScanUnknown = lastScan === "Last scan time unknown" || lastScan === "Not scanned";
   return (
     <footer className="app-statusbar" aria-label="Status bar">
-      <Tooltip content={label}><span className={`statusbar-item connection connection-${connection}`}><i />{label}</span></Tooltip>
-      {scanning ? <span className="statusbar-item topbar-scanning"><span className="statusbar-progress" aria-hidden="true" />Scanning sources…</span> : null}
+      <Tooltip content={label}><span className={`statusbar-item connection connection-${connection}`}><i />{connection === "ready" || label === "Connected" ? <span className="sr-only">{label}</span> : label}</span></Tooltip>
+      {scanning ? <span className="statusbar-item topbar-scanning"><span className="statusbar-progress" aria-hidden="true" /><ScanProgress read={scanStatus} />{onCancelScan ? <CancelScan onCancel={onCancelScan} /> : null}</span> : null}
       <span className={`statusbar-item statusbar-counts ${connection === "loading" ? "statusbar-loading" : ""}`}>{countsText}</span>
       {pending > 0 ? <Tooltip content="Open the review queue (Ctrl+5)"><button type="button" className="statusbar-item statusbar-button statusbar-review" onClick={onReview}>{pending.toLocaleString()} to review</button></Tooltip> : null}
       {isScanUnknown && onScan ? (
@@ -111,7 +117,7 @@ export function StatusBar({ connection, projectName, counts, pending, onReview, 
         <span className="statusbar-item statusbar-scan">{lastScan}</span>
       )}
       <span className="statusbar-spacer" />
-      {notice ? <span className={`statusbar-item toast ${noticeFailed ? "toast-error" : ""}`} role="status">{noticeFailed ? <TriangleAlert aria-hidden="true" /> : <CircleCheck aria-hidden="true" />}{notice}</span> : null}
+      {notice ? <span className={`statusbar-item statusbar-notice ${noticeFailed ? "statusbar-notice-error" : ""}`} role="status">{noticeFailed ? <TriangleAlert aria-hidden="true" /> : <CircleCheck aria-hidden="true" />}{notice}</span> : null}
       <Tooltip content="Keyboard shortcuts (F1)"><button type="button" className="statusbar-item statusbar-button" onClick={onShortcuts} aria-label="Keyboard shortcuts"><Keyboard aria-hidden="true" /></button></Tooltip>
       <Tooltip content={`${theme === "dark" ? "Light" : "Dark"} theme (Ctrl+Shift+L)`}><button type="button" className="statusbar-item statusbar-button theme-toggle" onClick={onTheme} aria-label={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}>{theme === "dark" ? <Sun aria-hidden="true" /> : <Moon aria-hidden="true" />}</button></Tooltip>
     </footer>
@@ -169,4 +175,29 @@ export function ShortcutsDialog({ open, onOpenChange }) {
       </DialogContent>
     </Dialog>
   );
+}
+
+/** Stops the scan. The server stops between two steps, so the button says that it was asked. */
+function CancelScan({ onCancel }) {
+  const [asked, setAsked] = React.useState(false);
+  return <button type="button" className="statusbar-button statusbar-cancel-scan" disabled={asked} onClick={() => { setAsked(true); onCancel(); }}>{asked ? "Cancelling…" : "Cancel"}</button>;
+}
+
+/** What the scan is doing and for how long, so a long scan is seen to be running. */
+function ScanProgress({ read }) {
+  const [seconds, setSeconds] = React.useState(0);
+  const [status, setStatus] = React.useState(null);
+  React.useEffect(() => {
+    const started = Date.now();
+    let live = true;
+    const tick = async () => {
+      setSeconds(Math.round((Date.now() - started) / 1000));
+      if (typeof read !== "function") return;
+      try { const next = await read(); if (live && next?.running) setStatus(next); } catch { /* The phase is a courtesy; the scan result still arrives. */ }
+    };
+    const timer = setInterval(tick, 1000);
+    return () => { live = false; clearInterval(timer); };
+  }, [read]);
+  const step = status?.total > 1 && status.done < status.total ? ` (${status.done + 1} of ${status.total})` : "";
+  return <>{status?.phase ? `${status.phase}${step}…` : "Scanning sources…"}{seconds >= 2 ? <span data-ui-number="" aria-hidden="true"> {seconds} s</span> : null}</>;
 }

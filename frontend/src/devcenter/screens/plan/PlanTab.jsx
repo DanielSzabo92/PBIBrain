@@ -469,9 +469,6 @@ export default function PlanTab({ session, changeDisabled, reasonId, onTabs, onC
                 <h2 id="dc-plan-offers-title" className="dc-section-title">Report items</h2>
                 <span className="dc-muted dc-num">{offersCount ?? 0}</span>
               </div>
-              <p className="dc-muted dc-plan-card-empty text-xs">
-                {t("impact.offers.help")}
-              </p>
               <div className="mt-2" data-ui-actions="">
                 <Button variant="outline" size="sm" onClick={() => onTabs({ tab: "impact", group: "offers" })}>
                   Manage report items

@@ -97,6 +97,17 @@ class RetrievalQualityTests(unittest.TestCase):
         self.assertEqual(result["object"]["id"], identifier)
         self.assertEqual(result["match"]["kind"], "exact_id")
 
+    def test_project_objects_only_leaves_out_the_semantic_layer(self) -> None:
+        self.repository.upsert_node(Node("semantic:alias:1", "ALIAS", "Revenue", model_id=MODEL_A))
+        everything = retrieve_objects(self.repository, "Revenue")
+        objects = retrieve_objects(self.repository, "Revenue", project_objects_only=True)
+        self.assertIn("semantic:alias:1", [item["id"] for item in everything["items"]])
+        self.assertNotIn("semantic:alias:1", [item["id"] for item in objects["items"]])
+        self.assertEqual(objects["total"], everything["total"] - 1)
+        # An explicit type is the caller's choice and is kept.
+        asked = retrieve_objects(self.repository, "Revenue", object_type="ALIAS", project_objects_only=True)
+        self.assertEqual([item["id"] for item in asked["items"]], ["semantic:alias:1"])
+
     def test_pagination_reports_exact_total_and_next_offset(self) -> None:
         first = retrieve_objects(self.repository, "", object_type="MEASURE", limit=2, offset=0)
         self.assertEqual(first["total"], 4)

@@ -67,16 +67,17 @@ test.describe("screens and banners of sections 4.1 and 4.2", () => {
       await scenario(request, "default");
       await openDevCenter(page);
       await workReady(page);
-      await expect(page.getByText("Target model: Combined model. Target report: Combined report.")).toBeVisible();
+      await expect(page.getByText("Target: Combined model · Combined report")).toBeVisible();
       await expect(page.getByRole("button", { name: /^Valid with 1 warning\. Open the Plan tab$/ })).toBeVisible();
       await expect(tab(page, "Compare")).toHaveAttribute("aria-selected", "true");
       await expect(tab(page, "Agent")).toContainText("1");
       for (const name of ["Compare", "Impact", "Plan", "Agent", "Sources", "Log"]) await expect(tab(page, name)).toBeVisible();
-      await expect(page.getByRole("navigation", { name: "Breadcrumb" })).toContainText("Merge models");
       await checkPage(page);
 
-      // The first part of the breadcrumb shows the list. The session stays open.
-      await page.getByRole("navigation", { name: "Breadcrumb" }).getByRole("button", { name: "Merge models" }).click();
+      // The session switcher beside the title lists the other sessions and leads to the list. The session stays open.
+      await page.getByRole("button", { name: "Switch session" }).click();
+      await expect(page.getByRole("menu", { name: "Switch session" })).toBeVisible();
+      await page.getByRole("menuitem", { name: "All merge sessions" }).click();
       await expect(page.getByRole("heading", { level: 1, name: "Merge sessions" })).toBeVisible();
       const table = page.getByRole("table", { name: /Merge sessions of this project/ });
       for (const header of ["Name", "Target", "Sources", "Plan", "Last change", "Status"]) await expect(table.getByRole("columnheader", { name: header })).toBeVisible();
@@ -85,7 +86,7 @@ test.describe("screens and banners of sections 4.1 and 4.2", () => {
       await checkPage(page);
 
       // A click on the open session shows its work area again.
-      await table.getByRole("button", { name: "Sales and finance merge" }).click();
+      await table.getByRole("button", { name: "Sales and finance merge", exact: true }).click();
       await workReady(page);
     });
   }
@@ -100,8 +101,10 @@ test.describe("screens and banners of sections 4.1 and 4.2", () => {
       const table = page.getByRole("table", { name: /Merge sessions of this project/ });
       await expect(table.getByText(label, { exact: true })).toBeVisible();
       await expect(table.getByText(reason)).toBeVisible();
-      await expect(table.getByRole("button")).toHaveCount(1);
-      await expect(table.getByRole("button", { name: "Budget merge" })).toBeVisible();
+      // The unreadable session has no link, only ways to deal with its file; the readable one opens.
+      await expect(table.getByRole("button", { name: "Sales and finance merge", exact: true })).toHaveCount(0);
+      for (const action of ["Copy path", "Delete session"]) await expect(table.getByRole("button", { name: action })).toHaveCount(1);
+      await expect(table.getByRole("button", { name: "Budget merge", exact: true })).toBeVisible();
       await checkPage(page);
     }
   });
@@ -116,7 +119,7 @@ test.describe("screens and banners of sections 4.1 and 4.2", () => {
     await expect(page.getByRole("button", { name: "Check sources" })).toBeDisabled();
     await expect(page.getByRole("button", { name: "Check sources" })).toHaveAttribute("aria-describedby", "dc-locked-reason");
     await tab(page, "Sources").click();
-    for (const name of ["Remove Sales model", "Remove Finance model", "Remove Marketing model"]) await expect(page.getByRole("button", { name })).toBeDisabled();
+    for (const name of ["Actions for Sales model", "Actions for Finance model", "Actions for Marketing model"]) await expect(page.getByRole("button", { name })).toBeDisabled();
     await expect(page.getByRole("button", { name: "Change target" })).toBeDisabled();
     await checkPage(page);
 
@@ -136,7 +139,7 @@ test.describe("screens and banners of sections 4.1 and 4.2", () => {
     await tab(page, "Sources").click();
     await banner.getByRole("button", { name: "Show these rows" }).click();
     await expect(tab(page, "Compare")).toHaveAttribute("aria-selected", "true");
-    await expect(page.getByText("Filter: rows with marks.")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Marks", exact: true })).toHaveAttribute("aria-pressed", "true");
   });
 
   test("source-missing: the bad banner, Open Sources, and Find source", async ({ page, request }) => {
@@ -153,8 +156,9 @@ test.describe("screens and banners of sections 4.1 and 4.2", () => {
     await expect(page.locator('[data-banner="missing"]')).toHaveCount(0);
     const row = page.locator('[data-source="src-1"]');
     await expect(row).toContainText("Not found");
-    await row.getByRole("button", { name: "Find Sales model" }).click();
-    await expect(page.locator(".ui-toast-region")).toContainText("Sales model found.");
+    await row.getByRole("button", { name: "Actions for Sales model" }).click();
+    await page.getByRole("menuitem", { name: "Find source" }).click();
+    await expect(page.locator('section[aria-live="polite"][aria-label="Notifications"]')).toContainText("Sales model found.");
     await expect(row).toContainText("Found");
     await checkPage(page);
   });
@@ -189,7 +193,9 @@ test.describe("create flow", () => {
     await page.getByRole("button", { name: "Next" }).click();
 
     await expect(page.getByRole("heading", { level: 2, name: "Target" })).toBeVisible();
-    await page.getByRole("radio", { name: "Copy of Sales" }).click();
+    await page.getByRole("radio", { name: /^Copy of Sales/ }).click();
+    // A copy needs a folder before Next.
+    await page.getByRole("button", { name: "Choose folder" }).click();
     await expect(page.getByText("New folder: merge-lab")).toBeVisible();
     await expect(page.getByRole("radio", { name: "New empty report" })).toBeChecked();
     await checkPage(page);
@@ -246,8 +252,10 @@ test.describe("Sources tab and data refresh", () => {
     await openDevCenter(page);
     await workReady(page);
     await tab(page, "Sources").click();
-    const trigger = page.getByRole("button", { name: "Remove Finance model" });
+    // Remove sits in the row's actions menu.
+    const trigger = page.getByRole("button", { name: "Actions for Finance model" });
     await trigger.click();
+    await page.getByRole("menuitem", { name: "Remove" }).click();
     const dialog = page.getByRole("alertdialog", { name: "Remove Finance model from this session?" });
     await expect(dialog).toBeVisible();
     await expect(dialog).toContainText("Merge Choices that take from Finance model stay, but the plan is not valid until you change them.");
@@ -257,8 +265,9 @@ test.describe("Sources tab and data refresh", () => {
     await expect(dialog).toHaveCount(0);
     await expect(trigger).toBeFocused();
     await trigger.click();
+    await page.getByRole("menuitem", { name: "Remove" }).click();
     await dialog.getByRole("button", { name: "Remove source" }).click();
-    await expect(page.locator(".ui-toast-region")).toContainText("Finance model removed. 1 Merge Choice needs a new source.");
+    await expect(page.locator('section[aria-live="polite"][aria-label="Notifications"]')).toContainText("Finance model removed. 1 Merge Choice needs a new source.");
     await expect(page.locator('[data-source="src-2"]')).toHaveCount(0);
     await checkPage(page);
   });
@@ -276,7 +285,7 @@ test.describe("Sources tab and data refresh", () => {
     await dialog.getByRole("button", { name: "Set target" }).click();
     await expect(dialog).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Change target" })).toBeFocused();
-    await expect(page.getByText("Target model: Sales model. Target report: Combined report.")).toBeVisible();
+    await expect(page.getByText("Target: Sales model · Combined report")).toBeVisible();
   });
 
   test("stale_revision gives shared.stale and the refreshed view", async ({ page, request }) => {
@@ -287,12 +296,13 @@ test.describe("Sources tab and data refresh", () => {
     // Another window changes the session; the next call of this window is stale.
     await request.post("/__test__/agent-proposal", { data: { target_id: "row-date", target_name: "Date" } });
     await fault(request, "source_remove", "stale_revision");
-    await page.getByRole("button", { name: "Remove Finance model" }).click();
+    await page.getByRole("button", { name: "Actions for Finance model" }).click();
+    await page.getByRole("menuitem", { name: "Remove" }).click();
     await page.getByRole("alertdialog").getByRole("button", { name: "Remove source" }).click();
-    await expect(page.locator(".ui-toast-region")).toContainText("This session changed in another place. The view shows the latest state. Do the action again.");
+    await expect(page.locator('section[aria-live="polite"][aria-label="Notifications"]')).toContainText("This session changed in another place. The view shows the latest state. Do the action again.");
     await expect(tab(page, "Agent")).toContainText("2");
     await expect(page.locator('[data-source="src-2"]')).toHaveCount(1);
-    await expect(page.locator(".ui-toast-region")).toHaveCount(1);
+    await expect(page.locator('section[aria-live="polite"][aria-label="Notifications"]')).toHaveCount(1);
   });
 
   test("a slow long call disables the change controls and shows the reason", async ({ page, request }) => {
@@ -303,10 +313,10 @@ test.describe("Sources tab and data refresh", () => {
     await request.post("/__test__/delay", { data: { method: "sources_check", ms: 1500, once: true } });
     await page.getByRole("button", { name: "Check sources" }).click();
     await expect(page.locator(".dc-busy-line")).toHaveText("Checking sources. Changes wait until this ends.");
-    await expect(page.getByRole("button", { name: "Remove Finance model" })).toBeDisabled();
+    await expect(page.getByRole("button", { name: "Actions for Finance model" })).toBeDisabled();
     await expect(page.getByRole("button", { name: "Change target" })).toBeDisabled();
-    await expect(page.locator(".ui-toast-region")).toContainText("All sources are the same as at the last check.");
-    await expect(page.getByRole("button", { name: "Remove Finance model" })).toBeEnabled();
+    await expect(page.locator('section[aria-live="polite"][aria-label="Notifications"]')).toContainText("All sources are the same as at the last check.");
+    await expect(page.getByRole("button", { name: "Actions for Finance model" })).toBeEnabled();
   });
 
   test("a new revision from the poll updates the tab counts within 6 s", async ({ page, request }) => {
@@ -329,6 +339,8 @@ test.describe("keyboard, focus, live region, and motion", () => {
     await page.goto("/");
     const nav = page.getByRole("navigation", { name: "Main navigation" });
     await nav.getByRole("button", { name: "Settings" }).click();
+    const keyboard = page.getByRole("tab", { name: "Keyboard", exact: true });
+    await keyboard.click();
     const control = page.getByRole("switch", { name: "Use the / key to go to search" });
     await expect(control).toBeChecked();
     await control.click();
@@ -340,6 +352,7 @@ test.describe("keyboard, focus, live region, and motion", () => {
     await expect(page.getByRole("heading", { level: 1, name: "Sales and finance merge" })).toBeVisible();
 
     await nav.getByRole("button", { name: "Settings" }).click();
+    await keyboard.click();
     await control.click();
     await expect(control).toBeChecked();
     await nav.getByRole("button", { name: "Merge models" }).click();
@@ -360,8 +373,10 @@ test.describe("keyboard, focus, live region, and motion", () => {
       await page.keyboard.press("Tab");
     }
     expect(order[0]).toMatch(/Open the Plan tab$/);
-    expect(order.slice(1)).toEqual(["Check sources", "More actions", "Show these rows", "Compare"]);
-    await expect(page.locator('[aria-live="polite"].ui-toast-region')).toHaveCount(1);
+    expect(order.slice(1, 4)).toEqual(["Check sources", "More actions", "Show these rows"]);
+    // The first step tab carries its number and the count of rows to confirm.
+    expect(order[4]).toMatch(/^1Compare/);
+    await expect(page.locator('section[aria-live="polite"][aria-label="Notifications"]')).toHaveCount(1);
   });
 
   test("reduced motion stops the spinner of a long call and keeps its status text (A15)", async ({ browser, request }) => {

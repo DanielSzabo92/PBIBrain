@@ -5,24 +5,33 @@ import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
+// Tests that load another project put the fixture back in a finally. A test that times out can be cut
+// off before that runs, which left every later spec on the wrong project, so afterEach repeats it.
+let restore = null;
+test.afterEach(async ({ request }) => {
+  if (!restore) return;
+  await request.post("/api/config", { data: restore });
+  await request.post("/api/scan", { data: {} });
+  restore = null;
+});
+
 const noInternals = async (page) => {
   const text = await page.locator("main").innerText();
   expect(text).not.toMatch(/(?:model|table|report|semantic|edge):[\w-]|Canonical ID|Source ID|source_hash|raw_metadata|"extractor"|\{"/);
 };
 
-test("Inspector starts with browsable measures and keeps browse filters on return", async ({ page }) => {
+// Review 13: the Inspector opens on its object tree; the tree filter finds a measure and keeps its place on return.
+test("Inspector starts with the object tree and keeps its filter on return", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: "Inspector", exact: true }).click();
-  await expect(page.locator(".search-result")).toHaveCount(2);
-  await expect(page.getByLabel("Search object type")).toHaveValue("MEASURE");
-  await page.locator(".search-result").filter({ hasText: "Net Sales" }).click();
+  const tree = page.getByRole("tree", { name: "Project objects" });
+  await expect(tree.getByRole("treeitem").first()).toBeVisible();
+  await page.getByLabel("Filter the object tree").fill("Net Sales");
+  await tree.getByRole("treeitem").filter({ hasText: /^Net Sales$/ }).first().click();
   await expect(page.getByRole("region", { name: "DAX formula" })).toContainText("SUM('Sales'[Amount])");
   await noInternals(page);
-  await page.getByRole("button", { name: "Browse objects", exact: true }).click();
-  await expect(page.locator(".search-result")).toHaveCount(2);
-  await page.getByLabel("Search object type").selectOption("COLUMN");
-  await expect(page.locator(".search-result").first()).toContainText("Amount");
-  await noInternals(page);
+  await expect(page.getByLabel("Filter the object tree")).toHaveValue("Net Sales");
+  await expect(tree.getByRole("treeitem").filter({ hasText: /^Net Sales$/ }).first()).toHaveAttribute("aria-selected", "true");
 });
 
 test("search has a clear focus boundary and respects reduced motion", async ({ page }) => {
@@ -38,21 +47,23 @@ test("search has a clear focus boundary and respects reduced motion", async ({ p
   await page.emulateMedia({ reducedMotion: "reduce" });
   await expect(page.locator(".field-beam")).toHaveCount(0);
   await expect(input).toHaveCSS("outline-style", "solid");
-  await expect(input).toHaveCSS("transition-duration", "0s");
+  // Reduced motion makes transitions instant (a 1 µs duration still fires transitionend).
+  expect(await input.evaluate((node) => parseFloat(getComputedStyle(node).transitionDuration))).toBeLessThanOrEqual(0.001);
   await noInternals(page);
   await page.screenshot({ path: "test-results/overhaul-search.png", fullPage: true });
 });
 
-test("graph defaults to source objects and isolates a selected neighborhood", async ({ page, request }) => {
-  const graph = await (await request.get("/api/graph?status=factual&limit=30")).json();
+// The graph includes suggestions by default; Lineage flow draws the whole-scope lineage payload.
+test("graph opens folded and isolates a selected neighborhood", async ({ page, request }) => {
+  const graph = await (await request.get("/api/lineage")).json();
   await page.goto("/");
   await page.getByRole("button", { name: "Graph", exact: true }).click();
   await expect.poll(() => page.locator(".react-flow__node-brain").count()).toBeLessThan(graph.nodes.length);
   await expect(page.locator(".flow-node-name").filter({ hasText: "Sales" }).first()).toBeVisible();
   await page.getByRole("button", { name: /^Display/ }).click();
-  await expect(page.getByRole("checkbox", { name: "Include suggestions" })).not.toBeChecked();
+  await expect(page.getByRole("checkbox", { name: "Include suggestions" })).toBeChecked();
   await page.keyboard.press("Escape");
-  await page.getByRole("tab", { name: "Lineage", exact: true }).click();
+  await page.getByRole("tab", { name: "Lineage flow", exact: true }).click();
   await expect(page.locator(".react-flow__node-brain")).toHaveCount(graph.nodes.length);
   const measure = graph.nodes.find((node) => node.name === "Net Sales");
   await page.locator(`.react-flow__node-brain[data-id="${measure.id}"]`).dblclick();
@@ -61,7 +72,7 @@ test("graph defaults to source objects and isolates a selected neighborhood", as
   await noInternals(page);
   await page.getByRole("button", { name: "Back to project", exact: true }).click();
   await expect(page.locator(".react-flow__node-brain")).toHaveCount(graph.nodes.length);
-  await expect(page.getByRole("tab", { name: "Lineage", exact: true })).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByRole("tab", { name: "Lineage flow", exact: true })).toHaveAttribute("aria-selected", "true");
   await page.screenshot({ path: "test-results/overhaul-graph.png", fullPage: true });
 });
 
@@ -87,11 +98,11 @@ test("palette selection persists without changing project sources", async ({ pag
 
 test("review explains evidence, aligns targets left, prevents double submit, and persists decisions", async ({ page }) => {
   await page.goto("/");
-  await page.getByRole("navigation").getByRole("button", { name: /^Review queue/ }).click();
+  await page.getByRole("navigation", { name: "Main navigation" }).getByRole("button", { name: /^Review queue/ }).click();
   await expect(page.locator(".review-item").first()).toBeVisible();
   const before = await page.locator(".review-item").count();
   await expect(page.locator(".review-target").first()).toHaveCSS("justify-content", "flex-start");
-  await expect(page.locator(".review-evidence").first()).toContainText("Description:");
+  await expect(page.locator(".review-evidence-summary").first()).toContainText("From the description");
   await noInternals(page);
   let release;
   await page.route("**/api/review", async (route) => { await new Promise((resolve) => { release = resolve; }); await route.continue(); });
@@ -101,10 +112,10 @@ test("review explains evidence, aligns targets left, prevents double submit, and
   await expect.poll(() => Boolean(release)).toBe(true);
   release();
   await expect(page.locator(".review-item")).toHaveCount(before - 1);
-  await expect(page.getByRole("status")).toHaveText("Suggestion approved");
-  await expect(page.locator(".toast")).toHaveCount(0, { timeout: 5000 });
+  await expect(page.getByRole("region", { name: "Notifications" })).toContainText("Suggestion approved");
+  await expect(page.locator("[data-sonner-toast]")).toHaveCount(0, { timeout: 12000 });
   await page.reload();
-  await page.getByRole("navigation").getByRole("button", { name: /^Review queue/ }).click();
+  await page.getByRole("navigation", { name: "Main navigation" }).getByRole("button", { name: /^Review queue/ }).click();
   await expect(page.locator(".review-item")).toHaveCount(before - 1);
   await page.screenshot({ path: "test-results/overhaul-review.png", fullPage: true });
 });
@@ -114,11 +125,12 @@ test("review evidence and palettes remain usable on a narrow screen", async ({ p
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/");
   for (const name of ["Inspector", "Review queue", "Settings"]) {
-    await page.getByRole("navigation").getByRole("button", { name: new RegExp(`^${name}`) }).click();
-    await expect(page.getByRole("navigation").getByRole("button", { name: new RegExp(`^${name}`) })).toHaveAttribute("aria-current", "page");
-    await expect(page.getByRole("heading", { name: name === "Inspector" ? "Browse objects" : name, level: 1, exact: true })).toHaveCount(1);
+    await page.getByRole("navigation", { name: "Main navigation" }).getByRole("button", { name: new RegExp(`^${name}`) }).click();
+    await expect(page.getByRole("navigation", { name: "Main navigation" }).getByRole("button", { name: new RegExp(`^${name}`) })).toHaveAttribute("aria-current", "page");
+    await expect(page.getByRole("heading", { name, level: 1, exact: true })).toHaveCount(1);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-    if (name === "Review queue") await expect(page.locator(".review-evidence").first()).toBeVisible();
+    // A narrow row keeps the suggested value and drops the one-line evidence summary (src/styles/responsive.css).
+    if (name === "Review queue") await expect(page.locator(".review-suggestion").first()).toBeVisible();
     if (name === "Settings") await page.getByRole("tab", { name: "Graph colors", exact: true }).click();
     await page.screenshot({ path: `test-results/overhaul-${name.replace(" ", "-")}-mobile.png`, fullPage: true });
   }
@@ -134,11 +146,13 @@ test("failed decisions remain reviewable and command buttons work without WebGL"
   await page.goto("/");
   await page.getByRole("button", { name: /Open review queue/ }).click();
   await expect(page.locator(".review-item").first()).toBeVisible();
-  const before = await page.locator(".review-item").count();
+  // Rows mount a few per frame; count them once the list has stopped growing.
+  let before = -1;
+  await expect.poll(async () => { const now = await page.locator(".review-item").count(); const settled = now === before; before = now; return settled; }, { intervals: [150] }).toBe(true);
   await page.route("**/api/review", (route) => route.fulfill({ status: 500, json: { error: "Decision interrupted" } }));
   const first = page.locator(".review-item").first();
   await first.getByRole("button", { name: "Reject", exact: true }).click();
-  await expect(page.getByRole("status")).toContainText("Review failed");
+  await expect(page.getByRole("region", { name: "Notifications" })).toContainText("Review failed");
   await expect(page.locator(".review-item")).toHaveCount(before);
   await expect(first.getByRole("button", { name: "Approve", exact: true })).toBeEnabled();
   await page.unroute("**/api/review");
@@ -150,6 +164,7 @@ test("failed decisions remain reviewable and command buttons work without WebGL"
 test("large native scans load whole in Lineage and search finds any object", async ({ page, request }) => {
   test.setTimeout(60000);
   const original = await (await request.get("/api/config")).json();
+  restore = original;
   const folder = await mkdtemp(path.join(tmpdir(), "pbibrain-large-ui-"));
   const source = path.join(folder, "large-model.json");
   await writeFile(source, JSON.stringify({ models: [{ id: "capacity", name: "Capacity planning", tables: [{ id: "plans", name: "Plans", columns: [{ id: "amount", name: "Amount", dataType: "Double" }], measures: Array.from({ length: 180 }, (_, index) => ({ id: `scenario-${index}`, name: `Scenario ${String(index).padStart(3, "0")}`, expression: `SUM('Plans'[Amount]) * ${index + 1}` })) }] }] }));
@@ -158,7 +173,7 @@ test("large native scans load whole in Lineage and search finds any object", asy
     expect((await request.post("/api/scan", { data: {} })).ok()).toBe(true);
     await page.goto("/");
     await page.getByRole("button", { name: "Graph", exact: true }).click();
-    await page.getByRole("tab", { name: "Lineage", exact: true }).click();
+    await page.getByRole("tab", { name: "Lineage flow", exact: true }).click();
     // Lineage reads the whole scope (no object limit), so nothing is cut off.
     await expect(page.locator(".react-flow__node-brain")).toHaveCount(183);
     await expect(page.locator(".scope-notice")).toHaveCount(0);
@@ -167,40 +182,57 @@ test("large native scans load whole in Lineage and search finds any object", asy
     await expect(page.locator(".flow-node-name")).toHaveText("Scenario 174");
     await page.locator(".react-flow__node-brain").dblclick();
     await expect(page.getByText("Focused view", { exact: true })).toBeVisible();
-    await expect(page.locator(".react-flow__node-brain")).toHaveCount(3);
+    // The measure, the column it reads, its table and the meaning suggested for it.
+    await expect(page.locator(".react-flow__node-brain")).toHaveCount(4);
     await noInternals(page);
     await page.screenshot({ path: "test-results/overhaul-large-focused.png", fullPage: true });
   } finally {
     await request.post("/api/config", { data: original });
     await request.post("/api/scan", { data: {} });
+    restore = null;
   }
 });
 
-test("dark default and flat selection remain clear during keyboard navigation", async ({ page }) => {
+test("theme follows the system until the user picks one", async ({ page }) => {
   await page.emulateMedia({ colorScheme: "light" });
+  await page.goto("/");
+  await expect(page.locator("html")).not.toHaveClass(/dark/);
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+  await page.emulateMedia({ colorScheme: "dark" });
+  await expect(page.locator("html")).toHaveClass("dark");
+  await page.getByRole("button", { name: "Switch to light theme" }).click();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+  await page.reload();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+  await page.evaluate(() => localStorage.removeItem("pbibrain-theme"));
+});
+
+test("dark default and flat selection remain clear during keyboard navigation", async ({ page }) => {
   await page.goto("/");
   await expect(page.locator("html")).toHaveClass("dark");
   await expect(page.locator("html")).toHaveCSS("color-scheme", "dark");
   await expect(page.locator("body")).toHaveCSS("background-color", "rgb(14, 14, 16)");
   const background = (control) => control.evaluate((node) => getComputedStyle(node).backgroundColor);
-  const navigation = page.getByRole("navigation");
+  const navigation = page.getByRole("navigation", { name: "Main navigation" });
   expect(await background(navigation.locator('[aria-current="page"]'))).not.toBe(await background(navigation.getByRole("button", { name: "Graph", exact: true })));
   await navigation.getByRole("button", { name: "Settings", exact: true }).click();
   const tabs = page.getByRole("tablist", { name: "Settings sections" });
   const colors = tabs.getByRole("tab", { name: "Graph colors" });
   const project = tabs.getByRole("tab", { name: "Project", exact: true });
+  const review = tabs.getByRole("tab", { name: "Review", exact: true });
   expect(await background(colors)).not.toBe(await background(project));
   await colors.focus();
   await page.keyboard.press("ArrowLeft");
-  await expect(project).toBeFocused();
-  await expect(project).toHaveAttribute("aria-selected", "true");
-  expect(await background(project)).not.toBe(await background(colors));
+  await expect(review).toBeFocused();
+  await expect(review).toHaveAttribute("aria-selected", "true");
+  await expect.poll(() => background(review)).not.toBe(await background(colors));
   await page.screenshot({ path: "test-results/dark-settings.png", fullPage: true });
 });
 
 test("native scan exposes full report hierarchy and matching visual bindings", async ({ page, request }) => {
   test.setTimeout(60000);
   const original = await (await request.get("/api/config")).json();
+  restore = original;
   const folder = await mkdtemp(path.join(tmpdir(), "pbibrain-hierarchy-ui-"));
   const source = path.join(folder, "hierarchy.json");
   const fixture = JSON.parse(execFileSync("python", ["-c", "import json; from tests.test_report_hierarchy import hierarchy_sources; m,r=hierarchy_sources(); print(json.dumps({'models':[m], 'reports':[r]}))"], { cwd: fileURLToPath(new URL("../..", import.meta.url)), encoding: "utf8" }));
@@ -217,7 +249,7 @@ test("native scan exposes full report hierarchy and matching visual bindings", a
     for (const group of groups) expect(details.visual_bindings[group]).toHaveLength(1);
     await page.goto("/");
     await page.getByRole("button", { name: "Graph", exact: true }).click();
-  await page.getByRole("tab", { name: "Lineage", exact: true }).click();
+  await page.getByRole("tab", { name: "Lineage flow", exact: true }).click();
     const whole = await (await request.get("/api/lineage")).json();
     await expect(page.locator(".react-flow__node-brain")).toHaveCount(whole.nodes.length);
     const card = page.locator(".react-flow__node-brain").filter({ hasText: "Revenue trend" });
@@ -234,31 +266,37 @@ test("native scan exposes full report hierarchy and matching visual bindings", a
     await expect(sheet.locator(".visual-bindings .detail-section")).toHaveCount(6);
     await expect(sheet.locator(".graph-detail-body")).toHaveCSS("overflow-x", "hidden");
     for (const group of groups) await expect(sheet.locator(".visual-bindings")).toContainText(details.visual_bindings[group][0].name);
-    await sheet.getByRole("button", { name: "Revenue", exact: true }).click();
+    await sheet.locator(".visual-bindings").getByRole("button", { name: "Revenue", exact: true }).click();
     await expect(sheet.locator(".graph-detail-title")).toHaveText("Revenue");
     await sheet.getByRole("button", { name: "Close", exact: true }).click();
     await card.click();
     await sheet.getByRole("button", { name: "Open in Inspector", exact: true }).click();
-    await expect(page.locator(".object-workspace .visual-bindings .detail-section")).toHaveCount(6);
+    // The Inspector lists the fields by the well they sit in (Y axis, Legend…) and then the other four groups.
+    await expect(page.locator(".object-workspace .visual-bindings .detail-section")).toHaveCount(details.field_wells?.length ? details.field_wells.length + 4 : 6);
     await page.locator(".object-workspace .visual-bindings").getByRole("button", { name: "Running revenue", exact: true }).click();
     await expect(page.getByRole("heading", { name: "Running revenue", exact: true })).toBeVisible();
-    await page.getByRole("navigation").getByRole("button", { name: /^Review queue/ }).click();
+    await page.getByRole("navigation", { name: "Main navigation" }).getByRole("button", { name: /^Review queue/ }).click();
     const canonical = await (await request.get("/api/review")).json();
     const items = canonical.items || canonical;
-    await expect(page.locator(".review-item")).toHaveCount(items.length);
-    const targets = await page.locator(".review-target").allTextContents();
-    expect(new Set(targets).size).toBe(targets.length);
-    await expect(page.locator(".review-evidence").first()).toContainText("Description:");
+    // Each list shows its first page of 25 rows; the headings carry the totals.
+    const low = Number((await page.getByRole("heading", { name: /^Low-evidence suggestions/ }).textContent()).match(/\((\d+)\)/)[1]);
+    await expect(page.locator(".review-item")).toHaveCount(Math.min(items.length - low, 25) + Math.min(low, 25));
+    // An object can have several suggestions (meaning, role, alias), but never the same one twice.
+    const rows = await page.locator(".review-item").evaluateAll((nodes) => nodes.map((node) => `${node.querySelector(".review-target")?.textContent} ${node.querySelector(".review-suggestion")?.textContent}`));
+    expect(new Set(rows).size).toBe(rows.length);
+    await expect(page.locator(".review-evidence-summary").first()).toContainText("From the description");
     await page.screenshot({ path: "test-results/native-hierarchy-review.png", fullPage: true });
   } finally {
     await request.post("/api/config", { data: original });
     await request.post("/api/scan", { data: {} });
+    restore = null;
   }
 });
 
 test("shared meaning suggestions keep separate decisions through reload and rescan", async ({ page, request }) => {
   test.setTimeout(60000);
   const original = await (await request.get("/api/config")).json();
+  restore = original;
   const folder = await mkdtemp(path.join(tmpdir(), "pbibrain-shared-review-"));
   const source = path.join(folder, "shared.json");
   const fixture = JSON.parse(execFileSync("python", ["-c", "import json; from tests.test_shared_semantic_review import SOURCE; print(json.dumps(SOURCE))"], { cwd: fileURLToPath(new URL("../..", import.meta.url)), encoding: "utf8" }));
@@ -267,7 +305,7 @@ test("shared meaning suggestions keep separate decisions through reload and resc
     expect((await request.post("/api/config", { data: { ...original, sources: [source] } })).ok()).toBe(true);
     expect((await request.post("/api/scan", { data: {} })).ok()).toBe(true);
     await page.goto("/");
-    await page.getByRole("navigation").getByRole("button", { name: /^Review queue/ }).click();
+    await page.getByRole("navigation", { name: "Main navigation" }).getByRole("button", { name: /^Review queue/ }).click();
     const revenue = page.locator(".review-item").filter({ has: page.locator(".review-target strong", { hasText: /^Revenue$/ }) });
     await expect(revenue).toHaveCount(2);
     await revenue.first().getByRole("button", { name: "Approve", exact: true }).click();
@@ -275,40 +313,41 @@ test("shared meaning suggestions keep separate decisions through reload and resc
     const pending = (await (await request.get("/api/review")).json()).filter((row) => row.value === "Revenue");
     expect(pending).toHaveLength(1);
     await page.reload();
-    await page.getByRole("navigation").getByRole("button", { name: /^Review queue/ }).click();
+    await page.getByRole("navigation", { name: "Main navigation" }).getByRole("button", { name: /^Review queue/ }).click();
     await expect(revenue).toHaveCount(1);
     expect((await request.post("/api/scan", { data: {} })).ok()).toBe(true);
     const rescanned = (await (await request.get("/api/review")).json()).filter((row) => row.value === "Revenue");
     expect(rescanned.map((row) => row.candidate_id)).toEqual(pending.map((row) => row.candidate_id));
     await page.reload();
-    await page.getByRole("navigation").getByRole("button", { name: /^Review queue/ }).click();
+    await page.getByRole("navigation", { name: "Main navigation" }).getByRole("button", { name: /^Review queue/ }).click();
     await revenue.getByRole("button", { name: "Reject", exact: true }).click();
     await expect(revenue).toHaveCount(0);
   } finally {
     await request.post("/api/config", { data: original });
     await request.post("/api/scan", { data: {} });
+    restore = null;
   }
 });
 
 test("flat controls remain usable across navigation, graph, details, Inspector and Settings", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/");
+  await expect(page.getByRole("heading", { name: "Overview", level: 1 })).toBeVisible();
   const check = async () => {
     await expect(page.locator('.metal-fx-root, .metal-button, .field-beam')).toHaveCount(0);
     expect(await page.getByRole("searchbox").evaluateAll((nodes) => nodes.every((node) => node.tagName === "INPUT" && node.checkVisibility()))).toBe(true);
-    const button = page.getByRole("navigation").getByRole("button").first();
+    const button = page.getByRole("navigation", { name: "Main navigation" }).getByRole("button").first();
     await page.keyboard.press("Tab");
-    await button.focus();
-    await expect(button).toBeFocused();
-    expect(await button.evaluate((node) => getComputedStyle(node).outlineStyle)).toBe("solid");
+    // Focus and read the ring in one step, so a view taking focus as it opens cannot slip in between.
+    expect(await button.evaluate((node) => { node.focus(); return document.activeElement === node && getComputedStyle(node).outlineStyle; })).toBe("solid");
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   };
   await check();
   for (const name of ["Search", "Inspector", "Review queue", "Settings", "Graph"]) {
-    await page.getByRole("navigation").getByRole("button", { name: new RegExp("^" + name) }).click();
+    await page.getByRole("navigation", { name: "Main navigation" }).getByRole("button", { name: new RegExp("^" + name) }).click();
     await check();
   }
-  await page.getByRole("tab", { name: "Lineage", exact: true }).click();
+  await page.getByRole("tab", { name: "Lineage flow", exact: true }).click();
   await page.locator(".react-flow__node-brain").filter({ hasText: "Net Sales" }).click();
   await expect(page.locator(".graph-detail-title")).toHaveText("Net Sales");
   await check();

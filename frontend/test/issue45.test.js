@@ -3,15 +3,16 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { appCss as readAppCss, appSource as readAppSource } from "./appSource.js";
 
 const SRC = fileURLToPath(new URL("../src/", import.meta.url));
 
 test("Issue #45: Overview provides high-yield widgets and eliminates redundancy", async () => {
-  const appCode = await readFile(path.join(SRC, "App.jsx"), "utf8");
-  const css = await readFile(path.join(SRC, "app.css"), "utf8");
+  const appCode = readAppSource();
+  const css = readAppCss();
 
   // Overview title and count redundancy reduction
-  assert.ok(appCode.includes("<h1>Overview</h1>"), "Overview uses standard page title 'Overview' rather than repeating project name");
+  assert.ok(/<h1[^>]*>Overview<\/h1>/.test(appCode), "Overview uses standard page title 'Overview' rather than repeating project name");
   assert.ok(!appCode.includes('className="project-counts"'), "Removes redundant project counts DL that duplicated status bar");
 
   // High-yield widgets
@@ -32,7 +33,7 @@ test("Issue #45: Overview provides high-yield widgets and eliminates redundancy"
 
 test("Issue #45: Graph view provides minimum readable zoom, uncluttered edges, details pane refit, and circular matrix dots", async () => {
   const graphCode = await readFile(path.join(SRC, "components/GraphView.jsx"), "utf8");
-  const css = await readFile(path.join(SRC, "app.css"), "utf8");
+  const css = readAppCss();
 
   // Minimum readable zoom fit
   assert.ok(graphCode.includes("minFitZoom"), "GraphView defines minFitZoom to prevent tiny zoom on few nodes");
@@ -81,9 +82,9 @@ test("Issue #45: Merge models quiets Same indicators, hides Target repetition, s
 });
 
 test("Issue #45: Inspector flattens nested cards and replaces side stripes with TypeGlyph; Doc export sizes fieldsets naturally", async () => {
-  const appCode = await readFile(path.join(SRC, "App.jsx"), "utf8");
+  const appCode = readAppSource();
   const impactCode = await readFile(path.join(SRC, "components/ImpactExplorer.jsx"), "utf8");
-  const css = await readFile(path.join(SRC, "app.css"), "utf8");
+  const css = readAppCss();
 
   // Flattened DAX ExpressionBlock outside Card
   assert.ok(!appCode.includes('<Card className="panel object-summary">\n        <ExpressionBlock'), "DAX ExpressionBlock is not nested inside object-summary Card");

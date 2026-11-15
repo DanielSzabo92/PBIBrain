@@ -8,6 +8,7 @@ import { fileURLToPath } from "node:url";
 import { COPY, formatPlural, plural, t, tn } from "../src/devcenter/copy.js";
 import { progressRows } from "../src/devcenter/screens/plan/applyModel.js";
 import { readableText, sanitizeDoublePunctuation, formatPlural as presFormatPlural } from "../src/presentation.js";
+import { appCss as readAppCss } from "./appSource.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -32,10 +33,6 @@ test("Issue #51: formatPlural and plural helpers correctly pluralize words", () 
 });
 
 test("Issue #51: tn handles singular, plural, and zero counts accurately", () => {
-  // apply.deletes
-  assert.equal(tn("apply.deletes", 1, { list: "Region" }), "Deletes 1 object: Region.");
-  assert.equal(tn("apply.deletes", 2, { list: "Region, Sales" }), "Deletes 2 objects: Region, Sales.");
-
   // apply.deletes.heading
   assert.equal(tn("apply.deletes.heading", 1), "Deletes 1 object:");
   assert.equal(tn("apply.deletes.heading", 2), "Deletes 2 objects:");
@@ -102,13 +99,13 @@ test("Issue #51: removal policy strings support dynamic object kind and effect t
 test("Issue #51: ImpactExplorer contains friendly read-only guidance", () => {
   const code = fs.readFileSync(path.join(__dirname, "../src/components/ImpactExplorer.jsx"), "utf8");
   assert.ok(
-    code.includes("Read-only view · Changes can be made in Dev Center or Power BI Desktop."),
-    "ImpactExplorer must include friendly read-only guidance"
+    code.includes("Read-only · Make changes in Merge models or Power BI Desktop.") && code.includes(">Read-only</Badge>"),
+    "ImpactExplorer must mark itself read-only and say where changes are made"
   );
 });
 
 test("Issue #51: active nav marker is flush with pill at left: 0", () => {
-  const css = fs.readFileSync(path.join(__dirname, "../src/app.css"), "utf8");
+  const css = readAppCss();
   assert.ok(
     css.includes('.nav-button[aria-current="page"]::before { content: ""; position: absolute; left: 0;'),
     "Active nav marker must be flush at left: 0"
@@ -126,7 +123,7 @@ test("Issue #51: menu shortcuts are right-aligned with fixed tabular column styl
     "AppShell MenuItem keys must have right-aligned tabular column classes"
   );
 
-  const css = fs.readFileSync(path.join(__dirname, "../src/app.css"), "utf8");
+  const css = readAppCss();
   assert.ok(css.includes(".app-menu-keys {"), "app-menu-keys rule must exist");
   assert.ok(css.includes("tabular-nums"), "app-menu-keys must use tabular-nums");
   assert.ok(css.includes("text-align: right"), "app-menu-keys must be right-aligned");

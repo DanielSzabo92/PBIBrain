@@ -62,7 +62,7 @@ test("each error code of section 12 plus network and unknown has a text", () => 
 
 test("errorCopy gives the fixed text of a code and uses the backend message only where the catalog says so", () => {
   const copy = (code, message = "", details = {}) => errorCopy(new DevCenterError({ code, message, details }));
-  assert.deepEqual(copy("network", "socket closed"), { title: "Cannot reach PBIBrain", body: COPY["shared.network.body"] });
+  assert.deepEqual(copy("network", "socket closed"), { title: "Cannot reach PBIBrain", body: COPY["error.network.body"] });
   assert.deepEqual(copy("unknown", "The bridge stopped."), {
     title: "Something stopped this action",
     body: "The bridge stopped. Try again. If it fails again, open the Log tab and copy the details.",
@@ -75,11 +75,11 @@ test("errorCopy gives the fixed text of a code and uses the backend message only
 });
 
 test("t replaces placeholders and tn picks the count form", () => {
-  assert.equal(t("work.target_model", { name: "Sales Master" }), "Target model: Sales Master");
-  assert.equal(t("work.target_model"), "Target model: {name}");
+  assert.equal(t("work.target", { model: "Sales Master", report: "Sales" }), "Target: Sales Master · Sales");
+  assert.equal(t("work.target"), "Target: {model} · {report}");
   assert.equal(t("no.such.key"), "no.such.key");
-  assert.equal(tn("row.blocking", 1), "1 blocking item for this row.");
-  assert.equal(tn("row.blocking", 3), "3 blocking items for this row.");
+  assert.equal(tn("agent.accept_all.confirm", 1), "Accept 1 proposal");
+  assert.equal(tn("agent.accept_all.confirm", 3), "Accept 3 proposals");
   assert.equal(tn("sources.remove.body", 0, { source: "Sales A" }), "No Merge Choice takes from Sales A.");
   assert.equal(`${tn("work.banner.changed", 1)} ${tn("work.banner.changed.rows", 1)}`, "1 source changed since the last check. You must confirm 1 row.");
   assert.equal(`${tn("work.banner.changed", 2)} ${tn("work.banner.changed.rows", 14)}`, "2 sources changed since the last check. You must confirm 14 rows.");
@@ -124,8 +124,8 @@ test("each apply step and each guard check has one sentence", () => {
 
 test("the shared texts of section 8.3 are the design texts", () => {
   assert.equal(COPY["shared.stale"], "This session changed in another place. The view shows the latest state. Do the action again.");
-  assert.equal(COPY["shared.network.title"], "Cannot reach PBIBrain");
-  assert.equal(COPY["shared.network.body"], "The local API did not answer. Make sure PBIBrain is running, then try again.");
+  assert.equal(COPY["error.network.title"], "Cannot reach PBIBrain");
+  assert.equal(COPY["error.network.body"], "The local API did not answer. Make sure PBIBrain is running, then try again.");
   assert.equal(COPY["shared.unknown.title"], "Something stopped this action");
   assert.equal(COPY["shared.locked.banner"], "Another PBIBrain window has this session open. You can read it, but you cannot change it.");
   assert.equal(COPY["shared.not_current"], "This data is not current. Try again to load it.");
@@ -143,7 +143,6 @@ test("the confirm buttons of section 8.4 restate the action and the object", () 
     "row.policy.repoint.confirm": "Use Repoint",
     "agent.accept_all.confirm.other": "Accept {n} proposals",
     "rules.delete.confirm": "Delete rule",
-    "pull.confirm": "Pull model",
     "apply.confirm": "Apply plan",
     "format.confirm": "Format files",
     "undo.confirm": "Undo apply",

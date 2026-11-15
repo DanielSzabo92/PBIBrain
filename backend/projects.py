@@ -28,6 +28,7 @@ from backend.project_cloud import (
     validate_cloud_sources,
 )
 from backend.scanner.pbip import is_pbip_source, read_model_folder, read_pbip_project, read_report_folder
+from backend.scanner.checkpoint import checkpoints
 from backend.scanner.pipeline import Scanner
 from backend.scanner.report_reader import ReportReader
 from backend.sync import preserve_review_statuses
@@ -35,7 +36,7 @@ from backend.sync import preserve_review_statuses
 
 LOGGER = logging.getLogger(__name__)
 PROJECT_VERSION = 1
-_CONFIG_KEYS = frozenset({"version", "name", "sources", "cloud_sources", "database", "identity_map", "graph_colors"})
+_CONFIG_KEYS = frozenset({"version", "name", "sources", "cloud_sources", "database", "identity_map", "graph_colors", "review", "version_links"})
 
 
 class ProjectConfigError(ValueError):
@@ -44,6 +45,10 @@ class ProjectConfigError(ValueError):
 
 class ProjectSourceError(ValueError):
     """A configured source cannot be read as Power BI metadata."""
+
+
+class ScanCancelled(Exception):
+    """The user stopped the scan before its graph was published; nothing changed."""
 
 
 class ProjectSourceCollisionError(ProjectSourceError):
@@ -141,7 +146,47 @@ class ProjectConfigStore:
                 raise ProjectConfigError(str(exc)) from exc
         if "graph_colors" in payload:
             config["graph_colors"] = _graph_colors(payload["graph_colors"])
+        if "review" in payload:
+            config["review"] = _review_settings(payload["review"])
+        if "version_links" in payload:
+            config["version_links"] = _version_links(payload["version_links"])
         return config
+
+
+def _version_links(value: Any) -> dict[str, list[list[str]]]:
+    """The user's corrections to version folding: pairs of models (or reports) that are, or are not, versions."""
+
+    if not isinstance(value, Mapping) or set(value) - {"same", "different"}:
+        raise ProjectConfigError("version_links must contain same and/or different")
+    result: dict[str, list[list[str]]] = {}
+    for key in ("same", "different"):
+        pairs = value.get(key, [])
+        if not isinstance(pairs, list) or len(pairs) > 500:
+            raise ProjectConfigError(f"version_links.{key} must be a list of pairs")
+        seen: set[tuple[str, str]] = set()
+        for pair in pairs:
+            if (not isinstance(pair, list) or len(pair) != 2 or pair[0] == pair[1]
+                    or any(not isinstance(item, str) or not item.strip() or len(item) > 400 for item in pair)):
+                raise ProjectConfigError(f"version_links.{key} must hold pairs of two different object IDs")
+            seen.add(tuple(sorted(pair)))
+        result[key] = [list(pair) for pair in sorted(seen)]
+    if {tuple(pair) for pair in result["same"]} & {tuple(pair) for pair in result["different"]}:
+        raise ProjectConfigError("version_links: a pair cannot be both the same and different")
+    return result
+
+
+def _review_settings(value: Any) -> dict[str, Any]:
+    """How suggestions are decided without a person (Settings > Review)."""
+
+    if not isinstance(value, Mapping) or set(value) - {"auto_accept", "auto_accept_threshold"}:
+        raise ProjectConfigError("review must contain auto_accept and/or auto_accept_threshold")
+    enabled = value.get("auto_accept", False)
+    threshold = value.get("auto_accept_threshold", 0.9)
+    if not isinstance(enabled, bool):
+        raise ProjectConfigError("review.auto_accept must be true or false")
+    if isinstance(threshold, bool) or not isinstance(threshold, (int, float)) or not 0.5 <= float(threshold) <= 1.0:
+        raise ProjectConfigError("review.auto_accept_threshold must be a number from 0.5 to 1")
+    return {"auto_accept": enabled, "auto_accept_threshold": round(float(threshold), 2)}
 
 
 def _graph_colors(value: Any) -> dict[str, dict[str, str]]:
@@ -168,7 +213,12 @@ class ProjectService:
     """Coordinate project configuration and one safe, combined graph scan."""
 
     def __init__(self, config_path: str | Path = "config/brain.json", *, cloud: Any = None) -> None:
+        # What a running scan is doing, read by the UI without waiting for the scan request.
+        self.scan_progress: dict[str, Any] = {"running": False}
         self.config_store = ProjectConfigStore(config_path)
+        # The outcome of the last scan for each configured source, for Settings. Kept in a side
+        # file beside the project file so it survives a restart of the app.
+        self.source_states: dict[str, dict[str, Any]] = self._load_source_states()
         # The Development Center ``CloudService`` (or a callable that gives it). None: the
         # scan reads cloud items from the cache only, as in the stand-alone agent.
         self.cloud = cloud
@@ -180,6 +230,27 @@ class ProjectService:
     def get_config(self) -> dict[str, Any]:
         return self.config_store.get()
 
+    def _source_states_path(self) -> Path:
+        return self.config_path.with_name("source-states.json")
+
+    def _load_source_states(self) -> dict[str, dict[str, Any]]:
+        try:
+            value = json.loads(self._source_states_path().read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            return {}
+        if not isinstance(value, dict):
+            return {}
+        return {str(key): dict(state) for key, state in value.items() if isinstance(state, dict) and isinstance(state.get("state"), str)}
+
+    def _save_source_states(self) -> None:
+        # Best effort: Settings shows "not scanned" after a restart if this cannot be written.
+        try:
+            path = self._source_states_path()
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(json.dumps(self.source_states, indent=2, sort_keys=True), encoding="utf-8")
+        except OSError:
+            LOGGER.warning("The source scan states could not be saved", exc_info=True)
+
     def save_config(self, payload: Mapping[str, Any]) -> dict[str, Any]:
         return self.config_store.save(payload)
 
@@ -190,7 +261,14 @@ class ProjectService:
         config = self.get_config()
         return [_resolve_path(value, self.config_path.parent) for value in config["sources"]]
 
-    def scan(self, repository: GraphRepository) -> ProjectScanResult:
+    def scan(self, repository: GraphRepository, *, cancel: Any = None, publish_lock: Any = None) -> ProjectScanResult:
+        """Scan every source and publish one combined graph.
+
+        ``cancel`` (a ``threading.Event``) stops the scan between its phases and, inside formula
+        analysis, between expressions, before anything is published; the scan then raises ``ScanCancelled``. ``publish_lock`` is held only while the
+        graph is replaced, so a scan on a worker thread leaves the repository readable until then.
+        """
+
         config = self.get_config()
         source_paths = [_resolve_path(value, self.config_path.parent) for value in config["sources"]]
         cloud_entries = list(config.get("cloud_sources", []))
@@ -198,15 +276,36 @@ class ProjectService:
             raise ProjectConfigError("Project has no configured sources")
 
         project_paths = _project_paths(config, self.config_path.parent)
-        result = self._scan_paths(repository, source_paths, project_paths, cloud_entries)
-        # The scan time is set on the repository after the graph is written: drop answers cached before it.
-        repository.revision = getattr(repository, "revision", 0) + 1
+        self.scan_progress = {"running": True, "phase": "Reading sources", "done": 0, "total": len(source_paths) + len(cloud_entries)}
+        # What happened to each source in this scan, by its path as written in the configuration.
+        states: dict[str, dict[str, Any]] = {value: {"state": "waiting"} for value in config["sources"]}
+        self.source_states = states
+        self._source_keys = dict(zip(source_paths, config["sources"]))
+        try:
+            result = self._scan_paths(repository, source_paths, project_paths, cloud_entries, cancel=cancel, publish_lock=publish_lock)
+        except BaseException as error:
+            # A source that was read is not "scanned" until the graph is published.
+            reason = "The scan was cancelled" if isinstance(error, ScanCancelled) else "The scan did not finish"
+            for state in states.values():
+                if state["state"] in {"waiting", "reading", "read"}:
+                    state.update(state="not_scanned", detail=reason)
+            self._save_source_states()
+            raise
+        finally:
+            self.scan_progress = {"running": False}
+        for state in states.values():
+            if state["state"] == "read":
+                state.update(state="scanned", scanned_at=result.scanned_at)
+        self._save_source_states()
         # The read-only snapshot MCP answers from while the app is closed (issue #18). A scan that
         # published its graph never fails because this extra copy could not be written.
         try:
+            from contextlib import nullcontext
+
             from backend.mcp_snapshot import write_agent_snapshot
 
-            write_agent_snapshot(self, repository, scanned_at=result.scanned_at)
+            with publish_lock or nullcontext():
+                write_agent_snapshot(self, repository, scanned_at=result.scanned_at)
         except Exception:  # noqa: BLE001 - best effort, the graph itself is already published
             LOGGER.warning("The agent snapshot could not be written", exc_info=True)
         return result
@@ -238,6 +337,8 @@ class ProjectService:
         cloud_entries: list[Mapping[str, Any]] | None = None,
         *,
         publish: bool = True,
+        cancel: Any = None,
+        publish_lock: Any = None,
     ) -> Any:
         """Scan one immutable configuration snapshot.
 
@@ -246,15 +347,34 @@ class ProjectService:
 
         models: list[dict[str, Any]] = []
         reports: list[dict[str, Any]] = []
-        for source_path in source_paths:
-            source_models, source_reports = _read_project_source(source_path)
+        total = len(source_paths) + len(cloud_entries or [])
+
+        def phase(text: str, done: int | None = None) -> None:
+            if cancel is not None and cancel.is_set():
+                raise ScanCancelled("The scan was cancelled")
+            if publish:
+                self.scan_progress = {"running": True, "phase": text, "done": total if done is None else done, "total": total}
+
+        states = self.source_states if publish else {}
+        keys = getattr(self, "_source_keys", {}) if publish else {}
+        for index, source_path in enumerate(source_paths):
+            phase(f"Reading {source_path.name}", index)
+            state = states.get(keys.get(source_path, ""), {})
+            state.update(state="reading")
+            try:
+                source_models, source_reports = _read_project_source(source_path)
+            except Exception as error:
+                state.update(state="failed", detail=str(error))
+                raise
+            state.update(state="read", models=len(source_models), reports=len(source_reports))
             models.extend(_stable_roots(source_models, source_path, "model"))
             reports.extend(_stable_roots(source_reports, source_path, "report"))
         not_checked: list[dict[str, Any]] = []
         cloud_states: list[dict[str, Any]] = []
         if cloud_entries:
             reader = self.cloud_reader()
-            for entry in cloud_entries:
+            for index, entry in enumerate(cloud_entries):
+                phase(f"Reading {entry.get('name') or 'cloud item'}", len(source_paths) + index)
                 root, state, item = _read_cloud_source(reader, entry)
                 (models if entry["kind"] == CLOUD_MODEL else reports).append(root)
                 cloud_states.append(state)
@@ -264,6 +384,7 @@ class ProjectService:
             raise ProjectSourceError("Project sources contain no semantic models or reports")
         models = _deduplicate_roots(models, "model")
         reports = _deduplicate_roots(reports, "report")
+        phase("Linking reports to models")
         not_checked.extend(bind_reports(models, reports))
 
         staged_identity = _temporary_identity(project_paths["identity_map"])
@@ -277,41 +398,53 @@ class ProjectService:
                 identity_path=staged_identity,
                 overrides_path=project_paths["overrides"],
             )
-            graph = scanner.scan(models, reports)
+            phase("Reading formulas and dependencies")
+
+            def cancelled() -> None:
+                if cancel is not None and cancel.is_set():
+                    raise ScanCancelled("The scan was cancelled")
+
+            with checkpoints(cancelled if cancel is not None else None):
+                graph = scanner.scan(models, reports)
+            phase("Saving the graph")
             if not publish:
                 return graph
-            previous_nodes = repository.all_nodes()
-            previous_edges = repository.all_edges()
-            preserve_review_statuses(graph.nodes, graph.edges, previous_nodes, previous_edges)
+            from contextlib import nullcontext
 
-            identity_path = project_paths["identity_map"]
-            previous_identity = identity_path.read_bytes() if identity_path.is_file() else None
-            _publish_identity(staged_identity, identity_path)
-            try:
-                repository.replace(graph.nodes, graph.edges)
-            except Exception as publish_error:
+            # From here the scan cannot be cancelled: the graph and the identity map change together.
+            with publish_lock or nullcontext():
+                previous_nodes = repository.all_nodes()
+                previous_edges = repository.all_edges()
+                preserve_review_statuses(graph.nodes, graph.edges, previous_nodes, previous_edges)
+
+                identity_path = project_paths["identity_map"]
+                previous_identity = identity_path.read_bytes() if identity_path.is_file() else None
+                _publish_identity(staged_identity, identity_path)
                 try:
-                    _restore_identity(identity_path, previous_identity)
-                except Exception as restore_error:
-                    raise RuntimeError(
-                        f"Graph publication failed and identity rollback failed: {restore_error}"
-                    ) from publish_error
-                raise
-            scanned_at = datetime.now(UTC).isoformat()
-            repository.last_scan = scanned_at
-            if scanner.last_validation is not None:
-                repository.set_validation_result(scanner.last_validation)
-            return ProjectScanResult(
-                graph=graph,
-                source_count=len(source_paths),
-                model_count=sum(node.type == "MODEL" and node.properties.get("check_status") != STATUS_NOT_CHECKED
-                                for node in graph.nodes),
-                report_count=sum(node.type == "REPORT" and node.properties.get("check_status") != STATUS_NOT_CHECKED
-                                 for node in graph.nodes),
-                scanned_at=scanned_at,
-                not_checked=tuple(not_checked),
-                cloud=tuple(cloud_states),
-            )
+                    repository.replace(graph.nodes, graph.edges)
+                except Exception as publish_error:
+                    try:
+                        _restore_identity(identity_path, previous_identity)
+                    except Exception as restore_error:
+                        raise RuntimeError(
+                            f"Graph publication failed and identity rollback failed: {restore_error}"
+                        ) from publish_error
+                    raise
+                scanned_at = datetime.now(UTC).isoformat()
+                repository.last_scan = scanned_at
+                if scanner.last_validation is not None:
+                    repository.set_validation_result(scanner.last_validation)
+                return ProjectScanResult(
+                    graph=graph,
+                    source_count=len(source_paths),
+                    model_count=sum(node.type == "MODEL" and node.properties.get("check_status") != STATUS_NOT_CHECKED
+                                    for node in graph.nodes),
+                    report_count=sum(node.type == "REPORT" and node.properties.get("check_status") != STATUS_NOT_CHECKED
+                                     for node in graph.nodes),
+                    scanned_at=scanned_at,
+                    not_checked=tuple(not_checked),
+                    cloud=tuple(cloud_states),
+                )
         finally:
             staged_identity.unlink(missing_ok=True)
 

@@ -127,6 +127,12 @@ test("copy as markdown lists the user turns, the answers, tools and proposals", 
   assert.match(text, /> Proposal for Margin: Edit description\. Decide in Merge models\./);
 });
 
+test("a copied transcript links objects to their place in the app", () => {
+  const answer = applyEvents(emptyAnswer("r1"), [{ type: "text", text: "See [Net Sales](object:measure:sales/Net Sales)." }, { type: "done" }]);
+  assert.match(transcriptMarkdown([answer], "http://127.0.0.1:8765/"), /\[Net Sales\]\(http:\/\/127\.0\.0\.1:8765\/#\/inspector\/measure%3Asales%2FNet%20Sales\)/);
+  assert.match(transcriptMarkdown([answer]), /\(object:measure:sales\/Net Sales\)/);
+});
+
 test("Ctrl+J toggles the chat", () => {
   assert.equal(shortcutKeys("chat"), "Ctrl+J");
   assert.equal(commandFor({ key: "j", ctrlKey: true, target: { tagName: "TEXTAREA" } }), "chat");

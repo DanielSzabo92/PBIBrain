@@ -575,11 +575,12 @@ class InferenceEngine:
             report_usage, self.nodes, self.analyses, self.edges
         )
         observations: list[Edge] = []
+        observed_ids: set[str] = set()
         for edge in [*observed_edges, *(_coerce_observation(item, self._node_map) for item in observation_values)]:
-            if edge is None or edge.type != "OBSERVED_WITH":
+            if edge is None or edge.type != "OBSERVED_WITH" or edge.id in observed_ids:
                 continue
-            if not any(existing.id == edge.id for existing in observations):
-                observations.append(edge)
+            observed_ids.add(edge.id)
+            observations.append(edge)
 
         # Stable candidate de-duplication.  Equal assertions from description
         # and a helper retain the first (strongest-priority) source ordering.

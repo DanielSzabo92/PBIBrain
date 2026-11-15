@@ -1,50 +1,9 @@
-import { byId } from "./presentation.js";
-import { readableText } from "./presentation.js";
-
 function cleanToken(str) {
   return String(str || "")
     .trim()
     .replace(/^['"\[]+|['"\]]+$/g, "")
     .toLowerCase()
     .replace(/[\s_\-]+/g, "");
-}
-
-/**
- * Determine whether a review suggestion is low-evidence or a name-only tautology.
- * E.g. "Meaning: Sales" for table "Sales" at 30%, or an alias identical to object name.
- */
-export function isLowEvidence(item, nodes = []) {
-  if (!item) return false;
-  const issue = String(item.issue || item.issue_type || "").toLowerCase();
-  if (issue === "conflict" || issue === "stale") return false;
-
-  const targetId = item.target_id || item.target || item.object_id || item.item?.target || item.item?.target_id;
-  const targetNode = byId(nodes, targetId) || null;
-  const targetName = targetNode?.name || item.name || item.target_name || "";
-  const value = String(item.value ?? item.meaning ?? item.properties?.value ?? item.properties?.meaning ?? item.item?.value ?? "").trim();
-
-  const normName = cleanToken(targetName);
-  const normVal = cleanToken(value);
-  const isTautology = Boolean(normName && normVal && normName === normVal);
-
-  const source = String(item.source || item.properties?.candidate_source || item.item?.source || "").toLowerCase();
-  const isNameSource = source === "object_name" || source === "name";
-
-  const evidence = item.evidence || item.item?.evidence || [];
-  const onlyNameEvidence = Array.isArray(evidence) && evidence.length > 0 && evidence.every((entry) => {
-    const s = typeof entry === "string" ? entry.toLowerCase() : String(entry?.source || entry?.origin || "").toLowerCase();
-    return s === "object_name" || s === "name";
-  });
-
-  const rawConfidence = item.confidence ?? item.properties?.confidence ?? item.item?.confidence;
-  const score = rawConfidence !== undefined && rawConfidence !== null ? Math.round(Number(rawConfidence) <= 1 ? Number(rawConfidence) * 100 : Number(rawConfidence)) : null;
-
-  if (isTautology) return true;
-  if (isNameSource && (evidence.length <= 1 || onlyNameEvidence)) return true;
-  if (onlyNameEvidence) return true;
-  if (score !== null && score <= 35 && (!evidence.length || onlyNameEvidence)) return true;
-
-  return false;
 }
 
 /**

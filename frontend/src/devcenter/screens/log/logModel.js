@@ -41,7 +41,10 @@ export function valueText(value) {
   if (typeof value === "object") {
     if ("choice" in value || "kind" in value) {
       const choice = value.choice || value.kind;
-      if (choice === "donor") return value.source_id ? `Take from ${value.source_id}` : "Take donor";
+      if (choice === "donor" || choice === "take_from") {
+        const source = value.source_id || value.source;
+        return source ? `Take from ${source}` : "Take donor";
+      }
       if (choice === "target" || choice === "keep") return "Keep target";
       if (choice === "both") return "Keep both";
       if (choice === "ignore") return "Do not copy";

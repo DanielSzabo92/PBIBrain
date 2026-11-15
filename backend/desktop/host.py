@@ -3,16 +3,19 @@
 from __future__ import annotations
 
 import json
+import logging
 import mimetypes
 import os
 import sys
 import tempfile
 import threading
 import uuid
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 from collections.abc import Callable, Mapping
 from urllib.parse import unquote, urlsplit
+from socketserver import ThreadingMixIn
 from wsgiref.simple_server import WSGIServer, make_server
 
 from backend.api.app import BrainAPI, BrainApp
@@ -28,6 +31,7 @@ from backend.projects import PROJECT_VERSION, ProjectService
 _IGNORED_SOURCE_DIRECTORIES = frozenset({".pbibrain", ".git", "node_modules"})
 _LOCAL_HOSTS = frozenset({"127.0.0.1", "localhost", "::1"})
 _DESKTOP_BOOT_TAG = b'<script src="/desktop/bootstrap.js"></script>'
+LOGGER = logging.getLogger(__name__)
 _DESKTOP_BOOT_JAVASCRIPT = b"window.__PBIBRAIN_DESKTOP__=true;"
 _CSP = (
     "default-src 'self'; "
@@ -96,6 +100,31 @@ def _write_json_atomic(path: Path, payload: Mapping[str, Any]) -> None:
         raise
 
 
+# The files the project scanner reads: a PBIP project, a model.bim, or a model JSON file.
+SOURCE_SUFFIXES = frozenset({".pbip", ".json", ".bim"})
+# The page listens for this event to hear about files dropped on the window (finding 20).
+DROP_EVENT = "pbibrain-sources-dropped"
+
+
+def dropped_sources(event: Any) -> tuple[list[str], int]:
+    """The source files of a drop on the window, and how many dropped files were left out.
+
+    A browser never sees a dropped file's path; the desktop window's own drop event puts it in
+    ``pywebviewFullPath`` of each file.
+    """
+
+    files = ((event or {}).get("dataTransfer") or {}).get("files") if isinstance(event, Mapping) else None
+    sources: list[str] = []
+    skipped = 0
+    for item in files or []:
+        path = item.get("pywebviewFullPath") if isinstance(item, Mapping) else None
+        if isinstance(path, str) and path and Path(path).suffix.casefold() in SOURCE_SUFFIXES:
+            sources.append(path)
+        else:
+            skipped += 1
+    return sources, skipped
+
+
 class DesktopController(DevCenterJSAPI):
     """pywebview JS API and owner of the active native project repository."""
 
@@ -109,8 +138,13 @@ class DesktopController(DevCenterJSAPI):
         folder_picker: Callable[[], str | Path | None] | None = None,
         source_picker: Callable[[], list[str | Path] | tuple[str | Path, ...] | None] | None = None,
         devcenter: DevCenterSessions | None = None,
+        recent_path: str | Path | None = None,
     ) -> None:
         self.static_dir = Path(static_dir).resolve()
+        # The projects opened last, newest first, for the first screen and the title bar. Only the
+        # desktop entry point passes the per-user file; without it the list lives in memory.
+        self._recent_path = Path(recent_path) if recent_path is not None else None
+        self._recent_memory: list[dict[str, str]] = []
         self._repository_factory = repository_factory or (lambda path: GraphRepository(path))
         self._project_service_factory = project_service_factory
         self._runtime_configurer = runtime_configurer
@@ -148,6 +182,36 @@ class DesktopController(DevCenterJSAPI):
                 "project": dict(self._project) if self._project is not None else None,
                 "connection_id": self._connection_id,
             }
+
+    def recent_projects(self) -> dict[str, Any]:
+        """The projects opened last, newest first; a folder that no longer exists is left out."""
+        return {"ok": True, "projects": [entry for entry in self._read_recent() if Path(entry["folder"]).is_dir()]}
+
+    def _read_recent(self) -> list[dict[str, str]]:
+        if self._recent_path is None:
+            return list(self._recent_memory)
+        try:
+            value = json.loads(self._recent_path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            return []
+        entries = value.get("projects") if isinstance(value, dict) else None
+        return [
+            {"name": str(entry["name"]), "folder": str(entry["folder"]), "opened_at": str(entry.get("opened_at") or "")}
+            for entry in entries or []
+            if isinstance(entry, dict) and entry.get("name") and entry.get("folder")
+        ]
+
+    def _remember_project(self, name: str, folder: Path) -> None:
+        # Best effort: a project still opens when the list cannot be written.
+        entries = [entry for entry in self._read_recent() if Path(entry["folder"]) != folder]
+        entries.insert(0, {"name": name, "folder": str(folder), "opened_at": datetime.now(UTC).isoformat(timespec="seconds")})
+        if self._recent_path is None:
+            self._recent_memory = entries[:RECENT_PROJECTS]
+            return
+        try:
+            _write_json_atomic(self._recent_path, {"projects": entries[:RECENT_PROJECTS]})
+        except OSError:
+            LOGGER.warning("The recent projects list could not be saved", exc_info=True)
 
     def choose_folder(self) -> dict[str, Any]:
         try:
@@ -239,7 +303,7 @@ class DesktopController(DevCenterJSAPI):
                     source = Path(str(raw_path)).expanduser().resolve()
                     if not source.is_file():
                         raise ValueError(f"Source file does not exist: {source}")
-                    if source.suffix.casefold() not in {".pbip", ".json", ".bim"}:
+                    if source.suffix.casefold() not in SOURCE_SUFFIXES:
                         raise ValueError(f"Unsupported source file: {source.name}")
                     key = str(source).casefold()
                     if key in known:
@@ -257,6 +321,15 @@ class DesktopController(DevCenterJSAPI):
                 }
         except Exception as exc:
             return {"ok": False, "error": str(exc)}
+
+    def _sources_dropped(self, event: Any) -> dict[str, Any]:
+        """Adds the source files of a drop on the window. Private: the page cannot call it with paths."""
+
+        sources, skipped = dropped_sources(event)
+        if not sources:
+            return {"ok": False, "error": "Drop .pbip, .bim or model .json files to add them as sources.", "skipped": skipped}
+        result = self.add_sources(sources)
+        return {**result, "skipped": skipped}
 
     def add_cloud_source(self, entry: Mapping[str, Any]) -> dict[str, Any]:
         """Add one cloud model or cloud report (picked with ``cloud_items_list``) to the project."""
@@ -345,6 +418,8 @@ class DesktopController(DevCenterJSAPI):
         old_marker = self._marker_path
         old_connection_id = self._connection_id
         self._application = new_application
+        # Build the first answers (overview, review queue) while the window is still opening.
+        threading.Thread(target=self._prime, args=(new_application,), name="pbibrain-prime", daemon=True).start()
         self._repository = new_repository
         self._project = project
         self._project_service = service
@@ -358,6 +433,7 @@ class DesktopController(DevCenterJSAPI):
             old_application.close()
         if old_repository is not None:
             old_repository.close()
+        self._remember_project(project["name"], root)
         return self._open_result(source_count=len(config["sources"]))
 
     def _open_result(self, *, source_count: int) -> dict[str, Any]:
@@ -373,6 +449,14 @@ class DesktopController(DevCenterJSAPI):
         except Exception as exc:
             return {"ok": False, "error": str(exc)}
 
+    @staticmethod
+    def _prime(application: BrainApp) -> None:
+        try:
+            application.prime()
+        except Exception:
+            # Priming is only a head start; the first real request builds the same answers.
+            pass
+
     def _close_project(self) -> None:
         application, repository, marker = self._application, self._repository, self._marker_path
         self._application = None
@@ -384,7 +468,14 @@ class DesktopController(DevCenterJSAPI):
         if marker is not None:
             self._remove_owned_marker(marker)
         if application is not None:
-            application.close()
+            # Let the request in flight finish before its store closes. Bounded, so a request that is itself
+            # waiting for the controller cannot keep the project open for ever.
+            held = application.request_lock.acquire(timeout=5)
+            try:
+                application.close()
+            finally:
+                if held:
+                    application.request_lock.release()
         if repository is not None:
             repository.close()
 
@@ -429,6 +520,9 @@ class DesktopApplication:
                     return self._json(start_response, 405, {"ok": False, "error": "method not allowed"})
                 return self._bootstrap(start_response)
             if path == "/api" or path.startswith("/api/"):
+                # The controller lock covers only the choice of the project application. The request then runs
+                # under that application's own lock (and its answer cache), so a slow request no longer holds up
+                # every other one. Closing a project waits for the request in flight (see _close_project).
                 with self.controller._lock:
                     application = self.controller.active_application()
                     if application is None:
@@ -439,7 +533,7 @@ class DesktopApplication:
                     requested_session = str(environ.get("HTTP_X_PBIBRAIN_SESSION") or "")
                     if requested_session and requested_session != self.controller._connection_id:
                         return self._json(start_response, 409, {"error": "Desktop session changed; reopen the project connection"})
-                    return application(environ, start_response)
+                return application(environ, start_response)
             if method != "GET":
                 return self._json(start_response, 405, {"ok": False, "error": "method not allowed"})
             return self._static(path, start_response)
@@ -517,15 +611,21 @@ class DesktopApplication:
         ]
 
 
+class _ThreadingServer(ThreadingMixIn, WSGIServer):
+    """One thread per request: files and cached answers do not wait behind a slow request."""
+
+    daemon_threads = True
+
+
 class DesktopServer:
-    """One serialized loopback server shared by onboarding and the open project."""
+    """One loopback server shared by onboarding and the open project."""
 
     def __init__(self, controller: DesktopController, *, host: str = "127.0.0.1", port: int = 0) -> None:
         if host not in {"127.0.0.1", "localhost"}:
             raise ValueError("PBIBrain desktop is local-only")
         self.controller = controller
         self.application = DesktopApplication(controller)
-        self._server: WSGIServer = make_server(host, int(port), self.application)
+        self._server: WSGIServer = make_server(host, int(port), self.application, server_class=_ThreadingServer)
         self.url = f"http://127.0.0.1:{self._server.server_port}"
         self.controller.attach_server(self.url)
         self._thread: threading.Thread | None = None
@@ -542,6 +642,15 @@ class DesktopServer:
             self._server.shutdown()
             thread.join(timeout=5)
         self._server.server_close()
+
+
+RECENT_PROJECTS = 8
+
+
+def default_recent_path() -> Path:
+    """Where the recent projects list lives: ``PBIBRAIN_HOME`` or ``~/.pbibrain``."""
+    home = os.environ.get("PBIBRAIN_HOME")
+    return (Path(home) if home else Path.home() / ".pbibrain") / "recent-projects.json"
 
 
 def default_static_dir() -> Path:
@@ -567,6 +676,23 @@ def _show_startup_error(message: str) -> None:
         print(f"PBIBrain could not start: {message}", file=sys.stderr)
 
 
+def _listen_for_drops(window: Any, controller: DesktopController) -> None:
+    """Files dropped on the window become project sources; the page hears the result as DROP_EVENT."""
+
+    try:
+        from webview.dom import DOMEventHandler  # type: ignore[import-not-found]
+    except ImportError:
+        return
+
+    def on_drop(event: Any) -> None:
+        result = controller._sources_dropped(event)
+        window.evaluate_js(f"window.dispatchEvent(new CustomEvent({json.dumps(DROP_EVENT)}, {{ detail: {json.dumps(result)} }}))")
+
+    # Without preventing dragover the web view opens the dropped file instead of handing it over.
+    window.dom.document.events.dragover += DOMEventHandler(lambda _event: None, True, True)
+    window.dom.document.events.drop += DOMEventHandler(on_drop, True, True)
+
+
 def run() -> int:
     """Launch PBIBrain as a pywebview Windows application."""
 
@@ -580,10 +706,10 @@ def run() -> int:
         import webview  # type: ignore[import-not-found]
 
         webview.settings["ALLOW_DOWNLOADS"] = True
-        controller = DesktopController(static_dir=static_dir)
+        controller = DesktopController(static_dir=static_dir, recent_path=default_recent_path())
         server = DesktopServer(controller)
         server.start()
-        webview.create_window(
+        window = webview.create_window(
             "PBIBrain",
             server.url,
             js_api=controller,
@@ -592,6 +718,7 @@ def run() -> int:
             min_size=(1024, 680),
             background_color="#0b0c0f",
         )
+        window.events.loaded += lambda: _listen_for_drops(window, controller)
         webview.start(debug=False)
         return 0
     except Exception as exc:

@@ -292,8 +292,13 @@ def retrieve_objects(
     limit: int = DEFAULT_LIMIT,
     offset: int = 0,
     store: OverrideStore | None = None,
+    project_objects_only: bool = False,
 ) -> dict[str, Any]:
-    """Return one exact, bounded result page with ranking evidence."""
+    """Return one exact, bounded result page with ranking evidence.
+
+    ``project_objects_only`` leaves out the semantic layer (aliases, concepts, assertions): a person
+    searching for a measure wants the measure, not the alias record that repeats its name.
+    """
 
     limit, offset = _validate_page(limit, offset)
     hits, scope = _ranked_hits(
@@ -304,6 +309,8 @@ def retrieve_objects(
         report_id=report_id,
         status=status,
     )
+    if project_objects_only and not object_type:
+        hits = [hit for hit in hits if not hit.node.id.startswith("semantic:")]
     total = len(hits)
     page = hits[offset : offset + limit]
     next_offset = offset + len(page)

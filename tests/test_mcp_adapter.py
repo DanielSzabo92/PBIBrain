@@ -21,5 +21,29 @@ class MCPAdapterTests(unittest.TestCase):
         )
 
 
+class _Client:
+    def __init__(self, app_url):
+        self.app_url = app_url
+
+    def get(self, path, **params):
+        return {"object": {"id": "measure:Sales/Net Sales", "name": "Net Sales"}}
+
+
+class ObjectLinkTests(unittest.TestCase):
+    """Finding 10: an object reply links to the object's page in the open app."""
+
+    def tool(self, client):
+        from backend.tool_registry import brain_tools
+
+        return {tool.__name__: tool for tool in brain_tools(client, lambda: {"source": "app"})}["brain_object"]
+
+    def test_object_reply_links_to_its_page_while_the_app_is_open(self) -> None:
+        reply = self.tool(_Client("http://127.0.0.1:8000"))("measure:Sales/Net Sales")
+        self.assertEqual(reply["app_link"], "http://127.0.0.1:8000/#/inspector/measure%3ASales%2FNet%20Sales")
+
+    def test_no_link_without_an_open_app(self) -> None:
+        self.assertNotIn("app_link", self.tool(_Client(None))("measure:Sales/Net Sales"))
+
+
 if __name__ == "__main__":
     unittest.main()

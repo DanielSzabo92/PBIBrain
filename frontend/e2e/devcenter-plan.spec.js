@@ -223,10 +223,10 @@ test.describe("Before you apply block list order and fix actions", () => {
     await expect(blockRows.nth(4)).toContainText("definition/tables/Sales.tmdl");
     await expect(blockRows.nth(5)).toContainText("The expression of Net Sales has a syntax error at line 4, column 8.");
 
-    // (1) "Show these rows" opens Compare with the Marks filter chip active.
+    // (1) "Show these rows" opens Compare with the Marks filter switched on.
     await blockRows.nth(0).getByRole("button", { name: "Show these rows" }).click();
     await expect(page.getByRole("tab", { name: "Compare" })).toHaveAttribute("aria-selected", "true");
-    await expect(page.locator('[data-slot="filter-chip"]').filter({ hasText: "Marks" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Marks", exact: true })).toHaveAttribute("aria-pressed", "true");
 
     // Return to Plan and click "Show impact" on the need_missing block.
     await openPlanTab(page);
@@ -247,7 +247,8 @@ test.describe("Before you apply block list order and fix actions", () => {
     await workReady(page);
 
     await page.getByRole("tab", { name: "Sources" }).click();
-    await page.getByRole("button", { name: "Remove Finance model" }).click();
+    await page.getByRole("button", { name: "Actions for Finance model" }).click();
+    await page.getByRole("menuitem", { name: "Remove" }).click();
     await page.getByRole("alertdialog").getByRole("button", { name: "Remove source" }).click();
 
     await openPlanTab(page);
@@ -368,6 +369,7 @@ test.describe("Accessibility, themes, reduced motion, and 1280x900 layout (A1, A
     const transitionDuration = await page.locator(".dc-plan-chev").first().evaluate(
       (node) => getComputedStyle(node).transitionDuration,
     );
-    expect(transitionDuration).toBe("0s");
+    // The reduced-motion rule (styles/base.css) sets 0.001 ms, which ends at once.
+    expect(parseFloat(transitionDuration)).toBeLessThanOrEqual(0.001);
   });
 });

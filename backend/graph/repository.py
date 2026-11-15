@@ -7,6 +7,7 @@ The JSON implementation is an explicit test double selected with
 from __future__ import annotations
 
 import json
+import os
 import logging
 import re
 import threading
@@ -97,6 +98,16 @@ class GraphRepository:
             self._native = None
             raise RuntimeError(f"Failed to initialize graph storage: {exc}") from exc
 
+    # State that answers are built from but that is set as a plain attribute (the scanner sets the
+    # scan time and the validation result this way). Each change counts as a write, so readers
+    # that keep answers per revision never show the state from before it.
+    _COUNTED = frozenset({"validation_result", "last_scan"})
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        object.__setattr__(self, name, value)
+        if name in self._COUNTED and "revision" in self.__dict__:
+            object.__setattr__(self, "revision", self.revision + 1)
+
     @property
     def is_native(self) -> bool:
         return self._store is not None
@@ -133,10 +144,27 @@ class GraphRepository:
         if self.path is None:
             return
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        self.path.write_text(
-            json.dumps(self._payload(), ensure_ascii=False, indent=2, sort_keys=True, default=_json_default) + "\n",
-            encoding="utf-8",
-        )
+        # One record at a time: a single dump of the whole graph is one call that holds the interpreter
+        # lock, so every other thread (the requests a scan answers meanwhile) stopped for 0.7 s on the large
+        # project (review 04). Written beside the file and moved into place, so a reader never sees half.
+        payload = self._payload()
+        partial = self.path.with_name(self.path.name + ".partial")
+        with partial.open("w", encoding="utf-8") as handle:
+            handle.write("{\n")
+            for index, key in enumerate(sorted(payload)):
+                value = payload[key]
+                handle.write(f'  {json.dumps(key)}: ')
+                if isinstance(value, list) and value:
+                    handle.write("[\n")
+                    for position, item in enumerate(value):
+                        text = json.dumps(item, ensure_ascii=False, indent=2, sort_keys=True, default=_json_default)
+                        handle.write("    " + text.replace("\n", "\n    ") + (",\n" if position < len(value) - 1 else "\n"))
+                    handle.write("  ]")
+                else:
+                    handle.write(json.dumps(value, ensure_ascii=False, sort_keys=True, default=_json_default))
+                handle.write(",\n" if index < len(payload) - 1 else "\n")
+            handle.write("}\n")
+        os.replace(partial, self.path)
 
     def _sync_native(self) -> None:
         if self._native is None:
@@ -280,7 +308,6 @@ class GraphRepository:
         """Publish the latest validation result without changing graph facts."""
 
         self.validation_result = result
-        self.revision += 1
         return result
 
     def get_validation_result(self) -> Any:

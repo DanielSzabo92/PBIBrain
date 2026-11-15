@@ -16,7 +16,9 @@ const FILTER_TYPES = new Set(["PAGE_FILTER", "REPORT_FILTER"]);
 
 // Local roots first, then each cloud workspace as one block (issue #9).
 const byWorkspace = (left, right) => workspaceKey(left).localeCompare(workspaceKey(right), undefined, { sensitivity: "base" });
-const byName = (left, right) => objectName(left).localeCompare(objectName(right), undefined, { numeric: true, sensitivity: "base" }) || left.id.localeCompare(right.id);
+// One shared collator: localeCompare with options builds a new one on every call.
+const NAME_ORDER = new Intl.Collator(undefined, { numeric: true, sensitivity: "base" });
+const byName = (left, right) => NAME_ORDER.compare(objectName(left), objectName(right)) || left.id.localeCompare(right.id);
 
 function owners(nodes, edges) {
   const owner = new Map();

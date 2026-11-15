@@ -2,6 +2,7 @@
 // parser with object links, and copy-as-markdown. Pure functions, so node --test covers them.
 // The parser returns a tree the panel renders as React elements: no HTML string is ever
 // injected, because answers carry project text (names, descriptions, DAX) the model quoted.
+import { routeHash } from "./routes.js";
 
 export const POLL_MS = 120;
 
@@ -230,11 +231,13 @@ export function parseMarkdown(source) {
 
 // ---- Copy as markdown ------------------------------------------------------------------
 
-export function transcriptMarkdown(messages) {
+export function transcriptMarkdown(messages, base = "") {
+  // Object links become the app's own address of the object, so a pasted transcript still opens it.
+  const linked = (text) => base ? String(text).replace(/\]\(object:([^)\n]{1,400})\)/g, (match, id) => `](${base}${routeHash({ view: "inspector", selectedId: id.trim() })})`) : text;
   return messages.map((message) => {
     if (message.role === "user") return `**You:** ${message.text}`;
     const body = message.parts.map((part) => {
-      if (part.type === "text") return part.text;
+      if (part.type === "text") return linked(part.text);
       if (part.type === "tool") return `> ${toolLabel(part.name)} (${part.name})${part.summary ? `: ${part.summary}` : ""}`;
       if (part.type === "proposal") return `> ${part.item === "question" ? "Question" : "Proposal"} for ${part.targetName || part.target}: ${part.summary || part.kind || ""}. Decide in Merge models.`;
       if (part.type === "error") return `> Error: ${part.message}`;

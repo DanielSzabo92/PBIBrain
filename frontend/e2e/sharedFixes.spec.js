@@ -9,7 +9,7 @@ for (const theme of ["dark", "light"]) {
     await page.goto("/");
     await page.getByRole("button", { name: "Graph", exact: true }).click();
     await expect(page.locator(".react-flow__node-brain").first()).toBeVisible();
-    for (const view of ["Overview", "Lineage"]) {
+    for (const view of ["Containers", "Lineage flow"]) {
       await page.getByRole("tab", { name: view, exact: true }).click();
       expect(await axeViolations(page, { rules: ["aria-valid-attr-value"] })).toEqual([]);
     }
@@ -19,7 +19,7 @@ for (const theme of ["dark", "light"]) {
       await expect(page.locator(`[id="${controls}"]`)).toHaveCount(1);
     }
     // The active tab is a fill, not an underline.
-    const look = await page.getByRole("tab", { name: "Lineage", exact: true }).evaluate((node) => {
+    const look = await page.getByRole("tab", { name: "Lineage flow", exact: true }).evaluate((node) => {
       const style = getComputedStyle(node);
       return { fill: style.backgroundColor, track: getComputedStyle(node.parentElement).backgroundColor, bottom: style.borderBottomWidth };
     });
@@ -29,16 +29,20 @@ for (const theme of ["dark", "light"]) {
 
   test(`U-fix-1: axe on the review queue with a destructive button has no color-contrast violation (${theme})`, async ({ page, context }) => {
     await setTheme(context, theme);
-    // The Brain snapshot (GET /api/brain) gets one outdated saved decision, so the queue shows "Remove decision".
-    await page.route("**/api/brain", async (route) => {
+    // The review pages (GET /api/review/page) get one outdated saved decision, so the queue shows "Remove decision".
+    await page.route("**/api/review/page**", async (route) => {
+      const url = new URL(route.request().url());
       const response = await route.fetch();
       const body = await response.json();
-      const snapshot = body.snapshot && typeof body.snapshot === "object" ? body.snapshot : body;
-      const target = snapshot.nodes?.[0]?.id || "stale-target";
-      const item = { id: "u-fix-1-stale", target_id: target, object_id: target, issue_type: "stale", status: "stale", confidence: 0.5, value: "U_FIX_1_MARKER", evidence: [] };
-      snapshot.stale_overrides = [...(Array.isArray(snapshot.stale_overrides) ? snapshot.stale_overrides : []), item];
-      if (Array.isArray(snapshot.review_items) && snapshot.review_items.length) snapshot.review_items = [...snapshot.review_items, item];
-      await route.fulfill({ json: body });
+      if (url.searchParams.get("issue") !== "stale" || url.searchParams.get("tab") === "reviewed") return route.fulfill({ json: body });
+      const target = { id: "u-fix-1-target", type: "MEASURE", name: "U fix target" };
+      const item = { id: "u-fix-1-stale", target_id: target.id, issue: "stale", issue_type: "stale", status: "stale", confidence: 0.5, value: "U_FIX_1_MARKER", evidence: [] };
+      if (url.searchParams.get("rows") === "0") {
+        Object.assign(body, { matching: body.matching + 1, standard_total: body.standard_total + 1, groups: [...(body.groups || []), { key: "stale||", title: "Decisions whose object is gone", bulk: false, count: 1, low: 0.5, high: 0.5, names: 1 }] });
+      } else if (url.searchParams.get("section") !== "low") {
+        Object.assign(body, { items: [...(body.items || []), item], nodes: [...(body.nodes || []), target], total: (body.total || 0) + 1 });
+      }
+      return route.fulfill({ json: body });
     });
     await page.goto("/");
     await page.getByRole("navigation").getByRole("button", { name: /^Review queue/ }).click();

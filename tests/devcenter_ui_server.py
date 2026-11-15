@@ -57,7 +57,10 @@ NO_SESSION_METHODS = frozenset({"session_create", "session_open", "cloud_sign_in
 # Calls that a read-only (locked) session still permits.
 LOCKED_METHODS = frozenset({"session_close", "session_open", "cloud_items_list", "cloud_sign_in", "merge_template_list"})
 # The existing desktop host methods that frontend/src/desktop.js and App.jsx use (old reply shape).
-DESKTOP_METHODS = ("get_session", "choose_folder", "choose_sources", "open_project", "add_sources", "close_project")
+DESKTOP_METHODS = ("get_session", "choose_folder", "choose_sources", "open_project", "add_sources", "close_project", "recent_projects")
+# The recent projects the fake desktop host lists (the title-bar switcher and the first screen).
+RECENT_PROJECTS = ({"name": "Merge lab", "folder": "merge-lab", "opened_at": "2026-11-14T09:00:00+00:00"},
+                   {"name": "Finance reporting", "folder": "finance", "opened_at": "2026-11-12T16:30:00+00:00"})
 
 ERROR_STATUS = {
     "invalid_payload": 400, "not_found": 404, "session_not_open": 409, "stale_revision": 409,
@@ -1470,6 +1473,8 @@ class FakeDevCenterHandler(BaseHTTPRequestHandler):
             session = copy.deepcopy(self.state.files["desktop-session"])
         if method == "choose_folder":
             return {"ok": True, "folder": "merge-lab"}
+        if method == "recent_projects":
+            return {"ok": True, "projects": [dict(entry) for entry in RECENT_PROJECTS]}
         if method == "choose_sources":
             # Each pick gives the next source, so that a create flow can add more than one source.
             with self.state.lock:

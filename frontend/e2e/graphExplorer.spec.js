@@ -1,10 +1,18 @@
 import { test, expect } from "@playwright/test";
 
+// The canvas pans or refits 40 ms after a selection, an expand or the pane docking, then animates.
+// Wait until the picture holds still before the next key or click, so it does not land mid-move.
+async function still(page) {
+  const transform = () => page.locator(".react-flow__viewport").evaluate((node) => node.style.transform);
+  let last = null;
+  await expect.poll(async () => { const now = await transform(); const same = now === last; last = now; return same; }, { intervals: [150] }).toBe(true);
+}
+
 async function openOverview(page) {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/");
   await page.getByRole("button", { name: "Graph", exact: true }).click();
-  await expect(page.getByRole("tab", { name: "Overview", exact: true })).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByRole("tab", { name: "Containers", exact: true })).toHaveAttribute("aria-selected", "true");
   await expect(page.getByRole("button", { name: "Expand Sales", exact: true })).toBeVisible();
   await expect(page.locator(".react-flow__edge")).toHaveCount(2);
   await expect(page.locator(".graph-zoom-value")).toHaveText("100%");
@@ -13,29 +21,27 @@ async function openOverview(page) {
 // The details pane is docked beside the canvas (a complementary region, not a dialog).
 const detailsPane = (page) => page.locator(".graph-detail-pane");
 const nodePositions = (page) => page.locator(".react-flow__node-brain").evaluateAll((nodes) => Object.fromEntries(nodes.map((node) => [node.dataset.id, node.style.transform])));
-const viewportTransform = (page) => page.locator(".react-flow__viewport").evaluate((node) => node.style.transform);
 
-test("native overview unfolds one owner without moving existing objects or changing zoom", async ({ page, request }) => {
+// Unfolding keeps every object where the layout put it. A picture that still fits is fitted again
+// (GraphView toggleGroup -> settle), so the whole project stays in view after a group opens.
+test("native overview unfolds one owner without moving existing objects", async ({ page, request }) => {
   const graph = await (await request.get("/api/graph?status=factual&limit=80")).json();
   await openOverview(page);
   const visible = await page.locator(".react-flow__node-brain").count();
   expect(visible).toBeLessThan(graph.nodes.length);
   await expect(page.locator(".graph-summary")).toContainText("in collapsed groups");
-  await page.screenshot({ path: "test-results/graph-overview.png", fullPage: true });
-  await page.getByRole("button", { name: "Zoom in", exact: true }).click();
-  await expect(page.locator(".graph-zoom-value")).not.toHaveText("100%");
   const positions = await nodePositions(page);
-  const viewport = await viewportTransform(page);
   await page.getByRole("button", { name: "Expand Sales", exact: true }).click();
   await expect(page.getByRole("button", { name: "Collapse Sales", exact: true })).toHaveAttribute("aria-expanded", "true");
   await expect(page.getByRole("button", { name: "Measure Net Sales", exact: true })).toBeVisible();
   await expect(detailsPane(page)).toHaveCount(0);
-  expect(await viewportTransform(page)).toBe(viewport);
   const unfolded = await nodePositions(page);
   for (const [id, position] of Object.entries(positions)) expect(unfolded[id]).toBe(position);
+  await expect(page.getByRole("button", { name: "Measure Net Sales", exact: true })).toBeInViewport();
   await page.getByRole("button", { name: "Collapse Sales", exact: true }).click();
   await expect(page.getByRole("button", { name: "Measure Net Sales", exact: true })).toHaveCount(0);
-  expect(await viewportTransform(page)).toBe(viewport);
+  const collapsed = await nodePositions(page);
+  for (const [id, position] of Object.entries(positions)) expect(collapsed[id]).toBe(position);
 });
 
 test("nested report groups expand by keyboard and overview survives an Inspector visit", async ({ page }) => {
@@ -53,7 +59,7 @@ test("nested report groups expand by keyboard and overview survives an Inspector
   await page.getByRole("button", { name: "Open in Inspector", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Net Sales", exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Back to graph", exact: true }).click();
-  await expect(page.getByRole("tab", { name: "Overview", exact: true })).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByRole("tab", { name: "Containers", exact: true })).toHaveAttribute("aria-selected", "true");
   await expect(page.getByRole("button", { name: "Collapse Sales report", exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Collapse Overview page", exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Column Chart Sales by region", exact: true })).toBeVisible();
@@ -65,11 +71,13 @@ test("connections follow native edges and can expand a neighborhood", async ({ p
   const measure = graph.nodes.find((node) => node.name === "Net Sales" && node.type === "MEASURE");
   await openOverview(page);
   await page.getByRole("button", { name: "Expand Sales", exact: true }).click();
+  await still(page);
   await page.getByRole("button", { name: "Measure Net Sales", exact: true }).dblclick();
-  await expect(page.getByRole("tab", { name: "Connections", exact: true })).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByRole("tab", { name: "Neighbourhood", exact: true })).toHaveAttribute("aria-selected", "true");
   await expect(page.getByText("Focused view", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Close", exact: true }).click();
-  const focused = await (await request.get(`/api/graph?status=factual&center_id=${encodeURIComponent(measure.id)}&depth=1&limit=80`)).json();
+  // The graph includes suggestions by default, so the neighbourhood does too.
+  const focused = await (await request.get(`/api/graph?center_id=${encodeURIComponent(measure.id)}&depth=1&limit=80`)).json();
   await expect(page.locator(".react-flow__edge")).toHaveCount(focused.edges.length);
   const edgeNames = await page.locator(".react-flow__edge").evaluateAll((edges) => edges.map((edge) => edge.getAttribute("aria-label")));
   expect(edgeNames).toContain("Sales Target Depends on Net Sales");
@@ -78,7 +86,7 @@ test("connections follow native edges and can expand a neighborhood", async ({ p
   await page.getByRole("button", { name: "Expand connections", exact: true }).click();
   await expect.poll(() => page.locator(".react-flow__node-brain").count()).toBeGreaterThan(initialCount);
   await page.getByRole("button", { name: "Back to project", exact: true }).click();
-  await expect(page.getByRole("tab", { name: "Overview", exact: true })).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByRole("tab", { name: "Containers", exact: true })).toHaveAttribute("aria-selected", "true");
   await expect(page.getByRole("button", { name: "Collapse Sales", exact: true })).toBeVisible();
 });
 
@@ -112,15 +120,16 @@ test("a dense loaded slice starts compact, keeps counts honest, and retains the 
   await page.getByRole("button", { name: "Graph", exact: true }).click();
   await expect(page.locator(".react-flow__node-brain")).toHaveCount(7);
   await expect(page.locator(".react-flow__edge")).toHaveCount(6);
-  await expect(page.locator(".graph-summary")).toContainText("80 of 400 matching objects loaded");
-  await expect(page.getByRole("button", { name: "Expand Sales", exact: true })).toHaveAttribute("title", "12 loaded objects inside");
+  // Containers read the whole-scope lineage payload, so every matching object is loaded.
+  await expect(page.locator(".graph-summary")).toContainText("80 of 80 matching objects loaded");
+  await expect(page.getByRole("group", { name: "Table Sales, 12 inside", exact: true })).toBeVisible();
   const readable = await page.locator(".flow-node-name").evaluateAll((labels) => labels.every((label) => label.getBoundingClientRect().height >= 12));
   expect(readable).toBe(true);
   await page.screenshot({ path: "test-results/graph-dense-overview.png", fullPage: true });
-  await page.getByRole("tab", { name: "Lineage", exact: true }).click();
+  await page.getByRole("tab", { name: "Lineage flow", exact: true }).click();
   await expect(page.locator(".react-flow__node-brain")).toHaveCount(nodes.length);
   await expect(page.locator(".react-flow__edge")).toHaveCount(edges.length);
-  await page.getByRole("tab", { name: "Overview", exact: true }).click();
+  await page.getByRole("tab", { name: "Containers", exact: true }).click();
   await expect(page.locator(".react-flow__node-brain")).toHaveCount(7);
 });
 
@@ -155,12 +164,12 @@ test("an explicit relationship filter stays visible in overview", async ({ page 
   await page.getByRole("checkbox", { name: "Relationship labels", exact: true }).check();
   await expect(relationship).toBeVisible();
   await expect(relationship.locator(".react-flow__edge-text")).toHaveText("References");
-  await expect(page.getByRole("tab", { name: "Overview", exact: true })).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByRole("tab", { name: "Containers", exact: true })).toHaveAttribute("aria-selected", "true");
 });
 
 test("the graph works without a mouse: arrows follow links, Space expands, Enter opens, keys zoom and fit", async ({ page }) => {
   await openOverview(page);
-  const model = page.getByRole("button", { name: "Model Finance model", exact: true });
+  const model = page.getByRole("group", { name: /^Model Finance model, \d+ inside$/ });
   await model.focus();
   // Space on a group expands it; the details pane stays closed.
   await page.keyboard.press("Space");
@@ -177,6 +186,7 @@ test("the graph works without a mouse: arrows follow links, Space expands, Enter
   const moved = await page.evaluate(() => document.activeElement?.getAttribute("aria-label"));
   expect(moved).not.toBe("Model Finance model");
   await expect(detailsPane(page).getByRole("heading")).not.toHaveText("Finance model");
+  await still(page);
   // + − 0 zoom, F fits.
   await page.keyboard.press("+");
   await expect(page.locator(".graph-zoom-value")).not.toHaveText("100%");
@@ -198,4 +208,55 @@ test("the graph works without a mouse: arrows follow links, Space expands, Enter
   await page.keyboard.press("Enter");
   await expect(page.getByRole("heading", { name: "Net Sales", exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Back to graph", exact: true })).toBeVisible();
+});
+
+// Finding 08: the pane gives the selection's chain as a path, one step per lane, and a click on a step
+// selects it; "Trace on select" is a toolbar toggle because it changes what a click does.
+test("the details pane lists the selection's chain as a path and the toolbar switches tracing", async ({ page }) => {
+  await openOverview(page);
+  await page.getByRole("tab", { name: "Lineage flow", exact: true }).click();
+  await still(page);
+  const trace = page.getByRole("button", { name: "Trace on select", exact: true });
+  await expect(trace).toHaveAttribute("aria-pressed", "false");
+  await page.getByRole("button", { name: "Measure Net Sales", exact: true }).click();
+  const path = detailsPane(page).getByRole("navigation", { name: "Lineage path" });
+  await expect(path).toBeVisible();
+  const lanes = await path.locator(".graph-path-lane").allTextContents();
+  expect(lanes.indexOf("Tables")).toBeGreaterThanOrEqual(0);
+  expect(lanes.indexOf("Tables")).toBeLessThan(lanes.indexOf("Calculations"));
+  await expect(path.locator('[aria-current="true"]')).toContainText("Net Sales");
+  await path.locator(".graph-path-step", { hasText: "Tables" }).locator(".graph-path-node").first().click();
+  await expect(detailsPane(page).locator(".graph-detail-kicker")).toContainText("Table");
+  await trace.click();
+  await expect(trace).toHaveAttribute("aria-pressed", "true");
+  await page.getByRole("button", { name: "Measure Net Sales", exact: true }).click();
+  await expect(page.locator(".react-flow__node-brain:not(.react-flow__node-hidden)").filter({ hasText: "Net Sales" }).first()).toBeVisible();
+});
+
+// Finding 07: a lineage strip taller than the canvas gets a scroll scrubber instead of a minimap. A click on the
+// track moves the picture there; model and report blocks and the selected chain are marked on it.
+test("tall lineage lanes have a scroll scrubber that moves the picture and marks the selection", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.route(/\/api\/lineage(\?|$)/, async (route) => {
+    const body = await (await route.fetch()).json();
+    const filler = Array.from({ length: 160 }, (_, index) => ({ id: `filler-${index}`, name: `Filler ${String(index).padStart(3, "0")}`, type: "TABLE", status: "factual", artifact_group: "model" }));
+    await route.fulfill({ json: { ...body, nodes: [...body.nodes, ...filler], total_nodes: (body.total_nodes || body.nodes.length) + filler.length } });
+  });
+  await page.goto("/");
+  await page.getByRole("button", { name: "Graph", exact: true }).click();
+  await page.getByRole("tab", { name: "Lineage flow", exact: true }).click();
+  const scrubber = page.getByTestId("lineage-scrubber");
+  await expect(scrubber).toBeVisible();
+  await expect(page.locator(".react-flow__minimap")).toHaveCount(0);
+  await still(page);
+  const transform = () => page.locator(".react-flow__viewport").evaluate((node) => node.style.transform);
+  const before = await transform();
+  const box = await scrubber.boundingBox();
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height * 0.9);
+  await expect.poll(transform).not.toBe(before);
+  await expect(scrubber.locator(".lineage-scrub-mark.is-block").first()).toBeAttached();
+  await page.mouse.click(box.x + box.width / 2, box.y + 2);
+  await still(page);
+  await page.getByRole("button", { name: "Measure Net Sales", exact: true }).click();
+  await expect(scrubber.locator(".lineage-scrub-mark.is-selected")).toHaveCount(1);
 });

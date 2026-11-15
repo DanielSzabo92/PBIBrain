@@ -554,7 +554,7 @@ test.describe("U6 Alignment actions, source marks, multi-row, and read-only", ()
     // Click Confirm row in the source mark notice.
     const confirmRowBtn = pane.getByRole("button", { name: "Confirm row" }).first();
     await confirmRowBtn.click();
-    await expect(page.locator(".ui-toast").last()).toContainText("Row confirmed.");
+    await expect(page.locator("[data-sonner-toast]").last()).toContainText("Row confirmed.");
 
     // Mark notice is gone and ProposalCard Accept button becomes enabled.
     await expect(acceptBtn).toBeEnabled();

@@ -14,9 +14,9 @@ const fixture = async (name) => JSON.parse(await readFile(new URL(`../../tests/f
 test("the target names come from the source list, because GET session has no name fields", async () => {
   const session = await fixture("default/session.json");
   assert.deepEqual(targetNames(session), { model: "Combined model", report: "Combined report", reportNew: false });
-  assert.equal(targetLine(session), "Target model: Combined model. Target report: Combined report.");
+  assert.equal(targetLine(session), "Target: Combined model · Combined report");
   const empty = { sources: [], target: { model: null, report: { mode: "new_empty" } } };
-  assert.equal(targetLine(empty), "Target model: Not set. Target report: new empty report.");
+  assert.equal(targetLine(empty), "Target: Not set · new empty report");
 });
 
 test("the plan status button uses GET plan counts when it has them", () => {
@@ -105,7 +105,7 @@ test("target choices show the fixed refusals, and the default name uses the targ
   const models = targetModelItems(sources);
   assert.deepEqual(models.map((item) => item.value), ["copy:1", "copy:2", "empty", "existing:1", "existing:2"]);
   assert.equal(models[4].reason, "Save as TMDL in Power BI Desktop first.");
-  assert.equal(models[0].label, "(Recommended) Copy of Sales");
+  assert.equal(models[0].label, "Copy of Sales");
   assert.equal(models[1].label, "Copy of Old");
   const reports = targetReportItems(sources);
   assert.deepEqual(reports.map((item) => [item.value, Boolean(item.disabled)]), [["new_empty", false], ["existing:3", true]]);
@@ -123,7 +123,7 @@ test("Issue #50: targetModelItems orders safe copies first with recommended badg
   // Safe copy options first, then empty, then in-place writes
   assert.deepEqual(models.map((m) => m.value), ["copy:1", "copy:2", "empty", "existing:1", "existing:2"]);
   // First copy is recommended
-  assert.equal(models[0].label, "(Recommended) Copy of Sales");
+  assert.equal(models[0].label, "Copy of Sales");
   assert.equal(models[0].recommended, true);
   assert.equal(models[0].badgeLabel, "Recommended");
   // Second copy is standard

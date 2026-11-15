@@ -1,6 +1,6 @@
 import * as React from "react";
 import { useState, useEffect } from "react";
-import { Check, X, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
+import { Check, X, MoreHorizontal, Pencil } from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Menu } from "./ui/menu";
@@ -15,6 +15,7 @@ export default function ReviewDecision({
   onStartEdit,
   onCancelEdit,
   compact = true,
+  iconOnly = false,
 }) {
   const initialValue = readableText(item?.value ?? item?.meaning ?? item?.properties?.value ?? "");
   const [draft, setDraft] = useState(initialValue);
@@ -130,23 +131,27 @@ export default function ReviewDecision({
     <div className="review-actions" data-ui-actions="">
       <Button
         variant="default"
-        size="sm"
+        size={iconOnly ? "icon-sm" : "sm"}
         className="approve-button"
+        aria-label={iconOnly ? "Approve" : undefined}
+        title={iconOnly ? "Approve (A)" : undefined}
         disabled={busy || disabled}
         onClick={() => handleDecide("approve")}
       >
         <Check className="size-4" aria-hidden="true" />
-        Approve
+        {iconOnly ? null : "Approve"}
       </Button>
       <Button
         variant="ghost"
-        size="sm"
+        size={iconOnly ? "icon-sm" : "sm"}
         className="reject-button"
+        aria-label={iconOnly ? "Reject" : undefined}
+        title={iconOnly ? "Reject (R)" : undefined}
         disabled={busy || disabled}
         onClick={() => handleDecide("reject")}
       >
         <X className="size-4" aria-hidden="true" />
-        Reject
+        {iconOnly ? null : "Reject"}
       </Button>
       <Menu
         label="More actions"

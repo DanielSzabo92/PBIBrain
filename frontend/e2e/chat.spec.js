@@ -19,7 +19,8 @@ async function ask(page, text) {
 test("chat is off until configured, then streams, calls tools, proposes, fails and stops", async ({ page, context }, testInfo) => {
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
   await page.goto("/");
-  await expect(page.getByRole("heading", { name: "Graph acceptance project" })).toBeVisible();
+  // The project name is shown once, in the title bar.
+  await expect(page.locator(".app-titlebar-project")).toHaveText("Graph acceptance project");
 
   // Off by default: the panel opens with Ctrl+J and points to Settings.
   await page.keyboard.press("Control+j");
@@ -35,13 +36,14 @@ test("chat is off until configured, then streams, calls tools, proposes, fails a
   await expect(page.getByTestId("ai-status")).toHaveText("The chat is ready.");
   expect(await page.getByLabel(/API key/).inputValue()).toBe("");
 
-  // Reopen the chat from the title bar: the context chips show the view and the merge session.
-  await page.getByRole("button", { name: "Chat", exact: true }).click();
+  // Reopen the chat from the title bar: the context chips show the view. The merge session is shared
+  // only from the Merge view (src/chat.js), so it is not offered here.
+  await page.getByRole("button", { name: /^Chat \(/ }).click();
   await expect(panel(page)).toBeHidden();
-  await page.getByRole("button", { name: "Chat", exact: true }).click();
+  await page.getByRole("button", { name: /^Chat \(/ }).click();
   const chips = panel(page).getByRole("list", { name: "What the chat can see" });
   await expect(chips).toContainText("View: Settings");
-  await expect(chips).toContainText("Merge: Chat merge");
+  await expect(chips).not.toContainText("Merge:");
   await chips.getByRole("button", { name: "Remove Settings from the chat context" }).click();
   await expect(chips).not.toContainText("View: Settings");
 
@@ -53,8 +55,10 @@ test("chat is off until configured, then streams, calls tools, proposes, fails a
   // A tool call through the shared registry, and an object link into the Inspector.
   answer = await ask(page, "search net sales");
   await expect(answer.getByTestId("chat-tool")).toContainText("Searched objects");
-  const link = answer.getByRole("button", { name: "Net Sales", exact: true });
+  const link = answer.getByRole("link", { name: "Net Sales", exact: true });
   await expect(link).toBeVisible();
+  await expect(link).toHaveAttribute("href", /^#\/inspector\/.+/);
+  await expect(answer.getByRole("link", { name: "Show Net Sales in the graph" })).toHaveAttribute("href", /^#\/graph\?focus=/);
   await link.click();
   await expect(page.locator(".breadcrumb-view")).toHaveText("Inspector");
   await expect(page.locator("main")).toContainText("Net Sales");
@@ -62,7 +66,10 @@ test("chat is off until configured, then streams, calls tools, proposes, fails a
   await expect(chips).toContainText("View: Inspector");
 
   // A proposal goes to the open merge session as a normal proposal; the chat cannot accept it.
+  // The session (and with it the merge tools) is shared from the Merge view.
   await chips.getByRole("button", { name: "Remove Net Sales from the chat context" }).click();
+  await page.getByRole("navigation", { name: "Main navigation" }).getByRole("button", { name: "Merge models", exact: true }).click();
+  await expect(chips).toContainText("Merge: Chat merge");
   answer = await ask(page, "propose a description");
   const proposal = answer.getByTestId("chat-proposal");
   await expect(proposal).toContainText("Proposal: Margin");
@@ -84,7 +91,7 @@ test("chat is off until configured, then streams, calls tools, proposes, fails a
   await expect(panel(page).getByRole("button", { name: "Send" })).toBeVisible();
 
   // Copy as markdown.
-  await panel(page).getByRole("button", { name: "Copy as Markdown" }).click();
+  await panel(page).getByRole("button", { name: "Copy transcript" }).click();
   const copied = await page.evaluate(() => navigator.clipboard.readText());
   expect(copied).toContain("**You:** hello");
   expect(copied).toContain("> Proposal for Margin");

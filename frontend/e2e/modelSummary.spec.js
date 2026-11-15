@@ -4,7 +4,7 @@ import fs from "node:fs/promises";
 const openSummary = async (page) => {
   await page.goto("/");
   await page.getByRole("navigation").getByRole("button", { name: "Settings", exact: true }).click();
-  await page.getByRole("tab", { name: "Model summary", exact: true }).click();
+  await page.getByRole("tab", { name: "Model summary / agent context", exact: true }).click();
 };
 
 test("native-backed summary previews and downloads the exact UTF-8 context", async ({ page, context }, testInfo) => {

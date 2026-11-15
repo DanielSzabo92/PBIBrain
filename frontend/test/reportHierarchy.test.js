@@ -32,3 +32,13 @@ test("visual titles and types are readable; an opaque ID is the final fallback",
   assert.equal(suggestionLabel({ item: { properties: { assertion_type: "ROLE", meaning: "fact" } } }), "Table role: Fact table");
 });
 
+
+test("visual types read as the names of the Visualizations pane", async () => {
+  const { visualTypeLabel, publicProperties } = await import("../src/presentation.js");
+  assert.equal(visualTypeLabel("barChart"), "Bar Chart");
+  assert.equal(visualTypeLabel("tableEx"), "Table");
+  assert.equal(visualTypeLabel("pivotTable"), "Matrix");
+  assert.equal(visualTypeLabel("kpi"), "KPI");
+  assert.equal(visualTypeLabel(""), "Visual");
+  assert.deepEqual(publicProperties({ type: "VISUAL", visual_type: "clusteredColumnChart" }), [["Visual type", "Clustered Column Chart"]]);
+});

@@ -3,6 +3,8 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { appSource as readAppSource } from "./appSource.js";
+import { appCss as readAppCss } from "./appSource.js";
 
 const SRC = fileURLToPath(new URL("../src/", import.meta.url));
 
@@ -37,7 +39,7 @@ test("Issue #48: Graph canvas nodes have ContextMenu with required actions", asy
 });
 
 test("Issue #48: Native <details> elements are completely eliminated", async () => {
-  const appCode = await readFile(path.join(SRC, "App.jsx"), "utf8");
+  const appCode = readAppSource();
   const graphColorsCode = await readFile(path.join(SRC, "components/GraphColors.jsx"), "utf8");
 
   assert.ok(!appCode.includes("<details"), "App.jsx contains no native <details>");
@@ -79,7 +81,7 @@ test("Issue #48: Switch knob and Repoint combobox fixes", async () => {
 
 test("Issue #48: Design tokens for graph colors and radius", async () => {
   const themeCss = await readFile(path.join(SRC, "theme.css"), "utf8");
-  const appCss = await readFile(path.join(SRC, "app.css"), "utf8");
+  const appCss = readAppCss();
   const graphPresentation = await readFile(path.join(SRC, "graphPresentation.js"), "utf8");
 
   // Tokens in theme.css

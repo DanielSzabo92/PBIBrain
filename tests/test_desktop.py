@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import io
 import json
+import shutil
 import tempfile
 import unittest
 from pathlib import Path
@@ -256,6 +257,49 @@ class DesktopTests(unittest.TestCase):
         rejected = self.controller.add_sources([str(self.root / "missing.json")])
         self.assertFalse(rejected["ok"])
         self.assertEqual((self.root / ".pbibrain" / "brain.json").read_bytes(), before)
+
+    def test_files_dropped_on_the_window_become_sources(self):
+        # Finding 20: the window's drop event carries each file's full path; other files are counted, not added.
+        from backend.desktop.host import dropped_sources
+
+        model = self.root / "Sales.bim"
+        model.write_text("{}", encoding="utf-8")
+        self.controller.attach_server("http://127.0.0.1:8123")
+        self.assertTrue(self.controller.open_project("Project", str(self.root))["ok"])
+        event = {"dataTransfer": {"files": [{"name": "Sales.bim", "pywebviewFullPath": str(model)}, {"name": "notes.txt", "pywebviewFullPath": str(self.root / "notes.txt")}, {"name": "x"}]}}
+        self.assertEqual(dropped_sources(event), ([str(model)], 2))
+        result = self.controller._sources_dropped(event)
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["skipped"], 2)
+        self.assertEqual(len(result["added"]), 1)
+        nothing = self.controller._sources_dropped({"dataTransfer": {"files": [{"name": "notes.txt"}]}})
+        self.assertFalse(nothing["ok"])
+        self.assertEqual(dropped_sources(None), ([], 0))
+        self.assertNotIn("_sources_dropped", [name for name in dir(self.controller) if not name.startswith("_")])
+
+    def test_recent_projects_list_the_newest_first_and_survive_a_new_controller(self):
+        recent = self.root / "home" / "recent-projects.json"
+        first, second = self.root / "first", self.root / "second"
+        first.mkdir()
+        second.mkdir()
+        controller = DesktopController(static_dir=self.static, repository_factory=lambda path: GraphRepository(path, use_native=False),
+                                       runtime_configurer=lambda: None, recent_path=recent)
+        controller.attach_server("http://127.0.0.1:8123")
+        try:
+            self.assertTrue(controller.open_project("First", str(first))["ok"])
+            self.assertTrue(controller.open_project("Second", str(second))["ok"])
+            self.assertTrue(controller.open_project("First", str(first))["ok"])
+        finally:
+            controller.shutdown()
+        again = DesktopController(static_dir=self.static, recent_path=recent)
+        self.assertEqual([entry["name"] for entry in again.recent_projects()["projects"]], ["First", "Second"])
+        shutil.rmtree(second)
+        self.assertEqual([entry["name"] for entry in again.recent_projects()["projects"]], ["First"], "a folder that is gone is left out")
+
+    def test_without_a_recent_file_the_list_is_kept_in_memory(self):
+        self.controller.attach_server("http://127.0.0.1:8123")
+        self.assertTrue(self.controller.open_project("Portfolio", str(self.root))["ok"])
+        self.assertEqual([entry["folder"] for entry in self.controller.recent_projects()["projects"]], [str(self.root.resolve())])
 
 
 if __name__ == "__main__":

@@ -26,6 +26,16 @@ export const chatWebServer = {
   timeout: 60000,
 };
 
+// The screenshot comparison (visual.spec.js) uses a server no other spec writes to, so the counts and
+// review state in its pictures do not depend on which specs ran before it.
+export const visualWebServer = {
+  command: "python -m tests.graph_ui_server --port 8768",
+  cwd: "..",
+  url: "http://127.0.0.1:8768/api/overview",
+  reuseExistingServer: !process.env.CI,
+  timeout: 30000,
+};
+
 export const chatSpec = "**/chat.spec.js";
 
 export const devcenterSpecs = "**/devcenter*.spec.js";
@@ -39,6 +49,6 @@ export default defineConfig({
   workers: 1,
   timeout: 30000,
   reporter: "list",
-  use: { baseURL: "http://127.0.0.1:8765", channel: process.env.PLAYWRIGHT_CHANNEL || undefined, viewport: { width: 1440, height: 1000 }, trace: "retain-on-failure", screenshot: "only-on-failure" },
-  webServer: [graphWebServer, devcenterWebServer, chatWebServer],
+  use: { baseURL: "http://127.0.0.1:8765", channel: process.env.PLAYWRIGHT_CHANNEL || undefined, viewport: { width: 1440, height: 1000 }, colorScheme: "dark", trace: "retain-on-failure", screenshot: "only-on-failure" },
+  webServer: [graphWebServer, devcenterWebServer, chatWebServer, visualWebServer],
 });

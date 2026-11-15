@@ -3,11 +3,12 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { appCss as readAppCss } from "./appSource.js";
 
 const SRC = fileURLToPath(new URL("../src/", import.meta.url));
 
 test("Issue #44: app.css ensures graph canvas does not collapse at <=760px", async () => {
-  const css = await readFile(path.join(SRC, "app.css"), "utf8");
+  const css = readAppCss();
   
   // Must have media query for <= 760px
   assert.ok(css.includes("@media (max-width: 760px)"));
@@ -36,7 +37,7 @@ test("Issue #44: app.css ensures graph canvas does not collapse at <=760px", asy
 });
 
 test("Issue #44: app.css enables graph toolbar wrapping at <=1200px", async () => {
-  const css = await readFile(path.join(SRC, "app.css"), "utf8");
+  const css = readAppCss();
   
   const match1200 = css.match(/@media \(max-width: 1200px\) \{([\s\S]*?)\n\}/);
   assert.ok(match1200, "Found @media (max-width: 1200px) block");

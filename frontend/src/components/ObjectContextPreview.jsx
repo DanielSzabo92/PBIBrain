@@ -1,8 +1,8 @@
 import * as React from "react";
 import { useState } from "react";
-import { FileCode, ArrowRight, Waypoints, Code2, Layers, ExternalLink } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { HoverCard, HoverCardTrigger, HoverCardContent } from "./ui/hover-card";
-import { Sheet, SheetTrigger, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "./ui/sheet";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "./ui/sheet";
 import { Button } from "./ui/button";
 import { TypeGlyph } from "./TypeGlyph";
 import { typeLabel } from "../graphPresentation";
@@ -15,7 +15,7 @@ const labelFor = (node) => objectName(node);
 export default function ObjectContextPreview({
   node,
   nodes = [],
-  edges = [],
+  links = null,
   colors,
   onSelect,
   children,
@@ -28,21 +28,12 @@ export default function ObjectContextPreview({
   const expression = node.expression ?? properties.expression;
   const description = readableText(node.description || properties.description);
 
-  // Incoming: objects that reference or use this node
-  const incoming = edges.filter((e) => e.to_id === node.id);
-  const outgoing = edges.filter((e) => e.from_id === node.id);
-
+  // ``links`` counts the objects that use this one and that it uses, and names the first few each way (the server's review rows).
   const resolveNode = (id) => byId(nodes, id);
-
-  const incomingNames = incoming
-    .map((e) => resolveNode(e.from_id))
-    .filter(Boolean)
-    .slice(0, 3);
-
-  const outgoingNames = outgoing
-    .map((e) => resolveNode(e.to_id))
-    .filter(Boolean)
-    .slice(0, 3);
+  const incomingCount = links?.incoming || 0;
+  const outgoingCount = links?.outgoing || 0;
+  const incomingNames = (links?.used_by || []).map(resolveNode).filter(Boolean).slice(0, 3);
+  const outgoingNames = (links?.depends_on || []).map(resolveNode).filter(Boolean).slice(0, 3);
 
   const previewContent = (
     <div className="object-context-preview">
@@ -71,9 +62,9 @@ export default function ObjectContextPreview({
       ) : null}
 
       <div className="context-preview-usage">
-        {incoming.length > 0 ? (
+        {incomingCount > 0 ? (
           <div className="usage-stat">
-            <span className="stat-label">Used by {incoming.length} {incoming.length === 1 ? "object" : "objects"}:</span>
+            <span className="stat-label">Used by {incomingCount} {incomingCount === 1 ? "object" : "objects"}:</span>
             <ul className="stat-list">
               {incomingNames.map((n) => (
                 <li key={n.id}>
@@ -81,16 +72,16 @@ export default function ObjectContextPreview({
                   <small className="stat-type">({typeLabel(n.type)})</small>
                 </li>
               ))}
-              {incoming.length > 3 ? <li className="stat-more">+{incoming.length - 3} more</li> : null}
+              {incomingCount > 3 ? <li className="stat-more">+{incomingCount - 3} more</li> : null}
             </ul>
           </div>
         ) : (
           <p className="muted-copy compact">No direct dependents found.</p>
         )}
 
-        {outgoing.length > 0 ? (
+        {outgoingCount > 0 ? (
           <div className="usage-stat">
-            <span className="stat-label">Depends on {outgoing.length} {outgoing.length === 1 ? "object" : "objects"}:</span>
+            <span className="stat-label">Depends on {outgoingCount} {outgoingCount === 1 ? "object" : "objects"}:</span>
             <ul className="stat-list">
               {outgoingNames.map((n) => (
                 <li key={n.id}>
@@ -98,7 +89,7 @@ export default function ObjectContextPreview({
                   <small className="stat-type">({typeLabel(n.type)})</small>
                 </li>
               ))}
-              {outgoing.length > 3 ? <li className="stat-more">+{outgoing.length - 3} more</li> : null}
+              {outgoingCount > 3 ? <li className="stat-more">+{outgoingCount - 3} more</li> : null}
             </ul>
           </div>
         ) : null}

@@ -1,6 +1,5 @@
 import * as React from "react"
 import { Check, ChevronDown, FolderPlus, LoaderCircle, TriangleAlert } from "lucide-react"
-import { cn } from "@/lib/utils"
 import { Field, hasHint, useFieldIds } from "./field"
 
 // Combobox (UI design 6.1, 9.3): an input with role "combobox" and a listbox of groups.

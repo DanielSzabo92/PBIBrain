@@ -37,9 +37,10 @@ test.describe("Compare filters and search", () => {
     await workReady(page);
   });
 
-  test("default chip State: not same is active and hides same rows", async ({ page }) => {
-    const chip = page.locator('[data-slot="filter-chip"]').filter({ hasText: "State: not same" });
-    await expect(chip).toBeVisible();
+  test("the State filter starts on Not same, says so on its button and hides same rows", async ({ page }) => {
+    // One filter line: the State button carries its value; there is no second row of chips.
+    await expect(page.getByRole("button", { name: /^State/ })).toContainText("Not same");
+    await expect(page.locator('[data-slot="filter-chip"]')).toHaveCount(0);
 
     // Default scenario has 6 rows: 4 not same, 2 same.
     const rows = page.locator(".dc-body-row");
@@ -232,8 +233,8 @@ test.describe("Full grid keyboard map (section 9.3)", () => {
   });
 
   test("D key opens code diff on non-same donor cell", async ({ page }) => {
-    // Focus row 0 donor cell (col 4 or 5).
-    const donorCell = page.locator('.dc-cell[data-r="0"][data-c="4"]');
+    // Focus row 0's first donor cell (column 5; column 4 is the target).
+    const donorCell = page.locator('.dc-cell[data-r="0"][data-c="5"]');
     await donorCell.focus();
 
     await page.keyboard.press("d");
@@ -388,7 +389,7 @@ test.describe("Bulk actions and confirmation", () => {
     const menuBtn = page.getByRole("button", { name: "Set Merge Choice" });
     await menuBtn.click();
     await page.getByRole("menuitem", { name: "Keep target" }).click();
-    await expect(page.locator(".ui-toast").last()).toContainText("Merge Choice set for 1 row.");
+    await expect(page.locator("[data-sonner-toast]").last()).toContainText("Merge Choice set for 1 row.");
 
     // Select first row again.
     await chk.click();
@@ -406,7 +407,7 @@ test.describe("Bulk actions and confirmation", () => {
     // Confirm the replacement.
     await page.locator("#dok").click();
     await expect(dialog).toHaveCount(0);
-    await expect(page.locator(".ui-toast").last()).toContainText("Merge Choice set for 1 row.");
+    await expect(page.locator("[data-sonner-toast]").last()).toContainText("Merge Choice set for 1 row.");
   });
 
   test("select all matching rows collects keys by paging and sends explicit keys", async ({ page, request }) => {
@@ -472,37 +473,31 @@ test.describe("Marks filter and Confirm rows", () => {
 });
 
 test.describe("Compare mode switcher", () => {
-  test("switching compare mode keeps filters and active row but clears selection", async ({ page, request }) => {
+  test("switching compare mode keeps filters and the open row", async ({ page, request }) => {
     await scenario(request, "default");
     await openDevCenter(page);
     await workReady(page);
 
-    // Search and select row and open row detail.
+    // Search and open a row. (While rows are selected the bulk bar takes the filter line's place,
+    // mode switch included, so a mode change never meets a selection.)
     const search = page.locator('input[type="search"]');
     await search.fill("Sales");
     await page.waitForTimeout(200);
-
-    const chk = page.locator('.dc-body-row[data-i="0"] input[type="checkbox"]');
-    await chk.click();
-    await expect(page.locator(".dc-bulkbar")).toBeVisible();
 
     const firstCell = page.locator('.dc-cell[data-r="0"][data-c="1"]');
     await firstCell.click();
     const pane = page.locator(".dc-row-pane");
     await expect(pane).toBeVisible();
 
-    // Switch mode to Strict.
     const strictBtn = page.getByRole("radio", { name: "Strict" });
     await strictBtn.click();
-    await page.waitForTimeout(200);
+    await expect(strictBtn).toHaveAttribute("aria-checked", "true");
 
-    // Filters and search remain intact.
+    // Filters and search remain intact, and the row detail stays open.
     await expect(search).toHaveValue("Sales");
-    // Row detail remains open.
     await expect(pane).toBeVisible();
-    // Selection is cleared.
-    await expect(page.locator(".dc-bulkbar")).toHaveCount(0);
   });
+
 });
 
 test.describe("Code diff modal dialog", () => {

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from backend.scanner.checkpoint import checkpoint
+
 import hashlib
 import json
 import logging
@@ -93,9 +95,12 @@ class FactGraphBuilder:
             if report_sources is None:
                 report_sources = bundle["reports"]
         for source_index, source in enumerate(_many_sources(model_sources, model_reader)):
+            checkpoint()
             self.normalizer.normalize_model(source, source_key=source_index)
         for source_index, source in enumerate(_many_sources(report_sources, report_reader)):
+            checkpoint()
             self.normalizer.normalize_report(source, source_key=source_index)
+        checkpoint()
         self._build_edges()
         diagnostics: list[dict[str, Any]] = []
         semantic_candidates: list[Any] = []
@@ -113,6 +118,8 @@ class FactGraphBuilder:
             # Phase 3 consumes the already parsed/analyzed result.  It never
             # reparses expression text.
             from backend.inference.engine import InferenceEngine
+
+            checkpoint()
 
             inference = InferenceEngine(
                 self.normalizer.nodes,
