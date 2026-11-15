@@ -43,7 +43,7 @@ each finding and what each fix measured; its last rows are this branch's work.
 | Suite | Command | State |
 |---|---|---|
 | Frontend unit | `cd frontend && npm test` | 338 pass. |
-| Backend | `python -m unittest discover -s tests` | 895 tests, all pass. |
+| Backend | `python -m unittest discover -s tests` | 898 tests: 895 pass, 3 skipped. |
 | Browser | `cd frontend && npm run build && npx playwright test` | 272 tests, all pass on fresh servers (about 6 minutes). |
 
 ## Working notes
