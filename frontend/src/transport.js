@@ -134,12 +134,32 @@ export function createBrainTransport({ baseUrl = API_ROOT, fetcher = globalThis.
     scanStatus() {
       return request("/scan/status");
     },
-    scan() {
-      return request("/scan", {
+    /**
+     * Scans the project. The server scans on a worker and this waits by polling its status, so every
+     * other request is answered meanwhile and the scan can be cancelled. Resolves to
+     * { overview, source_count }; rejects with error.cancelled === true when the scan was cancelled.
+     */
+    async scan() {
+      const started = await request("/scan", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: "{}",
+        body: JSON.stringify({ background: true }),
       });
+      if (started?.overview) return started; // a server that scans inside the request
+      for (;;) {
+        await new Promise((resolve) => setTimeout(resolve, 400));
+        const status = await request("/scan/status");
+        const last = status?.last;
+        if (status?.running || !last || (started?.scan && last.scan !== started.scan)) continue;
+        if (last.state === "done") return { overview: await request("/overview"), source_count: last.source_count };
+        const error = new Error(last.state === "cancelled" ? "Scan cancelled" : last.error || "Scan failed");
+        error.cancelled = last.state === "cancelled";
+        throw error;
+      }
+    },
+    /** Stops the running scan before it publishes; the graph stays as it was. */
+    cancelScan() {
+      return request("/scan/cancel", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
     },
     search({ query = "", modelId = "", reportId = "", objectType = "", limit = 50, offset = 0 } = {}) {
       const params = new URLSearchParams({ q: query, limit: String(limit), offset: String(offset) });

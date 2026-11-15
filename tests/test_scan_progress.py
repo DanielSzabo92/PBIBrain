@@ -58,5 +58,99 @@ class ScanProgressTests(unittest.TestCase):
         self.assertEqual(answer[0][1]["phase"], "Reading formulas and dependencies")
 
 
+def _project(folder: str, *extra_sources: str):
+    from backend.api.app import create_app
+
+    sample = write_sample(Path(folder) / "sample")
+    config = Path(folder) / "brain.json"
+    config.write_text(json.dumps({"version": 1, "name": "T", "sources": [str(sample), *extra_sources], "database": "brain.lbug", "identity_map": "identity.json"}), encoding="utf-8")
+    app = create_app(GraphRepository(use_native=False), overrides_path=Path(folder) / "overrides.json")
+    app.project = ProjectService(config)
+    return app, sample
+
+
+def _wait(app, timeout: float = 30.0) -> dict:
+    import time
+
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        status = app.scan_status()
+        if not status["running"] and "last" in status:
+            return status
+        time.sleep(0.02)
+    raise AssertionError("the background scan did not finish")
+
+
+class BackgroundScanTests(unittest.TestCase):
+    def test_a_background_scan_returns_at_once_and_reports_how_it_ended(self) -> None:
+        with tempfile.TemporaryDirectory() as folder:
+            app, sample = _project(folder)
+            gate = threading.Event()
+            read = projects._read_project_source
+
+            def held(path):
+                gate.wait(10)
+                return read(path)
+
+            with mock.patch.object(projects, "_read_project_source", held):
+                status, started = app.handle("POST", "/api/scan", {"background": True})
+                self.assertEqual((status, started["running"]), (200, True))
+                # While the scan reads its sources, other requests are answered and a second scan is refused.
+                with app.request_lock:
+                    self.assertTrue(app.scan_status()["running"])
+                self.assertEqual(app.handle("GET", "/api/overview")[1]["counts"]["nodes"], 0)
+                self.assertEqual(app.handle("POST", "/api/scan", {"background": True})[0], 400)
+                self.assertEqual(app.handle("POST", "/api/scan")[0], 400)
+                gate.set()
+                finished = _wait(app)
+            self.assertEqual(finished["last"]["state"], "done")
+            self.assertEqual(finished["last"]["source_count"], 1)
+            self.assertGreater(app.handle("GET", "/api/overview")[1]["counts"]["nodes"], 0)
+            sources = app.handle("GET", "/api/config/sources")[1]["sources"]
+            self.assertEqual(sources[0]["scan"]["state"], "scanned")
+            self.assertEqual((sources[0]["scan"]["models"], sources[0]["scan"]["reports"]), (1, 1))
+            app.close()
+
+    def test_cancel_stops_the_scan_before_anything_is_published(self) -> None:
+        with tempfile.TemporaryDirectory() as folder:
+            app, sample = _project(folder)
+            gate = threading.Event()
+            read = projects._read_project_source
+
+            def held(path):
+                gate.wait(10)
+                return read(path)
+
+            with mock.patch.object(projects, "_read_project_source", held):
+                app.handle("POST", "/api/scan", {"background": True})
+                status, cancelling = app.handle("POST", "/api/scan/cancel")
+                self.assertEqual(status, 200)
+                self.assertTrue(cancelling.get("cancelling"))
+                gate.set()
+                finished = _wait(app)
+            self.assertEqual(finished["last"]["state"], "cancelled")
+            self.assertEqual(app.handle("GET", "/api/overview")[1]["counts"]["nodes"], 0, "nothing was published")
+            self.assertEqual(app.handle("GET", "/api/config/sources")[1]["sources"][0]["scan"]["state"], "not_scanned")
+            # The next scan runs normally.
+            app.handle("POST", "/api/scan", {"background": True})
+            self.assertEqual(_wait(app)["last"]["state"], "done")
+            app.close()
+
+    def test_a_source_that_cannot_be_read_is_marked_failed(self) -> None:
+        with tempfile.TemporaryDirectory() as folder:
+            broken = Path(folder) / "broken.json"
+            broken.write_text("{ not json", encoding="utf-8")
+            app, sample = _project(folder, str(broken))
+            app.handle("POST", "/api/scan", {"background": True})
+            finished = _wait(app)
+            self.assertEqual(finished["last"]["state"], "failed")
+            self.assertTrue(finished["last"]["error"])
+            first, second = app.handle("GET", "/api/config/sources")[1]["sources"]
+            self.assertEqual(first["scan"]["state"], "not_scanned", "it was read, but the scan was not published")
+            self.assertEqual(second["scan"]["state"], "failed")
+            self.assertTrue(second["scan"]["detail"])
+            app.close()
+
+
 if __name__ == "__main__":
     unittest.main()

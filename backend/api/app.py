@@ -672,6 +672,11 @@ class BrainApp:
         self.static_dir = Path(static_dir).resolve() if static_dir else None
         # One request at a time: the chat worker (issue #7) calls handle() from its own thread.
         self.request_lock = threading.RLock()
+        # The background scan: its thread, its cancel flag and how the last one ended.
+        self._scan_thread: threading.Thread | None = None
+        self._scan_cancel: threading.Event | None = None
+        self._scan_outcome: dict[str, Any] | None = None
+        self._scan_number = 0
         self._chat: Any = None
         self._devcenter: Any = None
         # Answers to read-only graph requests, kept until the graph or the decisions change.
@@ -771,6 +776,59 @@ class BrainApp:
                 del self._answers[next(iter(self._answers))]
             self._answers[key] = (stamp, status, raw)
 
+    def scan_status(self) -> dict[str, Any]:
+        """What the running scan is doing, and how the last background scan ended."""
+
+        payload = dict(getattr(self.project, "scan_progress", None) or {"running": False})
+        thread = self._scan_thread
+        if thread is not None and thread.is_alive():
+            payload["running"] = True
+            if self._scan_cancel is not None and self._scan_cancel.is_set():
+                payload["cancelling"] = True
+        if self._scan_outcome is not None:
+            payload["last"] = dict(self._scan_outcome)
+        return payload
+
+    def start_scan(self) -> dict[str, Any]:
+        """Scan on a worker thread. The request returns at once and the page polls ``/api/scan/status``.
+
+        The worker holds the request lock only while the new graph is published, so every other
+        request is answered from the previous graph while sources are read and formulas analysed.
+        """
+
+        if self._scan_thread is not None and self._scan_thread.is_alive():
+            raise ValueError("A scan is already running")
+        project, repository = self.project, self.api.repository
+        cancel = threading.Event()
+        self._scan_cancel, self._scan_outcome = cancel, None
+        self._scan_number += 1
+        number = self._scan_number
+        project.scan_progress = {"running": True, "phase": "Reading sources", "done": 0, "total": 0}
+
+        def work() -> None:
+            from datetime import datetime, timezone
+
+            from backend.projects import ScanCancelled
+
+            outcome: dict[str, Any] = {"scan": number}
+            try:
+                result = project.scan(repository, cancel=cancel, publish_lock=self.request_lock)
+                with self.request_lock:
+                    self._sync_review_settings()
+                    if getattr(self, "_source_watcher", None) is not None:
+                        self._source_watcher.reset()
+                outcome.update(state="done", source_count=result.source_count)
+            except ScanCancelled:
+                outcome.update(state="cancelled")
+            except Exception as error:  # noqa: BLE001 - reported to the page, which shows it
+                outcome.update(state="failed", error=str(error))
+            outcome["finished_at"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
+            self._scan_outcome = outcome
+
+        self._scan_thread = threading.Thread(target=work, name="pbibrain-scan", daemon=True)
+        self._scan_thread.start()
+        return {"running": True, "scan": number}
+
     def _sync_review_settings(self, config: Mapping[str, Any] | None = None) -> None:
         """Apply the project's auto-accept setting; a project without the setting leaves the graph alone."""
 
@@ -851,8 +909,12 @@ class BrainApp:
                 # Whether each configured path is there, so a wrong path shows before any scan runs.
                 config = self.project.get_config()
                 found = []
+                states = getattr(self.project, "source_states", None) or {}
                 for value, resolved in zip(config.get("sources", []), self.project.source_paths()):
-                    found.append({"path": value, "exists": resolved.exists(), "kind": "folder" if resolved.is_dir() else "file" if resolved.is_file() else "missing"})
+                    entry = {"path": value, "exists": resolved.exists(), "kind": "folder" if resolved.is_dir() else "file" if resolved.is_file() else "missing"}
+                    if isinstance(states.get(value), Mapping):
+                        entry["scan"] = dict(states[value])  # what the last scan did with this source
+                    found.append(entry)
                 return 200, {"sources": found}
             if parts == ["config"] and self.project is not None:
                 if method == "GET":
@@ -875,7 +937,15 @@ class BrainApp:
                 if sample.resolve() not in known:
                     current = self.project.save_config({**current, "sources": [*current.get("sources", []), str(sample)]})
                 return 200, current
+            if method == "POST" and parts == ["scan", "cancel"] and self.project is not None:
+                if self._scan_cancel is not None:
+                    self._scan_cancel.set()
+                return 200, self.scan_status()
+            if method == "POST" and parts == ["scan"] and self.project is not None and self._json_body(body).get("background"):
+                return 200, self.start_scan()
             if method == "POST" and parts == ["scan"] and self.project is not None:
+                if self._scan_thread is not None and self._scan_thread.is_alive():
+                    raise ValueError("A scan is already running")
                 result = self.project.scan(self.api.repository)
                 self._sync_review_settings()
                 if getattr(self, "_source_watcher", None) is not None:
@@ -1106,7 +1176,7 @@ class BrainApp:
                 cached = self._cached_answer(key, self._graph_stamp()) if key else None
                 if method == "GET" and path == "/api/scan/status":
                     # What the running scan is doing; the scan itself holds the request lock.
-                    status, payload = 200, dict(getattr(self.project, "scan_progress", None) or {"running": False})
+                    status, payload = 200, self.scan_status()
                 elif cached is not None:
                     status, raw = cached
                 else:
@@ -1136,6 +1206,11 @@ class BrainApp:
         return [raw]
 
     def close(self) -> None:
+        # A running scan is stopped before its repository is closed under it.
+        if self._scan_thread is not None and self._scan_thread.is_alive():
+            if self._scan_cancel is not None:
+                self._scan_cancel.set()
+            self._scan_thread.join(timeout=60)
         self.api.close()
 
 

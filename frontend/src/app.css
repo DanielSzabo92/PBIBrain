@@ -1958,3 +1958,19 @@ button.object-tree-twist:hover { background: var(--surface-3); color: var(--text
 .version-single-list [data-slot="native-select-wrapper"] { flex: 0 0 210px; width: 210px; }
 .version-single-list { max-height: 38vh; overflow-y: auto; padding-right: 4px; }
 .version-group-list { max-height: 30vh; overflow-y: auto; }
+
+/* Per-source scan state in Settings, and Cancel beside the running scan. */
+.source-name { display: flex; flex-direction: column; min-width: 0; }
+.source-name strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.source-scan { overflow: hidden; color: var(--text-3); font-size: var(--fs-meta); text-overflow: ellipsis; white-space: nowrap; }
+.source-bad .source-scan { color: var(--bad); }
+.source-warn .source-state { background: var(--warn); }
+.source-warn .source-scan { color: var(--warn); }
+.source-busy .source-state { background: var(--brand); animation: source-pulse 1.2s ease-in-out infinite; }
+@keyframes source-pulse { 50% { opacity: .35; } }
+@media (prefers-reduced-motion: reduce) { .source-busy .source-state { animation: none; } }
+.desktop-source-row .source-state { flex: none; }
+.desktop-source-row > .source-scan { flex: none; max-width: 40%; font-family: inherit; }
+.statusbar-cancel-scan { margin-left: 8px; padding: 0 6px; border: 1px solid var(--line); border-radius: var(--r-sm); background: transparent; color: var(--text-2); font: inherit; cursor: pointer; }
+.statusbar-cancel-scan:hover:not(:disabled) { color: var(--text); border-color: var(--line-focus); }
+.statusbar-cancel-scan:disabled { cursor: default; opacity: .7; }

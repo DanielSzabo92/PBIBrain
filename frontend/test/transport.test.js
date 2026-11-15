@@ -45,7 +45,29 @@ test("scan posts an explicit JSON payload for the local WSGI API", async () => {
   await createBrainTransport({ baseUrl: "/api", fetcher: fake.fetch }).scan();
   assert.equal(fake.calls[0].options.method, "POST");
   assert.equal(fake.calls[0].options.headers["Content-Type"], "application/json");
-  assert.equal(fake.calls[0].options.body, "{}");
+  assert.deepEqual(JSON.parse(fake.calls[0].options.body), { background: true });
+});
+
+test("scan waits for the background scan by polling its status, and reports a cancelled scan as such", async () => {
+  const sequence = (answers) => {
+    const calls = [];
+    return { calls, fetch: async (url, options = {}) => { calls.push({ url, method: options.method || "GET" }); const body = answers.shift(); return { ok: true, status: 200, json: async () => body }; } };
+  };
+  const done = sequence([
+    { running: true, scan: 2 },
+    { running: true, phase: "Reading formulas and dependencies", last: { scan: 1, state: "done" } },
+    { running: false, last: { scan: 1, state: "done" } }, // the outcome of an earlier scan is not this one's
+    { running: false, last: { scan: 2, state: "done", source_count: 3 } },
+    { counts: { nodes: 20 } },
+  ]);
+  const result = await createBrainTransport({ baseUrl: "/api", fetcher: done.fetch }).scan();
+  assert.deepEqual(result, { overview: { counts: { nodes: 20 } }, source_count: 3 });
+  assert.deepEqual(done.calls.map((call) => `${call.method} ${call.url}`), ["POST /api/scan", "GET /api/scan/status", "GET /api/scan/status", "GET /api/scan/status", "GET /api/overview"]);
+
+  const cancelled = sequence([{ running: true, scan: 1 }, { running: false, last: { scan: 1, state: "cancelled" } }]);
+  await assert.rejects(createBrainTransport({ baseUrl: "/api", fetcher: cancelled.fetch }).scan(), (error) => error.cancelled === true);
+  const failed = sequence([{ running: true, scan: 1 }, { running: false, last: { scan: 1, state: "failed", error: "Source file is not valid JSON" } }]);
+  await assert.rejects(createBrainTransport({ baseUrl: "/api", fetcher: failed.fetch }).scan(), (error) => !error.cancelled && /not valid JSON/.test(error.message));
 });
 
 test("API errors expose the backend error field", async () => {

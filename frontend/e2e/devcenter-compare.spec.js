@@ -37,9 +37,10 @@ test.describe("Compare filters and search", () => {
     await workReady(page);
   });
 
-  test("default chip State: not same is active and hides same rows", async ({ page }) => {
-    const chip = page.locator('[data-slot="filter-chip"]').filter({ hasText: "State: not same" });
-    await expect(chip).toBeVisible();
+  test("the State filter starts on Not same, says so on its button and hides same rows", async ({ page }) => {
+    // One filter line: the State button carries its value; there is no second row of chips.
+    await expect(page.getByRole("button", { name: /^State/ })).toContainText("Not same");
+    await expect(page.locator('[data-slot="filter-chip"]')).toHaveCount(0);
 
     // Default scenario has 6 rows: 4 not same, 2 same.
     const rows = page.locator(".dc-body-row");

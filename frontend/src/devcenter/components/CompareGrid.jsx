@@ -17,7 +17,7 @@ import {
   Target,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { FilterButton, FilterChip, Popover } from "@/components/ui/filter";
+import { FilterButton, Popover } from "@/components/ui/filter";
 import { EmptyState } from "@/components/ui/result-panel";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { Tooltip } from "@/components/ui/tooltip";
@@ -1553,6 +1553,13 @@ export default function CompareGrid({
             {t("compare.filter.changed")}
           </Button>
 
+          {/* One filter line: each control shows its own value, so the filters are not repeated as chips below. */}
+          {hasActiveFilters ? (
+            <button type="button" className="dc-link text-xs" id="clearf" onClick={clearAllFilters}>
+              {t("shared.clear_filters")}
+            </button>
+          ) : null}
+
           <span className="dc-spacer" />
 
           <GridShortcutsHelp />
@@ -1560,64 +1567,6 @@ export default function CompareGrid({
           {modeControl}
         </div>
       )}
-
-      {/* Active filter chips */}
-      {hasActiveFilters ? (
-        <div className="dc-chips">
-          {stateFilter === "notsame" ? (
-            <FilterChip
-              label="State: not same"
-              onRemove={() => setStateFilter("all")}
-            />
-          ) : stateFilter && stateFilter !== "all" ? (
-            <FilterChip
-              label={`State: ${stateWord(stateFilter)}`}
-              onRemove={() => setStateFilter("all")}
-            />
-          ) : null}
-
-          {typeFilters.map((tp) => (
-            <FilterChip
-              key={tp}
-              label={`Type: ${tp}`}
-              onRemove={() => setTypeFilters((list) => list.filter((x) => x !== tp))}
-            />
-          ))}
-
-          {marksFilter ? (
-            <FilterChip
-              label={t("work.compare.marks")}
-              onRemove={() => setMarksFilter(false)}
-            />
-          ) : null}
-
-          {changedFilter ? (
-            <FilterChip
-              label="Changed since last check"
-              onRemove={() => setChangedFilter(false)}
-            />
-          ) : null}
-
-          {debouncedQ ? (
-            <FilterChip
-              label={`Name contains "${debouncedQ}"`}
-              onRemove={() => {
-                setQ("");
-                setDebouncedQ("");
-              }}
-            />
-          ) : null}
-
-          <button
-            type="button"
-            className="dc-link text-xs"
-            id="clearf"
-            onClick={clearAllFilters}
-          >
-            {t("shared.clear_filters")}
-          </button>
-        </div>
-      ) : null}
 
       {/* Main Area: Grid + Side Pane */}
       <div className={`dc-compare-area ${activeRow ? "with-pane" : ""}`}>

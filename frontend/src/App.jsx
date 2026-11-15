@@ -48,6 +48,7 @@ const DevCenter = lazy(() => import("./devcenter/screens/DevCenter.jsx"));
 import { shared as devCenterShared } from "./devcenter/sharedStore.js";
 import { Switch } from "./components/ui/switch";
 import { Checkbox } from "./components/ui/checkbox";
+import { sourceState, sourceStatusMap } from "./sourceStatus";
 import { setSlashSearchEnabled, slashGoesToSearch, slashSearchEnabled } from "./devcenter/preferences.js";
 import { t as devCopy } from "./devcenter/copy.js";
 import { artifactColor, artifactStyle, normalizeColors, pluralType, typeLabel } from "./graphPresentation";
@@ -556,7 +557,8 @@ function AppInner({ transport = brainTransport }) {
       await load();
       if (currentView.current === "review") await loadSnapshot();
     } catch (cause) {
-      setOperationError(cause.message || "Scan failed");
+      if (cause?.cancelled) setNotice("Scan cancelled. Nothing was changed.");
+      else setOperationError(cause.message || "Scan failed");
     } finally {
       scanInFlight.current = false;
       setScanning(false);
@@ -1025,7 +1027,7 @@ function AppInner({ transport = brainTransport }) {
           onMerge={() => navigate("devcenter")} onSettings={() => openSettings("ai")} />
       </Suspense> : null}
       </div>
-      <StatusBar connection={connection} projectName={projectName} counts={counts} pending={pending} onReview={() => navigate("review")} scanning={scanning} scanStatus={transport?.scanStatus} lastScan={lastScan} notice={notice} noticeFailed={failedNotice} theme={theme} onTheme={toggleTheme} onShortcuts={() => setShortcutsOpen(true)} onScan={runScan} />
+      <StatusBar connection={connection} projectName={projectName} counts={counts} pending={pending} onReview={() => navigate("review")} scanning={scanning} scanStatus={transport?.scanStatus} onCancelScan={typeof transport?.cancelScan === "function" ? () => transport.cancelScan().catch(() => {}) : undefined} lastScan={lastScan} notice={notice} noticeFailed={failedNotice} theme={theme} onTheme={toggleTheme} onShortcuts={() => setShortcutsOpen(true)} onScan={runScan} />
       <ShortcutsDialog open={shortcutsOpen} onOpenChange={setShortcutsOpen} />
       <CommandPalette
         open={paletteOpen}
@@ -1129,7 +1131,23 @@ function DesktopOnboarding({ api, error, onOpen }) {
   </main>;
 }
 
+/** Found or not, and what the last scan did, for each saved source. Read again while a scan runs and when it ends. */
+function useSourceStatus(transport, sources, scanning) {
+  const [status, setStatus] = useState({});
+  const saved = JSON.stringify(sources || []);
+  useEffect(() => {
+    let active = true;
+    if (typeof transport?.getSourceStatus !== "function") return undefined;
+    const read = () => transport.getSourceStatus().then((result) => { if (active) setStatus(sourceStatusMap(result)); }).catch(() => {});
+    read();
+    const timer = scanning ? setInterval(read, 1000) : null;
+    return () => { active = false; if (timer) clearInterval(timer); };
+  }, [transport, saved, scanning]);
+  return status;
+}
+
 function DesktopProjectView({ api, project, overview, config, transport, scanning, onScan, onChange, onRefresh, onSaved }) {
+  const sourceStatus = useSourceStatus(transport, config?.sources, scanning);
   const [sourceError, setSourceError] = useState("");
   const [sourceWorking, setSourceWorking] = useState(false);
   const [cloudOpen, setCloudOpen] = useState(false);
@@ -1165,7 +1183,7 @@ function DesktopProjectView({ api, project, overview, config, transport, scannin
     <PageHeading title={project.name} description="Everything PBIBrain creates stays with this project folder." action={<Button variant="outline" onClick={onChange} disabled={scanning}><FolderOpen />Change project</Button>} />
     <Card className="panel desktop-project-panel">
       <div className="project-location"><div><p className="field-label">Project folder</p><strong title={project.folder}>{project.folder}</strong></div></div>
-      <div className="desktop-sources"><div className="panel-heading"><div><h2>Power BI source files</h2></div><Button variant="outline" onClick={addSources} disabled={sourceWorking || scanning} tooltip={scanning ? "Cannot add sources while scan is in progress" : sourceWorking ? "Adding sources…" : undefined}><Plus />{sourceWorking ? "Adding…" : "Add source files"}</Button></div>{sources.length ? <div className="source-list">{sources.map((source) => <div className="desktop-source-row" key={source}><FileText className="source-icon" aria-hidden="true" /><span title={source}>{source}</span><Button variant="ghost" size="icon-sm" onClick={() => removeSource(source)} disabled={sourceWorking || scanning} aria-label={`Remove ${source}`}><X /></Button></div>)}</div> : <EmptyState icon={<FileText />} title="No source files yet" detail="Add PBIP projects or model JSON files to scan them with this project." />}{sourceError ? <p className="onboarding-error" role="alert">{sourceError}</p> : null}</div>
+      <div className="desktop-sources"><div className="panel-heading"><div><h2>Power BI source files</h2></div><Button variant="outline" onClick={addSources} disabled={sourceWorking || scanning} tooltip={scanning ? "Cannot add sources while scan is in progress" : sourceWorking ? "Adding sources…" : undefined}><Plus />{sourceWorking ? "Adding…" : "Add source files"}</Button></div>{sources.length ? <div className="source-list">{sources.map((source) => { const state = sourceState(sourceStatus[source]); return <div className={`desktop-source-row source-${state.tone}`} key={source}><span className="source-state" role="img" aria-label={state.label} title={state.label} /><FileText className="source-icon" aria-hidden="true" /><span title={source}>{source}</span>{state.text ? <small className="source-scan" title={state.label}>{state.text}</small> : null}<Button variant="ghost" size="icon-sm" onClick={() => removeSource(source)} disabled={sourceWorking || scanning} aria-label={`Remove ${source}`}><X /></Button></div>; })}</div> : <EmptyState icon={<FileText />} title="No source files yet" detail="Add PBIP projects or model JSON files to scan them with this project." />}{sourceError ? <p className="onboarding-error" role="alert">{sourceError}</p> : null}</div>
       {typeof api?.add_cloud_source === "function" || cloudSources.length ? <div className="desktop-sources cloud-sources"><div className="panel-heading"><div><h2>Power BI service items</h2><p className="muted">Cloud semantic models and reports, read with your Microsoft sign-in.</p></div>{typeof api?.add_cloud_source === "function" ? <Button variant="outline" onClick={() => setCloudOpen(true)} disabled={sourceWorking || scanning || cloudOpen}><Cloud />Add cloud item</Button> : null}</div>
         {cloudOpen ? <CloudSourcePicker api={api} onClose={() => setCloudOpen(false)} onAdded={async () => { setCloudOpen(false); await onRefresh(); }} /> : null}
         {cloudSources.length ? <div className="source-list">{cloudSources.map((item) => <div className="desktop-source-row" key={item.item_id}><Cloud className="source-icon" aria-hidden="true" /><span title={`${item.workspace_name} · ${item.name}`}>{item.workspace_name} · {item.name} <span className="muted">({item.kind === "cloud_model" ? "semantic model" : "report"}, {item.access_type})</span></span><Button variant="ghost" size="icon-sm" onClick={() => removeCloudSource(item)} disabled={sourceWorking || scanning} aria-label={`Remove ${item.name}`}><X /></Button></div>)}</div> : null}
@@ -1699,14 +1717,7 @@ function ConfigView({ transport, config, onSaved, onScan, scanning }) {
     setDraft({ ...next, sources: Array.isArray(loaded.sources) ? loaded.sources : [] });
   }, [config]);
   // Which saved paths exist on disk: a wrong path is flagged here, before a scan fails on it.
-  const [sourceStatus, setSourceStatus] = useState({});
-  const savedSources = JSON.stringify(config?.sources || []);
-  useEffect(() => {
-    let active = true;
-    if (typeof transport.getSourceStatus !== "function") return undefined;
-    transport.getSourceStatus().then((result) => { if (active) setSourceStatus(Object.fromEntries((result?.sources || []).map((item) => [item.path, Boolean(item.exists)]))); }).catch(() => {});
-    return () => { active = false; };
-  }, [transport, savedSources]);
+  const sourceStatus = useSourceStatus(transport, config?.sources, scanning);
   if (!draft) return <Card className="panel"><EmptyState title="Loading configuration" detail="Reading the local project settings." /></Card>;
   const updateSource = (index, value) => setDraft((current) => ({ ...current, sources: current.sources.map((source, sourceIndex) => sourceIndex === index ? value : source) }));
   const dirty = draft.name !== config?.name || JSON.stringify(draft.sources) !== JSON.stringify(config?.sources || []);
@@ -1726,12 +1737,12 @@ function ConfigView({ transport, config, onSaved, onScan, scanning }) {
         <div className="settings-section-copy"><h3>Power BI inputs</h3><p>PBIP project folders or model JSON files, as full paths.</p></div>
         <div className="source-editor">
           {draft.sources.length ? <div className="source-list">{draft.sources.map((source, index) => {
-            const state = source === config?.sources?.[index] ? sourceStatus[source] : undefined;
-            const tone = state === undefined ? "unknown" : state ? "ok" : "bad";
+            const state = sourceState(source === config?.sources?.[index] ? sourceStatus[source] : undefined);
+            const tone = state.tone;
             return <div className={`source-row source-${tone}`} key={index}>
-              <span className="source-state" role="img" aria-label={tone === "ok" ? "Found" : tone === "bad" ? "Not found at this path" : "Not checked yet"} title={tone === "ok" ? "Found" : tone === "bad" ? "Not found at this path" : "Not checked yet"} />
-              <strong className="source-name" title={source}>{sourceName(source) || "New source"}</strong>
-              <Input value={source} onChange={(event) => updateSource(index, event.target.value)} placeholder={pathExample()} aria-label={`Source ${index + 1}`} aria-invalid={tone === "bad" || undefined} />
+              <span className="source-state" role="img" aria-label={state.label} title={state.label} />
+              <span className="source-name" title={source}><strong>{sourceName(source) || "New source"}</strong>{state.text ? <small className="source-scan" title={state.label}>{state.text}</small> : null}</span>
+              <Input value={source} onChange={(event) => updateSource(index, event.target.value)} placeholder={pathExample()} aria-label={`Source ${index + 1}`} aria-invalid={(tone === "bad" && !sourceStatus[source]?.exists) || undefined} />
               <Button variant="ghost" size="icon-sm" onClick={() => setDraft({ ...draft, sources: draft.sources.filter((_, sourceIndex) => sourceIndex !== index) })} aria-label={`Remove source ${index + 1}`}><X /></Button>
             </div>;
           })}</div> : <EmptyState icon={<FileText />} title="No sources" detail="Add a PBIP project or model JSON file." />}

@@ -1,10 +1,29 @@
 # Handoff: remaining work from the adversarial product review
 
-Branch: `claude/product-adversarial-review-wid901` (everything below is pushed; no PR is open).
+Branch: `claude/vibrant-franklin-h8aafq` (the review branch `claude/product-adversarial-review-wid901` merged in; everything below is pushed; no PR is open).
 
 The review is in `docs/adversarial-review/`: one file per finding (01–22) with evidence, solution and
 acceptance criteria. The fix-status table in `docs/adversarial-review/README.md` says what was done for
 each finding and what each fix measured. This file lists only what is still open.
+
+## Done since the first handoff
+
+On branch `claude/vibrant-franklin-h8aafq` (the review branch merged in, plus the commits below it).
+
+| Area | What was done |
+|---|---|
+| Review queue | Row selection (checkbox, X key, header checkbox, "Approve N selected"). Bulk decisions are one write on the server with an undo token (`POST /api/review` with `items` or `filter`, `reply: "summary"`; undo with `token`). Auto-accept: Settings › Review, off by default, threshold 90 %, marked "Auto" under Reviewed, marks in `review-marks.json` beside the override file. |
+| Inspector and graph | "Versions" dialog on the Lineage toolbar: "Not a version" and "Is a version of", stored as `version_links` in `brain.json`. Folded title is the shared name ("Sales Analytics · 2 versions"). Visual types are readable. "Other dependencies" no longer repeats the field wells. Field wells checked on a real PBIR report. |
+| Scan | Background job: `POST /api/scan {"background": true}`, status in `GET /api/scan/status` (`last` holds how it ended), `POST /api/scan/cancel`. The request lock is held only while the graph is published. Per-source state in `GET /api/config/sources` (`scan`), shown in Settings. |
+| Gates | `tools/large_project.py` writes the 13,731-object project; `tests/test_scale_budgets_large.py` holds its first requests to budgets. The overview lists at most 50 validation issues and counts the rest (`validation_issue_count`). |
+| Merge models | One filter line in Compare: the chip row is gone, "Clear filters" sits in the toolbar. |
+
+Decisions a reader may question:
+
+- **Auto-accept is off by default.** It changes what "reviewed" means, so a project opts in.
+- **Version corrections are in the project file, not the override file.** An override on a model marks the model itself as "Edited" in every view.
+- **Cancel stops between scan steps.** Formula analysis is one step (15 of 18 s on the large project), so a cancel during it takes effect when it ends; the page is released at once and nothing is published.
+- **"Header action" (Merge shows "Change project" where other views show "Scan sources") was not changed.** The header shows both buttons in every view; "Scan sources" is hidden while the project has no objects, which is the state of the fake server the review used for Merge.
 
 ## Remaining tasks
 
@@ -14,30 +33,22 @@ Ordered by value to a user of a large project. Sizes are rough: S = hours, M = a
 
 | Task | Size | Notes |
 |---|---|---|
-| Auto-accept suggestions that need no judgement | M | Suggestions derived from the object's own name or description above a threshold (default 90 %) are stored as accepted automatically, reversible, and never enter the queue. Changes what "reviewed" means, so it needs a setting (Settings › Review) and its own provenance mark. Start in `backend/api/review.py` (`get_review_queue`) and the scanner's `preserve_review_statuses`. |
-| Row selection | S | Header checkbox and "Approve N selected" next to the per-pattern buttons. `ReviewQueue` in `frontend/src/App.jsx`. |
 | Server paging of the review snapshot | L | Deliberately not done. The snapshot is 42 MB on the 13,731-object project but opens in about 1 s, and grouping by pattern counts every item on the client. Only worth doing if pattern counts move to the server first. See the learning "A long review queue opens grouped by pattern". |
-| Bulk decisions on the server | M | A bulk approve still posts from the client. One request with a filter and one undo token would be faster and atomic. |
+| Bulk decisions by filter from the page | S | The server accepts `filter`, but the page still sends identifiers: patterns and "low evidence" are computed in the browser. Use `filter` once those move to the server. |
 
 ### Merge models (finding 19)
 
 | Task | Size | Notes |
 |---|---|---|
-| One filter line | S | The chip row ("State: not same ×", "Clear filters") repeats the State select. Five browser tests in `frontend/e2e/devcenter-*.spec.js` use the chips; change them together. |
 | Offer only the choices that apply | M | The row detail lists six options, two disabled with a reason. `e2e/devcenter-row.spec.js` asserts the disabled radios exist (lines ~203–225, 511, 606), so this is a contract change, not a style change. |
 | Process stepper | M | Sources → Compare → Impact → Plan → Apply as a progress strip with counts. Today the step tabs are only set apart from the tool tabs by a divider (`TOOL_TABS` in `frontend/src/devcenter/screens/WorkArea.jsx`). |
-| Header action | S | Merge shows "Change project" where every other view shows "Scan sources". |
 | Breadcrumb | S | "Merge models › session › tab" repeats the sidebar, the title and the tab. The first crumb is the only way back to the session list, so replace it with a session switcher before removing it. |
 
-### Inspector and graph (findings 13, 17, 15, 07)
+### Inspector and graph (findings 13, 15, 07)
 
 | Task | Size | Notes |
 |---|---|---|
-| "Not versions" correction | M | Let the user say two models are not versions of each other (or are), stored in the project overrides. Folding is in `frontend/src/versions.js` (`versionFamilies`); the chip is in `frontend/src/components/LaneChips.jsx`. |
-| Folded group title | S | A folded model is titled by its first member. Use the common stem ("Sales Analytics · 2 versions"). |
-| Dependencies repeat the field wells | S | On a visual's page the fields appear under Axis / Values and again under Dependencies. |
-| Readable visual type | S | "barChart" is shown raw in Definition and in the Contents rows. |
-| Field wells on a real report | S | `field_wells` was checked with unit tests and stubbed data only; the bundled sample records no roles. Check it on a real PBIR report. |
+| A card visual's measure is missing from `visual_bindings` | S | On `tests/fixtures/merge_lab/SalesA` the card "target" has the well Values: Sales Target, but `visual_bindings.measures` is empty. The page lists by well, so it shows correctly; the bindings count is wrong. |
 | Lineage layout in a worker, scroll scrubber | M | Open items of finding 07. |
 | Zoom control in the toolbar, project switcher, skeletons | S each | Leftovers of finding 15. |
 
@@ -47,17 +58,16 @@ Ordered by value to a user of a large project. Sizes are rough: S = hours, M = a
 |---|---|---|
 | Drop zone and Browse | M | Needs the desktop shell: a browser cannot read the path of a dropped file. `DesktopProjectView` already has `addSources`. |
 | Recent projects | S | On the empty Overview and in the title bar. Desktop shell only. |
-| Per-source scan state | S | The sources list shows found / not found but not "scanned" or "failed". The phases are already reported by `GET /api/scan/status`. |
-| Scan as a background job | M | The scan is still one request that holds the request lock; reads of cached answers go through, anything else waits. Phases and seconds are shown, but there is no Cancel. |
+| Cancel inside formula analysis | M | `Scanner.scan` is one call. A cancel check per model in `build_fact_graph` would make Cancel take effect within a second or two. |
+| Per-source state across restarts | S | `ProjectService.source_states` is kept in memory. |
 
 ### Code structure and gates (findings 16, 21, 22)
 
 | Task | Size | Notes |
 |---|---|---|
-| Split `frontend/src/App.jsx` | L | About 2,500 lines: Overview, Search, Inspector, ReviewQueue and Settings in one file. Split by view; no behaviour change. |
+| Split `frontend/src/App.jsx` | L | About 2,700 lines: Overview, Search, Inspector, ReviewQueue and Settings in one file. Split by view; no behaviour change. Six unit tests read `App.jsx` as text (`test/navigation.test.js`, `ux-states`, `issue45`, `issue46`, `issue48…`, `issue49…`) and must read the new files. |
 | CSS ownership | M | `frontend/src/app.css` is one file with appended blocks; move each view's rules beside its component. |
 | One list behaviour | M | Search results, the object tree, the review queue and relationship lists each have their own keyboard handling and row markup. |
-| Large fixture in CI | M | Scale budgets run on the 660-object fixture only. The 13,731-object project used for measurements was generated in a scratch folder and is not in the repository; add a generator under `tools/` and a budget test. |
 | Screenshot comparison | M | None yet. |
 
 ## Known state of the test suites

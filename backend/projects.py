@@ -46,6 +46,10 @@ class ProjectSourceError(ValueError):
     """A configured source cannot be read as Power BI metadata."""
 
 
+class ScanCancelled(Exception):
+    """The user stopped the scan before its graph was published; nothing changed."""
+
+
 class ProjectSourceCollisionError(ProjectSourceError):
     """Two source objects resolve to the same canonical graph identity."""
 
@@ -210,6 +214,8 @@ class ProjectService:
     def __init__(self, config_path: str | Path = "config/brain.json", *, cloud: Any = None) -> None:
         # What a running scan is doing, read by the UI without waiting for the scan request.
         self.scan_progress: dict[str, Any] = {"running": False}
+        # The outcome of the last scan for each configured source (kept in memory, for Settings).
+        self.source_states: dict[str, dict[str, Any]] = {}
         self.config_store = ProjectConfigStore(config_path)
         # The Development Center ``CloudService`` (or a callable that gives it). None: the
         # scan reads cloud items from the cache only, as in the stand-alone agent.
@@ -232,7 +238,14 @@ class ProjectService:
         config = self.get_config()
         return [_resolve_path(value, self.config_path.parent) for value in config["sources"]]
 
-    def scan(self, repository: GraphRepository) -> ProjectScanResult:
+    def scan(self, repository: GraphRepository, *, cancel: Any = None, publish_lock: Any = None) -> ProjectScanResult:
+        """Scan every source and publish one combined graph.
+
+        ``cancel`` (a ``threading.Event``) stops the scan between its phases, before anything is
+        published; the scan then raises ``ScanCancelled``. ``publish_lock`` is held only while the
+        graph is replaced, so a scan on a worker thread leaves the repository readable until then.
+        """
+
         config = self.get_config()
         source_paths = [_resolve_path(value, self.config_path.parent) for value in config["sources"]]
         cloud_entries = list(config.get("cloud_sources", []))
@@ -241,16 +254,33 @@ class ProjectService:
 
         project_paths = _project_paths(config, self.config_path.parent)
         self.scan_progress = {"running": True, "phase": "Reading sources", "done": 0, "total": len(source_paths) + len(cloud_entries)}
+        # What happened to each source in this scan, by its path as written in the configuration.
+        states: dict[str, dict[str, Any]] = {value: {"state": "waiting"} for value in config["sources"]}
+        self.source_states = states
+        self._source_keys = dict(zip(source_paths, config["sources"]))
         try:
-            result = self._scan_paths(repository, source_paths, project_paths, cloud_entries)
+            result = self._scan_paths(repository, source_paths, project_paths, cloud_entries, cancel=cancel, publish_lock=publish_lock)
+        except BaseException as error:
+            # A source that was read is not "scanned" until the graph is published.
+            reason = "The scan was cancelled" if isinstance(error, ScanCancelled) else "The scan did not finish"
+            for state in states.values():
+                if state["state"] in {"waiting", "reading", "read"}:
+                    state.update(state="not_scanned", detail=reason)
+            raise
         finally:
             self.scan_progress = {"running": False}
+        for state in states.values():
+            if state["state"] == "read":
+                state.update(state="scanned", scanned_at=result.scanned_at)
         # The read-only snapshot MCP answers from while the app is closed (issue #18). A scan that
         # published its graph never fails because this extra copy could not be written.
         try:
+            from contextlib import nullcontext
+
             from backend.mcp_snapshot import write_agent_snapshot
 
-            write_agent_snapshot(self, repository, scanned_at=result.scanned_at)
+            with publish_lock or nullcontext():
+                write_agent_snapshot(self, repository, scanned_at=result.scanned_at)
         except Exception:  # noqa: BLE001 - best effort, the graph itself is already published
             LOGGER.warning("The agent snapshot could not be written", exc_info=True)
         return result
@@ -282,6 +312,8 @@ class ProjectService:
         cloud_entries: list[Mapping[str, Any]] | None = None,
         *,
         publish: bool = True,
+        cancel: Any = None,
+        publish_lock: Any = None,
     ) -> Any:
         """Scan one immutable configuration snapshot.
 
@@ -293,12 +325,23 @@ class ProjectService:
         total = len(source_paths) + len(cloud_entries or [])
 
         def phase(text: str, done: int | None = None) -> None:
+            if cancel is not None and cancel.is_set():
+                raise ScanCancelled("The scan was cancelled")
             if publish:
                 self.scan_progress = {"running": True, "phase": text, "done": total if done is None else done, "total": total}
 
+        states = self.source_states if publish else {}
+        keys = getattr(self, "_source_keys", {}) if publish else {}
         for index, source_path in enumerate(source_paths):
             phase(f"Reading {source_path.name}", index)
-            source_models, source_reports = _read_project_source(source_path)
+            state = states.get(keys.get(source_path, ""), {})
+            state.update(state="reading")
+            try:
+                source_models, source_reports = _read_project_source(source_path)
+            except Exception as error:
+                state.update(state="failed", detail=str(error))
+                raise
+            state.update(state="read", models=len(source_models), reports=len(source_reports))
             models.extend(_stable_roots(source_models, source_path, "model"))
             reports.extend(_stable_roots(source_reports, source_path, "report"))
         not_checked: list[dict[str, Any]] = []
@@ -335,38 +378,42 @@ class ProjectService:
             phase("Saving the graph")
             if not publish:
                 return graph
-            previous_nodes = repository.all_nodes()
-            previous_edges = repository.all_edges()
-            preserve_review_statuses(graph.nodes, graph.edges, previous_nodes, previous_edges)
+            from contextlib import nullcontext
 
-            identity_path = project_paths["identity_map"]
-            previous_identity = identity_path.read_bytes() if identity_path.is_file() else None
-            _publish_identity(staged_identity, identity_path)
-            try:
-                repository.replace(graph.nodes, graph.edges)
-            except Exception as publish_error:
+            # From here the scan cannot be cancelled: the graph and the identity map change together.
+            with publish_lock or nullcontext():
+                previous_nodes = repository.all_nodes()
+                previous_edges = repository.all_edges()
+                preserve_review_statuses(graph.nodes, graph.edges, previous_nodes, previous_edges)
+
+                identity_path = project_paths["identity_map"]
+                previous_identity = identity_path.read_bytes() if identity_path.is_file() else None
+                _publish_identity(staged_identity, identity_path)
                 try:
-                    _restore_identity(identity_path, previous_identity)
-                except Exception as restore_error:
-                    raise RuntimeError(
-                        f"Graph publication failed and identity rollback failed: {restore_error}"
-                    ) from publish_error
-                raise
-            scanned_at = datetime.now(UTC).isoformat()
-            repository.last_scan = scanned_at
-            if scanner.last_validation is not None:
-                repository.set_validation_result(scanner.last_validation)
-            return ProjectScanResult(
-                graph=graph,
-                source_count=len(source_paths),
-                model_count=sum(node.type == "MODEL" and node.properties.get("check_status") != STATUS_NOT_CHECKED
-                                for node in graph.nodes),
-                report_count=sum(node.type == "REPORT" and node.properties.get("check_status") != STATUS_NOT_CHECKED
-                                 for node in graph.nodes),
-                scanned_at=scanned_at,
-                not_checked=tuple(not_checked),
-                cloud=tuple(cloud_states),
-            )
+                    repository.replace(graph.nodes, graph.edges)
+                except Exception as publish_error:
+                    try:
+                        _restore_identity(identity_path, previous_identity)
+                    except Exception as restore_error:
+                        raise RuntimeError(
+                            f"Graph publication failed and identity rollback failed: {restore_error}"
+                        ) from publish_error
+                    raise
+                scanned_at = datetime.now(UTC).isoformat()
+                repository.last_scan = scanned_at
+                if scanner.last_validation is not None:
+                    repository.set_validation_result(scanner.last_validation)
+                return ProjectScanResult(
+                    graph=graph,
+                    source_count=len(source_paths),
+                    model_count=sum(node.type == "MODEL" and node.properties.get("check_status") != STATUS_NOT_CHECKED
+                                    for node in graph.nodes),
+                    report_count=sum(node.type == "REPORT" and node.properties.get("check_status") != STATUS_NOT_CHECKED
+                                     for node in graph.nodes),
+                    scanned_at=scanned_at,
+                    not_checked=tuple(not_checked),
+                    cloud=tuple(cloud_states),
+                )
         finally:
             staged_identity.unlink(missing_ok=True)
 
