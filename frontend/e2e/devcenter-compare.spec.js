@@ -389,7 +389,7 @@ test.describe("Bulk actions and confirmation", () => {
     const menuBtn = page.getByRole("button", { name: "Set Merge Choice" });
     await menuBtn.click();
     await page.getByRole("menuitem", { name: "Keep target" }).click();
-    await expect(page.locator(".ui-toast").last()).toContainText("Merge Choice set for 1 row.");
+    await expect(page.locator("[data-sonner-toast]").last()).toContainText("Merge Choice set for 1 row.");
 
     // Select first row again.
     await chk.click();
@@ -407,7 +407,7 @@ test.describe("Bulk actions and confirmation", () => {
     // Confirm the replacement.
     await page.locator("#dok").click();
     await expect(dialog).toHaveCount(0);
-    await expect(page.locator(".ui-toast").last()).toContainText("Merge Choice set for 1 row.");
+    await expect(page.locator("[data-sonner-toast]").last()).toContainText("Merge Choice set for 1 row.");
   });
 
   test("select all matching rows collects keys by paging and sends explicit keys", async ({ page, request }) => {

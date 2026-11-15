@@ -1,13 +1,13 @@
 import * as React from "react"
-import { CircleCheck, Info, TriangleAlert } from "lucide-react"
 import { Toaster as SonnerToaster, toast as sonnerToast } from "sonner"
-import { cn } from "@/lib/utils"
 
-const ICONS = { ok: CircleCheck, info: Info, warn: TriangleAlert }
 // A23: a toast stays at least 8 s, and it stays while the pointer is on it or it has focus.
 export const TOAST_MIN_MS = 8000
 
 const ToastContext = React.createContext(null)
+
+// Sonner reads its colours from these variables; inline, they win over its light and dark defaults.
+const TOASTER_COLORS = { "--normal-bg": "var(--surface-3)", "--normal-text": "var(--text)", "--normal-border": "var(--line-strong)" }
 
 // Toast (UI design 6.1, A11, A23): unified on single Sonner toaster.
 function ToastProvider({ children, duration = TOAST_MIN_MS }) {
@@ -50,21 +50,14 @@ function ToastRoot({ children, duration = TOAST_MIN_MS }) {
   return (
     <ToastContext.Provider value={value}>
       {children}
+      {/* Colours come from the app tokens (styles/base.css), so a toast follows the theme and keeps 4.5:1 text. */}
       <SonnerToaster
-        className="toaster group"
-        richColors
+        className="ui-toaster"
+        style={TOASTER_COLORS}
+        closeButton
+        customAriaLabel="Notifications"
         duration={duration}
-        toastOptions={{
-          classNames: {
-            toast:
-              "group toast group-[.toaster]:bg-[var(--surface-3)] group-[.toaster]:text-[var(--text)] group-[.toaster]:border-[var(--line-strong)] group-[.toaster]:shadow-lg group-[.toaster]:rounded-md",
-            description: "group-[.toast]:text-[var(--text-2)]",
-            actionButton:
-              "group-[.toast]:bg-[var(--surface-2)] group-[.toast]:text-[var(--text)] group-[.toast]:border group-[.toast]:border-[var(--control-border)]",
-            cancelButton:
-              "group-[.toast]:bg-[var(--surface-2)] group-[.toast]:text-[var(--text-2)]",
-          },
-        }}
+        toastOptions={{ closeButtonAriaLabel: "Close notification" }}
       />
     </ToastContext.Provider>
   )

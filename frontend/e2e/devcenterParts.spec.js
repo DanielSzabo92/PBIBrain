@@ -339,24 +339,28 @@ test("Toast: one polite region, a close button, and it stays at least 8 s", asyn
   await page.clock.install({ time: new Date("2026-01-01T00:00:00Z") });
   await openSpecimen(page);
   await page.clock.pauseAt(new Date("2026-01-01T00:10:00Z"));
-  const region = page.getByRole("status", { name: "Notifications" });
+  const region = page.getByRole("region", { name: "Notifications" });
   await expect(region).toHaveAttribute("aria-live", "polite");
   const trigger = page.getByRole("button", { name: "Show toast" });
   await trigger.click();
+  // Sonner mounts a toast from a timer, so the paused clock moves 1 ms to let it in.
+  await page.clock.runFor(1);
   await expect(region).toContainText("Merge Choice set for 3 rows.");
   await expect(trigger).toBeFocused();
-  await page.clock.runFor(7900);
+  await page.clock.runFor(7899);
   await expect(region).toContainText("Merge Choice set for 3 rows.");
   // The fake clock stops animation frames, so skip the stable check of hover.
-  await region.locator(".ui-toast").hover({ force: true });
+  await region.locator("[data-sonner-toast]").hover({ force: true });
   await page.clock.runFor(5000);
   await expect(region).toContainText("Merge Choice set for 3 rows.");
   await page.mouse.move(5, 5);
   await page.clock.runFor(500);
-  await expect(region.locator(".ui-toast")).toHaveCount(0);
+  await expect(region.locator("[data-sonner-toast]")).toHaveCount(0);
   await trigger.click();
+  await page.clock.runFor(1);
   await region.getByRole("button", { name: "Close notification" }).click();
-  await expect(region.locator(".ui-toast")).toHaveCount(0);
+  await page.clock.runFor(500);
+  await expect(region.locator("[data-sonner-toast]")).toHaveCount(0);
 });
 
 for (const size of [{ width: 1440, height: 900, mode: "aside" }, { width: 1024, height: 640, mode: "sheet" }]) {

@@ -27,7 +27,7 @@ async function openTab(page, name) {
 
 const proposalRows = (page) => page.locator(".dc-agent-row");
 const proposalRow = (page, id) => page.locator(`.dc-agent-row[data-proposal="${id}"]`);
-const lastToast = (page) => page.locator(".ui-toast").last();
+const lastToast = (page) => page.locator("[data-sonner-toast]").last();
 
 async function pick(page, label, option) {
   await page.getByRole("combobox", { name: label }).click();

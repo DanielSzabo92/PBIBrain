@@ -194,7 +194,7 @@ test.describe("Undo, format only, and change report", () => {
     await expect(dialog(page).locator(".dc-apply-step")).toHaveCount(3);
     await expect(dialog(page)).toHaveAttribute("data-phase", "result", { timeout: 8000 });
     await expect(dialog(page).getByRole("heading", { name: "Apply undone" })).toBeFocused();
-    await expect(page.locator(".ui-toast-text").filter({ hasText: /^Apply undone\. The target files are the same as before/ })).toBeVisible();
+    await expect(page.locator("[data-sonner-toast] [data-title]").filter({ hasText: /^Apply undone\. The target files are the same as before/ })).toBeVisible();
     await dialog(page).getByRole("button", { name: "Close" }).click();
     await expect(strip(page).getByRole("button", { name: "Undo apply" })).toHaveCount(0);
   });
@@ -245,13 +245,13 @@ test.describe("Undo, format only, and change report", () => {
     });
     await expect(dialog(page).locator('[data-report="name"]')).toHaveText(`Sales and finance merge change report ${today}.md`);
     await dialog(page).getByRole("button", { name: "Save change report" }).click();
-    const toast = page.locator(".ui-toast").filter({ hasText: "Change report saved" });
+    const toast = page.locator("[data-sonner-toast]").filter({ hasText: "Change report saved" });
     await expect(toast).toBeVisible();
     await expect(toast.getByRole("button", { name: "Show in folder" })).toBeVisible();
 
     await fault(request, { method: "change_report_write", code: "not_found", message: "No report.", details: { reason: "no_apply" } });
     await strip(page).getByRole("button", { name: "Write change report" }).click();
     await dialog(page).getByRole("button", { name: "Save change report" }).click();
-    await expect(page.locator(".ui-toast-text").filter({ hasText: /^Could not save the change report\./ })).toBeVisible();
+    await expect(page.locator("[data-sonner-toast] [data-title]").filter({ hasText: /^Could not save the change report\./ })).toBeVisible();
   });
 });
