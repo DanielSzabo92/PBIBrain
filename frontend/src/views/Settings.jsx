@@ -122,11 +122,11 @@ export function ConfigView({ transport, config, onSaved, onScan, scanning }) {
   return <>
     <Card className="panel config-panel">
       <div className="settings-section">
-        <div className="settings-section-copy"><h3>Project</h3><p>Shown in the header and in exported context.</p></div>
+        <div className="settings-section-copy"><h3>Project</h3></div>
         <Label className="config-field"><span>Project name</span><Input value={draft.name || ""} onChange={(event) => setDraft({ ...draft, name: event.target.value })} placeholder="Finance reporting" /></Label>
       </div>
       <div className="settings-section config-section">
-        <div className="settings-section-copy"><h3>Power BI inputs</h3><p>PBIP project folders or model JSON files, as full paths.</p></div>
+        <div className="settings-section-copy"><h3>Power BI inputs</h3></div>
         <div className="source-editor">
           {draft.sources.length ? <div className="source-list">{draft.sources.map((source, index) => {
             const state = sourceState(source === config?.sources?.[index] ? sourceStatus[source] : undefined);

@@ -314,21 +314,6 @@ export function formatCount(value) {
   return Number.isFinite(number) ? COUNT_FORMAT.format(number) : String(value ?? "");
 }
 
-const EDGE_INDEX = new WeakMap();
-const NO_LINKS = Object.freeze({ incoming: Object.freeze([]), outgoing: Object.freeze([]) });
-/** The links into and out of one object, from an index built once per edge list (not a scan per call). */
-export function linksOf(edges, id) {
-  if (!Array.isArray(edges) || !edges.length) return NO_LINKS;
-  let index = EDGE_INDEX.get(edges);
-  if (!index) {
-    index = new Map();
-    const entry = (key) => { let item = index.get(key); if (!item) { item = { incoming: [], outgoing: [] }; index.set(key, item); } return item; };
-    for (const edge of edges) { entry(edge.to_id).incoming.push(edge); entry(edge.from_id).outgoing.push(edge); }
-    EDGE_INDEX.set(edges, index);
-  }
-  return index.get(id) || NO_LINKS;
-}
-
 /** A count that must fit a badge: 87, 1.2k, 11.5k, 2.4M. */
 export function compactCount(value) {
   const number = Number(value) || 0;

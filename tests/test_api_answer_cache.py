@@ -5,7 +5,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from backend.api.app import create_app
+from backend.api.app import _review_snapshot, create_app
 from backend.api.review import _IndexedEdges, _candidate_target
 from backend.graph.repository import GraphRepository
 from backend.graph.schema import Edge, Node
@@ -69,6 +69,29 @@ class AnswerCacheTests(unittest.TestCase):
         self.repository.validation_result = {"state": "invalid", "issues": []}
         self.assertEqual("invalid", call(self.app, "/api/overview")[1]["validation_state"])
 
+    def test_answers_over_one_kilobyte_travel_gzipped_when_the_client_accepts_it(self):
+        import gzip
+
+        for index in range(40):
+            self.repository.upsert_node(measure(f"measure:bulk{index}", name=f"Measure number {index}"))
+
+        def raw(accept):
+            seen = {}
+            environ = {"REQUEST_METHOD": "GET", "PATH_INFO": "/api/search", "QUERY_STRING": "q=Measure", "HTTP_HOST": "127.0.0.1"}
+            if accept:
+                environ["HTTP_ACCEPT_ENCODING"] = "gzip, deflate"
+            body = b"".join(self.app(environ, lambda status, headers: seen.update(headers=dict(headers))))
+            return seen["headers"], body
+
+        plain_headers, plain = raw(False)
+        self.assertNotIn("Content-Encoding", plain_headers)
+        packed_headers, packed = raw(True)
+        self.assertEqual("gzip", packed_headers["Content-Encoding"])
+        self.assertEqual(str(len(packed)), packed_headers["Content-Length"])
+        self.assertEqual(plain, gzip.decompress(packed))
+        self.assertLess(len(packed), len(plain))
+        self.assertIs(packed, raw(True)[1], "a cached answer is compressed once")
+
     def test_requests_that_are_not_pure_reads_are_never_cached(self):
         call(self.app, "/api/config")
         call(self.app, "/api/config")
@@ -78,7 +101,7 @@ class AnswerCacheTests(unittest.TestCase):
         self.repository.upsert_node(Node(id="measure:heavy", type="MEASURE", name="Heavy", model_id="model:m",
                                          properties={"expression": "SUM(T[A])", "dax_ast": {"kind": "call"}, "raw_source": "x" * 5000}))
         full = call(self.app, "/api/brain")[1]
-        slim = call(self.app, "/api/brain", "view=review")[1]
+        slim = _review_snapshot(self.repository)  # what the review pages are cut from
         self.assertEqual(set(full) | {"view"}, set(slim))
         self.assertEqual([node["id"] for node in full["nodes"]], [node["id"] for node in slim["nodes"]])
         heavy = next(node for node in slim["nodes"] if node["id"] == "measure:heavy")

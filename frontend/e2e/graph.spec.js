@@ -73,8 +73,9 @@ test("native graph separates ownership, keeps cross-links, and opens a right-sid
   await expect(details.getByText("SUM('Sales'[Amount])", { exact: true })).toBeVisible();
   expect((await details.boundingBox()).x).toBeGreaterThan(900);
   await details.getByRole("tab", { name: "Dependencies", exact: true }).click();
-  await expect(details.getByRole("button", { name: /Sales Target/ })).toBeVisible();
-  await details.getByRole("button", { name: /Sales Target/ }).click();
+  // The trace path list also names Sales Target; the related-object row carries its type too.
+  await expect(details.getByRole("button", { name: "Sales Target Measure" })).toBeVisible();
+  await details.getByRole("button", { name: "Sales Target Measure" }).click();
   await expect(details.getByRole("heading", { name: "Sales Target", exact: true })).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(details).toHaveCount(0);

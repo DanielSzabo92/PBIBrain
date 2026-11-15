@@ -111,6 +111,37 @@ class BackgroundScanTests(unittest.TestCase):
             self.assertEqual((sources[0]["scan"]["models"], sources[0]["scan"]["reports"]), (1, 1))
             app.close()
 
+    def test_while_the_graph_is_published_reads_get_the_previous_answers_and_collection_resumes(self) -> None:
+        # Review 04: reads during a scan answer in under 200 ms, also while the new graph is being published.
+        import gc
+
+        with tempfile.TemporaryDirectory() as folder:
+            app, _ = _project(folder)
+            self.assertEqual(_get(app, "/api/overview")[1]["counts"]["nodes"], 0)
+            publishing, release = threading.Event(), threading.Event()
+            replace = GraphRepository.replace
+
+            def held(repository, *args, **kwargs):
+                publishing.set()
+                release.wait(10)
+                return replace(repository, *args, **kwargs)
+
+            with mock.patch.object(GraphRepository, "replace", held):
+                app.handle("POST", "/api/scan", {"background": True})
+                self.assertTrue(publishing.wait(10))
+                self.assertFalse(gc.isenabled(), "collection waits while the scan runs")
+                answered: list = []
+                reader = threading.Thread(target=lambda: answered.append(_get(app, "/api/overview")))
+                reader.start()
+                reader.join(5)
+                self.assertFalse(reader.is_alive(), "a cached read does not wait for the publish")
+                self.assertEqual(answered[0][1]["counts"]["nodes"], 0)
+                release.set()
+                self.assertEqual(_wait(app)["last"]["state"], "done")
+            self.assertTrue(gc.isenabled())
+            self.assertGreater(_get(app, "/api/overview")[1]["counts"]["nodes"], 0)
+            app.close()
+
     def test_cancel_stops_the_scan_before_anything_is_published(self) -> None:
         with tempfile.TemporaryDirectory() as folder:
             app, sample = _project(folder)

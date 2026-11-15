@@ -46,16 +46,6 @@ export function itemConfidence(item) {
   return numberOr(item?.confidence ?? item?.properties?.confidence, 0);
 }
 
-export function itemImpact(item) {
-  const raw = item?.impact ?? item?.impact_score ?? item?.properties?.impact ?? item?.properties?.impact_score;
-  const value = raw && typeof raw === "object" ? raw.score ?? raw.value : raw;
-  if (typeof value === "string") {
-    const rank = { critical: 4, high: 3, medium: 2, normal: 2, low: 1, none: 0 }[value.trim().toLowerCase()];
-    if (rank !== undefined) return rank;
-  }
-  return numberOr(value, 0);
-}
-
 // Only the content pane scrolls (desktop shell); views save and restore its position, not the window's.
 export function contentScroller() {
   return document.getElementById("main-content") || document.scrollingElement || document.documentElement;
@@ -83,14 +73,8 @@ export function EmptyState({ title, detail, action, icon, tone }) { return <div 
 export function formatDate(value) { if (!value || value === "Not scanned") return value || "Not scanned"; const date = new Date(value); return Number.isNaN(date.valueOf()) ? String(value) : date.toLocaleString([], { dateStyle: "medium", timeStyle: "short" }); }
 export function formatValue(value) { return readableText(value) || "—"; }
 
-export function dataCounts(nodes, edges, candidates, conflicts) {
-  const isOpen = (item) => !["approved", "rejected", "overridden"].includes(String(item.status || "candidate").toLowerCase());
-  return {
-    models: nodes.filter((node) => node.type === "MODEL").length,
-    reports: nodes.filter((node) => node.type === "REPORT").length,
-    objects: nodes.length,
-    edges: edges.length,
-    candidates: candidates.filter(isOpen).length,
-    warnings: conflicts.filter(isOpen).length,
-  };
+/** The identifier a decision on a review row is recorded under (the server's decision_id). */
+export function decisionIdOf(item) {
+  const reviewId = item?.review_id || item?.override_id || item?.id;
+  return item?.properties?.candidate_id || item?.item?.candidate_id || item?.item?.properties?.candidate_id || reviewId || itemTarget(item);
 }

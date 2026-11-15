@@ -33,10 +33,6 @@ test("Issue #51: formatPlural and plural helpers correctly pluralize words", () 
 });
 
 test("Issue #51: tn handles singular, plural, and zero counts accurately", () => {
-  // apply.deletes
-  assert.equal(tn("apply.deletes", 1, { list: "Region" }), "Deletes 1 object: Region.");
-  assert.equal(tn("apply.deletes", 2, { list: "Region, Sales" }), "Deletes 2 objects: Region, Sales.");
-
   // apply.deletes.heading
   assert.equal(tn("apply.deletes.heading", 1), "Deletes 1 object:");
   assert.equal(tn("apply.deletes.heading", 2), "Deletes 2 objects:");

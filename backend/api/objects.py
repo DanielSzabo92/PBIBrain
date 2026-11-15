@@ -323,7 +323,26 @@ def inspect_object(
         "approval_state": object_payload.get("status"),
         "warnings": warnings,
         "edges": [_edge_payload(edge, store) for edge in connected],
+        # The name and type of the other end of every edge above, so a relationship list can be
+        # labelled without loading the graph (review 01: the client never holds the whole graph).
+        "neighbors": _neighbors(repository, node.id, connected, store),
     }
+
+
+_NEIGHBOR_FIELDS = ("id", "type", "name", "display_name", "model_id", "report_id", "table_id", "visual_type", "status")
+
+
+def _neighbors(repository: GraphRepository, object_id: str, connected: Sequence[Edge], store: OverrideStore | None) -> list[dict[str, Any]]:
+    seen: dict[str, dict[str, Any]] = {}
+    for edge in connected:
+        other_id = edge.to_id if edge.from_id == object_id else edge.from_id
+        if other_id in seen or other_id == object_id:
+            continue
+        other = repository.get_object(other_id)
+        if other is not None:
+            payload = _payload(other, store)
+            seen[other_id] = {key: payload[key] for key in _NEIGHBOR_FIELDS if payload.get(key) not in (None, "")}
+    return list(seen.values())
 
 
 object_details = inspect_object

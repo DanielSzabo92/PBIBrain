@@ -2,7 +2,7 @@ import PendingChanges from "./components/PendingChanges";
 import React, { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, PanelLeft, ScanSearch, Bot, FolderOpen, RefreshCw, ScanLine, TriangleAlert } from "lucide-react";
 import { ToastProvider, useToast } from "./components/ui/toast";
-import { brainTransport, normalizeSnapshot } from "./transport";
+import { brainTransport } from "./transport";
 import { desktopRequest, subscribeToDesktopBridge } from "./desktop";
 import NavIcon from "./NavIcon";
 import { PRODUCT_CREDIT, PRODUCT_NAME } from "./brand";
@@ -26,7 +26,7 @@ import { Inspector } from "./views/Inspector";
 import { Overview } from "./views/Overview";
 import { SearchView } from "./views/SearchView";
 import { ConfigView, DesktopProjectView, KeyboardSettings } from "./views/Settings";
-import { EmptyState, PageHeading, dataCounts, formatDate, itemTarget, labelFor, numberOr } from "./views/shared";
+import { EmptyState, PageHeading, decisionIdOf, formatDate, itemTarget, labelFor, numberOr } from "./views/shared";
 const GraphView = lazy(() => import("./components/GraphView"));
 const GraphColors = lazy(() => import("./components/GraphColors"));
 const ModelSummary = lazy(() => import("./components/ModelSummary"));
@@ -156,10 +156,9 @@ function AppInner({ transport = brainTransport }) {
     });
   }, []);
   const [chatOpen, setChatOpen] = useState(false);
-  const [snapshot, setSnapshot] = useState(() => normalizeSnapshot(null));
-  const [snapshotLoaded, setSnapshotLoaded] = useState(false);
-  const [snapshotLoading, setSnapshotLoading] = useState(false);
-  const [snapshotError, setSnapshotError] = useState("");
+  // Bumped after every decision and scan: the review pages and the Inspector's review block ask again.
+  const [reviewRevision, setReviewRevision] = useState(0);
+  const refreshReview = useCallback(() => setReviewRevision((value) => value + 1), []);
   const [overview, setOverview] = useState({});
   const [config, setConfig] = useState(null);
   const [configError, setConfigError] = useState("");
@@ -194,7 +193,6 @@ function AppInner({ transport = brainTransport }) {
   const [bridgeAttempt, setBridgeAttempt] = useState(0);
   const [scanning, setScanning] = useState(false);
   const loadRequest = useRef(0);
-  const snapshotRequest = useRef(0);
   const selectionRequest = useRef(0);
   const scanInFlight = useRef(false);
   const projectGeneration = useRef(0);
@@ -213,25 +211,6 @@ function AppInner({ transport = brainTransport }) {
       setError(overviewResult.reason?.message || "Brain could not be loaded");
     }
     setLoading(false);
-  }, [transport]);
-
-  const loadSnapshot = useCallback(async () => {
-    const requestId = ++snapshotRequest.current;
-    setSnapshotLoading(true);
-    setSnapshotError("");
-    try {
-      const next = normalizeSnapshot(await transport.getSnapshot());
-      if (requestId === snapshotRequest.current) {
-        setSnapshot(next);
-        setSnapshotLoaded(true);
-      }
-      return next;
-    } catch (cause) {
-      if (requestId === snapshotRequest.current) setSnapshotError(cause.message || "Review data could not be loaded");
-      throw cause;
-    } finally {
-      if (requestId === snapshotRequest.current) setSnapshotLoading(false);
-    }
   }, [transport]);
 
   useEffect(() => {
@@ -275,16 +254,11 @@ function AppInner({ transport = brainTransport }) {
   const invalidateProjectRequests = useCallback(() => {
     projectGeneration.current += 1;
     loadRequest.current += 1;
-    snapshotRequest.current += 1;
     selectionRequest.current += 1;
   }, []);
 
   const resetProjectView = useCallback(() => {
     invalidateProjectRequests();
-    setSnapshot(normalizeSnapshot(null));
-    setSnapshotLoaded(false);
-    setSnapshotLoading(false);
-    setSnapshotError("");
     setOverview({});
     setConfig(null);
     setConfigError("");
@@ -337,15 +311,13 @@ function AppInner({ transport = brainTransport }) {
     catch (cause) { setDesktopError(cause.message || "Project could not be opened"); }
   }, [invalidateProjectRequests, openDesktopProject]);
 
-  const nodes = snapshot.nodes;
-  const edges = snapshot.edges;
-  const candidates = snapshot.semantic_candidates;
-  const conflicts = snapshot.conflicts;
-  const selected = inspectedObject || nodes.find((node) => node.id === selectedId) || null;
+  const selected = inspectedObject;
+  // Every count comes from the server, which holds the whole graph.
   const counts = useMemo(() => {
-    const current = dataCounts(nodes, edges, candidates, conflicts);
-    return { ...current, models: numberOr(overview.models, current.models), reports: numberOr(overview.reports, current.reports), objects: numberOr(overview.counts?.nodes ?? overview.objects, current.objects), edges: numberOr(overview.counts?.edges ?? overview.edges, current.edges), candidates: numberOr(overview.review_counts?.candidate ?? overview.candidate_count, current.candidates), warnings: numberOr(overview.review_counts?.conflict ?? overview.warning_count, current.warnings), stale: numberOr(overview.review_counts?.stale), review: numberOr(overview.review_count, numberOr(overview.candidate_count, current.candidates) + numberOr(overview.warning_count, current.warnings)) };
-  }, [candidates, conflicts, edges, nodes, overview]);
+    const candidates = numberOr(overview.review_counts?.candidate ?? overview.candidate_count);
+    const warnings = numberOr(overview.review_counts?.conflict ?? overview.warning_count);
+    return { models: numberOr(overview.models), reports: numberOr(overview.reports), objects: numberOr(overview.counts?.nodes ?? overview.objects), edges: numberOr(overview.counts?.edges ?? overview.edges), candidates, warnings, stale: numberOr(overview.review_counts?.stale), review: numberOr(overview.review_count, candidates + warnings) };
+  }, [overview]);
 
   const selectNode = useCallback(async (id, nextView = "inspector", origin = null) => {
     const requestId = ++selectionRequest.current;
@@ -363,13 +335,12 @@ function AppInner({ transport = brainTransport }) {
       setInspectedObject(targetObj);
       setInspectedDetails(result);
       if (targetObj) recordRecentObject(targetObj);
-      loadSnapshot().catch(() => {});
     } catch (cause) {
       if (requestId !== selectionRequest.current) return;
       setInspectedObject(null);
       setInspectorError(cause.message || "Object could not be loaded");
     }
-  }, [loadSnapshot, recordRecentObject, transport, view]);
+  }, [recordRecentObject, transport, view]);
 
   // Address <-> state. Moving to another view or object adds a history entry, so Back returns to it;
   // typing a query or refocusing the graph only rewrites the current entry.
@@ -415,28 +386,22 @@ function AppInner({ transport = brainTransport }) {
     setLoading(true);
     setOperationError("");
     invalidateProjectRequests();
-    setSnapshotLoading(false);
     const started = Date.now();
     try {
       const result = await transport.scan();
       selectionRequest.current += 1;
-      snapshotRequest.current += 1;
       if (result?.overview) setOverview(result.overview);
       setSelectedId(null);
       setInspectedObject(null);
       setInspectedDetails(null);
       setInspectorError("");
-      setSnapshot(normalizeSnapshot(null));
-      setSnapshotLoaded(false);
-      setSnapshotLoading(false);
-      setSnapshotError("");
       setGraphSession(null);
       setSearchSession((current) => ({ ...current, result: null, selectedId: null, scrollY: 0, revision: (current.revision || 0) + 1 }));
       const objects = result?.overview?.counts?.nodes;
       const seconds = Math.max(1, Math.round((Date.now() - started) / 1000));
       setNotice(objects ? `Scan complete: ${formatCount(objects)} objects in ${seconds} s` : "Scan complete");
       await load();
-      if (currentView.current === "review") await loadSnapshot();
+      refreshReview();
     } catch (cause) {
       if (cause?.cancelled) setNotice("Scan cancelled. Nothing was changed.");
       else setOperationError(cause.message || "Scan failed");
@@ -445,10 +410,11 @@ function AppInner({ transport = brainTransport }) {
       setScanning(false);
       setLoading(false);
     }
-  }, [invalidateProjectRequests, load, loadSnapshot, transport]);
+  }, [invalidateProjectRequests, load, refreshReview, transport]);
 
   const review = useCallback(
-    async (action, item, value = undefined) => {
+    // ``targetNode`` names the object in "Recent changes" and the toast; the page that decides knows it.
+    async (action, item, value = undefined, targetNode = null) => {
       if (scanInFlight.current) return false;
       const generation = projectGeneration.current;
       const target = itemTarget(item);
@@ -471,23 +437,8 @@ function AppInner({ transport = brainTransport }) {
           payload.override_id = reviewId;
           payload.override_record = item.item || item;
         }
-        const result = await transport.review(action, {
-          ...payload,
-        });
+        await transport.review(action, payload);
         if (generation !== projectGeneration.current) return false;
-        const returned = result?.snapshot || result?.brain;
-        if (returned) {
-          setSnapshot(normalizeSnapshot(returned));
-          setSnapshotLoaded(true);
-        }
-        else {
-          setSnapshot((current) => ({
-            ...current,
-            semantic_candidates: current.semantic_candidates.map((candidate) =>
-              candidate.id === item.id ? { ...candidate, value: value === undefined ? candidate.value : value, status: action === "approve" ? "approved" : action === "reject" ? "rejected" : action === "override" ? "overridden" : candidate.status || "candidate" } : candidate,
-            ),
-          }));
-        }
         const actionLabel = {
           approve: "Suggestion approved",
           reject: "Suggestion rejected",
@@ -508,6 +459,8 @@ function AppInner({ transport = brainTransport }) {
           value: actionValue,
           property,
           item,
+          targetName: targetNode ? labelFor(targetNode) : target,
+          targetType: targetNode?.type,
           previousStatus: item.status || "candidate",
         };
         setAuditTrail((current) => [auditEntry, ...current]);
@@ -522,7 +475,8 @@ function AppInner({ transport = brainTransport }) {
             },
           },
         });
-        await Promise.allSettled([loadSnapshot(), load()]);
+        refreshReview();
+        await load();
         return true;
       } catch (cause) {
         if (generation !== projectGeneration.current) return false;
@@ -530,7 +484,7 @@ function AppInner({ transport = brainTransport }) {
         return false;
       }
     },
-    [transport, loadSnapshot, load, toast],
+    [transport, refreshReview, load, toast],
   );
 
   const handleUndoReview = useCallback(
@@ -544,7 +498,8 @@ function AppInner({ transport = brainTransport }) {
           } else await transport.reviewBulk("reopen", auditEntry.itemIds || []);
           setAuditTrail((current) => current.filter((entry) => entry.id !== auditEntry.id));
           toast.show({ tone: "ok", text: "Bulk decision undone" });
-          await Promise.allSettled([loadSnapshot(), load()]);
+          refreshReview();
+          await load();
           return true;
         } catch {
           toast.show({ tone: "warn", text: "Could not undo bulk decision. Try again." });
@@ -564,62 +519,44 @@ function AppInner({ transport = brainTransport }) {
         payload.override_record = item?.item || item;
       }
       try {
-        const result = await transport.review("undo", payload);
-        const returned = result?.snapshot || result?.brain;
-        if (returned) {
-          setSnapshot(normalizeSnapshot(returned));
-          setSnapshotLoaded(true);
-        } else {
-          setSnapshot((current) => ({
-            ...current,
-            semantic_candidates: current.semantic_candidates.map((candidate) =>
-              candidate.id === (candidateId || reviewId) ? { ...candidate, status: "candidate" } : candidate
-            ),
-          }));
-        }
+        await transport.review("undo", payload);
         setAuditTrail((current) => current.filter((entry) => entry.id !== auditEntry.id));
         toast.show({ tone: "ok", text: "Decision undone" });
-        await Promise.allSettled([loadSnapshot(), load()]);
+        refreshReview();
+        await load();
         return true;
       } catch {
         toast.show({ tone: "warn", text: "Could not undo decision. Try again." });
         return false;
       }
     },
-    [transport, loadSnapshot, load, toast],
+    [transport, refreshReview, load, toast],
   );
 
+  // ``target`` is the ticked rows, or ``{ view, except, count }``: what the queue shows for its filters,
+  // chosen on the server, so "Approve all" sends filters instead of thousands of identifiers.
   const bulkReview = useCallback(
-    async (action, items) => {
-      if (scanInFlight.current || !items?.length) return false;
+    async (action, target) => {
+      const items = Array.isArray(target) ? target : null;
+      if (scanInFlight.current || (items ? !items.length : !target?.view)) return false;
       const generation = projectGeneration.current;
       setNotice("");
       try {
-        const itemPayloads = items.map((item) => {
-          const reviewId = item?.review_id || item?.override_id || item?.id;
-          const candidateId = item?.properties?.candidate_id || item?.item?.candidate_id || item?.item?.properties?.candidate_id || reviewId;
-          const target = itemTarget(item);
-          return candidateId || target;
-        }).filter(Boolean);
-
-        const result = await transport.reviewBulk(action, itemPayloads);
+        const itemIds = items ? items.map(decisionIdOf).filter(Boolean) : [];
+        const result = items
+          ? await transport.reviewBulk(action, itemIds)
+          : await transport.reviewBulk(action, null, { view: target.view, except: (target.except || []).map(decisionIdOf).filter(Boolean) });
         if (generation !== projectGeneration.current) return false;
-        const returned = result?.snapshot || result?.brain;
-        if (returned) {
-          setSnapshot(normalizeSnapshot(returned));
-          setSnapshotLoaded(true);
-        }
 
         const actionText = action === "approve" ? "Approved" : action === "reject" ? "Rejected" : "Updated";
-        const count = items.length;
-        const actionLabel = `${actionText} ${count} ${count === 1 ? "suggestion" : "suggestions"}`;
+        const count = items ? items.length : Math.max(0, (target.count || 0) - (target.except?.length || 0));
+        const actionLabel = `${actionText} ${formatCount(count)} ${count === 1 ? "suggestion" : "suggestions"}`;
 
         const bulkAuditEntry = {
           id: `audit-${Date.now()}-bulk`,
           isBulk: true,
           action,
-          items,
-          itemIds: itemPayloads,
+          itemIds,
           undoToken: result?.result?.undo_token || "",
           count,
           actor: "You",
@@ -638,7 +575,8 @@ function AppInner({ transport = brainTransport }) {
             },
           },
         });
-        await Promise.allSettled([loadSnapshot(), load()]);
+        refreshReview();
+        await load();
         return true;
       } catch (cause) {
         if (generation !== projectGeneration.current) return false;
@@ -646,7 +584,7 @@ function AppInner({ transport = brainTransport }) {
         return false;
       }
     },
-    [handleUndoReview, load, loadSnapshot, transport, toast],
+    [handleUndoReview, load, refreshReview, transport, toast],
   );
 
   // The palette's "Search all objects" hands its query to the Search page.
@@ -654,10 +592,6 @@ function AppInner({ transport = brainTransport }) {
     if (key === "search" && typeof options?.query === "string") setSearchSession((current) => ({ ...current, query: options.query, selectedId: null, scrollY: 0 }));
     setView(key);
   }, []);
-  // The review queue reads the snapshot however the view was reached: the sidebar, a link or Back.
-  useEffect(() => {
-    if (view === "review") loadSnapshot().catch(() => {});
-  }, [view, loadSnapshot]);
 
   const goBack = useCallback(() => {
     if (currentView.current !== "inspector" || !selectedId) return;
@@ -747,7 +681,7 @@ function AppInner({ transport = brainTransport }) {
     setGraphSession((current) => current ? { ...current, result: null, revision: (current.revision || 0) + 1 } : null);
     load();
     if (view === "inspector" && selectedId) selectNode(selectedId);
-    else if (snapshotLoaded || view === "review") loadSnapshot().catch(() => {});
+    refreshReview();
   };
   const failedNotice = /failed/i.test(String(notice));
   const hasSources = !config || !Array.isArray(config.sources) || config.sources.length > 0 || Boolean(activeProject?.source_count);
@@ -770,7 +704,7 @@ function AppInner({ transport = brainTransport }) {
   const viewLabel = VIEWS.find(([key]) => key === view)?.[1];
   // What the chat's selection chip shows: the graph's selected node on the graph, else the inspected object.
   const graphPick = view === "graph" && graphSession?.selectionId ? graphSession.selectionId : null;
-  const graphNode = graphPick ? (graphSession?.result?.nodes || nodes).find((node) => node.id === graphPick) : null;
+  const graphNode = graphPick ? (graphSession?.result?.nodes || []).find((node) => node.id === graphPick) : null;
   const chatSelection = graphPick
     ? { id: graphPick, name: graphNode ? objectName(graphNode) : graphPick, type: graphNode?.type || "" }
     : selectedId ? { id: selectedId, name: selected ? objectName(selected) : selectedId, type: selected?.type || "" } : null;
@@ -891,14 +825,14 @@ function AppInner({ transport = brainTransport }) {
           {counts.objects > 0 && view !== "devcenter" ? <PendingChanges transport={transport} scanning={scanning} onScan={applyScan} /> : null}
           <div className="view-frame" key={view}>
             <Suspense fallback={<div className="view-loading" role="status"><RefreshCw className="spin" aria-hidden="true" />Loading view…</div>}>
-            {view === "overview" ? <Overview onSelect={selectNode} overview={overview} config={config} counts={counts} colors={graphColors} loading={loading} projectName={projectName} onView={navigate} onBrowseType={(objectType) => { setSearchSession({ query: "", modelId: "", reportId: "", objectType, result: null }); setView("search"); }} onSources={() => { setSettingsTab("project"); setView("config"); }} onSample={openSample} onSummary={() => { setSettingsTab("summary"); setView("config"); }} onScan={applyScan} scanning={scanning} scanLabel={activeProject ? "Scan project" : "Scan sources"} onReview={() => navigate("review")} transport={transport} onMerge={(modelIds) => { const names = modelIds.map((id) => (overview.model_objects || []).find((item) => item.id === id)?.name || id); setNotice(`Start a merge session with ${names.join(", ")}`); navigate("devcenter"); }} error={error || configError} onRetry={load} snapshot={snapshot} auditTrail={auditTrail} /> : null}
+            {view === "overview" ? <Overview onSelect={selectNode} overview={overview} config={config} counts={counts} colors={graphColors} loading={loading} projectName={projectName} onView={navigate} onBrowseType={(objectType) => { setSearchSession({ query: "", modelId: "", reportId: "", objectType, result: null }); setView("search"); }} onSources={() => { setSettingsTab("project"); setView("config"); }} onSample={openSample} onSummary={() => { setSettingsTab("summary"); setView("config"); }} onScan={applyScan} scanning={scanning} scanLabel={activeProject ? "Scan project" : "Scan sources"} onReview={() => navigate("review")} transport={transport} onMerge={(modelIds) => { const names = modelIds.map((id) => (overview.model_objects || []).find((item) => item.id === id)?.name || id); setNotice(`Start a merge session with ${names.join(", ")}`); navigate("devcenter"); }} error={error || configError} onRetry={load} auditTrail={auditTrail} /> : null}
             {view === "search" ? <div className="page page-narrow" data-ui-stack=""><SearchView session={searchSession} onSession={setSearchSession} colors={graphColors} transport={transport} overview={overview} onSelect={selectNode} onGraph={(id) => { setGraphSession({ centerId: id, selectionId: id }); setView("graph"); }} /></div> : null}
-            {view === "graph" ? <GraphView session={graphSession} onSession={setGraphSession} colors={graphColors} transport={transport} overview={overview} snapshot={snapshot} selectedId={selectedId} onSelect={selectNode} versionLinks={config?.version_links || null} onVersionLinks={config ? async (links) => { setConfig(await transport.saveConfig({ ...config, version_links: links })); } : undefined} /> : null}
+            {view === "graph" ? <GraphView session={graphSession} onSession={setGraphSession} colors={graphColors} transport={transport} overview={overview} selectedId={selectedId} onSelect={selectNode} versionLinks={config?.version_links || null} onVersionLinks={config ? async (links) => { setConfig(await transport.saveConfig({ ...config, version_links: links })); } : undefined} /> : null}
             {view === "inspector" ? <div className="inspector-layout">
               {counts.objects > 0 ? <Suspense fallback={<aside className="object-tree" />}><ObjectTree transport={transport} colors={graphColors} selectedId={selectedId} refreshKey={overview.last_scan} onSelect={(id) => selectNode(id, "inspector", inspectorOrigin === "inspector" || !selectedId ? "inspector" : inspectorOrigin)} /></Suspense> : <span />}
-              <div className="inspector-main page page-wide" data-ui-stack="">{selectedId ? <><Button variant="ghost" size="sm" className="inspector-back" onClick={() => { if (inspectorOrigin === "inspector") { setSelectedId(null); setInspectedObject(null); } else setView(inspectorOrigin); }}><ArrowLeft aria-hidden="true" />{inspectorOrigin === "search" ? "Back to search results" : inspectorOrigin === "inspector" ? "Inspect another object" : `Back to ${VIEWS.find(([key]) => key === inspectorOrigin)?.[1]?.toLowerCase() || "overview"}`}</Button><Inspector key={selectedId} transport={transport} scanning={scanning} colors={graphColors} node={selected} details={inspectedDetails} loading={Boolean(selectedId && !inspectedDetails && !inspectorError)} error={inspectorError} snapshot={snapshot} snapshotLoaded={snapshotLoaded} snapshotError={snapshotError} onEvidenceRetry={() => loadSnapshot().catch(() => {})} overview={overview} onSelect={selectNode} onRetry={() => selectNode(selectedId)} onReview={review} onGraph={() => setView("graph")} /></> : <InspectorEmpty overview={overview} colors={graphColors} recentObjects={recentObjects} onSelect={(id) => { setInspectorOrigin("inspector"); selectNode(id); }} onOpenSearch={() => { setView("search"); focusSearchField(); }} onOpenPalette={() => setPaletteOpen(true)} onOpenGraph={() => setView("graph")} />}</div>
+              <div className="inspector-main page page-wide" data-ui-stack="">{selectedId ? <><Button variant="ghost" size="sm" className="inspector-back" onClick={() => { if (inspectorOrigin === "inspector") { setSelectedId(null); setInspectedObject(null); } else setView(inspectorOrigin); }}><ArrowLeft aria-hidden="true" />{inspectorOrigin === "search" ? "Back to search results" : inspectorOrigin === "inspector" ? "Inspect another object" : `Back to ${VIEWS.find(([key]) => key === inspectorOrigin)?.[1]?.toLowerCase() || "overview"}`}</Button><Inspector key={selectedId} transport={transport} scanning={scanning} colors={graphColors} node={selected} details={inspectedDetails} loading={Boolean(selectedId && !inspectedDetails && !inspectorError)} error={inspectorError} reviewRevision={reviewRevision} overview={overview} onSelect={selectNode} onRetry={() => selectNode(selectedId)} onReview={review} onGraph={() => setView("graph")} /></> : <InspectorEmpty overview={overview} colors={graphColors} recentObjects={recentObjects} onSelect={(id) => { setInspectorOrigin("inspector"); selectNode(id); }} onOpenSearch={() => { setView("search"); focusSearchField(); }} onOpenPalette={() => setPaletteOpen(true)} onOpenGraph={() => setView("graph")} />}</div>
             </div> : null}
-            {view === "review" ? <div className="page page-wide" data-ui-stack=""><ReviewQueue colors={graphColors} scanning={scanning} session={reviewSession} onSession={setReviewSession} snapshot={snapshot} loaded={snapshotLoaded} loading={!snapshotLoaded && (snapshotLoading || !snapshotError)} error={snapshotError} onRetry={() => loadSnapshot().catch(() => {})} overview={overview} onSelect={selectNode} onReview={review} onBulkReview={bulkReview} auditTrail={auditTrail} onUndoReview={handleUndoReview} /></div> : null}
+            {view === "review" ? <div className="page page-wide" data-ui-stack=""><ReviewQueue colors={graphColors} scanning={scanning} session={reviewSession} onSession={setReviewSession} transport={transport} revision={reviewRevision} overview={overview} onSelect={selectNode} onReview={review} onBulkReview={bulkReview} auditTrail={auditTrail} onUndoReview={handleUndoReview} /></div> : null}
             {view === "devcenter" ? <DevCenter onOpenProject={closeDesktopProject} /> : null}
             {view === "config" ? <div className="page page-narrow" data-ui-stack=""><PageHeading quiet title="Settings" />{configError && !config ? <Card className="panel"><EmptyState icon={<TriangleAlert />} tone="bad" title="Project settings unavailable" detail="Retry to load your saved sources and appearance." action={<Button variant="outline" onClick={load}>Retry settings</Button>} /></Card> : <Tabs value={settingsTab} onValueChange={setSettingsTab} className="settings-tabs">
               <TabsList aria-label="Settings sections"><TabsTrigger value="project">Project</TabsTrigger><TabsTrigger value="review">Review</TabsTrigger><TabsTrigger value="colors">Graph colors</TabsTrigger><TabsTrigger value="summary">Model summary / agent context</TabsTrigger><TabsTrigger value="documentation">Documentation export</TabsTrigger><TabsTrigger value="ai">AI provider</TabsTrigger><TabsTrigger value="keyboard">Keyboard</TabsTrigger></TabsList>
@@ -906,7 +840,7 @@ function AppInner({ transport = brainTransport }) {
               <TabsContent value="colors"><Suspense fallback={<ViewLoading />}><GraphColors config={config} transport={transport} overview={overview} onSaved={setConfig} /></Suspense></TabsContent>
               <TabsContent value="documentation"><Suspense fallback={<ViewLoading />}><DocumentationExport overview={overview} transport={transport} scanning={scanning} /></Suspense></TabsContent>
               <TabsContent value="summary"><Suspense fallback={<ViewLoading />}><ModelSummary overview={overview} transport={transport} scanning={scanning} /></Suspense></TabsContent>
-              <TabsContent value="review"><Suspense fallback={<ViewLoading />}><ReviewSettings transport={transport} config={config} onSaved={setConfig} scanning={scanning} onChanged={() => Promise.allSettled([load(), snapshotLoaded ? loadSnapshot() : null])} /></Suspense></TabsContent>
+              <TabsContent value="review"><Suspense fallback={<ViewLoading />}><ReviewSettings transport={transport} config={config} onSaved={setConfig} scanning={scanning} onChanged={() => { refreshReview(); return load(); }} /></Suspense></TabsContent>
               <TabsContent value="keyboard"><KeyboardSettings /></TabsContent>
               <TabsContent value="project">{activeProject ? <DesktopProjectView api={desktopApi} project={activeProject} overview={overview} config={config} transport={transport} scanning={scanning} onScan={applyScan} onChange={closeDesktopProject} onRefresh={load} onSaved={setConfig} /> : <ConfigView transport={transport} config={config} onSaved={setConfig} onScan={applyScan} scanning={scanning} />}</TabsContent></Tabs>}</div> : null}
             </Suspense>

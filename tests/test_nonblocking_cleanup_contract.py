@@ -108,52 +108,6 @@ class SourceRetentionCleanupContractTests(unittest.TestCase):
 
 
 class InspectorCleanupContractTests(unittest.TestCase):
-    def test_overview_counts_only_unresolved_semantic_items(self):
-        graph_node = {"id": "n", "type": "MODEL"}
-        edge = {"id": "e", "status": "factual"}
-        candidates = [
-            {"id": "pending", "status": "candidate"},
-            {"id": "approved", "status": "approved"},
-            {"id": "rejected", "status": "rejected"},
-        ]
-        conflicts = [
-            {"id": "open", "status": "candidate"},
-            {"id": "approved-conflict", "status": "approved"},
-            {"id": "rejected-conflict", "status": "rejected"},
-        ]
-        source = (ROOT / "frontend" / "src" / "views" / "shared.jsx").read_text(encoding="utf-8")
-        start = source.index("function dataCounts")
-        end = source.index("\n}\n", start) + 2
-        # Extracting the pure function keeps this test independent of a DOM or
-        # a React test runner.
-        function_source = source[start:end]
-        node_script = (
-            "const dataCounts = new Function("
-            + json.dumps(function_source + "; return dataCounts;")
-            + ")();"
-            + "const result = dataCounts("
-            + json.dumps([graph_node])
-            + ", "
-            + json.dumps([edge])
-            + ", "
-            + json.dumps(candidates)
-            + ", "
-            + json.dumps(conflicts)
-            + ");"
-            + "if (result.candidates !== 1 || result.warnings !== 1) throw new Error(JSON.stringify(result));"
-        )
-        node_executable = shutil.which("node")
-        if node_executable is None:
-            self.skipTest("node unavailable")
-        result = subprocess.run(
-            [node_executable, "-e", node_script],
-            cwd=ROOT / "frontend",
-            capture_output=True,
-            text=True,
-            timeout=30,
-        )
-        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-
     def test_flow_nodes_are_keyboard_operable_and_semantically_focusable(self):
         source = (ROOT / "frontend" / "src" / "components" / "GraphView.jsx").read_text(encoding="utf-8")
         # React Flow owns the one focusable wrapper per node. Since the visual-contract graph rework

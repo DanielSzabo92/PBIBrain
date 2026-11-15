@@ -317,7 +317,7 @@ function useNarrowView(breakpoint = 1200) {
   return isNarrow;
 }
 
-export default function GraphView({ transport, overview, snapshot, selectedId, colors, onSelect, session = null, onSession, versionLinks = null, onVersionLinks }) {
+export default function GraphView({ transport, overview, selectedId, colors, onSelect, session = null, onSession, versionLinks = null, onVersionLinks }) {
   const [versionsOpen, setVersionsOpen] = useState(false);
   const [versionsSaving, setVersionsSaving] = useState({ busy: false, error: "" });
   const isNarrow = useNarrowView(1200);
@@ -421,12 +421,11 @@ export default function GraphView({ transport, overview, snapshot, selectedId, c
   }, [loadedNodes, searchHere, filters.query]);
   const edges = graph?.edges || [];
   // Lineage: versions folded into one node, then lanes that are switched off bridged over.
-  const versioned = useMemo(() => lanesView && graphSession.groupVersions ? groupVersions(nodes, edges, versionLinks) : null, [lanesView, graphSession.groupVersions, nodes, edges, versionLinks]);
+  // The families are worked out once: folding and the toolbar's Versions chip both read them.
+  const families = useMemo(() => lanesView ? versionFamilies(nodes, versionLinks) : null, [lanesView, nodes, versionLinks]);
+  const versioned = useMemo(() => families && graphSession.groupVersions ? groupVersions(nodes, edges, versionLinks, families) : null, [families, graphSession.groupVersions, nodes, edges, versionLinks]);
   // How many models and reports have versions, so the toolbar can say that folding is on (or could be).
-  const versionGroups = useMemo(() => {
-    if (!lanesView) return [];
-    return [...versionFamilies(nodes, versionLinks).families.values()].filter((members) => members.length > 1).map((members) => members.map((member) => objectName(member)));
-  }, [lanesView, nodes, versionLinks]);
+  const versionGroups = useMemo(() => families ? [...families.families.values()].filter((members) => members.length > 1).map((members) => members.map((member) => objectName(member))) : [], [families]);
   // Two models or two reports: there is something to say about versions, folded or not.
   const canEditVersions = useMemo(() => Boolean(onVersionLinks) && lanesView && ["MODEL", "REPORT"].some((type) => (loadedNodes || []).filter((node) => node.type === type).length > 1), [onVersionLinks, lanesView, loadedNodes]);
   const saveVersionLinks = async (next) => {
@@ -523,7 +522,7 @@ export default function GraphView({ transport, overview, snapshot, selectedId, c
   }, [defaultExpanded, updateSession]);
   const error = graphError?.key === graphKey ? graphError.message : "";
   const edgeTypes = [...new Set([...EDGE_TYPES, ...edges.map((edge) => edge.type)])].sort();
-  const warningIds = useMemo(() => new Set((snapshot.conflicts || []).flatMap((item) => [item.target?.id || item.target || item.target_id || item.object_id, item.id, item.conflict_id].filter(Boolean))), [snapshot.conflicts]);
+  const warningIds = useMemo(() => new Set(overview?.conflict_targets || []), [overview?.conflict_targets]);
   const activeFilters = ["artifact", "modelId", "reportId", "edgeType", "objectType", "status"].filter((key) => Boolean(filters[key])).length;
   const hasFilters = Boolean(activeFilters || query || centerId || hiddenTypes.length > 0 || hiddenLanes.length > 0);
   const reset = () => { updateSession((current) => ({ ...current, filters: { ...EMPTY_FILTERS }, query: "", centerId: "", depth: 1, limit: DEFAULT_LIMIT, result: null, expandedIds: null, hiddenTypes: [], hiddenLanes: [], unfolded: [] })); setFocusedNode(null); };

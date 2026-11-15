@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { buildExplorerGraph, bundleExplorerEdges, layoutExplorerGraph } from "../src/graphLayout.js";
 import { foldLineage, layoutLineage, FOLD_ABOVE } from "../src/lineage.js";
-import { formatCount, linksOf, objectName } from "../src/presentation.js";
+import { formatCount, objectName } from "../src/presentation.js";
 
 // A project of `models` models, each with `tables` tables of `columns` columns and `measures` measures,
 // and one report per model with `visuals` visuals that each use one measure.
@@ -93,12 +93,8 @@ test("ordering 10,000 objects stays fast", () => {
   assert.ok(performance.now() - start < 1500, "explorer and fold build in well under the old 3.6 s");
 });
 
-test("counts read as people write them; links of one object come from an index", () => {
+test("counts read as people write them; names follow the object", () => {
   assert.equal(formatCount(13731), "13,731");
-  const edges = [{ id: "a", from_id: "x", to_id: "y" }, { id: "b", from_id: "y", to_id: "z" }];
-  assert.deepEqual(linksOf(edges, "y").incoming.map((edge) => edge.id), ["a"]);
-  assert.deepEqual(linksOf(edges, "y").outgoing.map((edge) => edge.id), ["b"]);
-  assert.deepEqual(linksOf(edges, "none").incoming, []);
   const node = { type: "MEASURE", name: "Sales" };
   assert.equal(objectName(node), "Sales");
   node.name = "Net Sales";

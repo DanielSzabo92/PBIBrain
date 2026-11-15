@@ -216,12 +216,17 @@ def get_lineage(
         compact.update({key: payload[key] for key in _LINEAGE_FIELDS if payload.get(key) not in (None, "")})
         definition = _definition_hash(payload)
         if definition:
+            # Versions compare the definition; the source hash (64 hex characters that do not
+            # compress) is only their fallback when an object has no definition (review 04).
             compact["definition_hash"] = definition
+            compact.pop("source_hash", None)
         tag = _lineage_tag(payload)
         if tag:
             compact["lineage_tag"] = tag
         nodes.append(compact)
-    edges = [{"id": edge["id"], "type": edge["type"], "from_id": edge["from_id"], "to_id": edge["to_id"], "status": edge.get("status"),
+    # Edges carry no id or status: every one is factual and unique by type and ends, and their
+    # random ids were a third of the transfer (review 04). The client names them by their ends.
+    edges = [{"type": edge["type"], "from_id": edge["from_id"], "to_id": edge["to_id"],
               # The usage role (value, category, slicer_field...) of a report binding.
               **({"role": edge["properties"]["role"]} if isinstance(edge.get("properties"), dict) and edge["properties"].get("role") else {})}
              for edge in scoped["edges"] if edge.get("status", "factual") == "factual"]

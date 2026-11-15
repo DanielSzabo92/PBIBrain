@@ -27,6 +27,8 @@
 .review-columns { padding: 8px 18px; border-bottom: 1px solid var(--line); background: var(--surface-2); color: var(--text-2); font-size: var(--fs-meta); font-weight: 500; }
 .review-item {
   position: relative; max-height: 800px; padding: 10px 18px;
+  /* Rows out of view are not laid out or painted, so a long loaded queue scrolls as fast as a short one (finding 01). */
+  content-visibility: auto; contain-intrinsic-size: auto 53px;
   animation: row-enter var(--dur-enter) var(--ease-out);
   transition: background-color var(--dur-fast), opacity var(--dur-exit) var(--ease-out), max-height var(--dur-exit) var(--ease-out), transform var(--dur-exit) var(--ease-out), padding var(--dur-exit) var(--ease-out);
 }

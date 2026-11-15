@@ -305,7 +305,7 @@ class Phase4TransportContractTests(unittest.TestCase):
         self.assertIsNotNone(payload)
         self.assertEqual(
             set(payload),
-            {"object", "visual_bindings", "field_wells", "contents", "identity", "raw_metadata", "description", "dependencies", "dependents", "relationships", "usage", "usage_roles", "semantics", "evidence", "confidence", "approval_state", "warnings", "edges"},
+            {"object", "visual_bindings", "field_wells", "contents", "identity", "raw_metadata", "description", "dependencies", "dependents", "relationships", "usage", "usage_roles", "semantics", "evidence", "confidence", "approval_state", "warnings", "edges", "neighbors"},
         )
         self.assertEqual(payload["identity"]["id"], self.ids["measure"])
         self.assertEqual(payload["raw_metadata"]["id"], "revenue")
@@ -579,8 +579,8 @@ class Phase4FrontendContractTests(unittest.TestCase):
         self.assertNotIn("<svg", app_source, "Graph view must use React Flow, not custom SVG persistence/rendering")
         for label in ("Overview", "Graph", "Inspector", "Review queue"):
             self.assertIn(label, app_source)
-        for name in ("createBrainTransport", "normalizeSnapshot"):
-            self.assertIn(f"export function {name}", transport_source)
+        self.assertIn("export function createBrainTransport", transport_source)
+        self.assertIn("getReviewPage", transport_source, "the review screens read pages, not the whole graph")
         for action in ("approve", "reject", "edit", "override"):
             self.assertIn(action, app_source)
 
@@ -594,42 +594,15 @@ class Phase4FrontendContractTests(unittest.TestCase):
                 f"{filename} uses JSX but does not bind React; preview would throw React is not defined",
             )
 
-    def test_frontend_transport_normalizes_snapshot_and_posts_review(self):
+    def test_frontend_transport_reads_review_pages_and_posts_review(self):
         node = shutil.which("node")
         if node is None:
             self.skipTest("node unavailable")
         script = r'''
-import { createBrainTransport, normalizeSnapshot } from "./src/transport.js";
+import { createBrainTransport } from "./src/transport.js";
 import { readFileSync } from "node:fs";
-const snapshot = normalizeSnapshot({
-  nodes: [{ id: "n1" }],
-  edges: [],
-  semanticCandidates: [{ id: "c1" }],
-  status: { state: "ready" },
-});
-if (snapshot.nodes.length !== 1 || snapshot.semantic_candidates[0].id !== "c1" || snapshot.scan.state !== "ready") {
-  throw new Error("snapshot normalization contract failed");
-}
-const staleSnapshot = normalizeSnapshot({
-  review_queue: [{ id: "stale-1", issue_type: "stale", target_id: "gone" }],
-  stale_overrides: [{ id: "stale-1", issue_type: "stale", target_id: "gone" }],
-});
-if (staleSnapshot.review_items.length !== 1 || staleSnapshot.review_items[0].issue_type !== "stale" || staleSnapshot.stale_overrides.length !== 1) {
-  throw new Error("stale review payload normalization failed");
-}
-const sharedSource = readFileSync("./src/views/shared.jsx", "utf8");
 const appSource = readFileSync("./src/views/ReviewQueue.jsx", "utf8");
-const itemImpactStart = sharedSource.indexOf("function itemImpact");
-const itemImpactEnd = sharedSource.indexOf("export function", itemImpactStart);
-const numberOr = (value, fallback = 0) => {
-  const number = Number(value);
-  return Number.isFinite(number) ? number : fallback;
-};
-const itemImpact = new Function("numberOr", `${sharedSource.slice(itemImpactStart, itemImpactEnd)}; return itemImpact;`)(numberOr);
-if (itemImpact({ impact: "critical" }) !== 4 || itemImpact({ impact: "high" }) !== 3 || itemImpact({ impact: "normal" }) !== 2 || itemImpact({ impact: "low" }) !== 1) {
-  throw new Error("string impact rank contract failed");
-}
-if (!appSource.includes("snapshot.stale_overrides") || !appSource.includes('sort === "impact-high"')) {
+if (!appSource.includes('value="stale"') || !appSource.includes('value="impact-high"')) {
   throw new Error("review queue stale/impact UI contract failed");
 }
 let request;
@@ -644,6 +617,14 @@ const result = await transport.review("approve", { target: "n1" });
 const body = JSON.parse(request.options.body);
 if (result.accepted !== true || request.url !== "/local/review" || request.options.method !== "POST" || body.action !== "approve" || body.target !== "n1") {
   throw new Error("review transport contract failed");
+}
+if (body.reply !== "summary") throw new Error("a decision asks for a summary, not the whole graph");
+await transport.getReviewPage({ issue: "stale", sort: "impact-high", target: "" });
+if (request.url !== "/local/review/page?issue=stale&sort=impact-high") throw new Error(`review page request: ${request.url}`);
+const viewResult = await transport.reviewBulk("reject", null, { view: { pattern: "p" }, except: ["x"] });
+const viewBody = JSON.parse(request.options.body);
+if (viewResult.accepted !== true || viewBody.view?.pattern !== "p" || viewBody.except?.[0] !== "x" || viewBody.items !== undefined) {
+  throw new Error("bulk review by view contract failed");
 }
 const bulkResult = await transport.reviewBulk("approve", ["n1", "n2"]);
 const bulkBody = JSON.parse(request.options.body);

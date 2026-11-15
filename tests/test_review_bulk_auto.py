@@ -103,8 +103,13 @@ class ReviewBulkAndAutoAcceptTests(unittest.TestCase):
         self.assertEqual(status, 200, saved)
         after = self.queue()
         self.assertEqual(len(before) - len(after), len(covered))
-        status, snapshot = self.app.handle("GET", "/api/brain?view=review")
-        auto = [item for item in snapshot["semantic_candidates"] if item.get("decided_by") == "auto"]
+        auto, offset = [], 0
+        while True:  # the decided list, a page at a time
+            status, reviewed = self.app.handle("GET", f"/api/review/page?tab=reviewed&limit=500&offset={offset}")
+            auto += [item for item in reviewed["items"] if item.get("decided_by") == "auto"]
+            if not reviewed["has_more"]:
+                break
+            offset += 500
         self.assertEqual(len(auto), len(covered))
         self.assertTrue(all(item["status"] == "approved" for item in auto))
 

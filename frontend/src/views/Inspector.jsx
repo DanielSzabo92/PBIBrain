@@ -20,8 +20,30 @@ import { listKeys } from "../listNavigation";
 // It draws with the graph library, which the first screen does not need.
 const ImpactExplorer = lazy(() => import("../components/ImpactExplorer"));
 
-export function Inspector({ node, details, loading, error, snapshot, snapshotLoaded, snapshotError, overview, onSelect, onRetry, onEvidenceRetry, onReview, onGraph, colors, scanning, transport }) {
+const NO_REVIEW = { items: [], nodes: [], loaded: false, error: "" };
+
+/** One object's open suggestions and conflicts, asked of the server (finding 01): not the whole project's. */
+function useObjectReview(transport, id, revision) {
+  const [state, setState] = useState({ id: null, ...NO_REVIEW });
+  const [attempt, setAttempt] = useState(0);
+  useEffect(() => {
+    if (!id || typeof transport?.getReviewPage !== "function") return undefined;
+    let active = true;
+    setState((current) => current.id === id ? { ...current, error: "" } : { id, ...NO_REVIEW });
+    transport.getReviewPage({ target: id, limit: 100 }).then((page) => {
+      if (active) setState({ id, items: page.items || [], nodes: page.nodes || [], loaded: true, error: "" });
+    }).catch((cause) => {
+      if (active) setState((current) => ({ ...current, id, error: cause?.message || "Review evidence could not be loaded" }));
+    });
+    return () => { active = false; };
+  }, [transport, id, revision, attempt]);
+  const current = state.id === id ? state : { id, ...NO_REVIEW };
+  return { ...current, retry: () => setAttempt((value) => value + 1) };
+}
+
+export function Inspector({ node, details, loading, error, reviewRevision = 0, overview, onSelect, onRetry, onReview, onGraph, colors, scanning, transport }) {
   const [activeEditId, setActiveEditId] = useState(null);
+  const review = useObjectReview(transport, node?.id, reviewRevision);
   if (error) return <Card className="panel inspector-state"><div className="empty-state tone-bad"><span className="empty-icon" aria-hidden="true"><TriangleAlert /></span><h2>Object unavailable</h2><p>{readableText(error)}</p><Button variant="outline" onClick={onRetry}><RefreshCw />Retry object</Button></div></Card>;
   if (loading) return <div className="inspector-loading"><Skeleton className="skeleton-title" /><div className="skeleton-grid"><Skeleton className="skeleton-block" /><Skeleton className="skeleton-block" /></div><p role="status" className="loading-label">Loading object details…</p></div>;
   if (!node) return <><PageHeading title="Select an object" description="Choose an object from Search or the graph." action={<Button onClick={onGraph}>Open graph</Button>} /></>;
@@ -29,11 +51,11 @@ export function Inspector({ node, details, loading, error, snapshot, snapshotLoa
   const outgoing = connected.filter((edge) => edge.from_id === node.id);
   const incoming = connected.filter((edge) => edge.to_id === node.id);
   const usageTypes = new Set(["DEPENDS_ON", "REFERENCES", "USES"]);
-  const relatedNodes = [...new Map([...snapshot.nodes, ...(details?.dependencies || []), ...(details?.dependents || []), ...(details?.usage || []), ...(details?.relationships?.nodes || []), node].map((item) => [item.id, item])).values()];
+  const relatedNodes = [...new Map([...(details?.neighbors || []), ...review.nodes, ...(details?.dependencies || []), ...(details?.dependents || []), ...(details?.usage || []), ...(details?.relationships?.nodes || []), node].map((item) => [item.id, item])).values()];
   const scopes = [...scopeChoices(overview, "model"), ...scopeChoices(overview, "report"), ...relatedNodes];
   const scopeName = (id) => readableText(scopes.find((item) => item.id === id)?.name);
-  const candidates = snapshot.semantic_candidates.filter((item) => itemTarget(item) === node.id && !["approved", "rejected", "overridden"].includes(item.status));
-  const warnings = snapshot.conflicts.filter((item) => itemTarget(item) === node.id);
+  const candidates = review.items.filter((item) => item.issue === "candidate");
+  const warnings = review.items.filter((item) => item.issue === "conflict");
   const observations = connected.filter((edge) => edge.type === "OBSERVED_WITH");
   const properties = node.properties || {};
   const expression = node.expression ?? properties.expression;
@@ -55,7 +77,7 @@ export function Inspector({ node, details, loading, error, snapshot, snapshotLoa
         <ObjectContents groups={details?.contents} colors={colors} onSelect={(id) => onSelect(id, "inspector")} />
         <UsageRoles profile={details?.usage_roles} />
         {candidates.length || warnings.length ? <Disclosure title="Review & evidence" badge={`${formatPlural(candidates.length, "suggestion")}${warnings.length ? ` · ${formatPlural(warnings.length, "warning")}` : ""}`} className="object-metadata object-review panel" defaultOpen>{candidates.map((item) => { const itemId = item.id || item.target || itemTarget(item); return <div className="object-review-item" key={itemId}><CandidateActions item={item} node={node} onReview={onReview} disabled={scanning} isEditing={activeEditId === itemId} onStartEdit={() => setActiveEditId(itemId)} onCancelEdit={() => setActiveEditId(null)} /><EvidenceCard item={item} /></div>; })}{warnings.map((warning) => <div className="warning-card" key={warning.id || formatEvidence(warning.reason)}><strong><TriangleAlert aria-hidden="true" />Conflict</strong><p>{formatEvidence(warning.reason || warning.message || warning.description || "Conflicting evidence needs review.")}</p></div>)}</Disclosure> : null}
-        {snapshotError ? <div className="inline-error" role="alert"><p>{snapshotLoaded ? "Review evidence could not be refreshed. Showing last loaded evidence." : "Review evidence unavailable."} {readableText(snapshotError)}</p><Button variant="outline" size="sm" onClick={onEvidenceRetry}>Retry evidence</Button></div> : !snapshotLoaded ? <p className="muted-copy object-review" role="status">Loading review evidence…</p> : null}
+        {review.error ? <div className="inline-error" role="alert"><p>{review.loaded ? "Review evidence could not be refreshed. Showing last loaded evidence." : "Review evidence unavailable."} {readableText(review.error)}</p><Button variant="outline" size="sm" onClick={review.retry}>Retry evidence</Button></div> : !review.loaded ? <p className="muted-copy object-review" role="status">Loading review evidence…</p> : null}
         {connected.some((edge) => !usageTypes.has(edge.type) && edge.type !== "OBSERVED_WITH") ? <Disclosure title="Other relationships" className="object-metadata object-other panel"><RelationshipGroup title="Connected objects" nodeId={node.id} edges={connected.filter((edge) => !usageTypes.has(edge.type) && edge.type !== "OBSERVED_WITH")} nodes={relatedNodes} onSelect={onSelect} empty="No other relationships." colors={colors} /></Disclosure> : null}
         {observations.length ? <Disclosure title="Observed report usage" badge={observations.length} className="object-metadata object-observed panel">{observations.map((edge) => <div className="usage-row" key={edge.id}><span>{scopeName(edge.from_id === node.id ? edge.to_id : edge.from_id)}</span><strong>{formatValue(edge.properties?.count || edge.count || "observed")}</strong></div>)}<p className="footnote">Co-occurrence does not establish compatibility.</p></Disclosure> : null}
       </div>
@@ -125,7 +147,7 @@ export function CandidateActions({ item, node, onReview, disabled = false, isEdi
       await new Promise((resolve) => setTimeout(resolve, 180));
     }
     try {
-      const ok = await onReview(action, candidateItem, valueOverride);
+      const ok = await onReview(action, candidateItem, valueOverride, node);
       if (!ok) setExiting(false);
       return ok;
     } catch (err) {

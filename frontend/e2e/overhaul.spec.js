@@ -146,7 +146,9 @@ test("failed decisions remain reviewable and command buttons work without WebGL"
   await page.goto("/");
   await page.getByRole("button", { name: /Open review queue/ }).click();
   await expect(page.locator(".review-item").first()).toBeVisible();
-  const before = await page.locator(".review-item").count();
+  // Rows mount a few per frame; count them once the list has stopped growing.
+  let before = -1;
+  await expect.poll(async () => { const now = await page.locator(".review-item").count(); const settled = now === before; before = now; return settled; }, { intervals: [150] }).toBe(true);
   await page.route("**/api/review", (route) => route.fulfill({ status: 500, json: { error: "Decision interrupted" } }));
   const first = page.locator(".review-item").first();
   await first.getByRole("button", { name: "Reject", exact: true }).click();
@@ -264,7 +266,7 @@ test("native scan exposes full report hierarchy and matching visual bindings", a
     await expect(sheet.locator(".visual-bindings .detail-section")).toHaveCount(6);
     await expect(sheet.locator(".graph-detail-body")).toHaveCSS("overflow-x", "hidden");
     for (const group of groups) await expect(sheet.locator(".visual-bindings")).toContainText(details.visual_bindings[group][0].name);
-    await sheet.getByRole("button", { name: "Revenue", exact: true }).click();
+    await sheet.locator(".visual-bindings").getByRole("button", { name: "Revenue", exact: true }).click();
     await expect(sheet.locator(".graph-detail-title")).toHaveText("Revenue");
     await sheet.getByRole("button", { name: "Close", exact: true }).click();
     await card.click();
@@ -276,9 +278,9 @@ test("native scan exposes full report hierarchy and matching visual bindings", a
     await page.getByRole("navigation", { name: "Main navigation" }).getByRole("button", { name: /^Review queue/ }).click();
     const canonical = await (await request.get("/api/review")).json();
     const items = canonical.items || canonical;
-    // Each list shows its first 50 rows; the headings carry the totals.
+    // Each list shows its first page of 25 rows; the headings carry the totals.
     const low = Number((await page.getByRole("heading", { name: /^Low-evidence suggestions/ }).textContent()).match(/\((\d+)\)/)[1]);
-    await expect(page.locator(".review-item")).toHaveCount(Math.min(items.length - low, 50) + Math.min(low, 50));
+    await expect(page.locator(".review-item")).toHaveCount(Math.min(items.length - low, 25) + Math.min(low, 25));
     // An object can have several suggestions (meaning, role, alias), but never the same one twice.
     const rows = await page.locator(".review-item").evaluateAll((nodes) => nodes.map((node) => `${node.querySelector(".review-target")?.textContent} ${node.querySelector(".review-suggestion")?.textContent}`));
     expect(new Set(rows).size).toBe(rows.length);

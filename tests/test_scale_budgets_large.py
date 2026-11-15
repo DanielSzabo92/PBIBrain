@@ -55,12 +55,20 @@ class LargeProjectBudgetTests(unittest.TestCase):
         _, seconds = self.timed("GET", "/api/object/" + quote("model:model-0/table:model-0-t0/measure:model-0-t0-m1", safe=""))
         self.assertLess(seconds, 3.0)
 
-    def test_review_snapshot_stays_slim(self) -> None:
-        snapshot, seconds = self.timed("GET", "/api/brain?view=review")
-        self.assertLess(seconds, 30.0)
-        size = len(json.dumps(snapshot, ensure_ascii=False))
-        self.assertLess(size, 70_000_000, "the review view was 163 MB before it was slimmed to 42 MB")
-        self.assertEqual(len(snapshot["review_items"]), 11528)
+    def test_review_opens_from_pages(self) -> None:
+        # Finding 01: the queue was a 163 MB download; it is now counted on the server and read a page at a time.
+        summary, seconds = self.timed("GET", "/api/review/page?grouping=pattern&rows=0")
+        self.assertLess(seconds, 30.0)  # the first request builds the index of the graph state
+        self.assertEqual(summary["matching"], 11528)
+        self.assertLess(len(json.dumps(summary)), 100_000)
+        page, seconds = self.timed("GET", "/api/review/page?section=standard&limit=25")
+        self.assertLess(seconds, 1.0)
+        self.assertEqual(len(page["items"]), 25)
+        self.assertLess(len(json.dumps(page, ensure_ascii=False)), 100_000)
+        biggest = max(summary["groups"], key=lambda group: group["count"])
+        one, seconds = self.timed("GET", "/api/review/page?limit=25&pattern=" + quote(biggest["key"], safe=""))
+        self.assertLess(seconds, 1.0)
+        self.assertEqual(one["total"], biggest["count"])
 
     def test_search_and_whole_project_lineage(self) -> None:
         found, seconds = self.timed("GET", "/api/search?q=total%20orders&limit=50&kind=objects")
@@ -70,6 +78,11 @@ class LargeProjectBudgetTests(unittest.TestCase):
         self.assertLess(seconds, 15.0)
         self.assertFalse(lineage.get("truncated"))
         self.assertLess(len(json.dumps(lineage)) / (len(lineage["nodes"]) + len(lineage["edges"])), 600)
+        seen = {}
+        environ = {"REQUEST_METHOD": "GET", "PATH_INFO": "/api/lineage", "QUERY_STRING": "", "HTTP_HOST": "127.0.0.1", "HTTP_ACCEPT_ENCODING": "gzip"}
+        sent = b"".join(self.app(environ, lambda status, headers: seen.update(headers=dict(headers))))
+        self.assertEqual("gzip", seen["headers"]["Content-Encoding"])
+        self.assertLess(len(sent), 600_000, "the whole-project lineage transfers under 600 kB (review 04)")
 
     def test_zz_one_bulk_decision_over_every_suggestion_and_its_undo(self) -> None:
         # Last (by name): it changes the graph, which empties the answers the other tests may reuse.

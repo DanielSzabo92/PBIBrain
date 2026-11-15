@@ -11,9 +11,9 @@ import { Card } from "../components/ui/card";
 import { Disclosure } from "../components/ui/collapsible";
 import { Skeleton } from "../components/ui/skeleton";
 import { pluralType } from "../graphPresentation";
-import { formatDate, itemTarget } from "./shared";
+import { formatDate } from "./shared";
 
-export function Overview({ overview, config, counts, colors, loading, projectName, onView, onBrowseType, onSources, onSample, onSummary, onScan, onReview, onSelect, onMerge, transport, scanning, scanLabel, error, onRetry, snapshot, auditTrail }) {
+export function Overview({ overview, config, counts, colors, loading, projectName, onView, onBrowseType, onSources, onSample, onSummary, onScan, onReview, onSelect, onMerge, transport, scanning, scanLabel, error, onRetry, auditTrail }) {
   // The seven model and report types show at once; meanings (aliases, roles, concepts…) open on demand.
   const [allTypes, setAllTypes] = useState(false);
   const hasObjects = counts.objects > 0;
@@ -51,96 +51,30 @@ export function Overview({ overview, config, counts, colors, loading, projectNam
   const ValidationIcon = validationState === "valid" ? ShieldCheck : ShieldAlert;
   const validationTone = { valid: "ok", invalid: "bad", warning: "warn" }[validationState] || "idle";
 
-  const nodes = snapshot?.nodes || [];
-  const edges = snapshot?.edges || [];
-  const candidates = snapshot?.semantic_candidates || [];
-  const conflicts = snapshot?.conflicts || [];
+  // The server counts over the whole graph; the screen never guesses from a partial load.
+  const mostUsedMeasures = (overview?.top_measures || []).map((item) => ({ node: item, count: item.count || 0 }));
+  const unreviewedOnHot = (overview?.hot_unreviewed || []).map((item) => ({
+    item: { id: item.id, kind: item.kind, meaning: item.label, scope: item.scope }, targetId: item.target_id, degree: item.degree || 0,
+    targetNode: { id: item.target_id, name: item.name, type: item.type },
+  }));
 
-  const mostUsedMeasures = useMemo(() => {
-    // The server counts over the whole graph. The browser estimate below is only for a server that does not send it.
-    if (Array.isArray(overview?.top_measures)) return overview.top_measures.map((item) => ({ node: item, count: item.count || 0 }));
-    const measures = nodes.filter((node) => node.type === "MEASURE" || node.type === "CALCULATION_ITEM");
-    if (!measures.length) return [];
-    const usageCounts = new Map();
-    for (const edge of edges) {
-      if (edge.type !== "CONTAINS" && edge.to_id) {
-        usageCounts.set(edge.to_id, (usageCounts.get(edge.to_id) || 0) + 1);
-      }
-    }
-    return measures
-      .map((m) => ({ node: m, count: usageCounts.get(m.id) || 0 }))
-      .sort((a, b) => b.count - a.count || a.node.name.localeCompare(b.node.name))
-      .slice(0, 5);
-  }, [nodes, edges, overview?.top_measures]);
-
-  const unreviewedOnHot = useMemo(() => {
-    if (Array.isArray(overview?.hot_unreviewed)) {
-      return overview.hot_unreviewed.map((item) => ({
-        item: { id: item.id, kind: item.kind, meaning: item.label, scope: item.scope }, targetId: item.target_id, degree: item.degree || 0,
-        targetNode: { id: item.target_id, name: item.name, type: item.type },
-      }));
-    }
-    const unreviewed = [
-      ...candidates.filter((c) => !["approved", "rejected", "overridden"].includes(c.status)).map((c) => ({ ...c, kind: "candidate" })),
-      ...conflicts.map((c) => ({ ...c, kind: "conflict" })),
-    ];
-    if (!unreviewed.length) return [];
-    const degreeMap = new Map();
-    for (const edge of edges) {
-      if (edge.from_id) degreeMap.set(edge.from_id, (degreeMap.get(edge.from_id) || 0) + 1);
-      if (edge.to_id) degreeMap.set(edge.to_id, (degreeMap.get(edge.to_id) || 0) + 1);
-    }
-    const nodeMap = new Map(nodes.map((n) => [n.id, n]));
-    const scored = unreviewed.map((item) => {
-      const targetId = itemTarget(item);
-      const targetNode = nodeMap.get(targetId);
-      const degree = degreeMap.get(targetId) || 0;
-      return { item, targetNode, targetId, degree };
-    });
-    scored.sort((a, b) => b.degree - a.degree);
-    return scored.slice(0, 5);
-  }, [candidates, conflicts, edges, nodes, overview?.hot_unreviewed]);
-
+  // This session's decisions first, then saved decisions from the project.
   const recentChanges = useMemo(() => {
     const list = [];
     const seen = new Set();
-    const nodeMap = new Map(nodes.map((n) => [n.id, n]));
-    if (Array.isArray(auditTrail)) {
-      for (const entry of auditTrail) {
-        const id = entry.targetId || entry.reviewId || entry.id;
-        if (id && !seen.has(id)) {
-          seen.add(id);
-          const targetNode = nodeMap.get(entry.targetId);
-          list.push({
-            id,
-            targetId: entry.targetId,
-            name: targetNode ? targetNode.name : entry.targetId || "Item",
-            type: targetNode?.type || "OBJECT",
-            action: entry.action || "reviewed",
-            actor: entry.actor || "User",
-          });
-        }
-      }
+    for (const entry of auditTrail || []) {
+      const id = entry.targetId || entry.reviewId || entry.id;
+      if (!id || seen.has(id)) continue;
+      seen.add(id);
+      list.push({ id, targetId: entry.targetId, name: entry.targetName || entry.targetId || "Item", type: entry.targetType || "OBJECT", action: entry.action || "reviewed", actor: entry.actor || "User" });
     }
-    if (list.length < 5 && Array.isArray(snapshot?.overrides)) {
-      for (const ov of snapshot.overrides) {
-        const id = ov.target_id || ov.id;
-        if (id && !seen.has(id)) {
-          seen.add(id);
-          const targetNode = nodeMap.get(ov.target_id);
-          list.push({
-            id,
-            targetId: ov.target_id,
-            name: targetNode ? targetNode.name : ov.target_id || "Item",
-            type: targetNode?.type || "OBJECT",
-            action: ov.status || "override",
-            actor: "Reviewer",
-          });
-        }
-      }
+    for (const saved of overview?.recent_overrides || []) {
+      if (seen.has(saved.target_id)) continue;
+      seen.add(saved.target_id);
+      list.push({ id: saved.target_id, targetId: saved.target_id, name: saved.name, type: saved.type, action: saved.status, actor: "Reviewer" });
     }
     return list.slice(0, 5);
-  }, [auditTrail, snapshot?.overrides, nodes]);
+  }, [auditTrail, overview?.recent_overrides]);
 
   const validationWidget = (
     <Card className="overview-widget" role="region" aria-label="Validation summary">

@@ -18,10 +18,6 @@ async function jsonRequest(fetcher, url, options = {}) {
   return body;
 }
 
-function bootstrapSnapshot() {
-  return globalThis.__POWER_BI_BRAIN__ || null;
-}
-
 /**
  * Local UI seam. The backend owns graph truth; the UI only reads it and sends
  * review commands. Tests and an embedded host can inject this transport.
@@ -32,26 +28,32 @@ export function createBrainTransport({ baseUrl = API_ROOT, fetcher = globalThis.
     return jsonRequest(fetcher, `${baseUrl}${path}`, options);
   };
   return {
-    async getSnapshot() {
-      const bootstrapped = bootstrapSnapshot();
-      if (bootstrapped) return bootstrapped;
-      // The review view of the snapshot: names, scopes, formulas and suggestions, without parse trees and raw source.
-      return request("/brain?view=review");
+    /**
+     * One page of the review queue, counted and filtered on the server (finding 01): rows with the objects
+     * they show, the filter choices, the totals and, with grouping=pattern, the patterns. ``target`` gives one
+     * object's open suggestions and conflicts; ``tab: "reviewed"`` pages the decided ones.
+     */
+    getReviewPage(params = {}) {
+      const query = new URLSearchParams();
+      for (const [key, value] of Object.entries(params)) if (value !== undefined && value !== null && value !== "") query.set(key, String(value));
+      return request(`/review/page?${query}`);
     },
+    // Decisions answer with a summary: the page asks for the rows it shows again instead of receiving the graph.
     async review(action, payload) {
       return request("/review", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action, ...payload }),
+        body: JSON.stringify({ action, ...payload, reply: "summary" }),
       });
     },
-    // One request, one write on the server. The answer is a summary with an undo token;
-    // the page reloads its slim review view instead of receiving the full snapshot.
-    async reviewBulk(action, items) {
+    // One request, one write on the server, one undo token. ``items`` names the suggestions, or
+    // ``{ view, except }`` lets the server choose what the queue shows for those filters.
+    async reviewBulk(action, items, { view = null, except = null } = {}) {
+      const body = view ? { action, view, ...(except?.length ? { except } : {}), reply: "summary" } : { action, items, reply: "summary" };
       return request("/review", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action, items, reply: "summary" }),
+        body: JSON.stringify(body),
       });
     },
     /** Puts back exactly the statuses that the bulk decision with this token replaced. */
@@ -186,7 +188,11 @@ export function createBrainTransport({ baseUrl = API_ROOT, fetcher = globalThis.
       if (modelId) params.set("model_id", modelId);
       if (reportId) params.set("report_id", reportId);
       const search = String(params);
-      return request(`/lineage${search ? `?${search}` : ""}`);
+      // The payload leaves out edge ids and status (all factual, unique by type and ends) to stay small.
+      return request(`/lineage${search ? `?${search}` : ""}`).then((result) => ({
+        ...result,
+        edges: (result?.edges || []).map((edge) => ({ id: `${edge.type}|${edge.from_id}|${edge.to_id}`, status: "factual", ...edge })),
+      }));
     },
     /** Common / divergent / unique objects across the project's models and reports (issue #14). */
     getCommonality({ type = "", scope = "", bucket = "", groupId = "", limit = 50, offset = 0 } = {}) {
@@ -209,23 +215,3 @@ export function createBrainTransport({ baseUrl = API_ROOT, fetcher = globalThis.
 }
 
 export const brainTransport = createBrainTransport();
-
-export function normalizeSnapshot(value) {
-  const source = value || {};
-  const review = source.review && typeof source.review === "object" ? source.review : {};
-  const candidates = source.semantic_candidates || source.semanticCandidates || [];
-  return {
-    nodes: Array.isArray(source.nodes) ? source.nodes : [],
-    edges: Array.isArray(source.edges) ? source.edges : [],
-    semantic_candidates: Array.isArray(candidates) ? candidates : [],
-    conflicts: Array.isArray(source.conflicts) ? source.conflicts : [],
-    observations: Array.isArray(source.observations) ? source.observations : [],
-    diagnostics: Array.isArray(source.diagnostics) ? source.diagnostics : [],
-    scan: source.scan || source.status || {},
-    validation: source.validation || {},
-    overrides: Array.isArray(source.overrides) ? source.overrides : [],
-    stale_overrides: Array.isArray(source.stale_overrides) ? source.stale_overrides : Array.isArray(source.staleOverrides) ? source.staleOverrides : Array.isArray(review.stale_overrides) ? review.stale_overrides : Array.isArray(review.staleOverrides) ? review.staleOverrides : [],
-    review_items: Array.isArray(source.review_items) ? source.review_items : Array.isArray(source.reviewItems) ? source.reviewItems : Array.isArray(source.review_queue) ? source.review_queue : Array.isArray(source.reviewQueue) ? source.reviewQueue : Array.isArray(review.items) ? review.items : Array.isArray(review.review_items) ? review.review_items : [],
-    graph: source.graph || source.scoped_graph || source.scopedGraph || null,
-  };
-}

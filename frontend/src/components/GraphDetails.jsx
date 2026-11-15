@@ -69,7 +69,7 @@ export default function GraphDetails({ node, path = null, settled = false, color
   const current = details?.object || node;
   const properties = publicProperties(current);
   const expression = current?.expression || current?.properties?.expression;
-  const related = [current, ...(details?.dependencies || []), ...(details?.dependents || []), ...(details?.usage || []), ...(details?.relationships?.nodes || [])].filter(Boolean);
+  const related = [current, ...(details?.dependencies || []), ...(details?.dependents || []), ...(details?.usage || []), ...(details?.relationships?.nodes || []), ...(details?.neighbors || [])].filter(Boolean);
   const name = (target) => objectName(related.find((item) => item.id === target));
   const kind = current.type === "VISUAL" ? visualType(current) : typeLabel(current.type);
   return <aside className={`graph-detail-sheet graph-detail-pane ${settled ? "is-settled" : "is-entering"}`} aria-label="Object details">

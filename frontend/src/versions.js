@@ -144,8 +144,9 @@ export function versionFamilies(nodes, links = null) {
  * The folded node keeps the id of its first version, so selecting it opens that version's details.
  * @returns {{ nodes, edges, membersOf: Map<id, node[]>, grouped: boolean }}
  */
-export function groupVersions(nodes, edges, links = null) {
-  const { keyOf, familyOf, families } = versionFamilies(nodes, links);
+export function groupVersions(nodes, edges, links = null, known = null) {
+  // `known` is versionFamilies(nodes, links) when the caller has it already (the toolbar needs it too).
+  const { keyOf, familyOf, families } = known || versionFamilies(nodes, links);
   if (![...families.values()].some((members) => members.length > 1)) {
     return { nodes, edges, membersOf: new Map(nodes.map((node) => [node.id, [node]])), grouped: false };
   }
@@ -160,7 +161,7 @@ export function groupVersions(nodes, edges, links = null) {
   const membersOf = new Map();
   const merged = [];
   buckets.forEach((members) => {
-    members.sort((a, b) => rank(a) - rank(b) || byName(a, b));
+    if (members.length > 1) members.sort((a, b) => rank(a) - rank(b) || byName(a, b));
     const first = members[0];
     const size = familySize(first);
     members.forEach((member) => representative.set(member.id, first.id));

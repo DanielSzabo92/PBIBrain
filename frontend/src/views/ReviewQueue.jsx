@@ -1,15 +1,15 @@
 // The Review queue: suggestions to decide, by row, by selection or by pattern, and the list of reviewed decisions.
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { groupReviewItems, GROUP_ABOVE } from "../reviewGroups.js";
+// Rows, counts, filter choices and patterns come a page at a time from the server (finding 01): the page never
+// holds the whole queue, and a decision over a pattern or the filters is chosen on the server.
+import React, { startTransition, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Activity, Calculator, Check, ChevronRight, CircleCheck, FileText, Filter, Lightbulb, RefreshCw, RotateCcw, ShieldAlert, ShieldCheck, Table2, Tag, TriangleAlert, Type, Workflow, X, Zap } from "lucide-react";
-import { useToast } from "../components/ui/toast";
 import { listMove, moveInList } from "../listNavigation";
 import { SegmentedControl } from "../components/ui/segmented-control";
 import { Tooltip } from "../components/ui/tooltip";
 import ReviewDecision from "../components/ReviewDecision";
 import ObjectContextPreview from "../components/ObjectContextPreview";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent } from "../components/ui/dialog";
-import { isLowEvidence, explainConfidence } from "../reviewEvidence";
+import { explainConfidence } from "../reviewEvidence";
 import { TypeGlyph } from "../components/TypeGlyph";
 import { highlightDax } from "../dax";
 import { byId, formatCount, objectScope, readableText, scopeChoices, suggestionLabel, suggestionParts, sanitizeDoublePunctuation } from "../presentation";
@@ -20,33 +20,15 @@ import { Card } from "../components/ui/card";
 import { Label } from "../components/ui/label";
 import { Checkbox } from "../components/ui/checkbox";
 import { typeLabel } from "../graphPresentation";
-import { confidence, labelFor, itemTarget, safeJson, itemConfidence, itemImpact, contentScroller, PageHeading, StatusBadge, EmptyState, formatDate, formatValue } from "./shared";
+import { confidence, labelFor, itemTarget, itemConfidence, contentScroller, PageHeading, StatusBadge, EmptyState, formatDate, formatValue } from "./shared";
 
 // Above this many suggestions a bulk approve or reject asks for confirmation.
 const BULK_CONFIRM_ABOVE = 50;
-
-export function reviewIssue(item) {
-  const value = String(item?.issue || item?.issue_type || item?.kind || item?.type || "candidate").toLowerCase();
-  if (value.includes("conflict")) return "conflict";
-  if (value.includes("stale") || value.includes("override")) return "stale";
-  return "candidate";
-}
-
-export function mergeReviewItems(items) {
-  const merged = new Map();
-  items.filter(Boolean).forEach((item, index) => {
-    const issue = reviewIssue(item);
-    const semanticKey = `${issue}:${itemTarget(item) || "unknown"}:${safeJson(item.value ?? item.meaning ?? item.reason ?? item.message ?? index)}`;
-    const candidateId = item.candidate_id || item.properties?.candidate_id || item.item?.candidate_id || item.item?.properties?.candidate_id;
-    const key = issue === "conflict" ? semanticKey : candidateId || item.id || semanticKey;
-    merged.set(key, { ...merged.get(key), ...item, issue });
-  });
-  return [...merged.values()];
-}
-
-export function itemScopeValue(item, node, key) {
-  return item?.[key] ?? item?.properties?.[key] ?? node?.[key] ?? node?.properties?.[key] ?? "";
-}
+// A queue longer than this opens as patterns (one rule, one basis, one object type), decided once each.
+const GROUP_ABOVE = 200;
+// Rows per request; a refresh after a decision asks again for every row loaded, up to the server's limit.
+const REVIEW_PAGE = 25;
+const MAX_ROWS = 500;
 
 // Keyboard triage (visual contract §9): the shared list keys (↓/↑, Home/End) and J/K move between items, A approves, R rejects, X selects the focused item.
 // Esc cancels any active inline edit.
@@ -73,213 +55,270 @@ function reviewKeys(event, onCancelEdit) {
   }
 }
 
-const REVIEW_PAGE = 50;
-const reviewItemKey = (item) => item.id || `${item.issue}-${itemTarget(item)}`;
+const reviewItemKey = (item) => item.key || item.id || `${item.issue}-${itemTarget(item)}`;
+const mergeById = (current, added) => {
+  if (!added?.length) return current;
+  const merged = new Map(current.map((entry) => [entry.id, entry]));
+  for (const entry of added) if (entry?.id && !merged.has(entry.id)) merged.set(entry.id, entry);
+  return [...merged.values()];
+};
+const EMPTY_PAGE = { key: "", page: null, items: [], nodes: [], loading: false, error: "" };
+// The context nodes of the page a row came with. A row reads these instead of the list's merged nodes, so
+// loading another page leaves the rows already shown untouched (finding 01: scrolling holds the frame rate).
+const PAGE_NODES = new WeakMap();
+const rememberNodes = (page) => {
+  const nodes = page?.nodes || [];
+  for (const item of page?.items || []) PAGE_NODES.set(item, nodes);
+  return page;
+};
 
-export function ReviewQueue({ session, onSession, snapshot, loaded, loading, error, onRetry, overview, onSelect, onReview, onBulkReview, scanning, colors, auditTrail = [], onUndoReview }) {
+/**
+ * Rows of one query, a page at a time. ``more`` adds the next page; a new ``revision`` (a decision, a scan)
+ * asks again for as many rows as are loaded, so the list keeps its length and the reviewer their place.
+ */
+function useReviewPages(transport, query, revision, enabled = true) {
+  const key = enabled ? JSON.stringify(query) : "";
+  const [state, setState] = useState(EMPTY_PAGE);
+  const [attempt, setAttempt] = useState(0);
+  const loaded = useRef({ key: "", count: 0 });
+  const busy = useRef(false);
+  useEffect(() => {
+    if (!enabled) return undefined;
+    let active = true;
+    const again = loaded.current.key === key;
+    const limit = again ? Math.min(MAX_ROWS, Math.max(REVIEW_PAGE, loaded.current.count)) : REVIEW_PAGE;
+    setState((current) => current.key === key ? { ...current, error: "" } : { ...EMPTY_PAGE, key, loading: true });
+    transport.getReviewPage({ ...query, offset: 0, limit }).then(rememberNodes).then((page) => {
+      if (!active) return;
+      loaded.current = { key, count: page.items?.length || 0 };
+      setState({ key, page, items: page.items || [], nodes: page.nodes || [], loading: false, error: "" });
+    }).catch((cause) => {
+      if (active) setState((current) => ({ ...(current.key === key ? current : EMPTY_PAGE), key, loading: false, error: cause?.message || "Review data could not be loaded" }));
+    });
+    return () => { active = false; };
+    // The query is in the key.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key, revision, attempt, transport, enabled]);
+  const current = state.key === key ? state : { ...EMPTY_PAGE, key, loading: enabled };
+  const more = useCallback(async () => {
+    if (busy.current || !current.page?.has_more) return;
+    busy.current = true;
+    try {
+      const page = rememberNodes(await transport.getReviewPage({ ...query, offset: current.items.length, limit: REVIEW_PAGE }));
+      setState((latest) => {
+        if (latest.key !== key) return latest;
+        const seen = new Set(latest.items.map(reviewItemKey));
+        const items = [...latest.items, ...(page.items || []).filter((item) => !seen.has(reviewItemKey(item)))];
+        loaded.current = { key, count: items.length };
+        return { ...latest, page: { ...page, items: undefined }, items, nodes: mergeById(latest.nodes, page.nodes) };
+      });
+    } catch (cause) {
+      setState((latest) => latest.key === key ? { ...latest, error: cause?.message || "Review data could not be loaded" } : latest);
+    } finally {
+      busy.current = false;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key, current.page, current.items.length, transport]);
+  // A decided row leaves at once; the refresh that follows confirms it (and keeps it gone if the refresh fails).
+  const drop = useCallback((rowKey) => setState((latest) => {
+    if (latest.key !== key || !latest.items.some((item) => reviewItemKey(item) === rowKey)) return latest;
+    loaded.current = { key, count: Math.max(0, latest.items.length - 1) };
+    return { ...latest, items: latest.items.filter((item) => reviewItemKey(item) !== rowKey), page: latest.page && { ...latest.page, total: Math.max(0, (latest.page.total || 0) - 1) } };
+  }), [key]);
+  const total = current.page?.total ?? 0;
+  return { ...current, total, approvable: current.page?.approvable_total ?? 0, left: Math.max(0, total - current.items.length), more, drop, retry: () => setAttempt((value) => value + 1) };
+}
+
+/**
+ * Rows a few per frame: a page that arrives while the reviewer scrolls is mounted over several frames
+ * instead of in one long task, so scrolling holds the frame rate (finding 01).
+ */
+const ROWS_PER_FRAME = 5;
+function useRevealed(items) {
+  const [count, setCount] = useState(ROWS_PER_FRAME);
+  const length = items.length;
+  useEffect(() => {
+    if (count >= length || typeof requestAnimationFrame !== "function") return undefined;
+    // A transition: React renders the new rows in slices and lets each frame through.
+    const frame = requestAnimationFrame(() => startTransition(() => setCount((current) => Math.min(length, current + ROWS_PER_FRAME))));
+    return () => cancelAnimationFrame(frame);
+  }, [count, length]);
+  return typeof requestAnimationFrame === "function" && count < length ? items.slice(0, count) : items;
+}
+
+/** "Show more (N left)"; it also loads by itself when it scrolls near the window. */
+function MoreRows({ pages, shown = pages.items.length }) {
+  const button = useRef(null);
+  const { left, more, items } = pages;
+  // Only once the loaded rows are all on the page: while they mount the list is short and this would be in view.
+  const mounted = shown >= items.length;
+  useEffect(() => {
+    const element = button.current;
+    if (!element || !left || !mounted || typeof IntersectionObserver !== "function") return undefined;
+    const observer = new IntersectionObserver((entries) => { if (entries.some((entry) => entry.isIntersecting)) more(); }, { rootMargin: "600px" });
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [left, more, items.length, mounted]);
+  if (!left) return null;
+  return <div ref={button} className="queue-more"><Button variant="ghost" size="sm" onClick={more}>Show more ({formatCount(left)} left)</Button></div>;
+}
+
+// A reviewed entry from the server: a decided suggestion or a saved edit.
+function reviewedEntry(item, lastScan) {
+  if (item.reviewed_kind === "override") {
+    const key = `override:${item.target}:${item.property}`;
+    return { id: `snap-${key}`, reviewId: key, candidateId: key, targetId: item.target, action: "overridden", actor: "Reviewer", timestamp: lastScan, label: suggestionLabel(item), value: item.value, property: item.property, item, confidence: itemConfidence(item) };
+  }
+  const key = item.candidate_id || item.id;
+  return { id: `snap-${key}`, reviewId: key, candidateId: key, targetId: itemTarget(item), action: item.status, actor: item.decided_by === "auto" ? "Auto" : "Reviewer", auto: item.decided_by === "auto", timestamp: lastScan, label: suggestionLabel(item), value: item.value, property: item.property, item, confidence: itemConfidence(item) };
+}
+
+export function ReviewQueue({ session, onSession, transport, revision = 0, overview, onSelect, onReview, onBulkReview, scanning, colors, auditTrail = [], onUndoReview }) {
   const { issue = "ALL", objectType = "ALL", modelId = "ALL", reportId = "ALL", sort = "confidence-high", tab = "queue", group = "" } = session;
   const change = (values) => onSession((current) => ({ ...current, ...values }));
   const panel = useRef(null);
-  const toast = useToast();
   const [activeEditId, setActiveEditId] = useState(null);
   const [bulkBusy, setBulkBusy] = useState(false);
 
+
+  // The filters as the server names them; a bulk decision "by view" sends exactly these.
+  const view = useMemo(() => ({ issue, object_type: objectType, model_id: modelId, report_id: reportId }), [issue, objectType, modelId, reportId]);
+  const queueTab = tab !== "reviewed";
+  // Counts, filter choices and patterns: one request without rows.
+  const summary = useReviewPages(transport, { ...view, sort, grouping: "pattern", rows: 0 }, revision);
+  const facts = summary.page;
+  const matching = facts?.matching ?? 0;
+  const grouping = issue === "low-evidence" ? "none" : group || (matching > GROUP_ABOVE ? "pattern" : "none");
+  const lists = queueTab && Boolean(facts) && grouping !== "pattern";
+  const standard = useReviewPages(transport, { ...view, sort, section: "standard" }, revision, lists && issue !== "low-evidence" && facts.standard_total > 0);
+  const low = useReviewPages(transport, { ...view, sort, section: "low" }, revision, lists && facts.low_total > 0);
+  const [openGroup, setOpenGroup] = useState("");
+  const groupRows = useReviewPages(transport, { ...view, sort, pattern: openGroup }, revision, queueTab && grouping === "pattern" && Boolean(openGroup));
+  const standardRows = useRevealed(standard.items);
+  const lowRows = useRevealed(low.items);
+  const openGroupRows = useRevealed(groupRows.items);
+  const reviewed = useReviewPages(transport, { tab: "reviewed" }, revision, !queueTab);
+  // Back from an object: focus returns to the row that was left, once its page has arrived.
+  const restored = useRef(!session.selectedId);
+  const shownRows = standard.items.length + low.items.length + groupRows.items.length;
   useEffect(() => {
+    if (restored.current || !shownRows) return undefined;
     const frame = requestAnimationFrame(() => {
       const selected = [...(panel.current?.querySelectorAll("[data-review-id]") || [])].find((element) => element.dataset.reviewId === session.selectedId);
+      restored.current = true;
       if (selected) { selected.focus({ preventScroll: true }); contentScroller().scrollTop = session.scrollY || 0; }
     });
     return () => cancelAnimationFrame(frame);
-  }, []);
-  // Derived once per snapshot and filter, not on every render: the queue can hold more than 10,000 suggestions.
-  const { types, models, reports, filtered, lowEvidenceItems, standardItems } = useMemo(() => {
-    const external = snapshot.review_items.map((item) => ({ ...item, issue: reviewIssue(item) }));
-    const candidates = snapshot.semantic_candidates.map((item) => ({ ...item, issue: "candidate" }));
-    const conflicts = snapshot.conflicts.map((item) => ({ ...item, issue: "conflict", status: item.status || "candidate", confidence: item.confidence ?? 0 }));
-    const staleRecords = [...snapshot.stale_overrides, ...snapshot.overrides.filter((item) => item.status === "stale"), ...external.filter((item) => item.issue === "stale")];
-    const stale = staleRecords.map((item) => ({ ...item, issue: "stale", status: item.status || "candidate", confidence: item.confidence ?? 0 }));
-    const all = mergeReviewItems(external.length ? external : [...candidates, ...conflicts, ...stale]).filter((item) => !["rejected", "approved", "overridden"].includes(item.status));
-    const types = [...new Set(all.map((item) => byId(snapshot.nodes, itemTarget(item))?.type).filter(Boolean))].sort();
-    const models = [...new Set(all.map((item) => itemScopeValue(item, byId(snapshot.nodes, itemTarget(item)), "model_id")).filter(Boolean))].sort();
-    const reports = [...new Set(all.map((item) => itemScopeValue(item, byId(snapshot.nodes, itemTarget(item)), "report_id")).filter(Boolean))].sort();
-    const filtered = all.filter((item) => {
-      const targetNode = byId(snapshot.nodes, itemTarget(item));
-      const isLow = isLowEvidence(item, snapshot.nodes);
-      const matchesIssue = issue === "ALL" ? true : issue === "low-evidence" ? isLow : item.issue === issue;
-      return matchesIssue
-        && (objectType === "ALL" || targetNode?.type === objectType)
-        && (modelId === "ALL" || itemScopeValue(item, targetNode, "model_id") === modelId)
-        && (reportId === "ALL" || itemScopeValue(item, targetNode, "report_id") === reportId);
-    }).sort((a, b) => {
-      if (sort === "confidence-low") return itemConfidence(a) - itemConfidence(b);
-      if (sort === "impact-high") return itemImpact(b) - itemImpact(a);
-      if (sort === "impact-low") return itemImpact(a) - itemImpact(b);
-      return itemConfidence(b) - itemConfidence(a);
-    });
-
-    const lowEvidenceItems = [];
-    const standardItems = [];
-    for (const item of filtered) (isLowEvidence(item, snapshot.nodes) ? lowEvidenceItems : standardItems).push(item);
-    return { all, types, models, reports, filtered, lowEvidenceItems, standardItems };
-  }, [snapshot, issue, objectType, modelId, reportId, sort]);
-  // Rows are mounted in steps as the list is scrolled; a queue of 11,000 suggestions must not build 11,000 rows at once.
-  const [shown, setShown] = useState(REVIEW_PAGE);
+  }, [shownRows, session.selectedId, session.scrollY]);
   const filterKey = `${issue}|${objectType}|${modelId}|${reportId}|${sort}|${tab}`;
-  useEffect(() => { setShown(REVIEW_PAGE); }, [filterKey]);
-  const more = useRef(null);
-  const longest = Math.max(standardItems.length, lowEvidenceItems.length);
-  useEffect(() => {
-    const sentinel = more.current;
-    if (!sentinel || shown >= longest || typeof IntersectionObserver !== "function") return undefined;
-    const observer = new IntersectionObserver((entries) => {
-      if (entries.some((entry) => entry.isIntersecting)) setShown((count) => count + REVIEW_PAGE);
-    }, { rootMargin: "600px" });
-    observer.observe(sentinel);
-    return () => observer.disconnect();
-  }, [shown, longest]);
-  const moreRows = shown < longest
-    ? <div ref={more} className="queue-more"><Button variant="ghost" size="sm" onClick={() => setShown((count) => count + REVIEW_PAGE)}>Show more ({(longest - shown).toLocaleString()} left)</Button></div>
-    : null;
-  const approvableItems = useMemo(() => filtered.filter((item) => item.issue !== "conflict" && item.issue !== "stale"), [filtered]);
-  // Row selection: a decision over the rows the reviewer ticked. Conflicts and outdated decisions are decided one at a time.
-  const [selected, setSelected] = useState(() => new Set());
-  useEffect(() => { setSelected(new Set()); }, [filterKey]);
-  const selectedItems = useMemo(() => selected.size ? approvableItems.filter((item) => selected.has(reviewItemKey(item))) : [], [selected, approvableItems]);
-  const toggleSelected = useCallback((item, on) => setSelected((current) => {
-    const next = new Set(current);
-    if (on) next.add(reviewItemKey(item)); else next.delete(reviewItemKey(item));
-    return next;
+  useEffect(() => { setOpenGroup(""); }, [filterKey]);
+
+  // Row selection. Ticked rows are decided by identifier. "Select all" ticks a scope (the filters, or one pattern)
+  // that the server resolves; rows unticked after it are sent as exceptions.
+  const [selection, setSelection] = useState({ scope: null, rows: new Map() });
+  useEffect(() => { setSelection({ scope: null, rows: new Map() }); }, [filterKey, revision]);
+  const inScope = (scope, item) => !scope.pattern || item.pattern === scope.pattern;
+  const isSelected = (item) => selection.scope ? inScope(selection.scope, item) && !selection.rows.has(reviewItemKey(item)) : selection.rows.has(reviewItemKey(item));
+  const selectedCount = selection.scope ? Math.max(0, selection.scope.count - selection.rows.size) : selection.rows.size;
+  const toggleSelected = useCallback((item, on) => setSelection((current) => {
+    const rows = new Map(current.rows);
+    const add = current.scope ? !on : on;
+    if (add) rows.set(reviewItemKey(item), item); else rows.delete(reviewItemKey(item));
+    if (current.scope && rows.size >= current.scope.count) return { scope: null, rows: new Map() };
+    return { ...current, rows };
   }), []);
-  const selectAll = (items, on) => setSelected((current) => {
-    const next = new Set(current);
-    for (const item of items) { if (on) next.add(reviewItemKey(item)); else next.delete(reviewItemKey(item)); }
-    return next;
-  });
-  const selectionOf = (items) => {
-    const count = items.reduce((total, item) => total + (selected.has(reviewItemKey(item)) ? 1 : 0), 0);
-    return count === 0 ? false : count === items.length ? true : "indeterminate";
+  const selectAll = (scope, on) => setSelection(on && scope.count ? { scope, rows: new Map() } : { scope: null, rows: new Map() });
+  const selectionOf = (scope) => {
+    if (selection.scope && (selection.scope.pattern || "") === (scope.pattern || "")) return selection.rows.size ? "indeterminate" : true;
+    if (selection.scope) return false;
+    const ticked = [...selection.rows.values()].filter((item) => inScope(scope, item)).length;
+    return ticked === 0 ? false : ticked >= scope.count ? true : "indeterminate";
   };
-  // A long queue opens as patterns (one rule, one basis, one object type), decided once each.
-  const grouping = issue === "low-evidence" ? "none" : group || (filtered.length > GROUP_ABOVE ? "pattern" : "none");
-  const groups = useMemo(() => grouping === "pattern" ? groupReviewItems(filtered, (item) => byId(snapshot.nodes, itemTarget(item))) : [], [grouping, filtered, snapshot.nodes]);
-  const [openGroup, setOpenGroup] = useState({ key: "", shown: REVIEW_PAGE });
+  const selectionTarget = () => selection.scope
+    ? { view: { ...view, ...(selection.scope.pattern ? { pattern: selection.scope.pattern } : {}) }, except: [...selection.rows.values()], count: selection.scope.count }
+    : [...selection.rows.values()];
 
   // A bulk decision over many suggestions is asked for once more, with its scope named:
   // "Approve all" and "Reject all" sit next to each other and one click decided thousands.
+  // ``target`` is ticked rows or { view, except, count }.
   const [bulkConfirm, setBulkConfirm] = useState(null);
-  const handleBulkAction = async (action, items, confirmed = false, scope = "") => {
-    if (bulkBusy || scanning || !items?.length) return;
-    if (!confirmed && items.length > BULK_CONFIRM_ABOVE) { setBulkConfirm({ action, items, scope }); return; }
+  const countOf = (target) => Array.isArray(target) ? target.length : Math.max(0, (target?.count || 0) - (target?.except?.length || 0));
+  const handleBulkAction = async (action, target, confirmed = false, scope = "") => {
+    const count = countOf(target);
+    if (bulkBusy || scanning || !count) return;
+    if (!confirmed && count > BULK_CONFIRM_ABOVE) { setBulkConfirm({ action, target, count, scope }); return; }
     setBulkConfirm(null);
     setBulkBusy(true);
     try {
-      if (onBulkReview) {
-        await onBulkReview(action, items);
-      } else {
-        let count = 0;
-        for (const item of items) {
-          try {
-            const ok = await onReview(action, item);
-            if (ok !== false) count++;
-          } catch {}
-        }
-        toast.show({
-          tone: "ok",
-          text: `${action === "approve" ? "Approved" : "Rejected"} ${count} ${count === 1 ? "suggestion" : "suggestions"}`,
-        });
-      }
-      setSelected(new Set());
+      await onBulkReview(action, target);
+      setSelection({ scope: null, rows: new Map() });
     } finally {
       setBulkBusy(false);
     }
   };
+  const confirmScope = (entry) => {
+    if (entry.scope) return `Every suggestion in “${entry.scope}”`;
+    if (Array.isArray(entry.target) || entry.target.except?.length) return "The selected suggestions";
+    if (entry.target.view.section === "low") return "Every low-evidence suggestion that matches the current filters";
+    return hasFilters ? "Every suggestion that matches the current filters" : "Every open suggestion in the project";
+  };
 
-  const candidatesReviewed = (snapshot?.semantic_candidates || []).filter(
-    (item) => ["approved", "rejected", "overridden"].includes(item.status)
-  );
-  const overridesReviewed = (snapshot?.overrides || []).filter((item) => item.status !== "stale");
-  const seenReviewed = new Set();
+  // This session's decisions first, then the decided suggestions and saved edits from the server.
+  const lastScan = reviewed.page?.scan?.last_scan || new Date().toISOString();
   const allReviewed = [];
-  for (const entry of auditTrail) {
+  const seenReviewed = new Set();
+  for (const entry of [...auditTrail, ...reviewed.items.map((item) => reviewedEntry(item, lastScan))]) {
     const key = entry.reviewId || entry.candidateId || entry.targetId;
     if (key && !seenReviewed.has(key)) {
       seenReviewed.add(key);
       allReviewed.push(entry);
     }
   }
-  for (const item of candidatesReviewed) {
-    const key = item.candidate_id || item.id;
-    if (key && !seenReviewed.has(key)) {
-      seenReviewed.add(key);
-      allReviewed.push({
-        id: `snap-${key}`,
-        reviewId: key,
-        candidateId: key,
-        targetId: itemTarget(item),
-        action: item.status,
-        actor: item.decided_by === "auto" ? "Auto" : "Reviewer",
-        auto: item.decided_by === "auto",
-        timestamp: snapshot?.scan?.last_scan || new Date().toISOString(),
-        label: suggestionLabel(item),
-        value: item.value,
-        property: item.property,
-        item,
-        confidence: itemConfidence(item),
-      });
-    }
-  }
-  for (const item of overridesReviewed) {
-    const key = `override:${item.target}:${item.property}`;
-    if (!seenReviewed.has(key)) {
-      seenReviewed.add(key);
-      allReviewed.push({
-        id: `snap-${key}`,
-        reviewId: key,
-        candidateId: key,
-        targetId: item.target,
-        action: "overridden",
-        actor: "Reviewer",
-        timestamp: snapshot?.scan?.last_scan || new Date().toISOString(),
-        label: suggestionLabel(item),
-        value: item.value,
-        property: item.property,
-        item,
-        confidence: itemConfidence(item),
-      });
-    }
-  }
+  const reviewedTotal = Math.max(facts?.facets?.reviewed ?? 0, reviewed.total, allReviewed.length);
 
-  const reviewRow = (item) => (
-    <ReviewItem
-      colors={colors}
+  // Row handlers are made once and read the current state through a ref, so a memoised row is not drawn
+  // again when the list around it changes.
+  const latest = useRef(null);
+  latest.current = { pagers: { standard, low, groupRows }, change, onSelect, onReview, setActiveEditId };
+  const handlers = useMemo(() => ({
+    toggle: (item, on) => toggleSelected(item, on),
+    startEdit: (item) => latest.current.setActiveEditId(item.id || itemTarget(item)),
+    cancelEdit: () => latest.current.setActiveEditId(null),
+    select: (item, id, nextView) => {
+      latest.current.change({ selectedId: item.id || itemTarget(item), scrollY: contentScroller().scrollTop });
+      latest.current.onSelect(id, nextView);
+    },
+    review: async (pager, action, decided, value) => {
+      const ok = await latest.current.onReview(action, decided, value, byId(latest.current.pagers[pager].nodes, itemTarget(decided)));
+      if (ok && action !== "edit") latest.current.pagers[pager].drop(reviewItemKey(decided));
+      return ok;
+    },
+  }), [toggleSelected]);
+  const reviewRow = (pager, pages) => (item) => (
+    <ReviewRow
       key={reviewItemKey(item)}
       item={item}
-      nodes={snapshot.nodes}
-      edges={snapshot.edges}
+      nodes={PAGE_NODES.get(item) || pages.nodes}
+      pager={pager}
+      handlers={handlers}
+      colors={colors}
       disabled={scanning}
-      selectable={item.issue !== "conflict" && item.issue !== "stale"}
-      selected={selected.has(reviewItemKey(item))}
-      onSelected={toggleSelected}
+      selected={isSelected(item)}
       isEditing={activeEditId === (item.id || itemTarget(item))}
-      onStartEdit={() => setActiveEditId(item.id || itemTarget(item))}
-      onCancelEdit={() => setActiveEditId(null)}
-      onSelect={(id, nextView) => {
-        change({ selectedId: item.id || itemTarget(item), scrollY: contentScroller().scrollTop });
-        onSelect(id, nextView);
-      }}
-      onReview={onReview}
     />
   );
   const percent = (value) => `${Math.round(value * 100)} %`;
+  const groups = facts?.groups || [];
   const groupList = grouping === "pattern" ? <div className="review-groups">
     <div className="review-group-columns" aria-hidden="true"><span>Pattern</span><span>Suggestions</span><span>Confidence</span><span>Decision</span></div>
     {groups.map((entry) => {
-      const open = openGroup.key === entry.key;
-      const count = entry.items.length;
+      const open = openGroup === entry.key;
+      const count = entry.count;
       const label = `${entry.title}${entry.scope ? ` · ${entry.scope}` : ""}`;
+      const patternView = { view: { ...view, pattern: entry.key }, count };
       return <section className={`review-group${open ? " is-open" : ""}`} key={entry.key} aria-label={label}>
         <div className="review-group-head">
-          <button type="button" className="review-group-toggle" aria-expanded={open} onClick={() => setOpenGroup(open ? { key: "", shown: REVIEW_PAGE } : { key: entry.key, shown: REVIEW_PAGE })}>
+          <button type="button" className="review-group-toggle" aria-expanded={open} onClick={() => setOpenGroup(open ? "" : entry.key)}>
             <ChevronRight className={open ? "is-open" : ""} aria-hidden="true" />
             <span className="review-group-title">{entry.title}</span>
             {entry.scope ? <span className="review-group-scope">{entry.scope}</span> : null}
@@ -288,45 +327,73 @@ export function ReviewQueue({ session, onSession, snapshot, loaded, loading, err
           <span className="review-group-confidence" data-ui-number="">{entry.bulk ? (entry.low === entry.high ? percent(entry.high) : `${percent(entry.low)} – ${percent(entry.high)}`) : "—"}</span>
           <span className="review-group-actions" data-ui-actions="">
             {entry.bulk ? <>
-              <Button variant="outline" size="sm" className="group-approve" disabled={bulkBusy || scanning} aria-label={`Approve ${formatCount(count)}: ${label}`} onClick={() => handleBulkAction("approve", entry.items, false, label)}><Check aria-hidden="true" />Approve</Button>
-              <Button variant="ghost" size="sm" className="group-reject" disabled={bulkBusy || scanning} aria-label={`Reject ${formatCount(count)}: ${label}`} onClick={() => handleBulkAction("reject", entry.items, false, label)}><X aria-hidden="true" />Reject</Button>
+              <Button variant="outline" size="sm" className="group-approve" disabled={bulkBusy || scanning} aria-label={`Approve ${formatCount(count)}: ${label}`} onClick={() => handleBulkAction("approve", patternView, false, label)}><Check aria-hidden="true" />Approve</Button>
+              <Button variant="ghost" size="sm" className="group-reject" disabled={bulkBusy || scanning} aria-label={`Reject ${formatCount(count)}: ${label}`} onClick={() => handleBulkAction("reject", patternView, false, label)}><X aria-hidden="true" />Reject</Button>
             </> : <small>One at a time</small>}
           </span>
         </div>
         {open ? <>
-          {entry.bulk ? <div className="review-group-select"><Checkbox className="review-select-all" checked={selectionOf(entry.items)} disabled={bulkBusy || scanning} aria-label={`Select all ${formatCount(count)}: ${label}`} onCheckedChange={(value) => selectAll(entry.items, value === true)} /><span aria-hidden="true">Select all {formatCount(count)}</span></div> : null}
-          <div className="queue-list" onKeyDown={(e) => reviewKeys(e, () => setActiveEditId(null))}>{entry.items.slice(0, openGroup.shown).map(reviewRow)}</div>
-          {count > openGroup.shown ? <div className="queue-more"><Button variant="ghost" size="sm" onClick={() => setOpenGroup((current) => ({ ...current, shown: current.shown + REVIEW_PAGE }))}>Show more ({formatCount(count - openGroup.shown)} left)</Button></div> : null}
+          {entry.bulk ? <div className="review-group-select"><Checkbox className="review-select-all" checked={selectionOf({ pattern: entry.key, count })} disabled={bulkBusy || scanning} aria-label={`Select all ${formatCount(count)}: ${label}`} onCheckedChange={(value) => selectAll({ pattern: entry.key, count }, value === true)} /><span aria-hidden="true">Select all {formatCount(count)}</span></div> : null}
+          {groupRows.loading ? <ReviewSkeleton /> : <div className="queue-list" onKeyDown={(e) => reviewKeys(e, () => setActiveEditId(null))}>{openGroupRows.map(reviewRow("groupRows", groupRows))}</div>}
+          <MoreRows pages={groupRows} shown={openGroupRows.length} />
         </> : null}
       </section>;
     })}
   </div> : null;
-  const scopes = [...scopeChoices(overview, "model"), ...scopeChoices(overview, "report"), ...snapshot.nodes];
+  const scopes = [...scopeChoices(overview, "model"), ...scopeChoices(overview, "report")];
   const scopeName = (id, kind, index) => scopes.find((node) => node.id === id)?.name || `${kind} ${index + 1}`;
   const hasFilters = issue !== "ALL" || objectType !== "ALL" || modelId !== "ALL" || reportId !== "ALL";
+  const types = facts?.facets?.types || [];
+  const models = facts?.facets?.models || [];
+  const reports = facts?.facets?.reports || [];
+  const approvable = facts?.approvable ?? 0;
+  const allView = { view, count: approvable };
+  const lowView = { view: { ...view, section: "low" }, count: low.approvable };
+  const loading = summary.loading;
+  const failed = summary.error || standard.error || low.error || groupRows.error || reviewed.error;
+  const retry = () => { summary.retry(); standard.retry(); low.retry(); groupRows.retry(); reviewed.retry(); };
+  const lowGroup = <div className="low-evidence-group" role="region" aria-label="Low evidence suggestions">
+    <div className="low-evidence-header">
+      <div className="low-evidence-title">
+        <ShieldAlert className="size-4" aria-hidden="true" />
+        <div>
+          <h3>Low-evidence suggestions ({formatCount(facts?.low_total ?? 0)})</h3>
+          <p>Name-only tautologies and weak proposals with no supporting description or formula.</p>
+        </div>
+      </div>
+      <div className="low-evidence-actions" data-ui-actions="">
+        <Button variant="outline" size="sm" className="bulk-approve-low" disabled={bulkBusy || scanning || !low.approvable} onClick={() => handleBulkAction("approve", lowView)}><Check className="size-4" aria-hidden="true" />Approve all low-evidence ({formatCount(low.approvable)})</Button>
+        <Button variant="ghost" size="sm" className="bulk-reject-low" disabled={bulkBusy || scanning || !low.approvable} onClick={() => handleBulkAction("reject", lowView)}><X className="size-4" aria-hidden="true" />Reject all low-evidence ({formatCount(low.approvable)})</Button>
+      </div>
+    </div>
+    <div className="queue-list" onKeyDown={(e) => reviewKeys(e, () => setActiveEditId(null))}>
+      {lowRows.map(reviewRow("low", low))}
+    </div>
+    <MoreRows pages={low} shown={lowRows.length} />
+  </div>;
   return <div ref={panel}>
     <div className="queue-header-row">
       <PageHeading quiet title="Review queue" />
       <SegmentedControl
         options={[
-          { value: "queue", label: `To review (${formatCount(filtered.length)})` },
-          { value: "reviewed", label: `Reviewed (${formatCount(allReviewed.length)})` },
+          { value: "queue", label: `To review (${formatCount(matching)})` },
+          { value: "reviewed", label: `Reviewed (${formatCount(reviewedTotal)})` },
         ]}
         value={tab}
         onValueChange={(val) => change({ tab: val })}
         aria-label="Review views"
       />
     </div>
-    {error && !loaded ? <Card className="panel" role="alert"><EmptyState icon={<TriangleAlert />} tone="bad" title="Review queue unavailable" detail={readableText(error)} action={<Button variant="outline" onClick={onRetry}><RefreshCw />Retry review queue</Button>} /></Card> : <>
-    {error ? <Card className="panel" role="alert"><EmptyState icon={<TriangleAlert />} tone="bad" title="Review refresh failed" detail={`Showing last loaded reviews. ${readableText(error)}`} action={<Button variant="outline" onClick={onRetry}><RefreshCw />Retry review queue</Button>} /></Card> : null}
+    {failed && !facts ? <Card className="panel" role="alert"><EmptyState icon={<TriangleAlert />} tone="bad" title="Review queue unavailable" detail={readableText(failed)} action={<Button variant="outline" onClick={retry}><RefreshCw />Retry review queue</Button>} /></Card> : <>
+    {failed ? <Card className="panel" role="alert"><EmptyState icon={<TriangleAlert />} tone="bad" title="Review refresh failed" detail={`Showing last loaded reviews. ${readableText(failed)}`} action={<Button variant="outline" onClick={retry}><RefreshCw />Retry review queue</Button>} /></Card> : null}
     {tab === "reviewed" ? (
       <>
         <p className="review-purpose">
-          <span className="queue-count"><strong data-ui-number="">{allReviewed.length}</strong> reviewed</span>
+          <span className="queue-count"><strong data-ui-number="">{formatCount(reviewedTotal)}</strong> reviewed</span>
           <span className="review-purpose-copy">Audit trail of reviewed decisions. Use Reopen to return a suggestion to the queue.</span>
         </p>
-        <Card className="panel queue-panel">
-          {allReviewed.length ? (
+        <Card className="panel queue-panel" aria-busy={reviewed.loading}>
+          {reviewed.loading && !allReviewed.length ? <ReviewSkeleton /> : allReviewed.length ? (
             <>
               <div className="review-columns" aria-hidden="true">
                 <span>Object &amp; suggestion</span>
@@ -335,19 +402,19 @@ export function ReviewQueue({ session, onSession, snapshot, loaded, loading, err
                 <span>Action</span>
               </div>
               <div className="queue-list">
-                {allReviewed.slice(0, shown).map((entry) => (
+                {allReviewed.map((entry) => (
                   <ReviewedItem
                     colors={colors}
                     key={entry.id || entry.reviewId}
                     entry={entry}
-                    nodes={snapshot.nodes}
+                    nodes={reviewed.nodes}
                     disabled={scanning}
                     onSelect={onSelect}
                     onUndo={onUndoReview}
                   />
                 ))}
               </div>
-              {allReviewed.length > shown ? <div className="queue-more"><Button variant="ghost" size="sm" onClick={() => setShown((count) => count + REVIEW_PAGE)}>Show more ({formatCount(allReviewed.length - shown)} left)</Button></div> : null}
+              <MoreRows pages={reviewed} />
             </>
           ) : (
             <EmptyState
@@ -361,102 +428,59 @@ export function ReviewQueue({ session, onSession, snapshot, loaded, loading, err
       </>
     ) : (
       <>
-        <p className="review-purpose"><span className="queue-count"><strong data-ui-number="">{loading ? "…" : formatCount(filtered.length)}</strong>{loading ? "Loading…" : " to review"}</span><span className="review-purpose-copy" /><span className="review-keys" aria-hidden="true"><kbd>J</kbd><kbd>K</kbd> move <kbd>A</kbd> approve <kbd>R</kbd> reject <kbd>X</kbd> select</span></p>
+        <p className="review-purpose"><span className="queue-count"><strong data-ui-number="">{loading ? "…" : formatCount(matching)}</strong>{loading ? "Loading…" : " to review"}</span><span className="review-purpose-copy" /><span className="review-keys" aria-hidden="true"><kbd>J</kbd><kbd>K</kbd> move <kbd>A</kbd> approve <kbd>R</kbd> reject <kbd>X</kbd> select</span></p>
         <div className="queue-toolbar" data-ui-actions="">
           <Label className="select-field"><span>Issue</span><NativeSelect aria-label="Issue" value={issue} onChange={(event) => change({ issue: event.target.value })}><option value="ALL">All issues</option><option value="candidate">Suggestions</option><option value="low-evidence">Low evidence</option><option value="conflict">Conflicts</option><option value="stale">Outdated decisions</option></NativeSelect></Label>
           <Label className="select-field"><span>Object</span><NativeSelect aria-label="Object" value={objectType} onChange={(event) => change({ objectType: event.target.value })}><option value="ALL">All types</option>{types.map((type) => <option key={type} value={type}>{typeLabel(type)}</option>)}</NativeSelect></Label>
           {models.length > 1 ? <Label className="select-field"><span>Model</span><NativeSelect aria-label="Model" value={modelId} onChange={(event) => change({ modelId: event.target.value, reportId: "ALL" })}><option value="ALL">All models</option>{models.map((value, index) => <option key={value} value={value}>{scopeName(value, "Model", index)}</option>)}</NativeSelect></Label> : null}
           {reports.length > 1 ? <Label className="select-field"><span>Report</span><NativeSelect aria-label="Report" value={reportId} onChange={(event) => change({ reportId: event.target.value, modelId: "ALL" })}><option value="ALL">All reports</option>{reports.map((value, index) => <option key={value} value={value}>{scopeName(value, "Report", index)}</option>)}</NativeSelect></Label> : null}
           {hasFilters ? <Button variant="ghost" size="sm" onClick={() => change({ issue: "ALL", objectType: "ALL", modelId: "ALL", reportId: "ALL" })}><X />Clear filters</Button> : null}
-          {issue !== "low-evidence" && filtered.length > 1 ? <Label className="select-field select-group"><span>Group</span><NativeSelect aria-label="Group" value={grouping} onChange={(event) => change({ group: event.target.value })}><option value="pattern">By pattern</option><option value="none">No grouping</option></NativeSelect></Label> : null}
+          {issue !== "low-evidence" && matching > 1 ? <Label className="select-field select-group"><span>Group</span><NativeSelect aria-label="Group" value={grouping} onChange={(event) => change({ group: event.target.value })}><option value="pattern">By pattern</option><option value="none">No grouping</option></NativeSelect></Label> : null}
           <Label className="select-field select-sort"><span>Sort</span><NativeSelect aria-label="Sort" value={sort} onChange={(event) => change({ sort: event.target.value })}><option value="confidence-high">Most certain first</option><option value="confidence-low">Least certain first</option><option value="impact-high">Highest impact first</option><option value="impact-low">Lowest impact first</option></NativeSelect></Label>
-          {selectedItems.length > 0 ? (
+          {selectedCount > 0 ? (
             <div className="queue-bulk-actions is-selection" data-ui-actions="" role="group" aria-label="Selected suggestions">
-              <Button variant="outline" size="sm" className="selected-approve" disabled={bulkBusy || scanning} onClick={() => handleBulkAction("approve", selectedItems)}>
-                <Check className="size-4" aria-hidden="true" />Approve {formatCount(selectedItems.length)} selected
+              <Button variant="outline" size="sm" className="selected-approve" disabled={bulkBusy || scanning} onClick={() => handleBulkAction("approve", selectionTarget())}>
+                <Check className="size-4" aria-hidden="true" />Approve {formatCount(selectedCount)} selected
               </Button>
-              <Button variant="ghost" size="sm" className="selected-reject" disabled={bulkBusy || scanning} onClick={() => handleBulkAction("reject", selectedItems)}>
-                <X className="size-4" aria-hidden="true" />Reject {formatCount(selectedItems.length)} selected
+              <Button variant="ghost" size="sm" className="selected-reject" disabled={bulkBusy || scanning} onClick={() => handleBulkAction("reject", selectionTarget())}>
+                <X className="size-4" aria-hidden="true" />Reject {formatCount(selectedCount)} selected
               </Button>
-              <Button variant="ghost" size="icon-sm" className="selected-clear" aria-label="Clear selection" title="Clear selection" onClick={() => setSelected(new Set())}><X aria-hidden="true" /></Button>
+              <Button variant="ghost" size="icon-sm" className="selected-clear" aria-label="Clear selection" title="Clear selection" onClick={() => setSelection({ scope: null, rows: new Map() })}><X aria-hidden="true" /></Button>
             </div>
           ) : null}
-          {selectedItems.length === 0 && approvableItems.length > 0 && grouping !== "pattern" ? (
+          {selectedCount === 0 && approvable > 0 && grouping !== "pattern" ? (
             <div className="queue-bulk-actions" data-ui-actions="">
-              <Button variant="outline" size="sm" className="bulk-approve" disabled={bulkBusy || scanning} onClick={() => handleBulkAction("approve", approvableItems)}>
+              <Button variant="outline" size="sm" className="bulk-approve" disabled={bulkBusy || scanning} onClick={() => handleBulkAction("approve", allView)}>
                 <Check className="size-4" aria-hidden="true" />
-                {hasFilters ? `Approve filtered (${formatCount(approvableItems.length)})` : `Approve all (${formatCount(approvableItems.length)})`}
+                {hasFilters ? `Approve filtered (${formatCount(approvable)})` : `Approve all (${formatCount(approvable)})`}
               </Button>
-              <Button variant="ghost" size="sm" className="bulk-reject" disabled={bulkBusy || scanning} onClick={() => handleBulkAction("reject", approvableItems)}>
+              <Button variant="ghost" size="sm" className="bulk-reject" disabled={bulkBusy || scanning} onClick={() => handleBulkAction("reject", allView)}>
                 <X className="size-4" aria-hidden="true" />
-                {hasFilters ? `Reject filtered (${formatCount(approvableItems.length)})` : `Reject all (${formatCount(approvableItems.length)})`}
+                {hasFilters ? `Reject filtered (${formatCount(approvable)})` : `Reject all (${formatCount(approvable)})`}
               </Button>
             </div>
           ) : null}
         </div>
         <AlertDialog open={Boolean(bulkConfirm)} onOpenChange={(open) => { if (!open) setBulkConfirm(null); }}>
           {bulkConfirm ? <AlertDialogContent
-            title={`${bulkConfirm.action === "approve" ? "Approve" : "Reject"} ${formatCount(bulkConfirm.items.length)} suggestions?`}
-            description={`${bulkConfirm.scope ? `Every suggestion in “${bulkConfirm.scope}”` : bulkConfirm.items.length === approvableItems.length ? (hasFilters ? "Every suggestion that matches the current filters" : "Every open suggestion in the project") : "The selected suggestions"} will be ${bulkConfirm.action === "approve" ? "approved" : "rejected"}. Each decision can be changed later under Reviewed.`}
-            footer={<><AlertDialogCancel asChild><Button variant="outline">Cancel</Button></AlertDialogCancel><AlertDialogAction asChild><Button variant={bulkConfirm.action === "approve" ? "default" : "destructive"} onClick={() => handleBulkAction(bulkConfirm.action, bulkConfirm.items, true)}>{bulkConfirm.action === "approve" ? "Approve" : "Reject"} {formatCount(bulkConfirm.items.length)}</Button></AlertDialogAction></>}
+            title={`${bulkConfirm.action === "approve" ? "Approve" : "Reject"} ${formatCount(bulkConfirm.count)} suggestions?`}
+            description={`${confirmScope(bulkConfirm)} will be ${bulkConfirm.action === "approve" ? "approved" : "rejected"}. Each decision can be changed later under Reviewed.`}
+            footer={<><AlertDialogCancel asChild><Button variant="outline">Cancel</Button></AlertDialogCancel><AlertDialogAction asChild><Button variant={bulkConfirm.action === "approve" ? "default" : "destructive"} onClick={() => handleBulkAction(bulkConfirm.action, bulkConfirm.target, true)}>{bulkConfirm.action === "approve" ? "Approve" : "Reject"} {formatCount(bulkConfirm.count)}</Button></AlertDialogAction></>}
           /> : null}
         </AlertDialog>
         <Card className="panel queue-panel" aria-busy={loading}>
-          {loading ? <ReviewSkeleton /> : filtered.length && groupList ? groupList : filtered.length ? <>
+          {loading || (lists && standard.loading && low.loading) ? <ReviewSkeleton /> : matching && groupList ? groupList : matching ? <>
             <div className="review-columns is-pending has-select">
-              <span>{approvableItems.length ? <Checkbox className="review-select-all" checked={selectionOf(approvableItems)} disabled={bulkBusy || scanning} aria-label={`Select all ${formatCount(approvableItems.length)} suggestions`} onCheckedChange={(value) => selectAll(approvableItems, value === true)} /> : null}<span aria-hidden="true">Object</span></span>
+              <span>{approvable ? <Checkbox className="review-select-all" checked={selectionOf({ count: approvable })} disabled={bulkBusy || scanning} aria-label={`Select all ${formatCount(approvable)} suggestions`} onCheckedChange={(value) => selectAll({ count: approvable }, value === true)} /> : null}<span aria-hidden="true">Object</span></span>
               <span aria-hidden="true">Suggestion</span><span aria-hidden="true">Based on</span><span aria-hidden="true">Confidence</span><span aria-hidden="true">Decision</span>
             </div>
-            {issue === "low-evidence" ? (
-              <div className="low-evidence-group" role="region" aria-label="Low evidence suggestions">
-                <div className="low-evidence-header">
-                  <div className="low-evidence-title">
-                    <ShieldAlert className="size-4" aria-hidden="true" />
-                    <div>
-                      <h3>Low-evidence suggestions ({lowEvidenceItems.length})</h3>
-                      <p>Name-only tautologies and weak proposals with no supporting description or formula.</p>
-                    </div>
-                  </div>
-                  <div className="low-evidence-actions" data-ui-actions="">
-                    <Button variant="outline" size="sm" className="bulk-approve-low" disabled={bulkBusy || scanning} onClick={() => handleBulkAction("approve", lowEvidenceItems)}><Check className="size-4" aria-hidden="true" />Approve all low-evidence ({lowEvidenceItems.length})</Button>
-                    <Button variant="ghost" size="sm" className="bulk-reject-low" disabled={bulkBusy || scanning} onClick={() => handleBulkAction("reject", lowEvidenceItems)}><X className="size-4" aria-hidden="true" />Reject all low-evidence ({lowEvidenceItems.length})</Button>
-                  </div>
-                </div>
-                <div className="queue-list" onKeyDown={(e) => reviewKeys(e, () => setActiveEditId(null))}>
-                  {lowEvidenceItems.slice(0, shown).map(reviewRow)}
-                </div>
+            {issue !== "low-evidence" && standard.items.length ? <>
+              <div className="queue-list" onKeyDown={(e) => reviewKeys(e, () => setActiveEditId(null))}>
+                {standardRows.map(reviewRow("standard", standard))}
               </div>
-            ) : (
-              <>
-                {standardItems.length ? (
-                  <div className="queue-list" onKeyDown={(e) => reviewKeys(e, () => setActiveEditId(null))}>
-                    {standardItems.slice(0, shown).map(reviewRow)}
-                  </div>
-                ) : null}
-
-                {lowEvidenceItems.length ? (
-                  <div className="low-evidence-group" role="region" aria-label="Low evidence suggestions">
-                    <div className="low-evidence-header">
-                      <div className="low-evidence-title">
-                        <ShieldAlert className="size-4" aria-hidden="true" />
-                        <div>
-                          <h3>Low-evidence suggestions ({lowEvidenceItems.length})</h3>
-                          <p>Name-only tautologies and weak proposals with no supporting description or formula.</p>
-                        </div>
-                      </div>
-                      <div className="low-evidence-actions" data-ui-actions="">
-                        <Button variant="outline" size="sm" className="bulk-approve-low" disabled={bulkBusy || scanning} onClick={() => handleBulkAction("approve", lowEvidenceItems)}><Check className="size-4" aria-hidden="true" />Approve all low-evidence ({lowEvidenceItems.length})</Button>
-                        <Button variant="ghost" size="sm" className="bulk-reject-low" disabled={bulkBusy || scanning} onClick={() => handleBulkAction("reject", lowEvidenceItems)}><X className="size-4" aria-hidden="true" />Reject all low-evidence ({lowEvidenceItems.length})</Button>
-                      </div>
-                    </div>
-                    <div className="queue-list" onKeyDown={(e) => reviewKeys(e, () => setActiveEditId(null))}>
-                      {lowEvidenceItems.slice(0, shown).map(reviewRow)}
-                    </div>
-                  </div>
-                ) : null}
-              </>
-            )}
-            {moreRows}
+              <MoreRows pages={standard} shown={standardRows.length} />
+            </> : null}
+            {facts.low_total ? lowGroup : null}
           </> : <EmptyState icon={hasFilters ? <ShieldCheck /> : <CircleCheck />} tone={hasFilters || !overview?.counts?.nodes ? undefined : "ok"} title={hasFilters ? "No matching reviews" : overview?.counts?.nodes ? "Queue is clear" : "Nothing to review yet"} detail={hasFilters ? "Choose different filters to see the remaining reviews." : overview?.counts?.nodes ? "All suggestions have been reviewed." : "Suggestions appear after the first scan."} action={hasFilters ? <Button variant="outline" onClick={() => change({ issue: "ALL", objectType: "ALL", modelId: "ALL", reportId: "ALL" })}>Clear filters</Button> : null} />}
         </Card>
       </>
@@ -527,10 +551,28 @@ function ReviewedItem({ entry, nodes, colors, onSelect, onUndo, disabled = false
 const SUGGESTION_ICONS = { ROLE: Table2, BUSINESS_CONCEPT: Lightbulb, BEHAVIOR: Activity, ALIAS: Tag, SELECTOR: Filter };
 const REVIEW_SOURCES = { object_name: [Type, "From the name"], name: [Type, "From the name"], description: [FileText, "From the description"], dax_ast: [Calculator, "From the formula"], dax_analysis: [Calculator, "From the formula"], rule: [Workflow, "From a rule"] };
 
+const ReviewRow = React.memo(function ReviewRow({ item, nodes, pager, handlers, colors, disabled, selected, isEditing }) {
+  return (
+    <ReviewItem
+      colors={colors}
+      item={item}
+      nodes={nodes}
+      disabled={disabled}
+      selectable={item.issue === "candidate"}
+      selected={selected}
+      onSelected={handlers.toggle}
+      isEditing={isEditing}
+      onStartEdit={() => handlers.startEdit(item)}
+      onCancelEdit={handlers.cancelEdit}
+      onSelect={(id, nextView) => handlers.select(item, id, nextView)}
+      onReview={(action, decided, value) => handlers.review(pager, action, decided, value)}
+    />
+  );
+});
+
 function ReviewItem({
   item,
   nodes,
-  edges = [],
   onSelect,
   onReview,
   colors,
@@ -617,7 +659,7 @@ function ReviewItem({
         >
           <ChevronRight className={`size-3.5 transition-transform ${expanded ? "rotate-90" : ""}`} aria-hidden="true" />
         </Button>
-        <ObjectContextPreview node={targetNode} nodes={nodes} edges={edges} colors={colors} onSelect={onSelect}>
+        <ObjectContextPreview node={targetNode} nodes={nodes} links={item.links} colors={colors} onSelect={onSelect}>
           <Button
             variant="ghost"
             className="review-target"
