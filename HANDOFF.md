@@ -79,14 +79,14 @@ Failures listed here were present before this work started and are unchanged, un
 |---|---|---|
 | Frontend unit | `cd frontend && npm test` | 334 pass, 0 fail. |
 | Backend | `python -m unittest discover -s tests` | 892 tests, all pass (the 40 earlier failures were fixed on main before this work resumed). |
-| Browser, core specs | chat, desktopAudit, graph, graphExplorer, graphSession, modelSummary, overhaul, palette, product, productRefinement, sharedFixes, a11yViews, reviewGroups, reviewLayout, routes | 42 of 83 fail in one combined run. See the note on order below. |
+| Browser, core specs | chat, desktopAudit, graph, graphExplorer, graphSession, modelSummary, overhaul, palette, product, productRefinement, sharedFixes, a11yViews, reviewGroups, reviewLayout, routes | 42 of 83 failed in one combined run before the restore fix below; the old code failed the same tests apart from the new auto-accept one. |
 | Browser, Merge | devcenter-row, -compare, -a11y, -shell, -plan | The same 6 failures in compare and plan before and after the Clear filters change. Other `devcenter-*` specs were not re-run. |
 | Browser, new specs | a11yViews, reviewGroups, reviewLayout, routes, reviewSelection, scanBackground | All pass when run together without the older specs. |
 
-Order matters in the core run: two `overhaul.spec.js` tests swap in another project and restore the
-fixture in a `finally`, but they time out at one minute, so the restore can be skipped. Specs after them
-(`routes.spec.js`, the auto-accept test in `reviewSelection.spec.js`) then see the wrong project and fail,
-though each passes on its own. Fixing those two time-outs, or restoring the fixture in an `afterEach`, fixes them.
+Order mattered in the core run: three `overhaul.spec.js` tests swap in another project and restore the
+fixture in a `finally`, which a time-out can skip, so later specs (`routes.spec.js`, the auto-accept test)
+failed on the wrong project. An `afterEach` now restores it. Checked: overhaul, then routes and the new
+review and scan specs, gives 30 passed and only overhaul's own 10 pre-existing failures.
 
 The pre-existing failures have not been triaged. That is a task of its own: many look like tests that
 were not updated after earlier redesigns (for example a tab renamed to "Lineage flow").
