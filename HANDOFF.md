@@ -17,6 +17,7 @@ On branch `claude/vibrant-franklin-h8aafq` (the review branch merged in, plus th
 | Scan | Background job: `POST /api/scan {"background": true}`, status in `GET /api/scan/status` (`last` holds how it ended), `POST /api/scan/cancel`. The request lock is held only while the graph is published. Per-source state in `GET /api/config/sources` (`scan`), shown in Settings. |
 | Gates | `tools/large_project.py` writes the 13,731-object project; `tests/test_scale_budgets_large.py` holds its first requests to budgets. The overview lists at most 50 validation issues and counts the rest (`validation_issue_count`). |
 | Merge models | One filter line in Compare: the chip row is gone, "Clear filters" sits in the toolbar. |
+| Code structure | The Review queue and the shared view helpers moved out of `App.jsx` into `frontend/src/views/`; no behaviour change. |
 
 Decisions a reader may question:
 
@@ -65,7 +66,7 @@ Ordered by value to a user of a large project. Sizes are rough: S = hours, M = a
 
 | Task | Size | Notes |
 |---|---|---|
-| Split `frontend/src/App.jsx` | L | About 2,700 lines: Overview, Search, Inspector, ReviewQueue and Settings in one file. Split by view; no behaviour change. Six unit tests read `App.jsx` as text (`test/navigation.test.js`, `ux-states`, `issue45`, `issue46`, `issue48…`, `issue49…`) and must read the new files. |
+| Split `frontend/src/App.jsx`, the rest | L | Started: the Review queue is `frontend/src/views/ReviewQueue.jsx` (loaded on demand) and the helpers more than one view uses are `views/shared.jsx`; `App.jsx` went from 2,600 to 1,850 lines. Still inside: Overview, Search, Inspector and Settings. Unit tests read `App.jsx` as text for those views (`test/ux-states.test.js`, `navigation`, `issue45`, `issue46`, `issue48…`, `issue49…`) and must read the new files when they move. |
 | CSS ownership | M | `frontend/src/app.css` is one file with appended blocks; move each view's rules beside its component. |
 | One list behaviour | M | Search results, the object tree, the review queue and relationship lists each have their own keyboard handling and row markup. |
 | Screenshot comparison | M | None yet. |
@@ -76,11 +77,16 @@ Failures listed here were present before this work started and are unchanged, un
 
 | Suite | Command | State |
 |---|---|---|
-| Frontend unit | `cd frontend && npm test` | 330 pass, 0 fail. |
-| Backend | `python -m unittest discover -s tests` | 40 failures and 1 error before this work. Last full run: 41 failures; the extra one was the Inspector contract test, since fixed. Not re-run in full after that fix or after the later commits. |
-| Browser, core specs | chat, desktopAudit, graph, graphExplorer, graphSession, modelSummary, overhaul, palette, product, productRefinement, sharedFixes | 39 of 56 fail, same as before. Not re-run after the Contents card and Merge commits. |
-| Browser, Merge | devcenter-row, -compare, -a11y, -shell | 48 of 97 fail, all in the baseline (51 before; three now pass). The other `devcenter-*` specs (agent, apply, impact, plan, rules, harness, parts) were not re-run after the Merge changes. |
-| Browser, new specs | a11yViews, reviewGroups, reviewLayout, routes | All pass. |
+| Frontend unit | `cd frontend && npm test` | 334 pass, 0 fail. |
+| Backend | `python -m unittest discover -s tests` | 892 tests, all pass (the 40 earlier failures were fixed on main before this work resumed). |
+| Browser, core specs | chat, desktopAudit, graph, graphExplorer, graphSession, modelSummary, overhaul, palette, product, productRefinement, sharedFixes, a11yViews, reviewGroups, reviewLayout, routes | 42 of 83 fail in one combined run. See the note on order below. |
+| Browser, Merge | devcenter-row, -compare, -a11y, -shell, -plan | The same 6 failures in compare and plan before and after the Clear filters change. Other `devcenter-*` specs were not re-run. |
+| Browser, new specs | a11yViews, reviewGroups, reviewLayout, routes, reviewSelection, scanBackground | All pass when run together without the older specs. |
+
+Order matters in the core run: two `overhaul.spec.js` tests swap in another project and restore the
+fixture in a `finally`, but they time out at one minute, so the restore can be skipped. Specs after them
+(`routes.spec.js`, the auto-accept test in `reviewSelection.spec.js`) then see the wrong project and fail,
+though each passes on its own. Fixing those two time-outs, or restoring the fixture in an `afterEach`, fixes them.
 
 The pre-existing failures have not been triaged. That is a task of its own: many look like tests that
 were not updated after earlier redesigns (for example a tab renamed to "Lineage flow").
