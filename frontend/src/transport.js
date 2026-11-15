@@ -45,11 +45,21 @@ export function createBrainTransport({ baseUrl = API_ROOT, fetcher = globalThis.
         body: JSON.stringify({ action, ...payload }),
       });
     },
+    // One request, one write on the server. The answer is a summary with an undo token;
+    // the page reloads its slim review view instead of receiving the full snapshot.
     async reviewBulk(action, items) {
       return request("/review", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action, items }),
+        body: JSON.stringify({ action, items, reply: "summary" }),
+      });
+    },
+    /** Puts back exactly the statuses that the bulk decision with this token replaced. */
+    async reviewBulkUndo(token) {
+      return request("/review", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "undo", token, reply: "summary" }),
       });
     },
     getOverview() {

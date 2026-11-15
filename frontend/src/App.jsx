@@ -5,7 +5,7 @@ import PendingChanges from "./components/PendingChanges";
 import { hasComparableSources } from "./commonality";
 import React, { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { groupReviewItems, GROUP_ABOVE } from "./reviewGroups.js";
-import { ArrowLeft, ArrowRight, ArrowUpRight, Activity, Boxes, Calculator, Check, ChartColumn, ChevronDown, ChevronRight, CircleCheck, Clock, Cloud, Flame, Inbox, PanelLeft, ScanSearch, Copy, Bot, Database, FileText, Filter, FolderOpen, Lightbulb, Link2, Moon, Plus, RefreshCw, RotateCcw, ScanLine, ShieldAlert, ShieldCheck, Sun, Table2, Tag, TriangleAlert, Type, Waypoints, Workflow, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, ArrowUpRight, Activity, Boxes, Calculator, Check, ChartColumn, ChevronDown, ChevronRight, CircleCheck, Clock, Cloud, Flame, Inbox, PanelLeft, ScanSearch, Copy, Bot, Database, FileText, Filter, FolderOpen, Lightbulb, Link2, Moon, Plus, RefreshCw, RotateCcw, ScanLine, ShieldAlert, ShieldCheck, Sun, Table2, Tag, TriangleAlert, Type, Waypoints, Workflow, X, Zap } from "lucide-react";
 import { ToastProvider, useToast } from "./components/ui/toast";
 import { SegmentedControl } from "./components/ui/segmented-control";
 import { Tooltip } from "./components/ui/tooltip";
@@ -42,10 +42,12 @@ const AISettings = lazy(() => import("./components/AISettings"));
 // It draws with the graph library, which the first screen does not need.
 const ImpactExplorer = lazy(() => import("./components/ImpactExplorer"));
 const ObjectTree = lazy(() => import("./components/ObjectTree"));
+const ReviewSettings = lazy(() => import("./components/ReviewSettings"));
 // Merge models is about a fifth of the code and most sessions never open it.
 const DevCenter = lazy(() => import("./devcenter/screens/DevCenter.jsx"));
 import { shared as devCenterShared } from "./devcenter/sharedStore.js";
 import { Switch } from "./components/ui/switch";
+import { Checkbox } from "./components/ui/checkbox";
 import { setSlashSearchEnabled, slashGoesToSearch, slashSearchEnabled } from "./devcenter/preferences.js";
 import { t as devCopy } from "./devcenter/copy.js";
 import { artifactColor, artifactStyle, normalizeColors, pluralType, typeLabel } from "./graphPresentation";
@@ -652,7 +654,11 @@ function AppInner({ transport = brainTransport }) {
     async (auditEntry) => {
       if (auditEntry.isBulk) {
         try {
-          await transport.reviewBulk("reopen", auditEntry.itemIds || []);
+          // The token restores what each suggestion was before; without one (after a restart) they reopen.
+          if (auditEntry.undoToken && typeof transport.reviewBulkUndo === "function") {
+            try { await transport.reviewBulkUndo(auditEntry.undoToken); }
+            catch { await transport.reviewBulk("reopen", auditEntry.itemIds || []); }
+          } else await transport.reviewBulk("reopen", auditEntry.itemIds || []);
           setAuditTrail((current) => current.filter((entry) => entry.id !== auditEntry.id));
           toast.show({ tone: "ok", text: "Bulk decision undone" });
           await Promise.allSettled([loadSnapshot(), load()]);
@@ -731,6 +737,7 @@ function AppInner({ transport = brainTransport }) {
           action,
           items,
           itemIds: itemPayloads,
+          undoToken: result?.result?.undo_token || "",
           count,
           actor: "You",
           timestamp: new Date().toISOString(),
@@ -1000,11 +1007,12 @@ function AppInner({ transport = brainTransport }) {
             {view === "review" ? <div className="page page-wide" data-ui-stack=""><ReviewQueue colors={graphColors} scanning={scanning} session={reviewSession} onSession={setReviewSession} snapshot={snapshot} loaded={snapshotLoaded} loading={!snapshotLoaded && (snapshotLoading || !snapshotError)} error={snapshotError} onRetry={() => loadSnapshot().catch(() => {})} overview={overview} onSelect={selectNode} onReview={review} onBulkReview={bulkReview} auditTrail={auditTrail} onUndoReview={handleUndoReview} /></div> : null}
             {view === "devcenter" ? <DevCenter onOpenProject={closeDesktopProject} /> : null}
             {view === "config" ? <div className="page page-narrow" data-ui-stack=""><PageHeading quiet title="Settings" />{configError && !config ? <Card className="panel"><EmptyState icon={<TriangleAlert />} tone="bad" title="Project settings unavailable" detail="Retry to load your saved sources and appearance." action={<Button variant="outline" onClick={load}>Retry settings</Button>} /></Card> : <Tabs value={settingsTab} onValueChange={setSettingsTab} className="settings-tabs">
-              <TabsList aria-label="Settings sections"><TabsTrigger value="project">Project</TabsTrigger><TabsTrigger value="colors">Graph colors</TabsTrigger><TabsTrigger value="summary">Model summary / agent context</TabsTrigger><TabsTrigger value="documentation">Documentation export</TabsTrigger><TabsTrigger value="ai">AI provider</TabsTrigger><TabsTrigger value="keyboard">Keyboard</TabsTrigger></TabsList>
+              <TabsList aria-label="Settings sections"><TabsTrigger value="project">Project</TabsTrigger><TabsTrigger value="review">Review</TabsTrigger><TabsTrigger value="colors">Graph colors</TabsTrigger><TabsTrigger value="summary">Model summary / agent context</TabsTrigger><TabsTrigger value="documentation">Documentation export</TabsTrigger><TabsTrigger value="ai">AI provider</TabsTrigger><TabsTrigger value="keyboard">Keyboard</TabsTrigger></TabsList>
               <TabsContent value="ai"><Suspense fallback={<ViewLoading />}><AISettings transport={transport} /></Suspense></TabsContent>
               <TabsContent value="colors"><Suspense fallback={<ViewLoading />}><GraphColors config={config} transport={transport} overview={overview} onSaved={setConfig} /></Suspense></TabsContent>
               <TabsContent value="documentation"><Suspense fallback={<ViewLoading />}><DocumentationExport overview={overview} transport={transport} scanning={scanning} /></Suspense></TabsContent>
               <TabsContent value="summary"><Suspense fallback={<ViewLoading />}><ModelSummary overview={overview} transport={transport} scanning={scanning} /></Suspense></TabsContent>
+              <TabsContent value="review"><Suspense fallback={<ViewLoading />}><ReviewSettings transport={transport} config={config} onSaved={setConfig} scanning={scanning} onChanged={() => Promise.allSettled([load(), snapshotLoaded ? loadSnapshot() : null])} /></Suspense></TabsContent>
               <TabsContent value="keyboard"><KeyboardSettings /></TabsContent>
               <TabsContent value="project">{activeProject ? <DesktopProjectView api={desktopApi} project={activeProject} overview={overview} config={config} transport={transport} scanning={scanning} onScan={applyScan} onChange={closeDesktopProject} onRefresh={load} onSaved={setConfig} /> : <ConfigView transport={transport} config={config} onSaved={setConfig} onScan={applyScan} scanning={scanning} />}</TabsContent></Tabs>}</div> : null}
             </Suspense>
@@ -1855,7 +1863,7 @@ function itemScopeValue(item, node, key) {
   return item?.[key] ?? item?.properties?.[key] ?? node?.[key] ?? node?.properties?.[key] ?? "";
 }
 
-// Keyboard triage (visual contract §9): J/K or ↓/↑ move between items, A approves, R rejects the focused item.
+// Keyboard triage (visual contract §9): J/K or ↓/↑ move between items, A approves, R rejects, X selects the focused item.
 // Esc cancels any active inline edit.
 function reviewKeys(event, onCancelEdit) {
   if (event.altKey || event.ctrlKey || event.metaKey) return;
@@ -1872,6 +1880,9 @@ function reviewKeys(event, onCancelEdit) {
     const index = targets.indexOf(item.querySelector(".review-target"));
     const next = targets[index + (key === "j" || event.key === "ArrowDown" ? 1 : -1)];
     if (next) { next.focus(); next.scrollIntoView({ block: "nearest" }); event.preventDefault(); }
+  } else if (key === "x") {
+    const box = item.querySelector(".review-select");
+    if (box && !box.disabled) { box.click(); event.preventDefault(); }
   } else if (key === "a" || key === "r") {
     const button = item.querySelector(key === "a" ? ".approve-button" : ".reject-button");
     if (button && !button.disabled) { button.click(); event.preventDefault(); }
@@ -1879,6 +1890,7 @@ function reviewKeys(event, onCancelEdit) {
 }
 
 const REVIEW_PAGE = 50;
+const reviewItemKey = (item) => item.id || `${item.issue}-${itemTarget(item)}`;
 
 function ReviewQueue({ session, onSession, snapshot, loaded, loading, error, onRetry, overview, onSelect, onReview, onBulkReview, scanning, colors, auditTrail = [], onUndoReview }) {
   const { issue = "ALL", objectType = "ALL", modelId = "ALL", reportId = "ALL", sort = "confidence-high", tab = "queue", group = "" } = session;
@@ -1945,6 +1957,24 @@ function ReviewQueue({ session, onSession, snapshot, loaded, loading, error, onR
     ? <div ref={more} className="queue-more"><Button variant="ghost" size="sm" onClick={() => setShown((count) => count + REVIEW_PAGE)}>Show more ({(longest - shown).toLocaleString()} left)</Button></div>
     : null;
   const approvableItems = useMemo(() => filtered.filter((item) => item.issue !== "conflict" && item.issue !== "stale"), [filtered]);
+  // Row selection: a decision over the rows the reviewer ticked. Conflicts and outdated decisions are decided one at a time.
+  const [selected, setSelected] = useState(() => new Set());
+  useEffect(() => { setSelected(new Set()); }, [filterKey]);
+  const selectedItems = useMemo(() => selected.size ? approvableItems.filter((item) => selected.has(reviewItemKey(item))) : [], [selected, approvableItems]);
+  const toggleSelected = useCallback((item, on) => setSelected((current) => {
+    const next = new Set(current);
+    if (on) next.add(reviewItemKey(item)); else next.delete(reviewItemKey(item));
+    return next;
+  }), []);
+  const selectAll = (items, on) => setSelected((current) => {
+    const next = new Set(current);
+    for (const item of items) { if (on) next.add(reviewItemKey(item)); else next.delete(reviewItemKey(item)); }
+    return next;
+  });
+  const selectionOf = (items) => {
+    const count = items.reduce((total, item) => total + (selected.has(reviewItemKey(item)) ? 1 : 0), 0);
+    return count === 0 ? false : count === items.length ? true : "indeterminate";
+  };
   // A long queue opens as patterns (one rule, one basis, one object type), decided once each.
   const grouping = issue === "low-evidence" ? "none" : group || (filtered.length > GROUP_ABOVE ? "pattern" : "none");
   const groups = useMemo(() => grouping === "pattern" ? groupReviewItems(filtered, (item) => byId(snapshot.nodes, itemTarget(item))) : [], [grouping, filtered, snapshot.nodes]);
@@ -1974,6 +2004,7 @@ function ReviewQueue({ session, onSession, snapshot, loaded, loading, error, onR
           text: `${action === "approve" ? "Approved" : "Rejected"} ${count} ${count === 1 ? "suggestion" : "suggestions"}`,
         });
       }
+      setSelected(new Set());
     } finally {
       setBulkBusy(false);
     }
@@ -2002,7 +2033,8 @@ function ReviewQueue({ session, onSession, snapshot, loaded, loading, error, onR
         candidateId: key,
         targetId: itemTarget(item),
         action: item.status,
-        actor: "Reviewer",
+        actor: item.decided_by === "auto" ? "Auto" : "Reviewer",
+        auto: item.decided_by === "auto",
         timestamp: snapshot?.scan?.last_scan || new Date().toISOString(),
         label: suggestionLabel(item),
         value: item.value,
@@ -2036,11 +2068,14 @@ function ReviewQueue({ session, onSession, snapshot, loaded, loading, error, onR
   const reviewRow = (item) => (
     <ReviewItem
       colors={colors}
-      key={item.id || `${item.issue}-${itemTarget(item)}`}
+      key={reviewItemKey(item)}
       item={item}
       nodes={snapshot.nodes}
       edges={snapshot.edges}
       disabled={scanning}
+      selectable={item.issue !== "conflict" && item.issue !== "stale"}
+      selected={selected.has(reviewItemKey(item))}
+      onSelected={toggleSelected}
       isEditing={activeEditId === (item.id || itemTarget(item))}
       onStartEdit={() => setActiveEditId(item.id || itemTarget(item))}
       onCancelEdit={() => setActiveEditId(null)}
@@ -2075,6 +2110,7 @@ function ReviewQueue({ session, onSession, snapshot, loaded, loading, error, onR
           </span>
         </div>
         {open ? <>
+          {entry.bulk ? <div className="review-group-select"><Checkbox className="review-select-all" checked={selectionOf(entry.items)} disabled={bulkBusy || scanning} aria-label={`Select all ${formatCount(count)}: ${label}`} onCheckedChange={(value) => selectAll(entry.items, value === true)} /><span aria-hidden="true">Select all {formatCount(count)}</span></div> : null}
           <div className="queue-list" onKeyDown={(e) => reviewKeys(e, () => setActiveEditId(null))}>{entry.items.slice(0, openGroup.shown).map(reviewRow)}</div>
           {count > openGroup.shown ? <div className="queue-more"><Button variant="ghost" size="sm" onClick={() => setOpenGroup((current) => ({ ...current, shown: current.shown + REVIEW_PAGE }))}>Show more ({formatCount(count - openGroup.shown)} left)</Button></div> : null}
         </> : null}
@@ -2090,7 +2126,7 @@ function ReviewQueue({ session, onSession, snapshot, loaded, loading, error, onR
       <SegmentedControl
         options={[
           { value: "queue", label: `To review (${formatCount(filtered.length)})` },
-          { value: "reviewed", label: `Reviewed (${allReviewed.length})` },
+          { value: "reviewed", label: `Reviewed (${formatCount(allReviewed.length)})` },
         ]}
         value={tab}
         onValueChange={(val) => change({ tab: val })}
@@ -2115,7 +2151,7 @@ function ReviewQueue({ session, onSession, snapshot, loaded, loading, error, onR
                 <span>Action</span>
               </div>
               <div className="queue-list">
-                {allReviewed.map((entry) => (
+                {allReviewed.slice(0, shown).map((entry) => (
                   <ReviewedItem
                     colors={colors}
                     key={entry.id || entry.reviewId}
@@ -2127,6 +2163,7 @@ function ReviewQueue({ session, onSession, snapshot, loaded, loading, error, onR
                   />
                 ))}
               </div>
+              {allReviewed.length > shown ? <div className="queue-more"><Button variant="ghost" size="sm" onClick={() => setShown((count) => count + REVIEW_PAGE)}>Show more ({formatCount(allReviewed.length - shown)} left)</Button></div> : null}
             </>
           ) : (
             <EmptyState
@@ -2140,7 +2177,7 @@ function ReviewQueue({ session, onSession, snapshot, loaded, loading, error, onR
       </>
     ) : (
       <>
-        <p className="review-purpose"><span className="queue-count"><strong data-ui-number="">{loading ? "…" : formatCount(filtered.length)}</strong>{loading ? "Loading…" : " to review"}</span><span className="review-purpose-copy" /><span className="review-keys" aria-hidden="true"><kbd>J</kbd><kbd>K</kbd> move <kbd>A</kbd> approve <kbd>R</kbd> reject</span></p>
+        <p className="review-purpose"><span className="queue-count"><strong data-ui-number="">{loading ? "…" : formatCount(filtered.length)}</strong>{loading ? "Loading…" : " to review"}</span><span className="review-purpose-copy" /><span className="review-keys" aria-hidden="true"><kbd>J</kbd><kbd>K</kbd> move <kbd>A</kbd> approve <kbd>R</kbd> reject <kbd>X</kbd> select</span></p>
         <div className="queue-toolbar" data-ui-actions="">
           <Label className="select-field"><span>Issue</span><NativeSelect aria-label="Issue" value={issue} onChange={(event) => change({ issue: event.target.value })}><option value="ALL">All issues</option><option value="candidate">Suggestions</option><option value="low-evidence">Low evidence</option><option value="conflict">Conflicts</option><option value="stale">Outdated decisions</option></NativeSelect></Label>
           <Label className="select-field"><span>Object</span><NativeSelect aria-label="Object" value={objectType} onChange={(event) => change({ objectType: event.target.value })}><option value="ALL">All types</option>{types.map((type) => <option key={type} value={type}>{typeLabel(type)}</option>)}</NativeSelect></Label>
@@ -2149,7 +2186,18 @@ function ReviewQueue({ session, onSession, snapshot, loaded, loading, error, onR
           {hasFilters ? <Button variant="ghost" size="sm" onClick={() => change({ issue: "ALL", objectType: "ALL", modelId: "ALL", reportId: "ALL" })}><X />Clear filters</Button> : null}
           {issue !== "low-evidence" && filtered.length > 1 ? <Label className="select-field select-group"><span>Group</span><NativeSelect aria-label="Group" value={grouping} onChange={(event) => change({ group: event.target.value })}><option value="pattern">By pattern</option><option value="none">No grouping</option></NativeSelect></Label> : null}
           <Label className="select-field select-sort"><span>Sort</span><NativeSelect aria-label="Sort" value={sort} onChange={(event) => change({ sort: event.target.value })}><option value="confidence-high">Most certain first</option><option value="confidence-low">Least certain first</option><option value="impact-high">Highest impact first</option><option value="impact-low">Lowest impact first</option></NativeSelect></Label>
-          {approvableItems.length > 0 && grouping !== "pattern" ? (
+          {selectedItems.length > 0 ? (
+            <div className="queue-bulk-actions is-selection" data-ui-actions="" role="group" aria-label="Selected suggestions">
+              <Button variant="outline" size="sm" className="selected-approve" disabled={bulkBusy || scanning} onClick={() => handleBulkAction("approve", selectedItems)}>
+                <Check className="size-4" aria-hidden="true" />Approve {formatCount(selectedItems.length)} selected
+              </Button>
+              <Button variant="ghost" size="sm" className="selected-reject" disabled={bulkBusy || scanning} onClick={() => handleBulkAction("reject", selectedItems)}>
+                <X className="size-4" aria-hidden="true" />Reject {formatCount(selectedItems.length)} selected
+              </Button>
+              <Button variant="ghost" size="icon-sm" className="selected-clear" aria-label="Clear selection" title="Clear selection" onClick={() => setSelected(new Set())}><X aria-hidden="true" /></Button>
+            </div>
+          ) : null}
+          {selectedItems.length === 0 && approvableItems.length > 0 && grouping !== "pattern" ? (
             <div className="queue-bulk-actions" data-ui-actions="">
               <Button variant="outline" size="sm" className="bulk-approve" disabled={bulkBusy || scanning} onClick={() => handleBulkAction("approve", approvableItems)}>
                 <Check className="size-4" aria-hidden="true" />
@@ -2165,13 +2213,16 @@ function ReviewQueue({ session, onSession, snapshot, loaded, loading, error, onR
         <AlertDialog open={Boolean(bulkConfirm)} onOpenChange={(open) => { if (!open) setBulkConfirm(null); }}>
           {bulkConfirm ? <AlertDialogContent
             title={`${bulkConfirm.action === "approve" ? "Approve" : "Reject"} ${formatCount(bulkConfirm.items.length)} suggestions?`}
-            description={`${bulkConfirm.scope ? `Every suggestion in “${bulkConfirm.scope}”` : bulkConfirm.items.length === approvableItems.length ? (hasFilters ? "Every suggestion that matches the current filters" : "Every open suggestion in the project") : "The listed suggestions"} will be ${bulkConfirm.action === "approve" ? "approved" : "rejected"}. Each decision can be changed later under Reviewed.`}
+            description={`${bulkConfirm.scope ? `Every suggestion in “${bulkConfirm.scope}”` : bulkConfirm.items.length === approvableItems.length ? (hasFilters ? "Every suggestion that matches the current filters" : "Every open suggestion in the project") : "The selected suggestions"} will be ${bulkConfirm.action === "approve" ? "approved" : "rejected"}. Each decision can be changed later under Reviewed.`}
             footer={<><AlertDialogCancel asChild><Button variant="outline">Cancel</Button></AlertDialogCancel><AlertDialogAction asChild><Button variant={bulkConfirm.action === "approve" ? "default" : "destructive"} onClick={() => handleBulkAction(bulkConfirm.action, bulkConfirm.items, true)}>{bulkConfirm.action === "approve" ? "Approve" : "Reject"} {formatCount(bulkConfirm.items.length)}</Button></AlertDialogAction></>}
           /> : null}
         </AlertDialog>
         <Card className="panel queue-panel" aria-busy={loading}>
           {loading ? <div className="queue-loading">{[0, 1, 2].map((index) => <Skeleton className="skeleton-row-item" key={index} />)}<p className="sr-only" role="status">Loading suggestions…</p></div> : filtered.length && groupList ? groupList : filtered.length ? <>
-            <div className="review-columns is-pending" aria-hidden="true"><span>Object</span><span>Suggestion</span><span>Based on</span><span>Confidence</span><span>Decision</span></div>
+            <div className="review-columns is-pending has-select">
+              <span>{approvableItems.length ? <Checkbox className="review-select-all" checked={selectionOf(approvableItems)} disabled={bulkBusy || scanning} aria-label={`Select all ${formatCount(approvableItems.length)} suggestions`} onCheckedChange={(value) => selectAll(approvableItems, value === true)} /> : null}<span aria-hidden="true">Object</span></span>
+              <span aria-hidden="true">Suggestion</span><span aria-hidden="true">Based on</span><span aria-hidden="true">Confidence</span><span aria-hidden="true">Decision</span>
+            </div>
             {issue === "low-evidence" ? (
               <div className="low-evidence-group" role="region" aria-label="Low evidence suggestions">
                 <div className="low-evidence-header">
@@ -2188,48 +2239,14 @@ function ReviewQueue({ session, onSession, snapshot, loaded, loading, error, onR
                   </div>
                 </div>
                 <div className="queue-list" onKeyDown={(e) => reviewKeys(e, () => setActiveEditId(null))}>
-                  {lowEvidenceItems.slice(0, shown).map((item) => (
-                    <ReviewItem
-                      colors={colors}
-                      key={item.id || `${item.issue}-${itemTarget(item)}`}
-                      item={item}
-                      nodes={snapshot.nodes}
-                      edges={snapshot.edges}
-                      disabled={scanning}
-                      isEditing={activeEditId === (item.id || itemTarget(item))}
-                      onStartEdit={() => setActiveEditId(item.id || itemTarget(item))}
-                      onCancelEdit={() => setActiveEditId(null)}
-                      onSelect={(id, nextView) => {
-                        change({ selectedId: item.id || itemTarget(item), scrollY: contentScroller().scrollTop });
-                        onSelect(id, nextView);
-                      }}
-                      onReview={onReview}
-                    />
-                  ))}
+                  {lowEvidenceItems.slice(0, shown).map(reviewRow)}
                 </div>
               </div>
             ) : (
               <>
                 {standardItems.length ? (
                   <div className="queue-list" onKeyDown={(e) => reviewKeys(e, () => setActiveEditId(null))}>
-                    {standardItems.slice(0, shown).map((item) => (
-                      <ReviewItem
-                        colors={colors}
-                        key={item.id || `${item.issue}-${itemTarget(item)}`}
-                        item={item}
-                        nodes={snapshot.nodes}
-                        edges={snapshot.edges}
-                        disabled={scanning}
-                        isEditing={activeEditId === (item.id || itemTarget(item))}
-                        onStartEdit={() => setActiveEditId(item.id || itemTarget(item))}
-                        onCancelEdit={() => setActiveEditId(null)}
-                        onSelect={(id, nextView) => {
-                          change({ selectedId: item.id || itemTarget(item), scrollY: contentScroller().scrollTop });
-                          onSelect(id, nextView);
-                        }}
-                        onReview={onReview}
-                      />
-                    ))}
+                    {standardItems.slice(0, shown).map(reviewRow)}
                   </div>
                 ) : null}
 
@@ -2249,24 +2266,7 @@ function ReviewQueue({ session, onSession, snapshot, loaded, loading, error, onR
                       </div>
                     </div>
                     <div className="queue-list" onKeyDown={(e) => reviewKeys(e, () => setActiveEditId(null))}>
-                      {lowEvidenceItems.slice(0, shown).map((item) => (
-                        <ReviewItem
-                          colors={colors}
-                          key={item.id || `${item.issue}-${itemTarget(item)}`}
-                          item={item}
-                          nodes={snapshot.nodes}
-                          edges={snapshot.edges}
-                          disabled={scanning}
-                          isEditing={activeEditId === (item.id || itemTarget(item))}
-                          onStartEdit={() => setActiveEditId(item.id || itemTarget(item))}
-                          onCancelEdit={() => setActiveEditId(null)}
-                          onSelect={(id, nextView) => {
-                            change({ selectedId: item.id || itemTarget(item), scrollY: contentScroller().scrollTop });
-                            onSelect(id, nextView);
-                          }}
-                          onReview={onReview}
-                        />
-                      ))}
+                      {lowEvidenceItems.slice(0, shown).map(reviewRow)}
                     </div>
                   </div>
                 ) : null}
@@ -2295,7 +2295,7 @@ function ReviewedItem({ entry, nodes, colors, onSelect, onUndo, disabled = false
   const targetNode = byId(nodes, entry.targetId);
   const [pending, setPending] = useState(false);
   const status = entry.action === "approve" ? "approved" : entry.action === "reject" ? "rejected" : entry.action === "remove" ? "stale" : entry.action || "approved";
-  const actionText = status === "approved" ? "Approved" : status === "rejected" ? "Rejected" : status === "overridden" ? "Edited" : "Decision removed";
+  const actionText = entry.auto ? "Accepted by the auto-accept setting" : status === "approved" ? "Approved" : status === "rejected" ? "Rejected" : status === "overridden" ? "Edited" : "Decision removed";
   const score = confidence(entry.confidence);
   const dateStr = formatDate(entry.timestamp);
 
@@ -2327,7 +2327,7 @@ function ReviewedItem({ entry, nodes, colors, onSelect, onUndo, disabled = false
       </Button>
       <div className="review-evidence">
         <p className="reviewed-actor-line">
-          <strong>{entry.actor || "You"}</strong> &bull; <span>{actionText}</span>
+          {entry.auto ? <Badge variant="outline" className="auto-mark" title="Accepted by the auto-accept setting (Settings › Review)"><Zap aria-hidden="true" />Auto</Badge> : <strong>{entry.actor || "You"}</strong>} &bull; <span>{actionText}</span>
         </p>
         <small className="reviewed-timestamp">{dateStr}</small>
       </div>
@@ -2361,6 +2361,9 @@ function ReviewItem({
   onReview,
   colors,
   disabled = false,
+  selectable = false,
+  selected = false,
+  onSelected,
   isEditing = false,
   onStartEdit,
   onCancelEdit,
@@ -2423,10 +2426,13 @@ function ReviewItem({
   return (
     <div
       ref={rowRef}
-      className={`review-item compact-row issue-${item.issue} ${exiting ? "is-exiting" : ""} ${expanded ? "is-expanded" : ""}`}
+      className={`review-item compact-row issue-${item.issue} ${exiting ? "is-exiting" : ""} ${expanded ? "is-expanded" : ""} ${selected ? "is-selected" : ""}`}
       aria-busy={pending}
     >
       <div className="review-main-cell">
+        {onSelected ? (selectable
+          ? <Checkbox className="review-select" checked={selected} disabled={disabled || pending || exiting} aria-label={`Select ${targetNode ? labelFor(targetNode) : "suggestion"}`} onCheckedChange={(value) => onSelected(item, value === true)} />
+          : <span className="review-select-gap" aria-hidden="true" />) : null}
         <Button
           variant="ghost"
           size="icon-xs"

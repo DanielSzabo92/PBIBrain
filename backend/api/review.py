@@ -494,7 +494,43 @@ def reopen(repository: GraphRepository, item_id: str) -> dict[str, Any]:
     return _set_status(repository, item_id, "candidate")
 
 
+def _match_keys(item: Node | Edge) -> list[str]:
+    """Every identifier a review decision can name this record by (see ``_item_matches``)."""
+
+    keys = [str(item.id)]
+    properties = item.properties
+    if not properties.get("candidate_ids"):
+        keys.extend(
+            str(properties[key])
+            for key in ("candidate_id", "candidateId", "target", "target_id", "object_id")
+            if properties.get(key)
+        )
+    return keys
+
+
+def _refresh_shared_meanings(nodes: Sequence[Node], edges: Sequence[Edge]) -> None:
+    """A shared meaning has the status of its suggestions when they agree, else it is open."""
+
+    shared = {node.id: node for node in nodes if node.properties.get("candidate_ids")}
+    if not shared:
+        return
+    statuses: dict[str, set[str]] = {}
+    for edge in edges:
+        if edge.to_id in shared and edge.properties.get("candidate_id"):
+            statuses.setdefault(edge.to_id, set()).add(edge.status)
+    for node_id, node in shared.items():
+        found = statuses.get(node_id, set())
+        node.status = next(iter(found)) if len(found) == 1 else "candidate"
+
+
 def _set_status_many(repository: GraphRepository, item_ids: Sequence[str], status: str) -> dict[str, Any]:
+    """Decide many suggestions in one write.
+
+    One pass with a set lookup: the earlier form compared every record with every identifier,
+    which is 150 million comparisons for 11,000 suggestions on a 13,000-object project.
+    ``previous`` holds the status each changed record had, so the decision can be undone exactly.
+    """
+
     status = str(status).lower()
     if status not in _ALLOWED_STATUSES:
         raise ValueError(f"unsupported review status: {status}")
@@ -502,27 +538,163 @@ def _set_status_many(repository: GraphRepository, item_ids: Sequence[str], statu
     targets = {str(item_id) for item_id in item_ids}
     changed_nodes: list[Node] = []
     changed_edges: list[Edge] = []
+    previous: dict[str, dict[str, str]] = {"nodes": {}, "edges": {}}
     for node in nodes:
         if node.properties.get("candidate_ids") and node.id in targets:
             continue
-        if any(_item_matches(node.to_dict(), target) for target in targets) and node.status != "factual":
+        if node.status != "factual" and not targets.isdisjoint(_match_keys(node)):
+            previous["nodes"][node.id] = node.status
             node.status = status
             changed_nodes.append(node)
     for edge in edges:
-        if any(_item_matches(edge.to_dict(), target) for target in targets) and edge.evidence_class == "INFERRED":
+        if edge.evidence_class == "INFERRED" and not targets.isdisjoint(_match_keys(edge)):
+            previous["edges"][edge.id] = edge.status
             edge.status = status
             changed_edges.append(edge)
-    for node in nodes:
-        if node.properties.get("candidate_ids"):
-            statuses = {edge.status for edge in edges if edge.to_id == node.id and edge.properties.get("candidate_id")}
-            node.status = next(iter(statuses)) if len(statuses) == 1 else "candidate"
-    repository.replace(nodes, edges)
+    _refresh_shared_meanings(nodes, edges)
+    if changed_nodes or changed_edges:
+        repository.replace(nodes, edges)
     return {
         "status": status,
         "count": len(changed_nodes) + len(changed_edges),
         "nodes": [node.to_dict() for node in changed_nodes],
         "edges": [edge.to_dict() for edge in changed_edges],
+        "previous": previous,
     }
+
+
+def restore_statuses(repository: GraphRepository, previous: Mapping[str, Mapping[str, str]]) -> dict[str, Any]:
+    """Put back the statuses a bulk decision replaced (the undo of ``_set_status_many``)."""
+
+    nodes, edges = _all_items(repository)
+    node_statuses = previous.get("nodes", {})
+    edge_statuses = previous.get("edges", {})
+    count = 0
+    for node in nodes:
+        if node.id in node_statuses and node.status != "factual":
+            node.status = node_statuses[node.id]
+            count += 1
+    for edge in edges:
+        if edge.id in edge_statuses:
+            edge.status = edge_statuses[edge.id]
+            count += 1
+    _refresh_shared_meanings(nodes, edges)
+    if count:
+        repository.replace(nodes, edges)
+    return {"status": "restored", "count": count}
+
+
+# Suggestions that restate what the object already says about itself: its own name or description.
+AUTO_ACCEPT_SOURCES = frozenset({"object_name", "description"})
+DEFAULT_AUTO_ACCEPT_THRESHOLD = 0.9
+
+
+class DecisionMarks:
+    """Which decisions the app made by itself, and which of those the user took back.
+
+    Kept beside the override file, not on the graph records: a scan rebuilds the records and
+    carries only their status. ``auto`` are suggestions accepted without a person; ``reopened``
+    are ones a person returned to the queue, which are never accepted automatically again.
+    """
+
+    def __init__(self, path: str | Path | None = None) -> None:
+        self.path = Path(path) if path is not None else None
+        self.auto: set[str] = set()
+        self.reopened: set[str] = set()
+        if self.path is not None and self.path.is_file():
+            try:
+                payload = json.loads(self.path.read_text(encoding="utf-8"))
+            except (OSError, ValueError):
+                payload = {}
+            if isinstance(payload, Mapping):
+                self.auto = {str(value) for value in payload.get("auto", []) if value}
+                self.reopened = {str(value) for value in payload.get("reopened", []) if value}
+
+    def save(self) -> None:
+        if self.path is None:
+            return
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        temporary = self.path.with_suffix(self.path.suffix + ".tmp")
+        temporary.write_text(
+            json.dumps({"auto": sorted(self.auto), "reopened": sorted(self.reopened)}, indent=2) + "\n",
+            encoding="utf-8",
+        )
+        temporary.replace(self.path)
+
+    def decided_by_person(self, keys: Iterable[str], status: str) -> None:
+        """A person decided these: they are no longer the app's decisions."""
+
+        keys = {str(key) for key in keys}
+        was_auto = keys & self.auto
+        if not was_auto and not (status != "candidate" and keys & self.reopened):
+            return
+        self.auto -= keys
+        if status == "candidate":
+            self.reopened |= was_auto
+        self.save()
+
+
+def _candidate_key(item: Node | Edge) -> str:
+    return str(item.properties.get("candidate_id") or item.id)
+
+
+def _auto_acceptable(item: Node | Edge, threshold: float) -> bool:
+    if item.properties.get("candidate_ids") or item.type in {"CONFLICT", "CONFLICTS_WITH"}:
+        return False
+    if str(item.properties.get("candidate_source") or "") not in AUTO_ACCEPT_SOURCES:
+        return False
+    confidence = item.properties.get("confidence", getattr(item, "confidence", None))
+    if confidence is None:
+        confidence = getattr(item, "confidence", None)
+    try:
+        return float(confidence) >= threshold
+    except (TypeError, ValueError):
+        return False
+
+
+def apply_auto_accept(
+    repository: GraphRepository,
+    marks: DecisionMarks,
+    *,
+    enabled: bool,
+    threshold: float = DEFAULT_AUTO_ACCEPT_THRESHOLD,
+) -> dict[str, int]:
+    """Bring the graph in line with the auto-accept setting.
+
+    Accepts open suggestions that come from the object's own name or description at or above
+    the threshold, and returns to the queue the ones accepted earlier that the setting no
+    longer covers. A suggestion a person decided or reopened is never touched.
+    """
+
+    nodes, edges = _all_items(repository)
+    records = [node for node in nodes if node.status != "factual"]
+    records.extend(edge for edge in edges if edge.evidence_class == "INFERRED")
+    present: set[str] = set()
+    accepted = withdrawn = 0
+    for item in records:
+        key = _candidate_key(item)
+        present.add(key)
+        covered = enabled and key not in marks.reopened and _auto_acceptable(item, threshold)
+        if item.status == "candidate" and covered:
+            item.status = "approved"
+            marks.auto.add(key)
+            accepted += 1
+        elif key in marks.auto and item.status == "approved" and not covered:
+            item.status = "candidate"
+            withdrawn += 1
+    still_auto = {
+        _candidate_key(item) for item in records
+        if item.status == "approved" and _candidate_key(item) in marks.auto
+    }
+    marks_changed = still_auto != marks.auto or not marks.reopened <= present
+    marks.auto = still_auto
+    marks.reopened &= present
+    if accepted or withdrawn:
+        _refresh_shared_meanings(nodes, edges)
+        repository.replace(nodes, edges)
+    if accepted or withdrawn or marks_changed:
+        marks.save()
+    return {"accepted": accepted, "withdrawn": withdrawn, "auto": len(marks.auto)}
 
 
 def approve_many(repository: GraphRepository, item_ids: Sequence[str]) -> dict[str, Any]:

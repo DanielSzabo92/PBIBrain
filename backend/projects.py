@@ -35,7 +35,7 @@ from backend.sync import preserve_review_statuses
 
 LOGGER = logging.getLogger(__name__)
 PROJECT_VERSION = 1
-_CONFIG_KEYS = frozenset({"version", "name", "sources", "cloud_sources", "database", "identity_map", "graph_colors"})
+_CONFIG_KEYS = frozenset({"version", "name", "sources", "cloud_sources", "database", "identity_map", "graph_colors", "review"})
 
 
 class ProjectConfigError(ValueError):
@@ -141,7 +141,23 @@ class ProjectConfigStore:
                 raise ProjectConfigError(str(exc)) from exc
         if "graph_colors" in payload:
             config["graph_colors"] = _graph_colors(payload["graph_colors"])
+        if "review" in payload:
+            config["review"] = _review_settings(payload["review"])
         return config
+
+
+def _review_settings(value: Any) -> dict[str, Any]:
+    """How suggestions are decided without a person (Settings > Review)."""
+
+    if not isinstance(value, Mapping) or set(value) - {"auto_accept", "auto_accept_threshold"}:
+        raise ProjectConfigError("review must contain auto_accept and/or auto_accept_threshold")
+    enabled = value.get("auto_accept", False)
+    threshold = value.get("auto_accept_threshold", 0.9)
+    if not isinstance(enabled, bool):
+        raise ProjectConfigError("review.auto_accept must be true or false")
+    if isinstance(threshold, bool) or not isinstance(threshold, (int, float)) or not 0.5 <= float(threshold) <= 1.0:
+        raise ProjectConfigError("review.auto_accept_threshold must be a number from 0.5 to 1")
+    return {"auto_accept": enabled, "auto_accept_threshold": round(float(threshold), 2)}
 
 
 def _graph_colors(value: Any) -> dict[str, dict[str, str]]:

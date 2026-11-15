@@ -835,6 +835,12 @@ p.object-review { padding: 0 4px; }
 .review-item.compact-row { align-items: center; padding-top: 6px; padding-bottom: 6px; }
 .review-columns.is-pending, .review-item.compact-row { grid-template-columns: minmax(180px, 1.3fr) minmax(120px, 1fr) minmax(0, .7fr) 84px 112px; }
 .review-columns.is-pending > :first-child { padding-left: 30px; }
+.review-columns.has-select > :first-child { display: flex; align-items: center; gap: 8px; padding-left: 0; }
+.review-columns.has-select > :first-child > [aria-hidden] { padding-left: 30px; }
+.review-select, .review-select-all, .review-select-gap { flex: none !important; width: 24px; }
+.review-item.is-selected { background: color-mix(in srgb, var(--brand) 8%, transparent); }
+.review-group-select { display: flex; align-items: center; gap: 8px; padding: 4px 18px; border-top: 1px solid var(--line); color: var(--text-2); font-size: var(--fs-meta); }
+.queue-bulk-actions.is-selection { margin-left: auto; }
 .review-columns.is-pending > :last-child { text-align: right; }
 .compact-row .review-main-cell > :not(.row-expand-button) { min-width: 0; flex: 1 1 auto; }
 .compact-row .review-target { display: flex; width: 100%; min-width: 0; white-space: nowrap; }
@@ -1930,3 +1936,9 @@ button.object-tree-twist:hover { background: var(--surface-3); color: var(--text
 .contents-more:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
 /* The disclosure header keeps its side margins without growing past the card. */
 .object-metadata > button { width: calc(100% - 40px); }
+
+/* Settings › Review and the mark of a decision the app made by itself. */
+.review-settings-fields { display: flex; flex-direction: column; gap: 18px; }
+.review-threshold { max-width: 220px; }
+.auto-mark { gap: 4px; color: var(--text-2); font-weight: 500; }
+.auto-mark svg { width: 12px; height: 12px; }

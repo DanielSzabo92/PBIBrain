@@ -86,18 +86,19 @@ test("explainConfidence details the exact evidence contributing to confidence", 
   assert.match(richExplanation, /DAX formula analysis/);
 });
 
-test("Review keyboard shortcuts J/K/A/R are defined in SHORTCUTS with group Review", () => {
+test("Review keyboard shortcuts J/K/A/R/X are defined in SHORTCUTS with group Review", () => {
   const reviewShortcuts = SHORTCUTS.filter((s) => s.group === "Review");
-  assert.equal(reviewShortcuts.length, 4);
+  assert.equal(reviewShortcuts.length, 5);
 
   const keys = reviewShortcuts.map((s) => s.keys);
-  assert.deepEqual(keys.sort(), ["A", "J", "K", "R"].sort());
+  assert.deepEqual(keys.sort(), ["A", "J", "K", "R", "X"].sort());
 
   const ids = reviewShortcuts.map((s) => s.id);
   assert.ok(ids.includes("review:next"));
   assert.ok(ids.includes("review:prev"));
   assert.ok(ids.includes("review:approve"));
   assert.ok(ids.includes("review:reject"));
+  assert.ok(ids.includes("review:select"));
 });
 
 test("Review shortcuts do not collide with any other shortcut keys", () => {

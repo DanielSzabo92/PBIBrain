@@ -28,7 +28,10 @@ from .objects import (
 )
 from .queries import validate_selection
 from .review import (
+    DEFAULT_AUTO_ACCEPT_THRESHOLD,
+    DecisionMarks,
     OverrideStore,
+    apply_auto_accept,
     apply_overrides_to_dict,
     approve,
     approve_many,
@@ -40,6 +43,7 @@ from .review import (
     remove_override,
     reopen,
     reopen_many,
+    restore_statuses,
 )
 
 
@@ -197,8 +201,10 @@ def get_context(
     return build_context(repository, target, task, store=store)
 
 
-def _snapshot(repository: GraphRepository, store: OverrideStore | None = None) -> dict[str, Any]:
+def _snapshot(repository: GraphRepository, store: OverrideStore | None = None, marks: DecisionMarks | None = None) -> dict[str, Any]:
     """Build the JSON shape consumed by the local Inspector."""
+
+    auto = marks.auto if marks is not None else frozenset()
 
     nodes = repository.all_nodes()
     edges = repository.all_edges()
@@ -239,6 +245,8 @@ def _snapshot(repository: GraphRepository, store: OverrideStore | None = None) -
         if target_node is not None:
             record["model_id"] = target_node.get("model_id")
             record["report_id"] = target_node.get("report_id")
+        if str(candidate_id) in auto:
+            record["decided_by"] = "auto"  # accepted by the auto-accept setting, not by a person
         if edge.get("type") == "CONFLICTS_WITH":
             conflicts.setdefault(str(candidate_id), record)
         else:
@@ -310,14 +318,14 @@ def _slim(record: Mapping[str, Any], fields: Sequence[str]) -> dict[str, Any]:
     return slim
 
 
-def _review_snapshot(repository: GraphRepository, store: OverrideStore | None = None) -> dict[str, Any]:
+def _review_snapshot(repository: GraphRepository, store: OverrideStore | None = None, marks: DecisionMarks | None = None) -> dict[str, Any]:
     """The snapshot for the review screens: the same shape as the full one, without the heavy parts.
 
     The full snapshot of a 14,000-object project is 163 MB (parse trees, raw source, each piece of
     evidence three times). The screens need names, scopes, formulas and the suggestions themselves.
     """
 
-    full = _snapshot(repository, store)
+    full = _snapshot(repository, store, marks)
     items: list[dict[str, Any]] = []
     for item in full["review_items"]:
         slim = {key: value for key, value in item.items() if key != "item"}
@@ -360,6 +368,11 @@ class BrainAPI:
         self._owns_repository = repository is None
         self.repository = repository or GraphRepository(database_path, use_native=use_native)
         self.overrides = OverrideStore(overrides_path or _default_overrides_path())
+        marks_path = self.overrides.path.with_name("review-marks.json") if self.overrides.path is not None else None
+        self.marks = DecisionMarks(marks_path)
+        self.review_settings: dict[str, Any] = {"auto_accept": False, "auto_accept_threshold": DEFAULT_AUTO_ACCEPT_THRESHOLD}
+        # The statuses each recent bulk decision replaced, by undo token.
+        self._bulk_undo: dict[str, dict[str, Any]] = {}
         self.prepared_snapshots: dict[str, Any] = {}
 
     def get_overview(self) -> dict[str, Any]:
@@ -367,8 +380,97 @@ class BrainAPI:
 
     def get_snapshot(self, view: str | None = None) -> dict[str, Any]:
         if view == "review":
-            return _review_snapshot(self.repository, self.overrides)
-        return _snapshot(self.repository, self.overrides)
+            return _review_snapshot(self.repository, self.overrides, self.marks)
+        return _snapshot(self.repository, self.overrides, self.marks)
+
+    def sync_auto_accept(self, settings: Mapping[str, Any] | None = None) -> dict[str, int]:
+        """Apply the auto-accept setting to the graph: after a scan, at start and when the setting changes."""
+
+        if settings is not None:
+            self.review_settings = {
+                "auto_accept": bool(settings.get("auto_accept", False)),
+                "auto_accept_threshold": float(settings.get("auto_accept_threshold", DEFAULT_AUTO_ACCEPT_THRESHOLD)),
+            }
+        return apply_auto_accept(
+            self.repository,
+            self.marks,
+            enabled=self.review_settings["auto_accept"],
+            threshold=self.review_settings["auto_accept_threshold"],
+        )
+
+    def _person_decided(self, result: Mapping[str, Any]) -> None:
+        """Tell the marks that a person decided the records in ``result``."""
+
+        keys = [
+            str((record.get("properties") or {}).get("candidate_id") or record.get("id"))
+            for record in [*result.get("nodes", []), *result.get("edges", [])]
+        ]
+        if keys:
+            self.marks.decided_by_person(keys, str(result.get("status", "")))
+
+    def _bulk_review(self, action: str, payload: Mapping[str, Any]) -> dict[str, Any]:
+        """One decision over many suggestions: one write, one undo token.
+
+        The suggestions are named by ``items`` or chosen on the server by ``filter`` (the review
+        queue's own filters). ``reply: "summary"`` leaves the snapshot out of the answer; the page
+        reloads its slim view instead of receiving the full one.
+        """
+
+        summary = payload.get("reply") == "summary"
+
+        def answer(result: dict[str, Any]) -> dict[str, Any]:
+            if summary:
+                return {"result": {key: value for key, value in result.items() if key not in {"nodes", "edges", "previous"}}}
+            result.pop("previous", None)
+            return {"result": result, "snapshot": self.get_snapshot()}
+
+        token = payload.get("token") or payload.get("undo_token")
+        if action in {"reopen", "undo"} and token:
+            entry = self._bulk_undo.pop(str(token), None)
+            if entry is None:
+                raise KeyError(f"bulk decision not found: {token}")
+            result = restore_statuses(self.repository, entry["previous"])
+            self.marks.decided_by_person(entry["keys"], "candidate")
+            return answer({**result, "status": "candidate"})
+
+        items = payload.get("items") or payload.get("item_ids") or []
+        selector = payload.get("filter")
+        if selector is not None:
+            if not isinstance(selector, Mapping) or set(selector) - {"object_type", "model_id", "report_id", "issue_type", "min_confidence", "max_confidence"}:
+                raise ValueError("unsupported review filter")
+            chosen = {key: value for key, value in selector.items() if value not in (None, "", "ALL")}
+            # Conflicts and outdated decisions need a choice each; a filter never decides them in bulk.
+            items = [
+                item["candidate_id"] or item["id"]
+                for item in get_review_queue(self.repository, self.overrides, **chosen)
+                if item.get("issue_type") == "candidate"
+            ]
+        item_ids = [
+            str(x.get("candidate_id") or x.get("target") or x.get("id") or x) if isinstance(x, Mapping) else str(x)
+            for x in items
+        ]
+        if action == "approve":
+            result = approve_many(self.repository, item_ids)
+        elif action == "reject":
+            result = reject_many(self.repository, item_ids)
+        elif action in {"reopen", "undo"}:
+            result = reopen_many(self.repository, item_ids)
+        else:
+            raise ValueError(f"unsupported review action: {action}")
+        self._person_decided(result)
+        if result["count"]:
+            import secrets
+
+            undo_token = secrets.token_hex(8)
+            keys = [
+                str((record.get("properties") or {}).get("candidate_id") or record.get("id"))
+                for record in [*result["nodes"], *result["edges"]]
+            ]
+            self._bulk_undo[undo_token] = {"previous": result["previous"], "keys": keys}
+            while len(self._bulk_undo) > 20:
+                del self._bulk_undo[next(iter(self._bulk_undo))]
+            result["undo_token"] = undo_token
+        return answer(result)
 
     def search_objects(
         self,
@@ -465,22 +567,8 @@ class BrainAPI:
         payload = dict(payload or {})
         action = str(action).casefold()
         items = payload.get("items") or payload.get("item_ids")
-        if item_id == "bulk" or (isinstance(items, (list, tuple)) and len(items) > 0):
-            item_ids = [
-                str(x.get("candidate_id") or x.get("target") or x.get("id") or x)
-                if isinstance(x, Mapping)
-                else str(x)
-                for x in (items or [])
-            ]
-            if action == "approve":
-                result = approve_many(self.repository, item_ids)
-                return {"result": result, "snapshot": self.get_snapshot()}
-            if action == "reject":
-                result = reject_many(self.repository, item_ids)
-                return {"result": result, "snapshot": self.get_snapshot()}
-            if action in {"reopen", "undo"}:
-                result = reopen_many(self.repository, item_ids)
-                return {"result": result, "snapshot": self.get_snapshot()}
+        if item_id == "bulk" or (isinstance(items, (list, tuple)) and len(items) > 0) or payload.get("filter") is not None:
+            return self._bulk_review(action, payload)
         item_id = str(payload.get("candidate_id") or item_id)
         if item_id.startswith("override:") and action in {"approve", "reject", "remove", "resolve"}:
             result = self.remove_override(item_id, payload.get("override_property") or payload.get("property"))
@@ -503,9 +591,11 @@ class BrainAPI:
             return {"result": result, "snapshot": self.get_snapshot()}
         if action == "approve":
             result = approve(self.repository, item_id)
+            self._person_decided(result)
             return {"result": result, "snapshot": self.get_snapshot()}
         if action == "reject":
             result = reject(self.repository, item_id)
+            self._person_decided(result)
             return {"result": result, "snapshot": self.get_snapshot()}
         if action in {"reopen", "undo"}:
             if self.overrides and payload.get("previous_override"):
@@ -520,6 +610,7 @@ class BrainAPI:
             elif self.overrides and payload.get("remove_override"):
                 self.overrides.remove(item_id, payload.get("property"))
             result = reopen(self.repository, item_id)
+            self._person_decided(result)
             return {"result": result, "snapshot": self.get_snapshot()}
         if action == "edit":
             changes = payload.get("changes")
@@ -668,11 +759,22 @@ class BrainApp:
                 del self._answers[next(iter(self._answers))]
             self._answers[key] = (stamp, status, raw)
 
+    def _sync_review_settings(self, config: Mapping[str, Any] | None = None) -> None:
+        """Apply the project's auto-accept setting; a project without the setting leaves the graph alone."""
+
+        if config is None:
+            config = self.project.get_config() if self.project is not None else {}
+        settings = config.get("review")
+        if settings is None and not self.api.marks.auto:
+            return
+        self.api.sync_auto_accept(settings or {})
+
     def prime(self) -> None:
         """Build the Overview answer ahead of the first request, so the first screen does not wait for it."""
 
         try:
             with self.request_lock:
+                self._sync_review_settings()  # a scan from the command line may have left new suggestions
                 stamp = self._graph_stamp()
                 with self._reading():
                     status, payload = self.handle("GET", "/api/overview")
@@ -748,7 +850,10 @@ class BrainApp:
                     current = self.project.get_config()
                     if any(payload.get(key, current[key]) != current[key] for key in ("database", "identity_map")):
                         raise ValueError("Storage paths cannot change while the server is open; edit the config file and restart")
-                    return 200, self.project.save_config(payload)
+                    saved = self.project.save_config(payload)
+                    if saved.get("review") != current.get("review"):
+                        self._sync_review_settings(saved)
+                    return 200, saved
             if method == "POST" and parts == ["sample"] and self.project is not None:
                 # One click to a project with content: the sample is written beside the config and added as a source.
                 from backend.sample_project import write_sample
@@ -760,6 +865,7 @@ class BrainApp:
                 return 200, current
             if method == "POST" and parts == ["scan"] and self.project is not None:
                 result = self.project.scan(self.api.repository)
+                self._sync_review_settings()
                 if getattr(self, "_source_watcher", None) is not None:
                     self._source_watcher.reset()  # the scan is the new baseline; check again
                 return 200, {"overview": self.api.get_overview(), "source_count": result.source_count}
@@ -921,7 +1027,7 @@ class BrainApp:
                 payload = self._json_body(body)
                 action = str(payload.pop("action", ""))
                 items = payload.get("items") or payload.get("item_ids")
-                if items is not None:
+                if items is not None or payload.get("filter") is not None or payload.get("token") or payload.get("undo_token"):
                     return 200, self.api.apply_review("bulk", action, payload)
                 item_id = str(payload.get("candidate_id") or payload.get("target") or "")
                 if not item_id:

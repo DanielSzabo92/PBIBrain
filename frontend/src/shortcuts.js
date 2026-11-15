@@ -27,6 +27,7 @@ export const SHORTCUTS = [
   { id: "review:prev", keys: "K", label: "Previous review item", group: "Review", display: true },
   { id: "review:approve", keys: "A", label: "Approve suggestion", group: "Review", display: true },
   { id: "review:reject", keys: "R", label: "Reject suggestion", group: "Review", display: true },
+  { id: "review:select", keys: "X", label: "Select suggestion", group: "Review", display: true },
 ];
 
 const BY_ID = Object.fromEntries(SHORTCUTS.map((item) => [item.id, item]));
