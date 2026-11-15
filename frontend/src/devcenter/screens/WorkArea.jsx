@@ -4,7 +4,6 @@ import { ChevronRight, ChevronsUpDown, CircleCheck, CircleX, Copy, Edit3, Folder
 import { Button } from "@/components/ui/button";
 import { Banner } from "@/components/ui/notice";
 import { Menu } from "@/components/ui/menu";
-import { EmptyState } from "@/components/ui/result-panel";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/components/ui/toast";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
@@ -272,15 +271,8 @@ export default function WorkArea({ session, tabState, onTabs, onRetryLock, onClo
               />
             ) : tab === "agent" ? (
               <AgentTab session={session} changeDisabled={changeDisabled} reasonId={reasonId} onTabs={onTabs} />
-            ) : tab === "log" ? (
-              <LogTab onTabs={onTabs} />
             ) : (
-              <LaterTab
-                tab={tab}
-                marks={tab === "compare" && tabState.marks}
-                impactRowKey={tab === "impact" ? tabState.impactRowKey : null}
-                impactItemId={tab === "impact" ? tabState.impactItemId : null}
-              />
+              <LogTab onTabs={onTabs} />
             )}
           </TabsContent>
         ))}
@@ -333,15 +325,3 @@ export default function WorkArea({ session, tabState, onTabs, onRetryLock, onClo
   );
 }
 
-// The tabs that later U-steps build (U4 to U10). The frame shows the tab and its filter state.
-function LaterTab({ tab, marks, impactRowKey, impactItemId }) {
-  return (
-    <div data-impact-row={impactRowKey || undefined} data-impact-item={impactItemId || undefined}>
-      <EmptyState headingLevel={2} title={t("work.tab.later.title")}>
-        {t("work.tab.later.body", { tab: t(`work.tab.${tab}`) })}
-        {marks ? ` ${t("work.compare.marks")}` : ""}
-        {impactRowKey ? ` Impact target: ${impactRowKey}.` : ""}
-      </EmptyState>
-    </div>
-  );
-}

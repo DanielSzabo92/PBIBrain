@@ -68,7 +68,7 @@ export default function AISettings({ transport, onSaved }) {
     }
   };
 
-  // Instant reactive toggle: toggling chat immediately updates draft & syncs config to backend smoothly.
+  // The switch saves at once.
   const toggleEnabled = async (checked) => {
     setDraft((current) => ({ ...current, enabled: checked }));
     setError(""); setNotice(""); setTest(null);
@@ -76,7 +76,11 @@ export default function AISettings({ transport, onSaved }) {
       const body = { ...draft, enabled: checked };
       if (apiKey.trim()) body.api_key = apiKey.trim();
       const next = await transport.saveChatSettings(body);
-      accept(next);
+      // Keep edits made while this save was in flight (a provider picked right after the switch);
+      // only the switch takes the saved value.
+      setSettings(next);
+      setDraft((current) => ({ ...current, enabled: next.enabled }));
+      onSaved?.(next);
       setNotice(checked ? "Chat enabled." : "Chat disabled.");
       return next;
     } catch (cause) {

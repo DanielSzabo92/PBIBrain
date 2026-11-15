@@ -6,7 +6,12 @@ import { test, expect } from "@playwright/test";
 //   npx playwright test e2e/visual.spec.js --update-snapshots
 // The pictures are taken in Chromium on Linux at 1440 × 1000 in the dark theme (playwright.config.js).
 
-const SHOT = { animations: "disabled", caret: "hide", maxDiffPixels: 0 };
+// Its own server (playwright.config.js, port 8768): other specs approve suggestions and rescan on 8765.
+test.use({ baseURL: "http://127.0.0.1:8768" });
+
+// The last-scan time in the status bar is masked; a fixed width keeps the mask the same size whatever
+// the time ("9:02 AM" is narrower than "11:45 AM").
+const SHOT = { animations: "disabled", caret: "hide", maxDiffPixels: 0, style: ".statusbar-scan { display: inline-block; width: 220px; }" };
 
 // Times and the fixture's temporary folder change on every run; they are covered, not compared.
 const DATE = /\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) \d{1,2}, \d{4}|\b\d+ (seconds?|minutes?|hours?) ago\b|just now/i;

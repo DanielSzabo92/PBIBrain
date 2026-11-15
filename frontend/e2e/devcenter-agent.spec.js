@@ -27,7 +27,8 @@ async function openTab(page, name) {
 
 const proposalRows = (page) => page.locator(".dc-agent-row");
 const proposalRow = (page, id) => page.locator(`.dc-agent-row[data-proposal="${id}"]`);
-const lastToast = (page) => page.locator("[data-sonner-toast]").last();
+// Sonner lists the newest toast first.
+const lastToast = (page) => page.locator("[data-sonner-toast]").first();
 
 async function pick(page, label, option) {
   await page.getByRole("combobox", { name: label }).click();
@@ -213,10 +214,15 @@ test.describe("U9 Grid badge and row detail cards", () => {
     const badge = (name) => page.getByRole("row").filter({ hasText: name }).locator("[data-badge]");
     await expect(badge("Customer")).toHaveText("Confirm row first");
     await expect(badge("Budget")).toHaveText("Question");
-    await expect(badge("Budget")).toHaveAttribute("title", "Must Budget stay in the target model?");
     await expect(badge("Gross Margin")).toHaveText("Proposed");
-    await expect(badge("Gross Margin")).toHaveAttribute("title", "Agent proposes: Keep target");
-    await expect(badge("Net Sales")).toHaveAttribute("title", "Agent proposes: Take from Finance model");
+    // The badge's tooltip says what is asked or proposed.
+    const tip = async (name, text) => {
+      await badge(name).hover();
+      await expect(page.getByRole("tooltip")).toHaveText(text);
+    };
+    await tip("Budget", "Must Budget stay in the target model?");
+    await tip("Gross Margin", "Agent proposes: Keep target");
+    await tip("Net Sales", "Agent proposes: Take from Finance model");
   });
 
   test("the row detail card on a marked row disables Accept and offers Confirm row", async ({ page }) => {
@@ -252,7 +258,7 @@ test.describe("U9 Log tab", () => {
 
   const logRows = (page) => page.locator(".dc-log-row");
 
-  test("Show more loads the next page, and an empty value shows None", async ({ page }) => {
+  test("Show more loads the next page, and an empty value leaves its cell blank", async ({ page }) => {
     await openTab(page, "Log");
     await expect(logRows(page)).toHaveCount(50);
     await expect(page.locator(".dc-log-more")).toContainText("Showing 50 entries.");
@@ -260,9 +266,10 @@ test.describe("U9 Log tab", () => {
     const first = logRows(page).first();
     await expect(first).toContainText("You");
     await expect(first).toContainText("Checked sources");
-    await expect(first.locator('[data-col="before"]')).toHaveText("None");
-    await expect(first.locator('[data-col="after"]')).toHaveText("None");
-    await expect(logRows(page).nth(1).locator('[data-col="after"]')).toHaveText('{"choice":"take_from","source":"src-2"}');
+    // An empty value leaves its cell blank; a choice reads as words, not JSON.
+    await expect(first.locator('[data-col="before"]')).toHaveText("");
+    await expect(first.locator('[data-col="after"]')).toHaveText("");
+    await expect(logRows(page).nth(1).locator('[data-col="after"]')).toHaveText("Take from src-2");
     await page.getByRole("button", { name: "Show more" }).click();
     await expect(logRows(page)).toHaveCount(63);
     await expect(page.getByRole("button", { name: "Show more" })).toHaveCount(0);

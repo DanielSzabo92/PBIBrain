@@ -374,9 +374,13 @@
   color: var(--text-2);
 }
 
-.dc-cell-missing,
-.dc-hcell-missing {
+.dc-cell-missing {
   opacity: 0.55;
+}
+
+/* The header names the missing source and says "(Not found)"; dimming it would drop it below 4.5:1. */
+.dc-hcell-missing {
+  color: var(--text-2);
 }
 
 .dc-st-renamed {

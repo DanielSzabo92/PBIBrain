@@ -80,7 +80,9 @@
 .graph-zoom-value:hover { background: var(--surface-hover); color: var(--text); }
 .graph-zoom-value:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
 /* React Flow */
-.react-flow { --xy-edge-label-color-default: var(--text); }
+/* xyflow's own stylesheet loads with the graph chunk, after these rules, so its colours are set through its
+   variables (which it only defaults), not by repeating its selectors. */
+.react-flow { --xy-edge-label-color: var(--text); --xy-edge-label-background-color: var(--surface-2); --xy-minimap-background-color: var(--surface); }
 .react-flow__pane { cursor: grab; }
 .react-flow__pane.dragging { cursor: grabbing; }
 .react-flow__node { transition: opacity var(--dur) var(--ease-out); }
@@ -100,10 +102,10 @@
 .react-flow__edge:hover .react-flow__edge-path { stroke: var(--text-2); }
 .react-flow__edge.on-path .react-flow__edge-path { stroke: var(--brand); stroke-width: 2; }
 .react-flow__edge.is-dimmed { opacity: .12; }
-.react-flow__edge-textwrapper { opacity: 0; pointer-events: none; transition: opacity var(--dur-fast) var(--ease-out); }
+.react-flow .react-flow__edge-textwrapper { opacity: 0; pointer-events: none; transition: opacity var(--dur-fast) var(--ease-out); }
 .react-flow__edge.show-label .react-flow__edge-textwrapper, .react-flow__edge:hover .react-flow__edge-textwrapper { opacity: 1; }
-.react-flow__edge-text { fill: var(--text); font-size: var(--fs-meta); font-weight: 500; }
-.react-flow__edge-textbg { fill: var(--surface-2); stroke: var(--line-strong); stroke-width: 1px; }
+.react-flow .react-flow__edge-text { fill: var(--text); font-size: var(--fs-meta); font-weight: 500; }
+.react-flow__edge-textbg { stroke: var(--line-strong); stroke-width: 1px; }
 /* Nodes: a type chip and one line of name. Hue lives only in the chip. */
 .flow-node {
   position: relative; display: flex; align-items: center; gap: 8px; width: 100%; height: 100%; padding: 0 10px 0 3px;

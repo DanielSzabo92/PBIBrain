@@ -132,10 +132,10 @@
 .statusbar-progress::after { content: ""; position: absolute; inset: 0; width: 40%; border-radius: var(--r-2xs); background: var(--brand); animation: status-indeterminate 1.1s ease-in-out infinite; }
 @keyframes status-indeterminate { from { transform: translateX(-100%); } to { transform: translateX(250%); } }
 .topbar-scanning { color: var(--brand-strong); font-weight: 500; }
-.toast { color: var(--text); font-weight: 500; animation: fade-in var(--dur) var(--ease-out); }
-.toast svg { width: 13px; height: 13px; color: var(--ok); }
-.toast-error { color: var(--bad); }
-.toast-error svg { color: var(--bad); }
+.statusbar-notice { color: var(--text); font-weight: 500; animation: fade-in var(--dur) var(--ease-out); }
+.statusbar-notice svg { width: 13px; height: 13px; color: var(--ok); }
+.statusbar-notice-error { color: var(--bad); }
+.statusbar-notice-error svg { color: var(--bad); }
 /* Shortcut sheet */
 .shortcuts-dialog { width: min(720px, calc(100vw - 32px)); }
 .shortcuts-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 28px; }

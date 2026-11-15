@@ -1129,7 +1129,7 @@ export default function CompareGrid({
         >
           <input
             type="checkbox"
-            tabIndex={0}
+            tabIndex={tabIndex}
             checked={isSelected}
             aria-label={t("compare.select_row", { name: row.name })}
             aria-keyshortcuts="Space"
@@ -1247,6 +1247,7 @@ export default function CompareGrid({
             <div className="dc-mc-toggle-group" role="group" aria-label={t("compare.column.choice")}>
               <button
                 type="button"
+                tabIndex={tabIndex}
                 className={`dc-mc-btn ${choiceKind === "keep" ? "is-active" : ""}`}
                 disabled={changeDisabled}
                 onClick={(e) => {
@@ -1260,6 +1261,7 @@ export default function CompareGrid({
               </button>
               <button
                 type="button"
+                tabIndex={tabIndex}
                 className={`dc-mc-btn ${choiceKind === "take" ? "is-active" : ""}`}
                 disabled={changeDisabled || !hasDonor}
                 onClick={(e) => {
@@ -1273,6 +1275,7 @@ export default function CompareGrid({
               </button>
               <button
                 type="button"
+                tabIndex={tabIndex}
                 className={`dc-mc-btn ${choiceKind === "skip" ? "is-active" : ""}`}
                 disabled={changeDisabled}
                 onClick={(e) => {
@@ -1287,7 +1290,7 @@ export default function CompareGrid({
             </div>
             {isSaved ? (
               <span className="dc-mc-saved">
-                Saved · <button type="button" className="dc-link dc-mc-undo-btn" onClick={(e) => { e.stopPropagation(); handleUndoSingle(row.row_key); }}>Undo</button>
+                Saved · <button type="button" tabIndex={tabIndex} className="dc-link dc-mc-undo-btn" onClick={(e) => { e.stopPropagation(); handleUndoSingle(row.row_key); }}>Undo</button>
               </span>
             ) : choiceKind && !["keep", "take", "skip"].includes(choiceKind) ? (
               <Tooltip content={mc}>

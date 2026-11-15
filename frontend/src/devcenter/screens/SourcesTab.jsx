@@ -115,7 +115,11 @@ export default function SourcesTab({ session, changeDisabled, reasonId, onTabs }
                                 label: t("create.remove"),
                                 icon: Trash2,
                                 destructive: true,
-                                onSelect: () => { setRemoving(source); },
+                                onSelect: () => {
+                                  // The menu item goes away with the menu; focus returns to the row's actions button.
+                                  trigger.current = document.querySelector(`[data-source="${CSS.escape(source.source_id)}"] [aria-haspopup="menu"]`);
+                                  setRemoving(source);
+                                },
                               });
                             }
                             if (!items.length) return null;

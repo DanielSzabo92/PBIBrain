@@ -1,103 +1,59 @@
-# Handoff: remaining work from the adversarial product review
+# Handoff: state after the adversarial product review work
 
 Branch: `claude/vibrant-franklin-h8aafq` (the review branch `claude/product-adversarial-review-wid901` merged in; everything below is pushed; no PR is open).
 
 The review is in `docs/adversarial-review/`: one file per finding (01–22) with evidence, solution and
 acceptance criteria. The fix-status table in `docs/adversarial-review/README.md` says what was done for
-each finding and what each fix measured. This file lists only what is still open.
+each finding and what each fix measured; its last rows are this branch's work.
 
-## Done since the first handoff
-
-On branch `claude/vibrant-franklin-h8aafq` (the review branch merged in, plus the commits below it).
+## What this branch did
 
 | Area | What was done |
 |---|---|
-| Review queue | Row selection (checkbox, X key, header checkbox, "Approve N selected"). Bulk decisions are one write on the server with an undo token (`POST /api/review` with `items` or `filter`, `reply: "summary"`; undo with `token`). Auto-accept: Settings › Review, off by default, threshold 90 %, marked "Auto" under Reviewed, marks in `review-marks.json` beside the override file. |
-| Inspector and graph | "Versions" dialog on the Lineage toolbar: "Not a version" and "Is a version of", stored as `version_links` in `brain.json`. Folded title is the shared name ("Sales Analytics · 2 versions"). Visual types are readable. "Other dependencies" no longer repeats the field wells. Field wells checked on a real PBIR report. |
-| Scan | Background job: `POST /api/scan {"background": true}`, status in `GET /api/scan/status` (`last` holds how it ended), `POST /api/scan/cancel`. The request lock is held only while the graph is published. Per-source state in `GET /api/config/sources` (`scan`), shown in Settings. |
-| Gates | `tools/large_project.py` writes the 13,731-object project; `tests/test_scale_budgets_large.py` holds its first requests to budgets. The overview lists at most 50 validation issues and counts the rest (`validation_issue_count`). |
-| Merge models | One filter line in Compare: the chip row is gone, "Clear filters" sits in the toolbar. |
-| Code structure | The Review queue and the shared view helpers moved out of `App.jsx` into `frontend/src/views/`; no behaviour change. |
+| Review queue | Row selection, server-side bulk decisions with undo, auto-accept (off by default), skeleton rows while loading. Returning from an object puts focus back on the row you left. |
+| Scan | Background job with Cancel; Cancel lands at once, also inside formula analysis; a full scan of the 13,731-object project takes 11.7 s (was 23.0 s); each source's scan state survives a restart. |
+| Inspector and graph | Version corrections, readable visual types, report measures in a card's bindings; zoom control in the graph toolbar. |
+| Merge models | Session switcher instead of the breadcrumb, numbered process steps, only the choices that apply, one filter line. The copy target says "Recommended" once. The grid has one tab stop; focus returns to a source's actions button after its dialog; the missing-source header meets 4.5:1. |
+| Desktop | Recent projects on the empty start screen and in the title-bar switcher. |
+| Code structure | `App.jsx` split by view into `frontend/src/views/`; `app.css` is an ordered list of per-view imports; one list behaviour (`frontend/src/listNavigation.js`). |
+| Toasts and notices | Sonner toasts take the app's colours and have a close button. The status-bar notice (scan result) is `.statusbar-notice`; review decisions report in toasts. |
+| Chat settings | Turning the chat on no longer resets a provider picked while that save was in flight. |
+| Gates | Large-project budgets (`tools/large_project.py`, `tests/test_scale_budgets_large.py`); screenshot comparison of seven views (`frontend/e2e/visual.spec.js`) on its own server; every browser spec updated to the current UI and passing. |
+| Cleanup | Dead CSS and imports, the placeholder "tab not ready" screen of Merge, unused copy keys it and the old remove button used, the review's one-off large-project server (superseded by `tools/large_project.py`). |
 
-Decisions a reader may question:
+## Decisions a reader may question
 
+- **No server paging of the review view.** The slim snapshot opens in about 1 s on the large project, and grouping by pattern needs every item on the page. A bulk decision sends the chosen identifiers in one write, so a server-side filter would save nothing.
+- **No lineage layout worker or scroll scrubber.** Folded lineage opens in about 1 s on the large project; a worker would not be felt.
+- **No drop zone.** A browser cannot read a dropped file's path. It needs the desktop window's own drop event; Browse ("Add sources") covers the need today.
 - **Auto-accept is off by default.** It changes what "reviewed" means, so a project opts in.
-- **Version corrections are in the project file, not the override file.** An override on a model marks the model itself as "Edited" in every view.
-- **Cancel stops between scan steps.** Formula analysis is one step (15 of 18 s on the large project), so a cancel during it takes effect when it ends; the page is released at once and nothing is published.
-- **"Header action" (Merge shows "Change project" where other views show "Scan sources") was not changed.** The header shows both buttons in every view; "Scan sources" is hidden while the project has no objects, which is the state of the fake server the review used for Merge.
+- **Version corrections live in the project file**, not the override file: an override on a model marks it "Edited" everywhere.
+- **Expanding a group refits the picture when it fits** (deliberate since commit 2a73b29).
+- **The chat shares the merge session only from the Merge view**, and only then offers the merge tools (`frontend/src/chat.js`).
+- **Apply is always styled destructive** (it writes files); Format is the only plain confirm.
 
-## Remaining tasks
+## Still open
 
-Ordered by value to a user of a large project. Sizes are rough: S = hours, M = a day or two, L = several days.
+- Drop zone for sources (desktop shell, see above).
+- The "Open" notes in the fix-status table that no later row closes (for example a path list in the graph pane, a split search preview, per-type object pages for tables and models).
+- Merge copy keys that look unused (about 180, mostly the cloud and pull flows) were left alone: many are built at run time from codes, so they need checking one by one.
 
-### Review queue (findings 01, 11)
-
-| Task | Size | Notes |
-|---|---|---|
-| Server paging of the review snapshot | L | Deliberately not done. The snapshot is 42 MB on the 13,731-object project but opens in about 1 s, and grouping by pattern counts every item on the client. Only worth doing if pattern counts move to the server first. See the learning "A long review queue opens grouped by pattern". |
-| Bulk decisions by filter from the page | S | The server accepts `filter`, but the page still sends identifiers: patterns and "low evidence" are computed in the browser. Use `filter` once those move to the server. |
-
-### Merge models (finding 19)
-
-| Task | Size | Notes |
-|---|---|---|
-| Offer only the choices that apply | M | The row detail lists six options, two disabled with a reason. `e2e/devcenter-row.spec.js` asserts the disabled radios exist (lines ~203–225, 511, 606), so this is a contract change, not a style change. |
-| Process stepper | M | Sources → Compare → Impact → Plan → Apply as a progress strip with counts. Today the step tabs are only set apart from the tool tabs by a divider (`TOOL_TABS` in `frontend/src/devcenter/screens/WorkArea.jsx`). |
-| Breadcrumb | S | "Merge models › session › tab" repeats the sidebar, the title and the tab. The first crumb is the only way back to the session list, so replace it with a session switcher before removing it. |
-
-### Inspector and graph (findings 13, 15, 07)
-
-| Task | Size | Notes |
-|---|---|---|
-| A card visual's measure is missing from `visual_bindings` | S | On `tests/fixtures/merge_lab/SalesA` the card "target" has the well Values: Sales Target, but `visual_bindings.measures` is empty. The page lists by well, so it shows correctly; the bindings count is wrong. |
-| Lineage layout in a worker, scroll scrubber | M | Open items of finding 07. |
-| Zoom control in the toolbar, project switcher, skeletons | S each | Leftovers of finding 15. |
-
-### First run, settings, scan (findings 20, 18, 04)
-
-| Task | Size | Notes |
-|---|---|---|
-| Drop zone and Browse | M | Needs the desktop shell: a browser cannot read the path of a dropped file. `DesktopProjectView` already has `addSources`. |
-| Recent projects | S | On the empty Overview and in the title bar. Desktop shell only. |
-| Cancel inside formula analysis | M | `Scanner.scan` is one call. A cancel check per model in `build_fact_graph` would make Cancel take effect within a second or two. |
-| Per-source state across restarts | S | `ProjectService.source_states` is kept in memory. |
-
-### Code structure and gates (findings 16, 21, 22)
-
-| Task | Size | Notes |
-|---|---|---|
-| Split `frontend/src/App.jsx`, the rest | L | Started: the Review queue is `frontend/src/views/ReviewQueue.jsx` (loaded on demand) and the helpers more than one view uses are `views/shared.jsx`; `App.jsx` went from 2,600 to 1,850 lines. Still inside: Overview, Search, Inspector and Settings. Unit tests read `App.jsx` as text for those views (`test/ux-states.test.js`, `navigation`, `issue45`, `issue46`, `issue48…`, `issue49…`) and must read the new files when they move. |
-| CSS ownership | M | `frontend/src/app.css` is one file with appended blocks; move each view's rules beside its component. |
-| One list behaviour | M | Search results, the object tree, the review queue and relationship lists each have their own keyboard handling and row markup. |
-| Screenshot comparison | M | None yet. |
-
-## Known state of the test suites
-
-Failures listed here were present before this work started and are unchanged, unless stated.
+## Test suites
 
 | Suite | Command | State |
 |---|---|---|
-| Frontend unit | `cd frontend && npm test` | 334 pass, 0 fail. |
-| Backend | `python -m unittest discover -s tests` | 892 tests, all pass (the 40 earlier failures were fixed on main before this work resumed). |
-| Browser, core specs | chat, desktopAudit, graph, graphExplorer, graphSession, modelSummary, overhaul, palette, product, productRefinement, sharedFixes, a11yViews, reviewGroups, reviewLayout, routes | 42 of 83 failed in one combined run before the restore fix below; the old code failed the same tests apart from the new auto-accept one. |
-| Browser, Merge | devcenter-row, -compare, -a11y, -shell, -plan | The same 6 failures in compare and plan before and after the Clear filters change. Other `devcenter-*` specs were not re-run. |
-| Browser, new specs | a11yViews, reviewGroups, reviewLayout, routes, reviewSelection, scanBackground | All pass when run together without the older specs. |
-
-Order mattered in the core run: three `overhaul.spec.js` tests swap in another project and restore the
-fixture in a `finally`, which a time-out can skip, so later specs (`routes.spec.js`, the auto-accept test)
-failed on the wrong project. An `afterEach` now restores it. Checked: overhaul, then routes and the new
-review and scan specs, gives 30 passed and only overhaul's own 10 pre-existing failures.
-
-The pre-existing failures have not been triaged. That is a task of its own: many look like tests that
-were not updated after earlier redesigns (for example a tab renamed to "Lineage flow").
+| Frontend unit | `cd frontend && npm test` | 338 pass. |
+| Backend | `python -m unittest discover -s tests` | 895 tests, all pass. |
+| Browser | `cd frontend && npm run build && npx playwright test` | 272 tests, all pass on fresh servers (about 6 minutes). |
 
 ## Working notes
 
-- Browser tests serve `frontend/dist`. Do not rebuild it while a run is in progress.
-- A full Merge browser run takes 10–20 minutes because failing tests wait for their time-out.
-- `trail check` reports the same false conflicts on every commit of this branch: rows of the fix-status
-  table (finding numbers read as values), `GraphView.jsx` (the node list is not filtered on selection)
-  and `tests/test_api_answer_cache.py` (it tests the answer cache, not gzip). Say so in the commit message.
-- Review grouping switches on above 200 suggestions. A test that expects `.review-item` rows on a larger
-  fixture must choose "No grouping" first.
-- The Merge row detail is docked under the grid from 1100 × 720 px; below that it is still an overlay.
+- Browser tests serve `frontend/dist`. Rebuild before a run, never during one.
+- Specs share the graph server on port 8765 and change its state (approvals, rescans, settings); an order problem shows as a test that passes alone. The screenshot spec has its own server (8768) for that reason, the chat spec has 8767, Merge specs use the fake on 8766.
+- A locally reused server keeps the state of earlier runs; stop it (`pkill -f tests.graph_ui_server`) for a clean run.
+- Sonner mounts a toast from a timer, so a test with a paused clock moves it on (`page.clock.runFor(1)`); the newest toast is `.first()`.
+- Every view takes focus 40 ms after it opens, and the graph pans or refits 40 ms after a selection or a dock change; tests wait for that before the next key (`still()` in `e2e/graphExplorer.spec.js`).
+- The reduced-motion rule sets durations to 0.001 ms; count a duration as motion only above that.
+- xyflow's stylesheet loads with the graph chunk after the app CSS; theme it through its variables.
+- After an intended visual change: `npx playwright test e2e/visual.spec.js --update-snapshots`, and look at the pictures before committing them.
+- `trail check` reports word matches in this file and in backend code from earlier commits as conflicts; say so in the commit message.

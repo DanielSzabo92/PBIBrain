@@ -247,7 +247,8 @@ test.describe("Before you apply block list order and fix actions", () => {
     await workReady(page);
 
     await page.getByRole("tab", { name: "Sources" }).click();
-    await page.getByRole("button", { name: "Remove Finance model" }).click();
+    await page.getByRole("button", { name: "Actions for Finance model" }).click();
+    await page.getByRole("menuitem", { name: "Remove" }).click();
     await page.getByRole("alertdialog").getByRole("button", { name: "Remove source" }).click();
 
     await openPlanTab(page);
@@ -368,6 +369,7 @@ test.describe("Accessibility, themes, reduced motion, and 1280x900 layout (A1, A
     const transitionDuration = await page.locator(".dc-plan-chev").first().evaluate(
       (node) => getComputedStyle(node).transitionDuration,
     );
-    expect(transitionDuration).toBe("0s");
+    // The reduced-motion rule (styles/base.css) sets 0.001 ms, which ends at once.
+    expect(parseFloat(transitionDuration)).toBeLessThanOrEqual(0.001);
   });
 });

@@ -117,7 +117,7 @@ export function StatusBar({ connection, projectName, counts, pending, onReview, 
         <span className="statusbar-item statusbar-scan">{lastScan}</span>
       )}
       <span className="statusbar-spacer" />
-      {notice ? <span className={`statusbar-item toast ${noticeFailed ? "toast-error" : ""}`} role="status">{noticeFailed ? <TriangleAlert aria-hidden="true" /> : <CircleCheck aria-hidden="true" />}{notice}</span> : null}
+      {notice ? <span className={`statusbar-item statusbar-notice ${noticeFailed ? "statusbar-notice-error" : ""}`} role="status">{noticeFailed ? <TriangleAlert aria-hidden="true" /> : <CircleCheck aria-hidden="true" />}{notice}</span> : null}
       <Tooltip content="Keyboard shortcuts (F1)"><button type="button" className="statusbar-item statusbar-button" onClick={onShortcuts} aria-label="Keyboard shortcuts"><Keyboard aria-hidden="true" /></button></Tooltip>
       <Tooltip content={`${theme === "dark" ? "Light" : "Dark"} theme (Ctrl+Shift+L)`}><button type="button" className="statusbar-item statusbar-button theme-toggle" onClick={onTheme} aria-label={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}>{theme === "dark" ? <Sun aria-hidden="true" /> : <Moon aria-hidden="true" />}</button></Tooltip>
     </footer>

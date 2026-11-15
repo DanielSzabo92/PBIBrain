@@ -8,7 +8,7 @@ test("command search returns to the same results and keyboard focus without refe
   await page.goto("/");
   await expect(page.getByRole("navigation", { name: "Objects by type" })).toBeVisible();
   await page.screenshot({ path: "test-results/product-home.png", fullPage: true });
-  await page.getByRole("button", { name: /^Find measure/ }).click();
+  await page.getByRole("navigation", { name: "Objects by type" }).getByRole("button", { name: /Measures$/ }).click();
   await page.getByLabel("Search objects").fill("Net Sales");
   await page.getByLabel("Search objects").press("Enter");
   const result = page.locator(".search-result").filter({ has: page.locator(".result-type", { hasText: "Measure" }) }).first();
@@ -23,7 +23,7 @@ test("command search returns to the same results and keyboard focus without refe
   await expect(page.getByText("Canonical ID", { exact: true })).toHaveCount(0);
   await expect(page.getByText("SUM('Sales'[Amount])", { exact: true })).toBeVisible();
   await page.screenshot({ path: "test-results/product-inspector.png", fullPage: true });
-  await page.getByRole("button", { name: "Back to results" }).click();
+  await page.getByRole("button", { name: "Back to search results" }).click();
   await expect(page.getByRole("searchbox", { name: "Search objects" })).toHaveValue("Net Sales");
   await expect(result).toBeFocused();
   expect(searches).toBe(baseline);
@@ -84,12 +84,12 @@ test("search scopes, late responses, and retry never show another query's result
   await expect(page.locator(".search-result")).toHaveCount(0);
   await page.unroute("**/api/search?**");
   await page.getByRole("button", { name: "Retry search", exact: true }).click();
-  await expect(page.getByText("No matches", { exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "No matches", exact: true })).toBeVisible();
   await input.fill("Sales");
   await page.getByLabel("Report", { exact: true }).selectOption({ label: "Sales report" });
   await expect(page.locator(".search-result")).not.toHaveCount(0);
   await page.locator(".search-result").first().click();
-  await page.getByRole("button", { name: "Back to results" }).click();
+  await page.getByRole("button", { name: "Back to search results" }).click();
   await expect(page.getByLabel("Report", { exact: true })).toHaveValue("report:sales-report");
   await page.getByRole("button", { name: "Clear filters", exact: true }).click();
   await expect(page.getByLabel("Report", { exact: true })).toHaveValue("");
@@ -97,7 +97,7 @@ test("search scopes, late responses, and retry never show another query's result
 
 test("inspector retries failed objects and does not claim empty lineage while loading", async ({ page }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: /^Find measure/ }).click();
+  await page.getByRole("navigation", { name: "Objects by type" }).getByRole("button", { name: /Measures$/ }).click();
   await page.getByLabel("Search objects").fill("Net Sales");
   await page.getByLabel("Search objects").press("Enter");
   await page.route("**/api/objects/**", (route) => route.fulfill({ status: 500, json: { error: "Object interrupted" } }));
@@ -127,7 +127,7 @@ test("home, search, and readable formulas fit narrow screens with reduced motion
   await expect(page.getByRole("navigation", { name: "Objects by type" })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy();
   await page.screenshot({ path: "test-results/product-home-mobile.png", fullPage: true });
-  await page.getByRole("button", { name: /^Find measure/ }).click();
+  await page.getByRole("navigation", { name: "Objects by type" }).getByRole("button", { name: /Measures$/ }).click();
   await page.getByLabel("Search objects").fill("Net Sales");
   await page.getByLabel("Search objects").press("Enter");
   await expect(page.locator(".search-result").first()).toBeVisible();
@@ -163,12 +163,12 @@ test("more results appends real API pages and survives an inspector visit", asyn
   await expect(page.locator(".search-result")).toHaveCount(4);
   expect(await page.locator(".search-result").first().getAttribute("data-result-id")).toBe(firstId);
   await page.locator(".search-result").last().click();
-  await page.getByRole("button", { name: "Back to results" }).click();
+  await page.getByRole("button", { name: "Back to search results" }).click();
   await expect(page.locator(".search-result")).toHaveCount(4);
   await expect(page.locator(".search-result").last()).toBeFocused();
   await page.getByRole("searchbox", { name: "Search objects" }).fill("definitely missing object");
   await expect(page.locator(".search-result")).toHaveCount(0);
-  await expect(page.getByText("No matches", { exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "No matches", exact: true })).toBeVisible();
 });
 
 test("every direct relationship remains reachable beyond the first ten", async ({ page, request }) => {
@@ -182,7 +182,7 @@ test("every direct relationship remains reachable beyond the first ten", async (
     return route.fulfill({ json: { ...data, dependencies: targets, edges: targets.map((node, index) => ({ id: `test-dependency-${index}`, type: "REFERENCES", from_id: selected.id, to_id: node.id })) } });
   });
   await page.goto("/");
-  await page.getByRole("button", { name: /^Find measure/ }).click();
+  await page.getByRole("navigation", { name: "Objects by type" }).getByRole("button", { name: /Measures$/ }).click();
   await page.getByLabel("Search objects").fill("Net Sales");
   await page.getByLabel("Search objects").press("Enter");
   await page.locator(".search-result").filter({ has: page.locator(".result-type", { hasText: "Measure" }) }).first().click();

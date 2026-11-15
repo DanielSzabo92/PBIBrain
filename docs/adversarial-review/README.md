@@ -10,7 +10,7 @@ Fix order: **01–05** (trust and speed), then **06–09** (the graph and review
 
 ## How it was tested
 
-- **Large project:** 8 models, 24 reports, 240 tables, 4,320 columns, 2,400 measures, 144 pages, 1,440 visuals → 13,731 objects, 41,942 relationships, 11,528 review items. Generated and served by `evidence/large_project_server.py` through the real scanner, repository and API (scan time 21 s).
+- **Large project:** 8 models, 24 reports, 240 tables, 4,320 columns, 2,400 measures, 144 pages, 1,440 visuals → 13,731 objects, 41,942 relationships, 11,528 review items. Generated and served through the real scanner, repository and API (scan time 21 s); the generator is now `tools/large_project.py` (`python -m tools.large_project --dir bigdata --serve`).
 - **Empty project** through `brain serve` (first-run experience).
 - **Merge models** on the e2e fake server (`tests/devcenter_ui_server.py`); the real merge engine needs the desktop shell and Microsoft's model library and was not exercised.
 - Headless Chromium at 1440×900 and 1024×700, dark theme; timings from Playwright request timing and `PerformanceObserver("longtask")`.
@@ -101,8 +101,19 @@ Measured on the same 13,731-object project, before → after.
 | 18 | **Mostly** | Each source row says what the last scan did with it: Scanned with its models and reports, Failed with the reason, Reading, or Not scanned | Open: browse button; the state is kept until the app closes, not across restarts |
 | 22 | **Mostly** | `tools/large_project.py` generates the 13,731-object project; `tests/test_scale_budgets_large.py` scans it and holds the overview, one object, the review view, search, lineage and a bulk decision over 11,528 suggestions to budgets | 25 s in the suite. It found that the overview carried every validation issue after a scan (1.4 MB); the overview now lists 50 and counts the rest. Open: screenshot comparison |
 | 19 | **Mostly** | One filter line in Compare: each filter control shows its own value and "Clear filters" sits beside them; the chip row that repeated them is gone | Open: stepper, hiding choices that do not apply, breadcrumb |
+| 04 | **Fixed** | Formula analysis and the graph builder check for Cancel per expression and between stages; key and name normalisers are memoised per text | Cancel during formula analysis: 18.9 s → at once. Full scan of the large project: 23.0 s → 11.7 s |
+| 18 | **Fixed** | Each source's last scan state is kept beside the project file (`source-states.json`) and shown after a restart; the desktop shell has Browse ("Add sources") | — |
+| 13 | **Fixed** | A card bound to a report-level measure lists it under the visual's measures (`visual_bindings` skipped report measures) | The bindings count matches the wells on `tests/fixtures/merge_lab/SalesA` |
+| 19 | **Fixed** | A "Switch session" menu beside the session title replaces the breadcrumb; the five process tabs carry their step number; the row detail offers only the choices that apply to the object type (blocked ones stay, disabled with their reason); the copy target says "Recommended" once, as a badge | — |
+| 15 | **Fixed** | Graph toolbar: zoom out / percentage (reset) / zoom in, Fit as an icon button; Review queue: skeleton rows while it loads; desktop: the project name in the title bar is a switcher with recent projects | — |
+| 20 | **Mostly** | Desktop: the last 8 projects are remembered and listed on the empty start screen and in the title-bar switcher | Open: a drop zone. A browser cannot read a dropped file's path; it needs the desktop window's own drop event |
+| 07 | **Closed** | Layout in a worker and the scroll scrubber were not built: folded lineage opens in about 1 s on the large project, so a worker would not be felt | — |
+| 16 | **Fixed** | `App.jsx` split by view into `src/views/` (1,850 → 975 lines); `app.css` is an ordered list of imports with each view's rules beside it; the split build is pixel-identical in every compared view | — |
+| 21 | **Fixed** | One list behaviour (`src/listNavigation.js`) for search results, relationships, the review queue and the object tree; toasts take the app's colours (green text 4.25:1 → app text) and have a 24 px close button; the Merge grid has one tab stop; focus comes back to a restored review row and to a source's actions button after its dialog | — |
+| 22 | **Fixed** | `e2e/visual.spec.js` compares Overview, Search, the Inspector tree, an object page, the Review queue and two Settings pages with approved pictures at zero tolerance, on a server no other spec writes to; the whole browser suite passes | — |
+| 01 | **Closed** | Server paging of the review view was not built: the slim snapshot opens in about 1 s and grouping by pattern needs every item on the page; a bulk decision sends the chosen identifiers in one write, which is the same single request a filter would be | — |
 
-Everything else is open.
+Rows are in the order the work was done; a later row for the same finding supersedes an earlier row's "Open" note. Findings with no row are open.
 
 ## What is already good (keep)
 

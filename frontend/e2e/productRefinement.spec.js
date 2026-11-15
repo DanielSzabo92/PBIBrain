@@ -140,7 +140,7 @@ test("successful review stays successful when the follow-up snapshot refresh fai
   await expect(approve).toBeVisible();
   await approve.click();
 
-  await expect(page.locator(".toast")).toContainText("Suggestion approved");
+  await expect(page.locator("[data-sonner-toast]").first()).toContainText("Suggestion approved");
   await expect(page.getByText("Review failed. Try again.", { exact: true })).toHaveCount(0);
   await expect(page.locator(".review-item").first()).toBeVisible();
   await expect(page.getByRole("heading", { name: "Review refresh failed", exact: true })).toBeVisible();
@@ -228,12 +228,13 @@ test("a delayed review response cannot overwrite a newer successful scan generat
 
   await page.getByRole("navigation").getByRole("button", { name: "Overview", exact: true }).click();
   await page.getByRole("button", { name: "Scan sources", exact: true }).click();
-  await expect(page.locator(".toast")).toContainText("Scan complete", { timeout: 60000 });
+  // The scan reports in the status bar; review decisions report in toasts.
+  await expect(page.locator(".statusbar-notice")).toContainText("Scan complete", { timeout: 60000 });
 
   releaseReview();
   await expect.poll(() => reviewSettled).toBe(true);
-  await expect(page.locator(".toast")).toContainText("Scan complete");
-  await expect(page.locator(".toast")).not.toContainText("Suggestion approved");
+  await expect(page.locator(".statusbar-notice")).toContainText("Scan complete");
+  await expect(page.getByRole("region", { name: "Notifications" })).not.toContainText("Suggestion approved");
 
   await page.getByRole("navigation").getByRole("button", { name: /^Review queue/ }).click();
   await expect(page.locator(".queue-panel")).toBeVisible();

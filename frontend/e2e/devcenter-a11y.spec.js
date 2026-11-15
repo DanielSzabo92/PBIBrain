@@ -157,7 +157,7 @@ const SCREENS = [
     name: "sources",
     setup: async (page, request) => {
       await scenario(request, "default");
-      await openTab(page, "Sources", (p) => p.getByRole("heading", { name: "Naming rules for Combined model" }));
+      await openTab(page, "Sources", (p) => p.getByRole("heading", { name: "Sources", level: 2 }));
     },
   },
   {
@@ -248,7 +248,8 @@ test.describe("U12 reduced motion on each screen (A15)", () => {
           const style = getComputedStyle(el);
           const transition = Math.max(...seconds(style.transitionDuration));
           const animation = style.animationName !== "none" ? Math.max(...seconds(style.animationDuration)) : 0;
-          if (transition > 0 || animation > 0) list.push(`${el.tagName}.${el.className}`.slice(0, 80));
+          // The reduced-motion rule (styles/base.css) sets 0.001 ms, which ends at once; count only longer.
+          if (transition > 0.001 || animation > 0.001) list.push(`${el.tagName}.${el.className}`.slice(0, 80));
         }
         return list.slice(0, 10);
       });
@@ -267,7 +268,9 @@ test.describe("U12 async results and toasts in the app (A11, A23)", () => {
     await page.getByRole("button", { name: "Check sources" }).click();
     const region = page.locator('section[aria-live="polite"][aria-label="Notifications"]');
     const toast = region.locator("[data-sonner-toast]").filter({ hasText: "All sources are the same as at the last check." });
-    await expect(toast).toHaveCount(1);
+    // The reply comes back, then Sonner mounts the toast from a timer: move the paused clock on until it shows.
+    const shown = async () => { await page.clock.runFor(1); return toast.count(); };
+    await expect.poll(shown).toBe(1);
     // The toast never takes the focus by itself.
     expect(await page.evaluate(() => Boolean(document.activeElement?.closest("[data-sonner-toast]")))).toBe(false);
 
@@ -282,8 +285,9 @@ test.describe("U12 async results and toasts in the app (A11, A23)", () => {
 
     // A new toast closes with its close button.
     await page.getByRole("button", { name: "Check sources" }).click();
-    await expect(toast).toHaveCount(1);
+    await expect.poll(shown).toBe(1);
     await toast.getByRole("button", { name: "Close notification" }).click();
+    await page.clock.runFor(500);
     await expect(toast).toHaveCount(0);
   });
 });

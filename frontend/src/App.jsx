@@ -697,6 +697,10 @@ function AppInner({ transport = brainTransport }) {
   // Manage focus on view changes so focus moves to view heading or primary control instead of landing on <body>
   useEffect(() => {
     const timer = setTimeout(() => {
+      // A view that already put focus somewhere inside it (a restored row or result) keeps it.
+      const main = document.querySelector("#main-content");
+      const active = document.activeElement;
+      if (main && active && active !== main && main.contains(active)) return;
       if (view === "search") {
         const searchInput = document.querySelector("#brain-search-query, .search-field input");
         if (searchInput) { searchInput.focus({ preventScroll: true }); return; }

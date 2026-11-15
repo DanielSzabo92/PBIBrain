@@ -341,7 +341,7 @@ export function createStepError(step, draft) {
 }
 
 // The target model choices of step 2 (UI design 4.1, Issue #50).
-// Safe copies are listed first with "(Recommended)" on the first source, followed by Empty,
+// Safe copies are listed first with a "Recommended" badge on the first source, followed by Empty,
 // and risky in-place writes are placed at the bottom with warning tone and badge.
 export function targetModelItems(sources = []) {
   const modelSources = sources.filter((source) => MODEL_KINDS.has(source.kind));
@@ -352,7 +352,8 @@ export function targetModelItems(sources = []) {
     const isRecommended = index === 0;
     copyItems.push({
       value: `copy:${source.key}`,
-      label: isRecommended ? t("create.target.copy_recommended", { source: source.name }) : t("create.target.copy", { source: source.name }),
+      // The badge says "Recommended"; the label does not repeat it.
+      label: t("create.target.copy", { source: source.name }),
       help: t("create.target.copy.help", { source: source.name }),
       recommended: isRecommended,
       badgeLabel: isRecommended ? t("create.target.recommended_badge") : undefined,

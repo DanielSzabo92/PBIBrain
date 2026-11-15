@@ -9,12 +9,12 @@ test("overview exposes invalid graph issues separately from extraction", async (
     ] } });
   });
   await page.goto("/");
-  await expect(page.getByRole("heading", { name: "Graph validation failed" })).toBeVisible();
+  // The validation summary is its own widget beside "Sources indexed"; its first issues are listed inline.
+  const validation = page.getByRole("region", { name: "Validation summary" });
+  await expect(validation).toContainText("Graph validation failed");
   await expect(page.getByText("Sources indexed", { exact: true })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Ready for review", exact: true })).toHaveCount(0);
-  await page.getByText("View validation issues (1)").click();
-  await expect(page.getByText("MODEL cannot contain REPORT", { exact: false })).toBeVisible();
-  await page.getByRole("button", { name: "Inspect affected object" }).click();
+  await expect(validation.getByText("MODEL cannot contain REPORT", { exact: false })).toBeVisible();
+  await validation.getByRole("button", { name: "Inspect", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Sales report", exact: true })).toBeVisible();
 });
 

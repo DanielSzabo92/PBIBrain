@@ -233,8 +233,8 @@ test.describe("Full grid keyboard map (section 9.3)", () => {
   });
 
   test("D key opens code diff on non-same donor cell", async ({ page }) => {
-    // Focus row 0 donor cell (col 4 or 5).
-    const donorCell = page.locator('.dc-cell[data-r="0"][data-c="4"]');
+    // Focus row 0's first donor cell (column 5; column 4 is the target).
+    const donorCell = page.locator('.dc-cell[data-r="0"][data-c="5"]');
     await donorCell.focus();
 
     await page.keyboard.press("d");
@@ -473,37 +473,31 @@ test.describe("Marks filter and Confirm rows", () => {
 });
 
 test.describe("Compare mode switcher", () => {
-  test("switching compare mode keeps filters and active row but clears selection", async ({ page, request }) => {
+  test("switching compare mode keeps filters and the open row", async ({ page, request }) => {
     await scenario(request, "default");
     await openDevCenter(page);
     await workReady(page);
 
-    // Search and select row and open row detail.
+    // Search and open a row. (While rows are selected the bulk bar takes the filter line's place,
+    // mode switch included, so a mode change never meets a selection.)
     const search = page.locator('input[type="search"]');
     await search.fill("Sales");
     await page.waitForTimeout(200);
-
-    const chk = page.locator('.dc-body-row[data-i="0"] input[type="checkbox"]');
-    await chk.click();
-    await expect(page.locator(".dc-bulkbar")).toBeVisible();
 
     const firstCell = page.locator('.dc-cell[data-r="0"][data-c="1"]');
     await firstCell.click();
     const pane = page.locator(".dc-row-pane");
     await expect(pane).toBeVisible();
 
-    // Switch mode to Strict.
     const strictBtn = page.getByRole("radio", { name: "Strict" });
     await strictBtn.click();
-    await page.waitForTimeout(200);
+    await expect(strictBtn).toHaveAttribute("aria-checked", "true");
 
-    // Filters and search remain intact.
+    // Filters and search remain intact, and the row detail stays open.
     await expect(search).toHaveValue("Sales");
-    // Row detail remains open.
     await expect(pane).toBeVisible();
-    // Selection is cleared.
-    await expect(page.locator(".dc-bulkbar")).toHaveCount(0);
   });
+
 });
 
 test.describe("Code diff modal dialog", () => {
