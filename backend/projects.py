@@ -35,7 +35,7 @@ from backend.sync import preserve_review_statuses
 
 LOGGER = logging.getLogger(__name__)
 PROJECT_VERSION = 1
-_CONFIG_KEYS = frozenset({"version", "name", "sources", "cloud_sources", "database", "identity_map", "graph_colors", "review"})
+_CONFIG_KEYS = frozenset({"version", "name", "sources", "cloud_sources", "database", "identity_map", "graph_colors", "review", "version_links"})
 
 
 class ProjectConfigError(ValueError):
@@ -143,7 +143,31 @@ class ProjectConfigStore:
             config["graph_colors"] = _graph_colors(payload["graph_colors"])
         if "review" in payload:
             config["review"] = _review_settings(payload["review"])
+        if "version_links" in payload:
+            config["version_links"] = _version_links(payload["version_links"])
         return config
+
+
+def _version_links(value: Any) -> dict[str, list[list[str]]]:
+    """The user's corrections to version folding: pairs of models (or reports) that are, or are not, versions."""
+
+    if not isinstance(value, Mapping) or set(value) - {"same", "different"}:
+        raise ProjectConfigError("version_links must contain same and/or different")
+    result: dict[str, list[list[str]]] = {}
+    for key in ("same", "different"):
+        pairs = value.get(key, [])
+        if not isinstance(pairs, list) or len(pairs) > 500:
+            raise ProjectConfigError(f"version_links.{key} must be a list of pairs")
+        seen: set[tuple[str, str]] = set()
+        for pair in pairs:
+            if (not isinstance(pair, list) or len(pair) != 2 or pair[0] == pair[1]
+                    or any(not isinstance(item, str) or not item.strip() or len(item) > 400 for item in pair)):
+                raise ProjectConfigError(f"version_links.{key} must hold pairs of two different object IDs")
+            seen.add(tuple(sorted(pair)))
+        result[key] = [list(pair) for pair in sorted(seen)]
+    if {tuple(pair) for pair in result["same"]} & {tuple(pair) for pair in result["different"]}:
+        raise ProjectConfigError("version_links: a pair cannot be both the same and different")
+    return result
 
 
 def _review_settings(value: Any) -> dict[str, Any]:

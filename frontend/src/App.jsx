@@ -999,7 +999,7 @@ function AppInner({ transport = brainTransport }) {
             <Suspense fallback={<div className="view-loading" role="status"><RefreshCw className="spin" aria-hidden="true" />Loading view…</div>}>
             {view === "overview" ? <Overview onSelect={selectNode} overview={overview} config={config} counts={counts} colors={graphColors} loading={loading} projectName={projectName} onView={navigate} onBrowseType={(objectType) => { setSearchSession({ query: "", modelId: "", reportId: "", objectType, result: null }); setView("search"); }} onSources={() => { setSettingsTab("project"); setView("config"); }} onSample={openSample} onSummary={() => { setSettingsTab("summary"); setView("config"); }} onScan={applyScan} scanning={scanning} scanLabel={activeProject ? "Scan project" : "Scan sources"} onReview={() => navigate("review")} transport={transport} onMerge={(modelIds) => { const names = modelIds.map((id) => (overview.model_objects || []).find((item) => item.id === id)?.name || id); setNotice(`Start a merge session with ${names.join(", ")}`); navigate("devcenter"); }} error={error || configError} onRetry={load} snapshot={snapshot} auditTrail={auditTrail} /> : null}
             {view === "search" ? <div className="page page-narrow" data-ui-stack=""><SearchView session={searchSession} onSession={setSearchSession} colors={graphColors} transport={transport} overview={overview} onSelect={selectNode} /></div> : null}
-            {view === "graph" ? <GraphView session={graphSession} onSession={setGraphSession} colors={graphColors} transport={transport} overview={overview} snapshot={snapshot} selectedId={selectedId} onSelect={selectNode} /> : null}
+            {view === "graph" ? <GraphView session={graphSession} onSession={setGraphSession} colors={graphColors} transport={transport} overview={overview} snapshot={snapshot} selectedId={selectedId} onSelect={selectNode} versionLinks={config?.version_links || null} onVersionLinks={config ? async (links) => { setConfig(await transport.saveConfig({ ...config, version_links: links })); } : undefined} /> : null}
             {view === "inspector" ? <div className="inspector-layout">
               {counts.objects > 0 ? <Suspense fallback={<aside className="object-tree" />}><ObjectTree transport={transport} colors={graphColors} selectedId={selectedId} refreshKey={overview.last_scan} onSelect={(id) => selectNode(id, "inspector", inspectorOrigin === "inspector" || !selectedId ? "inspector" : inspectorOrigin)} /></Suspense> : <span />}
               <div className="inspector-main page page-wide" data-ui-stack="">{selectedId ? <><Button variant="ghost" size="sm" className="inspector-back" onClick={() => { if (inspectorOrigin === "inspector") { setSelectedId(null); setInspectedObject(null); } else setView(inspectorOrigin); }}><ArrowLeft aria-hidden="true" />{inspectorOrigin === "search" ? "Back to search results" : inspectorOrigin === "inspector" ? "Inspect another object" : `Back to ${VIEWS.find(([key]) => key === inspectorOrigin)?.[1]?.toLowerCase() || "overview"}`}</Button><Inspector key={selectedId} transport={transport} scanning={scanning} colors={graphColors} node={selected} details={inspectedDetails} loading={Boolean(selectedId && !inspectedDetails && !inspectorError)} error={inspectorError} snapshot={snapshot} snapshotLoaded={snapshotLoaded} snapshotError={snapshotError} onEvidenceRetry={() => loadSnapshot().catch(() => {})} overview={overview} onSelect={selectNode} onRetry={() => selectNode(selectedId)} onReview={review} onGraph={() => setView("graph")} /></> : <InspectorEmpty overview={overview} colors={graphColors} recentObjects={recentObjects} onSelect={(id) => { setInspectorOrigin("inspector"); selectNode(id); }} onOpenSearch={() => { setView("search"); focusSearchField(); }} onOpenPalette={() => setPaletteOpen(true)} onOpenGraph={() => setView("graph")} />}</div>
@@ -1232,6 +1232,8 @@ function Overview({ overview, config, counts, colors, loading, projectName, onVi
   const validationLabel = { valid: "Graph validation passed", invalid: "Graph validation failed", warning: "Graph validation warnings", not_run: "Graph validation not run" }[validationState] || "Graph validation unavailable";
   // Notes at INFO level (for example an object type the validator only passes through) are not issues to act on.
   const issues = (overview.validation_issues || []).filter((item) => String(item.severity || "").toUpperCase() !== "INFO");
+  // The overview lists the first issues and counts the rest.
+  const issueTotal = Math.max(Number(overview.validation_issue_count) || 0, issues.length);
   const pending = counts.review;
   const ValidationIcon = validationState === "valid" ? ShieldCheck : ShieldAlert;
   const validationTone = { valid: "ok", invalid: "bad", warning: "warn" }[validationState] || "idle";
@@ -1353,7 +1355,7 @@ function Overview({ overview, config, counts, colors, loading, projectName, onVi
             </div>
           ))}
           {issues.length > 3 ? (
-            <Disclosure title={`View ${issues.length - 3} more issues`} className="validation-issues">
+            <Disclosure title={`View ${formatCount(issueTotal - 3)} more issues`} className="validation-issues">
               <ul>
                 {issues.slice(3).map((item, index) => (
                   <li key={`${item.code}-${index}`}>
@@ -1367,6 +1369,7 @@ function Overview({ overview, config, counts, colors, loading, projectName, onVi
                   </li>
                 ))}
               </ul>
+              {issueTotal > issues.length ? <p className="footnote">The first {formatCount(issues.length)} of {formatCount(issueTotal)} issues are listed.</p> : null}
             </Disclosure>
           ) : null}
         </div>
@@ -1801,7 +1804,12 @@ function Inspector({ node, details, loading, error, snapshot, snapshotLoaded, sn
         <h2 className="panel-title">Lineage &amp; usage</h2>
         <VisualBindings bindings={details?.visual_bindings} wells={details?.field_wells} onSelect={(item) => onSelect(item.id, "inspector")} />
         <RelationshipGroup title="Used by" nodeId={node.id} edges={incoming.filter((edge) => usageTypes.has(edge.type))} nodes={relatedNodes} onSelect={onSelect} empty="No direct uses recorded." colors={colors} />
-        <RelationshipGroup title="Dependencies" nodeId={node.id} edges={outgoing.filter((edge) => usageTypes.has(edge.type))} nodes={relatedNodes} onSelect={onSelect} empty="No direct dependencies recorded." colors={colors} />
+        {(() => {
+          // A visual's fields and filters are already listed above by where they sit; Dependencies holds only the rest.
+          const listed = new Set([...Object.values(details?.visual_bindings || {}).flat(), ...(details?.field_wells || []).flatMap((well) => well.fields || [])].map((item) => item?.id).filter(Boolean));
+          const dependencies = outgoing.filter((edge) => usageTypes.has(edge.type) && !listed.has(edge.to_id));
+          return listed.size && !dependencies.length ? null : <RelationshipGroup title={listed.size ? "Other dependencies" : "Dependencies"} nodeId={node.id} edges={dependencies} nodes={relatedNodes} onSelect={onSelect} empty="No direct dependencies recorded." colors={colors} />;
+        })()}
         <p className="footnote">Direct links from the latest scan.</p>
         <Suspense fallback={null}><ImpactExplorer node={node} nodes={relatedNodes} onSelect={onSelect} transport={transport} /></Suspense>
       </Card>

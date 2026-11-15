@@ -5,7 +5,7 @@ import { PALETTES, normalizeColors } from "../src/graphPresentation.js";
 
 test("source visual identifiers use the visual type while explicit titles survive", () => {
   const visual = { type: "VISUAL", name: "g7h8i9j0k1l2m3n4o5p6", source_id: "g7h8i9j0k1l2m3n4o5p6", properties: { visual_type: "pivotTable" } };
-  assert.equal(objectName(visual), "Pivot Table");
+  assert.equal(objectName(visual), "Matrix");
   assert.equal(objectName({ ...visual, properties: { ...visual.properties, title: "Account breakdown" } }), "Account breakdown");
   assert.equal(objectName({ ...visual, name: "Revenue breakdown" }), "Revenue breakdown");
 });

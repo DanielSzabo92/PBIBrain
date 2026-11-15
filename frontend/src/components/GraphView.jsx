@@ -20,6 +20,7 @@ import { buildExplorerGraph, bundleExplorerEdges, layoutExplorerGraph, layoutArt
 import { formatCount, objectName, scopeChoices, statusLabel, visualType } from "../presentation";
 import { foldLineage, hideLanes, layoutLineage, lineageOf, TWO_LINE_HEIGHT } from "../lineage";
 import { groupVersions, versionFamilies, versionNote } from "../versions";
+import VersionGroups from "./VersionGroups";
 import ImpactMatrix from "./ImpactMatrix";
 import LaneChips from "./LaneChips";
 import { VersionBadge } from "./VersionBadge";
@@ -320,7 +321,9 @@ function useNarrowView(breakpoint = 1200) {
   return isNarrow;
 }
 
-export default function GraphView({ transport, overview, snapshot, selectedId, colors, onSelect, session = null, onSession }) {
+export default function GraphView({ transport, overview, snapshot, selectedId, colors, onSelect, session = null, onSession, versionLinks = null, onVersionLinks }) {
+  const [versionsOpen, setVersionsOpen] = useState(false);
+  const [versionsSaving, setVersionsSaving] = useState({ busy: false, error: "" });
   const isNarrow = useNarrowView(1200);
   const [uncontrolledSession, setUncontrolledSession] = useState(() => createGraphSession(selectedId));
   const [graphError, setGraphError] = useState(null);
@@ -421,12 +424,19 @@ export default function GraphView({ transport, overview, snapshot, selectedId, c
   }, [loadedNodes, searchHere, filters.query]);
   const edges = graph?.edges || [];
   // Lineage: versions folded into one node, then lanes that are switched off bridged over.
-  const versioned = useMemo(() => lanesView && graphSession.groupVersions ? groupVersions(nodes, edges) : null, [lanesView, graphSession.groupVersions, nodes, edges]);
+  const versioned = useMemo(() => lanesView && graphSession.groupVersions ? groupVersions(nodes, edges, versionLinks) : null, [lanesView, graphSession.groupVersions, nodes, edges, versionLinks]);
   // How many models and reports have versions, so the toolbar can say that folding is on (or could be).
   const versionGroups = useMemo(() => {
     if (!lanesView) return [];
-    return [...versionFamilies(nodes).families.values()].filter((members) => members.length > 1).map((members) => members.map((member) => objectName(member)));
-  }, [lanesView, nodes]);
+    return [...versionFamilies(nodes, versionLinks).families.values()].filter((members) => members.length > 1).map((members) => members.map((member) => objectName(member)));
+  }, [lanesView, nodes, versionLinks]);
+  // Two models or two reports: there is something to say about versions, folded or not.
+  const canEditVersions = useMemo(() => Boolean(onVersionLinks) && lanesView && ["MODEL", "REPORT"].some((type) => (loadedNodes || []).filter((node) => node.type === type).length > 1), [onVersionLinks, lanesView, loadedNodes]);
+  const saveVersionLinks = async (next) => {
+    setVersionsSaving({ busy: true, error: "" });
+    try { await onVersionLinks(next); setFocusedNode(null); setVersionsSaving({ busy: false, error: "" }); }
+    catch (cause) { setVersionsSaving({ busy: false, error: cause?.message || "The correction could not be saved" }); }
+  };
   const rawById = useMemo(() => new Map((loadedNodes || []).map((node) => [node.id, node])), [loadedNodes]);
   // Type visibility is a view choice on the loaded slice. The focused object always stays for context.
   const hiddenSet = useMemo(() => new Set(hiddenTypes), [hiddenTypes]);
@@ -638,10 +648,12 @@ export default function GraphView({ transport, overview, snapshot, selectedId, c
       <Button variant="ghost" size="sm" aria-label="Fit view" tooltip="Fit view (F)" disabled={!canvasNodes.length} onClick={() => canvasApi.current?.fit()}><Maximize />Fit</Button>
     </div>
     {lanesView ? <LaneChips nodes={versioned ? versioned.nodes : nodes} hidden={hiddenLanes} matrix={viewMode === "matrix"} colors={colors} onChange={(next) => { updateSession({ hiddenLanes: next }); setFocusedNode(null); }}
-      versionGroups={versionGroups} versionsFolded={graphSession.groupVersions} onVersions={(next) => { updateSession({ groupVersions: next }); setFocusedNode(null); }} /> : null}
+      versionGroups={versionGroups} versionsFolded={graphSession.groupVersions} onVersions={(next) => { updateSession({ groupVersions: next }); setFocusedNode(null); }}
+      onEditVersions={canEditVersions ? () => setVersionsOpen(true) : undefined} /> : null}
+    {versionsOpen ? <VersionGroups open={versionsOpen} onOpenChange={setVersionsOpen} nodes={loadedNodes || []} links={versionLinks} colors={colors} onChange={saveVersionLinks} saving={versionsSaving.busy} error={versionsSaving.error} /> : null}
     <div className="graph-body">
       <div id="graph-canvas" className="graph-canvas-card" data-slot="card" aria-busy={loading} style={docked ? { marginRight: DETAIL_PANE_WIDTH + 8 } : undefined}>
-        {viewMode === "matrix" ? <ImpactMatrix graph={graph} error={error} onRetry={loadGraph} query={query} hiddenLanes={hiddenLanes} groupVersions={graphSession.groupVersions} colors={colors} selectedId={focusedNode?.id} onSelect={setFocusedNode} />
+        {viewMode === "matrix" ? <ImpactMatrix graph={graph} error={error} onRetry={loadGraph} query={query} hiddenLanes={hiddenLanes} groupVersions={graphSession.groupVersions} versionLinks={versionLinks} colors={colors} selectedId={focusedNode?.id} onSelect={setFocusedNode} />
           : error ? <div className="graph-empty" role="alert"><span className="empty-icon tone-bad" aria-hidden="true"><TriangleAlert /></span><h3>Graph unavailable</h3><p>{error}</p><Button variant="outline" onClick={loadGraph}>Retry graph</Button></div>
           : !graph ? <div className="graph-empty graph-loading" role="status"><p>Loading graph…</p></div>
           : canvasNodes.length ? <GraphCanvas key={canvasKey} rawById={rawById} apiRef={canvasApi} overview={overviewMode} full={viewMode === "full"} grouped={!overviewMode && grouped} onCenter={center} onInspect={inspect} nodes={canvasNodes} edges={canvasEdges} layoutEdges={layoutEdges} undrawn={undrawn} relatedOnly={relatedOnly} selectedId={focusedNode?.id || centerId} docked={docked} warningIds={warningIds} direction={direction} showLabels={showLabels} colors={colors} onSelect={selectNode} onToggleGroup={toggleGroup} viewport={graphSession.viewports[canvasKey]} onViewportChange={saveViewport} placements={graphSession.placements[canvasKey]} onPlacementsChange={savePlacements} />

@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { TypeGlyph } from "./TypeGlyph";
 import { Card } from "./ui/card";
 import { pluralType } from "../graphPresentation";
-import { formatCount } from "../presentation";
+import { formatCount, visualTypeLabel } from "../presentation";
 
 const FIRST = 12;
 
@@ -27,7 +27,7 @@ export default function ObjectContents({ groups, colors, onSelect }) {
               <TypeGlyph type={row.type} colors={colors} size="xs" />
               <span className="contents-name">{row.name}</span>
               {row.hidden ? <span className="contents-tag">Hidden</span> : null}
-              <span className="contents-meta" data-ui-number="">{row.data_type || row.visual_type || (row.holds ? formatCount(row.holds) : "")}</span>
+              <span className="contents-meta" data-ui-number="">{row.data_type || (row.visual_type ? visualTypeLabel(row.visual_type) : "") || (row.holds ? formatCount(row.holds) : "")}</span>
             </button>
           </li>)}
         </ul>

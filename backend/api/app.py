@@ -61,6 +61,10 @@ def _last_scan(repository: GraphRepository) -> Any:
     return None
 
 
+# How many validation issues the overview lists; the rest are counted.
+_OVERVIEW_ISSUES = 50
+
+
 def _default_overrides_path() -> Path:
     return Path("config") / "overrides.json"
 
@@ -142,6 +146,13 @@ def get_overview(repository: GraphRepository, *, store: OverrideStore | None = N
     if validation_state is None:
         validation_state = getattr(validation, "state", "not_run") if validation is not None else "not_run"
     validation_payload = validation.to_dict() if hasattr(validation, "to_dict") else validation if isinstance(validation, Mapping) else {}
+    # Every screen loads the overview. A scan can report thousands of issues (one per object in a
+    # dependency cycle), so it carries the first ones, issues to act on before notes, and the count.
+    actionable: list[Any] = []
+    notes: list[Any] = []
+    for item in validation_payload.get("issues", []) or []:
+        is_note = isinstance(item, Mapping) and str(item.get("severity", "")).upper() == "INFO"
+        (notes if is_note else actionable).append(item)
     return {
         "models": sum(1 for node in nodes if node.type == "MODEL"),
         "reports": sum(1 for node in nodes if node.type == "REPORT"),
@@ -170,7 +181,8 @@ def get_overview(repository: GraphRepository, *, store: OverrideStore | None = N
         "hot_unreviewed": hot,
         "review_counts": review_counts,
         "validation_state": str(validation_state),
-        "validation_issues": validation_payload.get("issues", []),
+        "validation_issues": [*actionable, *notes][:_OVERVIEW_ISSUES],
+        "validation_issue_count": len(actionable),
     }
 
 

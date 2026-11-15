@@ -30,7 +30,7 @@ const laneKey = (node) => LANES[laneOf(node)].key;
  * filter lanes off stop counting what those filters use. With "Group versions", twins share a row or column
  * and a half mark says only some versions use the pair.
  */
-export default function ImpactMatrix({ graph, error, onRetry, query, hiddenLanes = [], groupVersions: versionsOn = true, colors, selectedId, onSelect }) {
+export default function ImpactMatrix({ graph, error, onRetry, query, hiddenLanes = [], groupVersions: versionsOn = true, versionLinks = null, colors, selectedId, onSelect }) {
   const [hideUnused, setHideUnused] = useState(false);
   const [userFold, setFolded] = useState(null);
   const [hoverCol, setHoverCol] = useState(-1);
@@ -38,7 +38,7 @@ export default function ImpactMatrix({ graph, error, onRetry, query, hiddenLanes
   const options = useMemo(() => ({ visualFilters: !off.has("visualFilter"), pageFilters: !off.has("pageFilter"), reportFilters: !off.has("reportFilter") }), [off]);
 
   const raw = useMemo(() => graph ? buildImpactMatrix(graph.nodes || [], graph.edges || [], options) : null, [graph, options]);
-  const versions = useMemo(() => graph && versionsOn ? groupVersions(graph.nodes || [], graph.edges || []) : null, [graph, versionsOn]);
+  const versions = useMemo(() => graph && versionsOn ? groupVersions(graph.nodes || [], graph.edges || [], versionLinks) : null, [graph, versionsOn, versionLinks]);
   const grouped = Boolean(versions?.grouped);
   const matrix = useMemo(() => grouped ? buildImpactMatrix(versions.nodes, versions.edges, options) : raw, [grouped, versions, options, raw]);
   const rawById = useMemo(() => new Map((graph?.nodes || []).map((node) => [node.id, node])), [graph]);

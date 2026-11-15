@@ -182,9 +182,26 @@ export function objectName(node) {
   return cleanName(node?.name) || "Unnamed object";
 }
 
+// Power BI's internal visual names that do not read as what the user picked in the Visualizations pane.
+const VISUAL_TYPE_NAMES = {
+  tableEx: "Table", pivotTable: "Matrix", kpi: "KPI", qnaVisual: "Q&A", keyDriversVisual: "Key Influencers",
+  decompositionTreeVisual: "Decomposition Tree", cardVisual: "Card", multiRowCard: "Multi-row Card", textbox: "Text Box",
+  actionButton: "Button", advancedSlicerVisual: "Button Slicer", listSlicer: "List Slicer", textSlicer: "Text Slicer",
+  scriptVisual: "R Visual", pythonVisual: "Python Visual", esriVisual: "ArcGIS Map", rdlVisual: "Paginated Report",
+  aiNarratives: "Smart Narrative", funnel: "Funnel Chart", treemap: "Treemap", basicShape: "Shape",
+  hundredPercentStackedBarChart: "100% Stacked Bar Chart", hundredPercentStackedColumnChart: "100% Stacked Column Chart",
+  hundredPercentStackedAreaChart: "100% Stacked Area Chart",
+};
+
+/** A visual type as people call it: "barChart" is "Bar Chart", "tableEx" is "Table", "pivotTable" is "Matrix". */
+export function visualTypeLabel(value) {
+  if (!value) return "Visual";
+  const raw = String(value);
+  return VISUAL_TYPE_NAMES[raw] || raw.replace(/([a-z\d])([A-Z])/g, "$1 $2").replaceAll("_", " ").replace(/^./, (letter) => letter.toUpperCase());
+}
+
 export function visualType(node) {
-  const value = node?.visual_type || node?.properties?.visual_type || node?.visualType || node?.properties?.visualType;
-  return value ? String(value).replace(/([a-z\d])([A-Z])/g, "$1 $2").replaceAll("_", " ").replace(/^./, (letter) => letter.toUpperCase()) : "Visual";
+  return visualTypeLabel(node?.visual_type || node?.properties?.visual_type || node?.visualType || node?.properties?.visualType);
 }
 export const statusLabel = (status) => ({ factual: "Factual", candidate: "Inferred", approved: "Approved", rejected: "Rejected", overridden: "Edited", stale: "Needs attention" }[status] || "Factual");
 
@@ -225,7 +242,7 @@ const propertyLabels = {
 export function publicProperties(node) {
   return Object.entries(propertyLabels).flatMap(([key, label]) => {
     const value = node?.[key] ?? node?.properties?.[key];
-    return value == null || value === "" ? [] : [[label, readableText(value)]];
+    return value == null || value === "" ? [] : [[label, label === "Visual type" ? visualTypeLabel(value) : readableText(value)]];
   }).filter(([label], index, list) => list.findIndex(([name]) => name === label) === index);
 }
 

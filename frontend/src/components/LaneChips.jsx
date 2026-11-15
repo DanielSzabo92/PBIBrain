@@ -1,5 +1,5 @@
 import React, { useMemo } from "react";
-import { ChevronRight, Layers } from "lucide-react";
+import { ChevronRight, Layers, Pencil } from "lucide-react";
 import { TypeGlyph } from "./TypeGlyph";
 import { LANES, laneOf } from "../lineage";
 import { formatCount } from "../presentation";
@@ -24,9 +24,10 @@ const MATRIX_ROLE = {
 /**
  * Lane chips: the lineage lanes in dependency order (Models › Sources › Queries › Tables › … › Report filters), each a toggle.
  * Shared by Lineage and Matrix, so switching off Columns hides them in both. Counts are the loaded objects.
- * The last chip says whether versions of a model or report are folded into one, and how many such groups exist.
+ * The last chip says whether versions of a model or report are folded into one, and how many such groups exist;
+ * the pencil beside it opens the list of groups, where a wrong guess is corrected.
  */
-export default function LaneChips({ nodes, hidden, matrix, colors, onChange, versionGroups = [], versionsFolded = false, onVersions }) {
+export default function LaneChips({ nodes, hidden, matrix, colors, onChange, versionGroups = [], versionsFolded = false, onVersions, onEditVersions }) {
   const counts = useMemo(() => {
     const result = new Map();
     nodes.forEach((node) => { const lane = LANES[laneOf(node)].key; result.set(lane, (result.get(lane) || 0) + 1); });
@@ -58,6 +59,9 @@ export default function LaneChips({ nodes, hidden, matrix, colors, onChange, ver
       <Layers aria-hidden="true" />
       <span>{versionsFolded ? "Versions folded" : "Fold versions"}</span>
       <span className="lane-chip-count" data-ui-number="">{formatCount(versionGroups.length)}</span>
+    </button> : null}
+    {onEditVersions ? <button type="button" className="lane-chip version-edit" title="Say which models and reports are versions of one another" aria-label="Edit version groups" onClick={onEditVersions}>
+      <Pencil aria-hidden="true" />{versionGroups.length ? null : <span>Versions…</span>}
     </button> : null}
   </div>;
 }
