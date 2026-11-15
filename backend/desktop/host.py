@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import json
+import logging
 import mimetypes
 import os
 import sys
 import tempfile
 import threading
 import uuid
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 from collections.abc import Callable, Mapping
@@ -29,6 +31,7 @@ from backend.projects import PROJECT_VERSION, ProjectService
 _IGNORED_SOURCE_DIRECTORIES = frozenset({".pbibrain", ".git", "node_modules"})
 _LOCAL_HOSTS = frozenset({"127.0.0.1", "localhost", "::1"})
 _DESKTOP_BOOT_TAG = b'<script src="/desktop/bootstrap.js"></script>'
+LOGGER = logging.getLogger(__name__)
 _DESKTOP_BOOT_JAVASCRIPT = b"window.__PBIBRAIN_DESKTOP__=true;"
 _CSP = (
     "default-src 'self'; "
@@ -110,8 +113,13 @@ class DesktopController(DevCenterJSAPI):
         folder_picker: Callable[[], str | Path | None] | None = None,
         source_picker: Callable[[], list[str | Path] | tuple[str | Path, ...] | None] | None = None,
         devcenter: DevCenterSessions | None = None,
+        recent_path: str | Path | None = None,
     ) -> None:
         self.static_dir = Path(static_dir).resolve()
+        # The projects opened last, newest first, for the first screen and the title bar. Only the
+        # desktop entry point passes the per-user file; without it the list lives in memory.
+        self._recent_path = Path(recent_path) if recent_path is not None else None
+        self._recent_memory: list[dict[str, str]] = []
         self._repository_factory = repository_factory or (lambda path: GraphRepository(path))
         self._project_service_factory = project_service_factory
         self._runtime_configurer = runtime_configurer
@@ -149,6 +157,36 @@ class DesktopController(DevCenterJSAPI):
                 "project": dict(self._project) if self._project is not None else None,
                 "connection_id": self._connection_id,
             }
+
+    def recent_projects(self) -> dict[str, Any]:
+        """The projects opened last, newest first; a folder that no longer exists is left out."""
+        return {"ok": True, "projects": [entry for entry in self._read_recent() if Path(entry["folder"]).is_dir()]}
+
+    def _read_recent(self) -> list[dict[str, str]]:
+        if self._recent_path is None:
+            return list(self._recent_memory)
+        try:
+            value = json.loads(self._recent_path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            return []
+        entries = value.get("projects") if isinstance(value, dict) else None
+        return [
+            {"name": str(entry["name"]), "folder": str(entry["folder"]), "opened_at": str(entry.get("opened_at") or "")}
+            for entry in entries or []
+            if isinstance(entry, dict) and entry.get("name") and entry.get("folder")
+        ]
+
+    def _remember_project(self, name: str, folder: Path) -> None:
+        # Best effort: a project still opens when the list cannot be written.
+        entries = [entry for entry in self._read_recent() if Path(entry["folder"]) != folder]
+        entries.insert(0, {"name": name, "folder": str(folder), "opened_at": datetime.now(UTC).isoformat(timespec="seconds")})
+        if self._recent_path is None:
+            self._recent_memory = entries[:RECENT_PROJECTS]
+            return
+        try:
+            _write_json_atomic(self._recent_path, {"projects": entries[:RECENT_PROJECTS]})
+        except OSError:
+            LOGGER.warning("The recent projects list could not be saved", exc_info=True)
 
     def choose_folder(self) -> dict[str, Any]:
         try:
@@ -361,6 +399,7 @@ class DesktopController(DevCenterJSAPI):
             old_application.close()
         if old_repository is not None:
             old_repository.close()
+        self._remember_project(project["name"], root)
         return self._open_result(source_count=len(config["sources"]))
 
     def _open_result(self, *, source_count: int) -> dict[str, Any]:
@@ -571,6 +610,15 @@ class DesktopServer:
         self._server.server_close()
 
 
+RECENT_PROJECTS = 8
+
+
+def default_recent_path() -> Path:
+    """Where the recent projects list lives: ``PBIBRAIN_HOME`` or ``~/.pbibrain``."""
+    home = os.environ.get("PBIBRAIN_HOME")
+    return (Path(home) if home else Path.home() / ".pbibrain") / "recent-projects.json"
+
+
 def default_static_dir() -> Path:
     base = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parents[2]))
     return (base / "frontend" / "dist").resolve()
@@ -607,7 +655,7 @@ def run() -> int:
         import webview  # type: ignore[import-not-found]
 
         webview.settings["ALLOW_DOWNLOADS"] = True
-        controller = DesktopController(static_dir=static_dir)
+        controller = DesktopController(static_dir=static_dir, recent_path=default_recent_path())
         server = DesktopServer(controller)
         server.start()
         webview.create_window(

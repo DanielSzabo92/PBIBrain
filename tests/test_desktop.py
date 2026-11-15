@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import io
 import json
+import shutil
 import tempfile
 import unittest
 from pathlib import Path
@@ -256,6 +257,30 @@ class DesktopTests(unittest.TestCase):
         rejected = self.controller.add_sources([str(self.root / "missing.json")])
         self.assertFalse(rejected["ok"])
         self.assertEqual((self.root / ".pbibrain" / "brain.json").read_bytes(), before)
+
+    def test_recent_projects_list_the_newest_first_and_survive_a_new_controller(self):
+        recent = self.root / "home" / "recent-projects.json"
+        first, second = self.root / "first", self.root / "second"
+        first.mkdir()
+        second.mkdir()
+        controller = DesktopController(static_dir=self.static, repository_factory=lambda path: GraphRepository(path, use_native=False),
+                                       runtime_configurer=lambda: None, recent_path=recent)
+        controller.attach_server("http://127.0.0.1:8123")
+        try:
+            self.assertTrue(controller.open_project("First", str(first))["ok"])
+            self.assertTrue(controller.open_project("Second", str(second))["ok"])
+            self.assertTrue(controller.open_project("First", str(first))["ok"])
+        finally:
+            controller.shutdown()
+        again = DesktopController(static_dir=self.static, recent_path=recent)
+        self.assertEqual([entry["name"] for entry in again.recent_projects()["projects"]], ["First", "Second"])
+        shutil.rmtree(second)
+        self.assertEqual([entry["name"] for entry in again.recent_projects()["projects"]], ["First"], "a folder that is gone is left out")
+
+    def test_without_a_recent_file_the_list_is_kept_in_memory(self):
+        self.controller.attach_server("http://127.0.0.1:8123")
+        self.assertTrue(self.controller.open_project("Portfolio", str(self.root))["ok"])
+        self.assertEqual([entry["folder"] for entry in self.controller.recent_projects()["projects"]], [str(self.root.resolve())])
 
 
 if __name__ == "__main__":
