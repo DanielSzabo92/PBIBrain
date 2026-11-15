@@ -53,3 +53,10 @@
 .result-fold:hover { background: var(--surface-4, var(--surface-3)); color: var(--text); }
 .result-fold svg { width: 12px; height: 12px; transition: transform var(--dur-fast); }
 .result-fold svg.is-open { transform: rotate(180deg); }
+/* ---------- Search: split preview (review 12) ---------------------------- */
+.page-narrow:has(.search-split-page) { max-width: 1600px; }
+.search-split { display: grid; grid-template-columns: minmax(0, 44fr) minmax(0, 56fr); align-items: start; }
+.search-split > .search-results { min-width: 0; border-right: 1px solid var(--line); }
+.search-preview { position: sticky; top: 0; height: min(760px, calc(100vh - 150px)); }
+.search-preview .graph-detail-pane { position: absolute; inset: 0; width: auto; border: 0; border-radius: 0; animation: none; }
+.search-result[aria-current="true"] { background: var(--surface-2); }

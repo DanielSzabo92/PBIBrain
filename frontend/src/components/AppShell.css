@@ -225,3 +225,8 @@ button.breadcrumb-link:hover {
 .statusbar-cancel-scan { margin-left: 8px; padding: 0 6px; border: 1px solid var(--line); border-radius: var(--r-sm); background: transparent; color: var(--text-2); font: inherit; cursor: pointer; }
 .statusbar-cancel-scan:hover:not(:disabled) { color: var(--text); border-color: var(--line-focus); }
 .statusbar-cancel-scan:disabled { cursor: default; opacity: .7; }
+/* Desktop drop target for source files (finding 20). It never takes the pointer, so the drop reaches the window. */
+.source-drop { position: fixed; inset: 0; z-index: 80; display: grid; place-items: center; padding: 24px; background: color-mix(in srgb, var(--bg) 70%, transparent); pointer-events: none; }
+.source-drop-target { display: flex; flex-direction: column; align-items: center; gap: 6px; width: min(420px, 100%); padding: 32px 24px; border: 2px dashed var(--brand); border-radius: var(--r-md); background: var(--surface); color: var(--text); text-align: center; }
+.source-drop-target svg { width: 28px; height: 28px; color: var(--brand); }
+.source-drop-target span { color: var(--text-2); font-size: var(--fs-meta); }

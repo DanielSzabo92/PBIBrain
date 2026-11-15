@@ -21,7 +21,7 @@ import {
 import { Dialog, DialogContent } from "./ui/dialog";
 import { displayKeys } from "../shortcuts";
 import { typeLabel } from "../graphPresentation";
-import { objectName } from "../presentation";
+import { foldSearchResults, objectName } from "../presentation";
 import { TypeGlyph } from "./TypeGlyph";
 
 const labelFor = (node) => objectName(node);
@@ -142,15 +142,16 @@ export default function CommandPalette({
   const items = [];
 
   // 1. Search results (when query is typed)
+  // The same answer as the Search page: one endpoint, one ranking, copies across models folded into one row.
   if (results.length > 0) {
-    for (const item of results) {
+    for (const { item, copies } of foldSearchResults(results, (entry) => entry?.object || entry)) {
       const obj = item?.object || item;
       items.push({
         id: `obj:${obj.id}`,
         type: "object",
         group: "Matching objects",
         label: labelFor(obj),
-        detail: scopeLabel(obj),
+        detail: copies.length > 1 ? `×${copies.length} ${obj.report_id ? "reports" : "models"}` : scopeLabel(obj),
         object: obj,
         action: () => onSelectObject?.(obj.id),
       });

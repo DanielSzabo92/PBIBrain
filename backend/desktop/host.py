@@ -100,6 +100,31 @@ def _write_json_atomic(path: Path, payload: Mapping[str, Any]) -> None:
         raise
 
 
+# The files the project scanner reads: a PBIP project, a model.bim, or a model JSON file.
+SOURCE_SUFFIXES = frozenset({".pbip", ".json", ".bim"})
+# The page listens for this event to hear about files dropped on the window (finding 20).
+DROP_EVENT = "pbibrain-sources-dropped"
+
+
+def dropped_sources(event: Any) -> tuple[list[str], int]:
+    """The source files of a drop on the window, and how many dropped files were left out.
+
+    A browser never sees a dropped file's path; the desktop window's own drop event puts it in
+    ``pywebviewFullPath`` of each file.
+    """
+
+    files = ((event or {}).get("dataTransfer") or {}).get("files") if isinstance(event, Mapping) else None
+    sources: list[str] = []
+    skipped = 0
+    for item in files or []:
+        path = item.get("pywebviewFullPath") if isinstance(item, Mapping) else None
+        if isinstance(path, str) and path and Path(path).suffix.casefold() in SOURCE_SUFFIXES:
+            sources.append(path)
+        else:
+            skipped += 1
+    return sources, skipped
+
+
 class DesktopController(DevCenterJSAPI):
     """pywebview JS API and owner of the active native project repository."""
 
@@ -278,7 +303,7 @@ class DesktopController(DevCenterJSAPI):
                     source = Path(str(raw_path)).expanduser().resolve()
                     if not source.is_file():
                         raise ValueError(f"Source file does not exist: {source}")
-                    if source.suffix.casefold() not in {".pbip", ".json", ".bim"}:
+                    if source.suffix.casefold() not in SOURCE_SUFFIXES:
                         raise ValueError(f"Unsupported source file: {source.name}")
                     key = str(source).casefold()
                     if key in known:
@@ -296,6 +321,15 @@ class DesktopController(DevCenterJSAPI):
                 }
         except Exception as exc:
             return {"ok": False, "error": str(exc)}
+
+    def _sources_dropped(self, event: Any) -> dict[str, Any]:
+        """Adds the source files of a drop on the window. Private: the page cannot call it with paths."""
+
+        sources, skipped = dropped_sources(event)
+        if not sources:
+            return {"ok": False, "error": "Drop .pbip, .bim or model .json files to add them as sources.", "skipped": skipped}
+        result = self.add_sources(sources)
+        return {**result, "skipped": skipped}
 
     def add_cloud_source(self, entry: Mapping[str, Any]) -> dict[str, Any]:
         """Add one cloud model or cloud report (picked with ``cloud_items_list``) to the project."""
@@ -642,6 +676,23 @@ def _show_startup_error(message: str) -> None:
         print(f"PBIBrain could not start: {message}", file=sys.stderr)
 
 
+def _listen_for_drops(window: Any, controller: DesktopController) -> None:
+    """Files dropped on the window become project sources; the page hears the result as DROP_EVENT."""
+
+    try:
+        from webview.dom import DOMEventHandler  # type: ignore[import-not-found]
+    except ImportError:
+        return
+
+    def on_drop(event: Any) -> None:
+        result = controller._sources_dropped(event)
+        window.evaluate_js(f"window.dispatchEvent(new CustomEvent({json.dumps(DROP_EVENT)}, {{ detail: {json.dumps(result)} }}))")
+
+    # Without preventing dragover the web view opens the dropped file instead of handing it over.
+    window.dom.document.events.dragover += DOMEventHandler(lambda _event: None, True, True)
+    window.dom.document.events.drop += DOMEventHandler(on_drop, True, True)
+
+
 def run() -> int:
     """Launch PBIBrain as a pywebview Windows application."""
 
@@ -658,7 +709,7 @@ def run() -> int:
         controller = DesktopController(static_dir=static_dir, recent_path=default_recent_path())
         server = DesktopServer(controller)
         server.start()
-        webview.create_window(
+        window = webview.create_window(
             "PBIBrain",
             server.url,
             js_api=controller,
@@ -667,6 +718,7 @@ def run() -> int:
             min_size=(1024, 680),
             background_color="#0b0c0f",
         )
+        window.events.loaded += lambda: _listen_for_drops(window, controller)
         webview.start(debug=False)
         return 0
     except Exception as exc:

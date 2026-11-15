@@ -1,5 +1,5 @@
 // Search: every project object by name or formula text, with model, report and type filters.
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown, ChevronRight, RefreshCw, TriangleAlert, X } from "lucide-react";
 import NavIcon from "../NavIcon";
 import { TypeGlyph } from "../components/TypeGlyph";
@@ -12,6 +12,23 @@ import { Label } from "../components/ui/label";
 import { artifactColor, typeLabel } from "../graphPresentation";
 import { EmptyState, PageHeading, contentScroller, labelFor } from "./shared";
 import { listKeys, moveInList } from "../listNavigation";
+
+// The split preview (finding 12) is the graph's details pane: the same object answer, tabs and actions.
+const GraphDetails = lazy(() => import("../components/GraphDetails"));
+const SPLIT_QUERY = "(min-width: 1280px)";
+
+/** True while the window is wide enough to show results and a preview side by side. */
+function useSplit() {
+  const [split, setSplit] = useState(() => Boolean(globalThis.matchMedia?.(SPLIT_QUERY).matches));
+  useEffect(() => {
+    const media = globalThis.matchMedia?.(SPLIT_QUERY);
+    if (!media) return undefined;
+    const update = () => setSplit(media.matches);
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
+  }, []);
+  return split;
+}
 
 export function searchObject(item) {
   return item?.object && typeof item.object === "object" ? item.object : item;
@@ -38,7 +55,7 @@ export function searchMatch(item) {
   return /expression/i.test(field) ? "In formula" : /description/i.test(field) ? "In description" : "";
 }
 
-export function SearchView({ transport, overview, onSelect, colors, session, onSession, browse = false }) {
+export function SearchView({ transport, overview, onSelect, onGraph, colors, session, onSession, browse = false }) {
   const { query, modelId, reportId, objectType = "" } = session;
   const active = Boolean(browse || query.trim() || modelId || reportId || objectType);
   const inputId = browse ? "browse-object-query" : "brain-search-query";
@@ -97,7 +114,14 @@ export function SearchView({ transport, overview, onSelect, colors, session, onS
   const scopeName = (object) => [...models, ...reports].find((item) => item.id === (object.report_id || object.model_id))?.name;
   const [unfolded, setUnfolded] = useState(() => new Set());
   const folded = useMemo(() => foldSearchResults(result?.items || [], searchObject), [result]);
-  return <div ref={panel}>
+  // Arrow keys move through the rows and the preview follows; Enter or a click opens the Inspector.
+  const split = useSplit() && !browse;
+  const [preview, setPreview] = useState(null);
+  const firstResult = result?.items?.length ? searchObject(result.items[0]) : null;
+  const previewed = preview?.key === key ? preview.node : preview === null ? (result?.items || []).map(searchObject).find((object) => object.id === session.selectedId) || firstResult : null;
+  const showPreview = split && active && Boolean(result?.items?.length) && Boolean(previewed);
+  const openObject = (object) => { onSession((current) => ({ ...current, selectedId: object.id, scrollY: contentScroller().scrollTop })); onSelect(object.id, "inspector"); };
+  return <div ref={panel} className={split && active ? "search-split-page" : undefined}>
     <PageHeading quiet title={browse ? "Browse objects" : "Search"} />
     <Card className="panel search-panel" aria-busy={loading}>
       <div className="search-toolbar" data-ui-actions="">
@@ -120,7 +144,7 @@ export function SearchView({ transport, overview, onSelect, colors, session, onS
       {error ? <div className="search-error" role="alert"><TriangleAlert aria-hidden="true" /><span>{readableText(error.message)}</span><Button variant="outline" size="sm" onClick={() => runSearch(error.offset)}>Retry search</Button></div> : null}
       {!active ? <EmptyState icon={<NavIcon name="search" size={20} />} title="What are you looking for?" detail="Find a measure to inspect its formula and dependencies." action={<p className="empty-hint"><kbd>Ctrl</kbd><kbd>K</kbd> jumps here from anywhere</p>} /> : null}
       {active && !loading && !result?.items?.length && !error ? <EmptyState icon={<NavIcon name="search" size={20} />} title="No matches" detail="Try a shorter name or clear the filters." /> : null}
-      {active && result?.items?.length ? <div className="search-results" onKeyDown={(event) => listKeys(event, () => panel.current?.querySelector(".search-field input")?.focus())}>{folded.map(({ item, copies }) => {
+      {active && result?.items?.length ? <div className={showPreview ? "search-split" : undefined}><div className="search-results" onKeyDown={(event) => listKeys(event, () => panel.current?.querySelector(".search-field input")?.focus())}>{folded.map(({ item, copies }) => {
         const first = searchObject(item);
         const open = copies.length > 1 && unfolded.has(first.id);
         const shown = copies.length > 1 && !open ? [item] : copies;
@@ -130,7 +154,7 @@ export function SearchView({ transport, overview, onSelect, colors, session, onS
           const snippet = browse && !query.trim() ? null : searchSnippet(entry, query);
           const lead = copies.length > 1 && index === 0;
           const where = lead && !open ? `${copies.length} ${first.report_id ? "reports" : "models"}` : scopeName(object) || readableText(object.description) || "";
-          return <Button variant="ghost" key={object.id} data-result-id={object.id} className={`search-result ${copies.length > 1 && index ? "is-copy" : ""}`} style={{ "--artifact-color": color }} onClick={() => { onSession((current) => ({ ...current, selectedId: object.id, scrollY: contentScroller().scrollTop })); onSelect(object.id, "inspector"); }}>
+          return <Button variant="ghost" key={object.id} data-result-id={object.id} className={`search-result ${copies.length > 1 && index ? "is-copy" : ""}`} aria-current={showPreview && previewed?.id === object.id ? "true" : undefined} style={{ "--artifact-color": color }} onFocus={() => { if (split) setPreview({ key, node: object }); }} onClick={() => openObject(object)}>
             <TypeGlyph node={object} colors={colors} size="sm" />
             <span className="result-type sr-only">{typeLabel(object.type)}</span>
             <span className="result-copy"><strong><Marked text={labelFor(object)} query={query.trim()} /></strong>{where ? <small>{where}</small> : null}{snippet ? <code className={`result-snippet ${snippet.formula ? "is-formula" : ""}`}>{snippet.parts[0]}<mark>{snippet.parts[1]}</mark>{snippet.parts[2]}</code> : null}</span>
@@ -138,7 +162,14 @@ export function SearchView({ transport, overview, onSelect, colors, session, onS
             <ChevronRight className="result-chevron" aria-hidden="true" />
           </Button>;
         });
-      })}</div> : null}
+      })}</div>
+      {showPreview ? <div className="search-preview">
+        <Suspense fallback={null}><GraphDetails node={previewed} settled colors={colors} transport={transport}
+          onClose={() => { setPreview({ key, node: null }); panel.current?.querySelector(".search-field input")?.focus(); }}
+          onSelect={(node) => setPreview({ key, node })}
+          onCenter={(node) => onGraph?.(node.id)}
+          onInspect={(id) => openObject(previewed?.id === id ? previewed : { id })} /></Suspense>
+      </div> : null}</div> : null}
       {active && result?.has_more ? <div className="search-footer"><Button variant="outline" size="sm" disabled={loading} onClick={() => runSearch(Number(result.offset || 0) + Number(result.limit || 50))}>{pending ? "Loading…" : "More results"}</Button></div> : null}
     </Card>
   </div>;

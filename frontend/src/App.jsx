@@ -18,6 +18,7 @@ import { normalizeColors } from "./graphPresentation";
 import { AppMenuBar, ShortcutsDialog, StatusBar } from "./components/AppShell";
 import { commandFor, displayKeys, shortcutKeys } from "./shortcuts";
 import CommandPalette from "./components/CommandPalette";
+import { SourceDrop } from "./components/SourceDrop";
 import InspectorEmpty from "./components/InspectorEmpty";
 import ExportDialog from "./components/ExportDialog";
 import { DesktopConnecting, DesktopOnboarding, useRecentProjects } from "./views/DesktopStart";
@@ -648,7 +649,11 @@ function AppInner({ transport = brainTransport }) {
     [handleUndoReview, load, loadSnapshot, transport, toast],
   );
 
-  const navigate = useCallback((key) => { setView(key); }, []);
+  // The palette's "Search all objects" hands its query to the Search page.
+  const navigate = useCallback((key, options = null) => {
+    if (key === "search" && typeof options?.query === "string") setSearchSession((current) => ({ ...current, query: options.query, selectedId: null, scrollY: 0 }));
+    setView(key);
+  }, []);
   // The review queue reads the snapshot however the view was reached: the sidebar, a link or Back.
   useEffect(() => {
     if (view === "review") loadSnapshot().catch(() => {});
@@ -887,7 +892,7 @@ function AppInner({ transport = brainTransport }) {
           <div className="view-frame" key={view}>
             <Suspense fallback={<div className="view-loading" role="status"><RefreshCw className="spin" aria-hidden="true" />Loading view…</div>}>
             {view === "overview" ? <Overview onSelect={selectNode} overview={overview} config={config} counts={counts} colors={graphColors} loading={loading} projectName={projectName} onView={navigate} onBrowseType={(objectType) => { setSearchSession({ query: "", modelId: "", reportId: "", objectType, result: null }); setView("search"); }} onSources={() => { setSettingsTab("project"); setView("config"); }} onSample={openSample} onSummary={() => { setSettingsTab("summary"); setView("config"); }} onScan={applyScan} scanning={scanning} scanLabel={activeProject ? "Scan project" : "Scan sources"} onReview={() => navigate("review")} transport={transport} onMerge={(modelIds) => { const names = modelIds.map((id) => (overview.model_objects || []).find((item) => item.id === id)?.name || id); setNotice(`Start a merge session with ${names.join(", ")}`); navigate("devcenter"); }} error={error || configError} onRetry={load} snapshot={snapshot} auditTrail={auditTrail} /> : null}
-            {view === "search" ? <div className="page page-narrow" data-ui-stack=""><SearchView session={searchSession} onSession={setSearchSession} colors={graphColors} transport={transport} overview={overview} onSelect={selectNode} /></div> : null}
+            {view === "search" ? <div className="page page-narrow" data-ui-stack=""><SearchView session={searchSession} onSession={setSearchSession} colors={graphColors} transport={transport} overview={overview} onSelect={selectNode} onGraph={(id) => { setGraphSession({ centerId: id, selectionId: id }); setView("graph"); }} /></div> : null}
             {view === "graph" ? <GraphView session={graphSession} onSession={setGraphSession} colors={graphColors} transport={transport} overview={overview} snapshot={snapshot} selectedId={selectedId} onSelect={selectNode} versionLinks={config?.version_links || null} onVersionLinks={config ? async (links) => { setConfig(await transport.saveConfig({ ...config, version_links: links })); } : undefined} /> : null}
             {view === "inspector" ? <div className="inspector-layout">
               {counts.objects > 0 ? <Suspense fallback={<aside className="object-tree" />}><ObjectTree transport={transport} colors={graphColors} selectedId={selectedId} refreshKey={overview.last_scan} onSelect={(id) => selectNode(id, "inspector", inspectorOrigin === "inspector" || !selectedId ? "inspector" : inspectorOrigin)} /></Suspense> : <span />}
@@ -916,6 +921,7 @@ function AppInner({ transport = brainTransport }) {
       </div>
       <StatusBar connection={connection} projectName={projectName} counts={counts} pending={pending} onReview={() => navigate("review")} scanning={scanning} scanStatus={transport?.scanStatus} onCancelScan={typeof transport?.cancelScan === "function" ? () => transport.cancelScan().catch(() => {}) : undefined} lastScan={lastScan} notice={notice} noticeFailed={failedNotice} theme={theme} onTheme={toggleTheme} onShortcuts={() => setShortcutsOpen(true)} onScan={runScan} />
       <ShortcutsDialog open={shortcutsOpen} onOpenChange={setShortcutsOpen} />
+      {desktopApi && activeProject ? <SourceDrop onAdded={load} /> : null}
       <CommandPalette
         open={paletteOpen}
         onOpenChange={setPaletteOpen}
