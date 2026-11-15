@@ -1,6 +1,6 @@
 // Work area frame of an open session (UI design 4.2): header, banner stack, and the six tabs.
 import React, { useEffect, useState } from "react";
-import { ChevronRight, CircleCheck, CircleX, Copy, Edit3, FolderGit2, LoaderCircle, MoreHorizontal, RefreshCw, Trash2, TriangleAlert, X } from "lucide-react";
+import { ChevronRight, ChevronsUpDown, CircleCheck, CircleX, Copy, Edit3, FolderGit2, LoaderCircle, MoreHorizontal, RefreshCw, Trash2, TriangleAlert, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Banner } from "@/components/ui/notice";
 import { Menu } from "@/components/ui/menu";
@@ -11,7 +11,7 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { errorCopy, longCallText, t, tn } from "../copy.js";
-import { useAction, useDevCenterState, useResource } from "../useDevCenter.js";
+import { useAction, useDevCenterState, useDevCenterStore, useResource } from "../useDevCenter.js";
 import SourcesTab from "./SourcesTab.jsx";
 import NamingRules from "./sources/NamingRules.jsx";
 import PlanTab from "./plan/PlanTab.jsx";
@@ -19,13 +19,48 @@ import ImpactTab from "./impact/ImpactTab.jsx";
 import AgentTab from "./agent/AgentTab.jsx";
 import LogTab from "./log/LogTab.jsx";
 import CompareGrid from "../components/CompareGrid.jsx";
-import { agentCount, banners, deriveReadiness, planStatus, targetLine } from "./sessionModel.js";
+import { agentCount, banners, deriveReadiness, listRowState, sortSessions, targetLine } from "./sessionModel.js";
 
 const TABS = ["compare", "impact", "plan", "agent", "sources", "rules", "log"];
 // Compare, Impact and Plan are the steps of a merge; the rest are tools, set apart in the tab row.
 const TOOL_TABS = TABS.slice(3);
 const LOCKED_REASON_ID = "dc-locked-reason";
 const BUSY_REASON_ID = "dc-busy-reason";
+
+/**
+ * The session name with a menu to switch to another session or go back to the list.
+ * It replaces the breadcrumb, which repeated the sidebar, the title and the tab.
+ */
+function SessionSwitcher({ session, onShowList, disabled }) {
+  const store = useDevCenterStore();
+  const sessions = useResource("sessions");
+  const openSession = useAction("session_open");
+  const closeSession = useAction("session_close");
+  const others = sortSessions(sessions.data?.sessions ?? [])
+    .filter((row) => row.session_id !== session.session_id && listRowState(row).openable)
+    .slice(0, 8);
+  const switchTo = async (row) => {
+    // One open session at a time (UI design 2): close this one first.
+    if (!(await closeSession.run({}))) return;
+    if (await openSession.run({ session_id: row.session_id })) await store.load("session");
+  };
+  const groups = [
+    ...(others.length ? [{ label: t("work.switch.recent"), items: others.map((row) => ({ label: row.display_name || row.session_id, onSelect: () => switchTo(row), disabled })) }] : []),
+    ...(onShowList ? [{ items: [{ label: t("work.more.sessions"), icon: FolderGit2, onSelect: onShowList }] }] : []),
+  ];
+  return (
+    <div className="dc-title-row">
+      <h1 className="dc-title">{session.display_name}</h1>
+      {groups.length ? (
+        <Menu
+          label={t("work.switch")}
+          trigger={<Button variant="ghost" size="icon" className="dc-switch" aria-label={t("work.switch")} tooltip={t("work.switch")}><ChevronsUpDown aria-hidden="true" /></Button>}
+          groups={groups}
+        />
+      ) : null}
+    </div>
+  );
+}
 
 // sources_check runs automatically once on each open of a session (UI design 4.2).
 const checkedOnOpen = new Set();
@@ -79,7 +114,6 @@ export default function WorkArea({ session, tabState, onTabs, onRetryLock, onClo
   };
 
   const moreItems = [
-    ...(onShowList ? [{ label: t("work.more.sessions"), icon: FolderGit2, onSelect: onShowList }] : []),
     { label: t("work.more.rename"), icon: Edit3, onSelect: () => setRenameOpen(true), disabled: changeDisabled },
     { label: t("work.more.duplicate"), icon: Copy, onSelect: handleDuplicate, disabled: longBusy },
     { label: t("work.more.close"), icon: X, onSelect: onClose, disabled: longBusy },
@@ -132,7 +166,7 @@ export default function WorkArea({ session, tabState, onTabs, onRetryLock, onClo
     <div className="dc-work">
       <header className="dc-work-head">
         <div className="dc-work-title">
-          <h1 className="dc-title">{session.display_name}</h1>
+          <SessionSwitcher session={session} onShowList={onShowList} disabled={longBusy} />
           <p className="dc-subtitle">{targetLine(session)}</p>
         </div>
         <div className="dc-work-actions" data-ui-actions="">
@@ -201,10 +235,12 @@ export default function WorkArea({ session, tabState, onTabs, onRetryLock, onClo
               <TabsTrigger
                 key={tab}
                 value={tab}
-                className={tab === TOOL_TABS[0] ? "dc-tab-tool-first" : undefined}
+                className={tab === TOOL_TABS[0] ? "dc-tab-tool-first" : TOOL_TABS.includes(tab) ? undefined : "dc-tab-step"}
                 count={count}
                 countTone={countTone}
                 countLabel={countLabel}>
+                {/* The steps of a merge are numbered in order; the number is not part of the tab name. */}
+                {TOOL_TABS.includes(tab) ? null : <span className="dc-step-number" aria-hidden="true">{TABS.indexOf(tab) + 1}</span>}
                 {t(`work.tab.${tab}`)}
               </TabsTrigger>
             );

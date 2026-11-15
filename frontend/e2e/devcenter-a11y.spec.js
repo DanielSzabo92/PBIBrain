@@ -44,7 +44,8 @@ const SCREENS = [
     setup: async (page, request) => {
       await scenario(request, "default");
       await openWork(page);
-      await page.getByRole("navigation", { name: "Breadcrumb" }).getByRole("button", { name: "Merge models" }).click();
+      await page.getByRole("button", { name: "Switch session" }).click();
+      await page.getByRole("menuitem", { name: "All merge sessions" }).click();
       await expect(page.getByRole("heading", { level: 1, name: "Merge sessions" })).toBeVisible();
     },
     start: (page) => page.getByRole("heading", { level: 1, name: "Merge sessions" }),
@@ -229,7 +230,7 @@ test.describe("U12 release sweep on each screen (A1, A7, A11, A18)", () => {
         const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
         expect(overflow, `${screen.name} (${theme}) page overflow (A18)`).toBeLessThanOrEqual(0);
       }
-      await expect(page.locator('[aria-live="polite"].ui-toast-region'), `${screen.name}: one toast live region (A11)`).toHaveCount(1);
+      await expect(page.locator('section[aria-live="polite"][aria-label="Notifications"]'), `${screen.name}: one toast live region (A11)`).toHaveCount(1);
       await focusWalk(page, screen);
     });
   }
@@ -264,11 +265,11 @@ test.describe("U12 async results and toasts in the app (A11, A23)", () => {
     await page.clock.pauseAt(new Date("2026-01-01T00:10:00Z"));
     await tab(page, "Sources").click();
     await page.getByRole("button", { name: "Check sources" }).click();
-    const region = page.locator('[aria-live="polite"].ui-toast-region');
-    const toast = region.locator(".ui-toast").filter({ hasText: "All sources are the same as at the last check." });
+    const region = page.locator('section[aria-live="polite"][aria-label="Notifications"]');
+    const toast = region.locator("[data-sonner-toast]").filter({ hasText: "All sources are the same as at the last check." });
     await expect(toast).toHaveCount(1);
     // The toast never takes the focus by itself.
-    expect(await page.evaluate(() => Boolean(document.activeElement?.closest(".ui-toast")))).toBe(false);
+    expect(await page.evaluate(() => Boolean(document.activeElement?.closest("[data-sonner-toast]")))).toBe(false);
 
     await page.clock.runFor(7900);
     await expect(toast).toHaveCount(1);

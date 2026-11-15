@@ -152,7 +152,7 @@ export function buildPropertyPickerItems(row, donorId) {
   });
 }
 
-// Compute the 8 choices of section 4.4 with their disabled state and disabled reason (A17).
+// Compute the choices of section 4.4 that apply to the row's type, with their disabled state and reason (A17).
 export function buildMergeChoiceSpec({ row, session, donors = [], selectedDonorId = null }) {
   const targetModel = session?.target?.model || null;
   const targetReport = session?.target?.report || null;
@@ -188,20 +188,20 @@ export function buildMergeChoiceSpec({ row, session, donors = [], selectedDonorI
       disabled: !hasDonor,
       reason: !hasDonor ? t("row.choice.take.disabled") : null,
     },
-    {
+    // A type without single properties to pick never offers "Take properties" (finding 19).
+    // Choices that depend on the row's state stay, disabled with the reason.
+    ...(pickerSupported ? [{
       value: "take_properties",
       label: hasDonor
         ? t("row.choice.props", { source: defaultDonorName })
         : t("row.choice.props.any"),
-      disabled: !pickerSupported || !inTarget || !hasDonor,
-      reason: !pickerSupported
-        ? t("row.choice.props.wrong_type")
-        : !inTarget
-          ? t("row.choice.props.no_target")
-          : !hasDonor
-            ? t("row.choice.take.disabled")
-            : null,
-    },
+      disabled: !inTarget || !hasDonor,
+      reason: !inTarget
+        ? t("row.choice.props.no_target")
+        : !hasDonor
+          ? t("row.choice.take.disabled")
+          : null,
+    }] : []),
     {
       value: "add_new_name",
       label: t("row.choice.new_name"),

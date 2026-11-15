@@ -109,7 +109,7 @@ test("buildMergeChoiceSpec disables donor choices when row is only in target", (
   assert.equal(byVal.remove.disabled, false);
 });
 
-test("buildMergeChoiceSpec disables take_properties for unsupported object types", () => {
+test("buildMergeChoiceSpec does not offer take_properties for types without single properties", () => {
   const row = {
     row_key: "table:Customer",
     object_type: "table",
@@ -123,8 +123,8 @@ test("buildMergeChoiceSpec disables take_properties for unsupported object types
   const spec = buildMergeChoiceSpec({ row, session: BASE_SESSION, donors: DONORS });
   const byVal = Object.fromEntries(spec.mainChoices.map((c) => [c.value, c]));
 
-  assert.equal(byVal.take_properties.disabled, true);
-  assert.equal(byVal.take_properties.reason, "Only for measures, columns, and relationships.");
+  assert.equal(byVal.take_properties, undefined);
+  assert.ok(byVal.take && byVal.keep && byVal.skip);
 });
 
 test("buildMergeChoiceSpec includes report measure choices and disables copy when already in target report", () => {

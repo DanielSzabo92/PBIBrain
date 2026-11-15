@@ -1,10 +1,8 @@
 // Root of the Development Center sidebar item (UI design 2, step U3).
 // With no open session it shows the session list. With an open session it shows the work area.
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { ChevronRight } from "lucide-react";
 import { ToastProvider, useToast } from "@/components/ui/toast";
 import { Skeleton } from "@/components/ui/result-panel";
-import { Breadcrumb, BreadcrumbList, BreadcrumbItem, BreadcrumbLink, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
 import { t } from "../copy.js";
 import { createDevCenterHttp } from "../httpClient.js";
 import { createDevCenterStore } from "../store.js";
@@ -190,35 +188,8 @@ function DevCenterScreens({ onOpenProject }) {
 
   const activeSession = session ? (sessionOverrides[sessionId] ? { ...session, ...sessionOverrides[sessionId] } : session) : null;
 
-  const crumbs = [{ label: t("list.breadcrumb"), onClick: view === "list" ? null : showList }];
-  if (view === "work" && activeSession) {
-    crumbs.push({ label: activeSession.display_name, onClick: null });
-    crumbs.push({ label: t(`work.tab.${tabState.tab}`), onClick: null });
-  } else if (view === "create") {
-    crumbs.push({ label: t("create.title"), onClick: null });
-  }
-
   return (
     <div className="dc-root">
-      {/* With one part the path only repeats the view title above it. */}
-      <Breadcrumb className={crumbs.length > 1 ? "dc-breadcrumb" : "dc-breadcrumb sr-only"} aria-label={t("work.breadcrumb")}>
-        <BreadcrumbList>
-          {crumbs.map((crumb, index) => (
-            <React.Fragment key={crumb.label + index}>
-              {index > 0 ? <BreadcrumbSeparator /> : null}
-              <BreadcrumbItem>
-                {crumb.onClick ? (
-                  <BreadcrumbLink asChild>
-                    <button type="button" className="dc-link" onClick={crumb.onClick}>{crumb.label}</button>
-                  </BreadcrumbLink>
-                ) : (
-                  <BreadcrumbPage>{crumb.label}</BreadcrumbPage>
-                )}
-              </BreadcrumbItem>
-            </React.Fragment>
-          ))}
-        </BreadcrumbList>
-      </Breadcrumb>
       {view === "list" ? (
         <SessionList
           banner={listBanner}

@@ -3,14 +3,12 @@
 .dc-root { display: flex; flex-direction: column; gap: var(--space-4); min-width: 0; max-width: 1240px; margin: 0 auto; width: 100%; flex: 1; min-height: 0; height: 100%; }
 .dc-root > * { min-width: 0; }
 
-/* ---------- Breadcrumb -------------------------------------------------- */
-.dc-breadcrumb ol { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1); margin: 0; padding: 0; list-style: none; color: var(--text-2); font-size: var(--fs-meta); }
-.dc-breadcrumb li { display: inline-flex; align-items: center; gap: var(--space-1); min-width: 0; }
-.dc-breadcrumb svg { width: 14px; height: 14px; color: var(--text-3); }
-.dc-breadcrumb [aria-current="page"] { color: var(--text); font-weight: 500; }
+/* ---------- Links and the session title -------------------------------- */
 
 .dc-link { display: inline-flex; align-items: center; min-height: var(--target-min); padding: 0 2px; border: 0; border-radius: var(--r-xs); background: transparent; color: var(--brand-strong); font: inherit; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
 .dc-link:hover { background: var(--surface-hover); }
+.dc-title-row { display: flex; align-items: center; gap: var(--space-1); min-width: 0; }
+.dc-switch { flex: none; color: var(--text-2); }
 
 /* ---------- Page --------------------------------------------------------- */
 .dc-page { display: flex; flex-direction: column; gap: var(--space-4); min-width: 0; }
@@ -216,7 +214,6 @@
 .dc-rules-filter-empty { padding: var(--space-4) 0; display: flex; flex-direction: column; gap: var(--space-2); align-items: flex-start; }
 .dc-empty-box { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 32px 16px; text-align: center; gap: 8px; border: 1px dashed var(--line); border-radius: var(--radius); }
 .dc-empty-actions { display: flex; gap: var(--space-2); justify-content: center; margin-top: var(--space-2); }
-.dc-checkbox { width: 16px; height: 16px; accent-color: var(--brand); margin: 0; }
 
 /* Rule editor side pane */
 .dc-rule-editor { display: flex; flex-direction: column; gap: var(--space-4); }
@@ -328,6 +325,8 @@
 }
 
 /* Steps of a merge (Compare, Impact, Plan) and tools (Agent, Sources, Naming rules, Log) are two groups. */
+.dc-tab-row .dc-step-number { display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; border: 1px solid var(--line-strong); color: var(--text-2); font-size: var(--fs-micro); font-variant-numeric: tabular-nums; }
+.dc-tab-row [data-state="active"] .dc-step-number { border-color: var(--brand-strong); background: var(--brand-strong); color: var(--surface); }
 .dc-tab-row .dc-tab-tool-first { margin-left: 17px; position: relative; overflow: visible; }
 .dc-tab-row .dc-tab-tool-first::before { content: ""; position: absolute; left: -9px; top: 6px; bottom: 6px; width: 1px; background: var(--line-strong); }
 .dc-status-open { width: 14px; height: 14px; opacity: 0.7; }
