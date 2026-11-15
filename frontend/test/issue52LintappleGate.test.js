@@ -4,10 +4,10 @@ import fs from "node:fs";
 import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
+import { appCss as readAppCss } from "./appSource.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const THEME_CSS = path.resolve(__dirname, "../src/theme.css");
-const APP_CSS = path.resolve(__dirname, "../src/app.css");
 const POLICY_JSON = path.resolve(__dirname, "../ui-policy.json");
 const LINT_SCRIPT = path.resolve(__dirname, "../scripts/lint-ui-states.mjs");
 const COMPARE_GRID = path.resolve(__dirname, "../src/devcenter/components/CompareGrid.jsx");
@@ -43,7 +43,7 @@ test("Issue #52: theme.css defines micro-radii, --fs-code alias, and DAX syntax 
 });
 
 test("Issue #52: app.css consumes DAX tokens, micro-radii, and policy gap scale", () => {
-  const content = fs.readFileSync(APP_CSS, "utf8");
+  const content = readAppCss();
 
   // DAX classes consume tokens
   assert.match(content, /\.dax-fn\s*{\s*color:\s*var\(--dax-fn\);/, ".dax-fn uses token");
@@ -62,7 +62,6 @@ test("Issue #52: app.css consumes DAX tokens, micro-radii, and policy gap scale"
 
   // Gap scale alignment
   assert.match(content, /\.type-strip\s*{[^}]*gap:\s*var\(--space-2\);/, ".type-strip uses var(--space-2)");
-  assert.match(content, /\.action-buttons,\s*\.edit-row\s*{[^}]*gap:\s*var\(--space-2\);/, ".action-buttons uses var(--space-2)");
   assert.match(content, /\.graph-toolbar\s*{[^}]*gap:\s*var\(--space-2\);/, ".graph-toolbar uses var(--space-2)");
 });
 

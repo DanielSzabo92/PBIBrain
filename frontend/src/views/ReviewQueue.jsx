@@ -3,6 +3,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { groupReviewItems, GROUP_ABOVE } from "../reviewGroups.js";
 import { Activity, Calculator, Check, ChevronRight, CircleCheck, FileText, Filter, Lightbulb, RefreshCw, RotateCcw, ShieldAlert, ShieldCheck, Table2, Tag, TriangleAlert, Type, Workflow, X, Zap } from "lucide-react";
 import { useToast } from "../components/ui/toast";
+import { listMove, moveInList } from "../listNavigation";
 import { SegmentedControl } from "../components/ui/segmented-control";
 import { Tooltip } from "../components/ui/tooltip";
 import ReviewDecision from "../components/ReviewDecision";
@@ -17,7 +18,6 @@ import { NativeSelect } from "../components/ui/native-select";
 import { Badge } from "../components/ui/badge";
 import { Card } from "../components/ui/card";
 import { Label } from "../components/ui/label";
-import { Skeleton } from "../components/ui/skeleton";
 import { Checkbox } from "../components/ui/checkbox";
 import { typeLabel } from "../graphPresentation";
 import { confidence, labelFor, itemTarget, safeJson, itemConfidence, itemImpact, contentScroller, PageHeading, StatusBadge, EmptyState, formatDate, formatValue } from "./shared";
@@ -48,7 +48,7 @@ export function itemScopeValue(item, node, key) {
   return item?.[key] ?? item?.properties?.[key] ?? node?.[key] ?? node?.properties?.[key] ?? "";
 }
 
-// Keyboard triage (visual contract §9): J/K or ↓/↑ move between items, A approves, R rejects, X selects the focused item.
+// Keyboard triage (visual contract §9): the shared list keys (↓/↑, Home/End) and J/K move between items, A approves, R rejects, X selects the focused item.
 // Esc cancels any active inline edit.
 function reviewKeys(event, onCancelEdit) {
   if (event.altKey || event.ctrlKey || event.metaKey) return;
@@ -60,11 +60,10 @@ function reviewKeys(event, onCancelEdit) {
   const key = event.key.toLowerCase();
   const item = event.target.closest(".review-item");
   if (!item) return;
-  if (key === "j" || key === "k" || event.key === "ArrowDown" || event.key === "ArrowUp") {
-    const targets = [...event.currentTarget.querySelectorAll(".review-target:not(:disabled)")];
-    const index = targets.indexOf(item.querySelector(".review-target"));
-    const next = targets[index + (key === "j" || event.key === "ArrowDown" ? 1 : -1)];
-    if (next) { next.focus(); next.scrollIntoView({ block: "nearest" }); event.preventDefault(); }
+  const where = key === "j" ? "next" : key === "k" ? "previous" : listMove(event);
+  if (where && !where.startsWith("page")) {
+    event.preventDefault();
+    moveInList(event.currentTarget, where, item.querySelector(".review-target"), ".review-target:not(:disabled)");
   } else if (key === "x") {
     const box = item.querySelector(".review-select");
     if (box && !box.disabled) { box.click(); event.preventDefault(); }
@@ -93,7 +92,7 @@ export function ReviewQueue({ session, onSession, snapshot, loaded, loading, err
     return () => cancelAnimationFrame(frame);
   }, []);
   // Derived once per snapshot and filter, not on every render: the queue can hold more than 10,000 suggestions.
-  const { all, types, models, reports, filtered, lowEvidenceItems, standardItems } = useMemo(() => {
+  const { types, models, reports, filtered, lowEvidenceItems, standardItems } = useMemo(() => {
     const external = snapshot.review_items.map((item) => ({ ...item, issue: reviewIssue(item) }));
     const candidates = snapshot.semantic_candidates.map((item) => ({ ...item, issue: "candidate" }));
     const conflicts = snapshot.conflicts.map((item) => ({ ...item, issue: "conflict", status: item.status || "candidate", confidence: item.confidence ?? 0 }));
@@ -403,7 +402,7 @@ export function ReviewQueue({ session, onSession, snapshot, loaded, loading, err
           /> : null}
         </AlertDialog>
         <Card className="panel queue-panel" aria-busy={loading}>
-          {loading ? <div className="queue-loading">{[0, 1, 2].map((index) => <Skeleton className="skeleton-row-item" key={index} />)}<p className="sr-only" role="status">Loading suggestions…</p></div> : filtered.length && groupList ? groupList : filtered.length ? <>
+          {loading ? <ReviewSkeleton /> : filtered.length && groupList ? groupList : filtered.length ? <>
             <div className="review-columns is-pending has-select">
               <span>{approvableItems.length ? <Checkbox className="review-select-all" checked={selectionOf(approvableItems)} disabled={bulkBusy || scanning} aria-label={`Select all ${formatCount(approvableItems.length)} suggestions`} onCheckedChange={(value) => selectAll(approvableItems, value === true)} /> : null}<span aria-hidden="true">Object</span></span>
               <span aria-hidden="true">Suggestion</span><span aria-hidden="true">Based on</span><span aria-hidden="true">Confidence</span><span aria-hidden="true">Decision</span>
@@ -697,3 +696,22 @@ function ReviewItem({
 
 
 export default ReviewQueue;
+
+const SLOW_LOAD_MS = 8000;
+
+/** Placeholder rows shaped like a suggestion (type chip, name and suggestion, confidence); after 8 s it says why it waits. */
+function ReviewSkeleton() {
+  const [slow, setSlow] = useState(false);
+  useEffect(() => {
+    const timer = setTimeout(() => setSlow(true), SLOW_LOAD_MS);
+    return () => clearTimeout(timer);
+  }, []);
+  return <div className="queue-loading" aria-busy="true">
+    {[0, 1, 2, 3, 4].map((index) => <div className="review-skeleton-row" key={index} aria-hidden="true">
+      <span className="review-skeleton-chip" />
+      <span className="review-skeleton-text"><span /><span /></span>
+      <span className="review-skeleton-meter" />
+    </div>)}
+    <p className={slow ? "queue-loading-slow" : "sr-only"} role="status">{slow ? "Still reading the suggestions. A large project takes a few seconds more." : "Loading suggestions…"}</p>
+  </div>;
+}

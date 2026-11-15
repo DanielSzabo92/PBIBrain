@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 import { isBackendUnreachableError } from "../src/presentation.js";
 import { t as devCopy } from "../src/devcenter/copy.js";
 import { banners } from "../src/devcenter/screens/sessionModel.js";
+import { appSource as readAppSource } from "./appSource.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -76,7 +77,7 @@ test("StatusBar shows honest loading and unreachable states and inline Scan now"
 });
 
 test("Overview in App.jsx provides unreachable backend state, honest loading, and inline actions", () => {
-  const appSource = fs.readFileSync(path.join(__dirname, "../src/App.jsx"), "utf-8");
+  const appSource = readAppSource();
   // Offline / unreachable dedicated screen
   assert.match(appSource, /Can't reach the PBIBrain service/);
   assert.match(appSource, /Retry connection/);

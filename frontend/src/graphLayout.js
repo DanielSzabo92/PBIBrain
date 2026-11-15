@@ -404,7 +404,6 @@ function routeExplorerEdge(edge, positions, direction, offset = 0) {
     ];
   }
   const dx = target.x - source.x;
-  const dy = target.y - source.y;
   const horizontal = (direction === "LR" || direction === "RL") && Math.abs(dx) >= 1;
   const start = endpointOnRect(source, target, horizontal);
   const end = endpointOnRect(target, source, horizontal);

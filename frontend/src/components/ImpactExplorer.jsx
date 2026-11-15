@@ -6,10 +6,10 @@ import { brainTransport } from "../transport";
 import { Button } from "./ui/button";
 import { NativeSelect } from "./ui/native-select";
 import { Input } from "./ui/input";
-import { Card } from "./ui/card";
+
 import { Dialog, DialogContent } from "./ui/dialog";
 import { Disclosure } from "./ui/collapsible";
-import { formatDaxName, formatObjectRef } from "../presentation.js";
+import { formatObjectRef } from "../presentation.js";
 import ProvenanceLegend from "./ProvenanceLegend";
 import "../guard.css";
 

@@ -106,14 +106,6 @@
   font-weight: 600;
 }
 
-.dc-chips {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-  align-items: center;
-  font-size: var(--fs-meta);
-}
-
 .dc-selall {
   font-size: var(--fs-body);
   color: var(--text-2);
@@ -505,16 +497,6 @@
   max-width: 90px;
 }
 
-.dc-mc-text {
-  font-size: var(--fs-body);
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.dc-mc-none {
-  color: var(--text-3);
-}
-
 .dc-badge {
   display: inline-flex;
   align-items: center;
@@ -733,15 +715,6 @@
   align-items: flex-start;
   gap: var(--space-2);
 }
-
-.dc-row-pane-ph {
-  border: 1px dashed var(--line-strong);
-  border-radius: var(--r-sm);
-  padding: var(--space-3);
-  color: var(--text-2);
-  font-size: var(--fs-body);
-}
-
 
 /* ---------- Row detail side pane (step U6) ------------------------------ */
 .dc-link {
@@ -1067,7 +1040,6 @@
   font-size: var(--fs-micro);
   border: 1px solid var(--line);
 }
-
 
 /* ---------- Row detail docked below the grid ---------------------------- */
 /* On a window with room, the detail sits under the grid like the lower half of a diff tool,

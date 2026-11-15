@@ -11,7 +11,7 @@ import { desktopRequest } from "../../desktop.js";
 import { errorCopy, t, tn } from "../copy.js";
 import { useDevCenterState, useDevCenterStore } from "../useDevCenter.js";
 import TargetChoice from "./TargetChoice.jsx";
-import { createStepError, defaultSessionName, draftHasModel, draftSource, isModelSource, runCreateFlow } from "./sessionModel.js";
+import { createStepError, defaultSessionName, draftSource, isModelSource, runCreateFlow } from "./sessionModel.js";
 
 // Local source kinds of the "Add source" menu and the native picker of each one.
 // The cloud items are not in this version (user scope cut 2026-11-01: cloud UI is a future feature).

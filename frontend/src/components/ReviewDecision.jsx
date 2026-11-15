@@ -1,6 +1,6 @@
 import * as React from "react";
 import { useState, useEffect } from "react";
-import { Check, X, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
+import { Check, X, MoreHorizontal, Pencil } from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Menu } from "./ui/menu";

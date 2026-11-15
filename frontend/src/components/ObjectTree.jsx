@@ -5,6 +5,7 @@ import { ChevronRight, Search } from "lucide-react";
 import { Input } from "./ui/input";
 import { TypeGlyph } from "./TypeGlyph";
 import { objectForest } from "../graphLayout";
+import { listMove, listStep } from "../listNavigation";
 import { ownersOf, treeRows } from "../objectTree";
 import { formatCount, objectName } from "../presentation";
 
@@ -79,8 +80,13 @@ export default function ObjectTree({ transport, colors, selectedId, onSelect, re
     const index = indexOf.get(activeId) ?? -1;
     const row = rows[index];
     const page = Math.max(1, Math.floor(height / ROW) - 1);
-    const to = { ArrowDown: index + 1, ArrowUp: index - 1, Home: 0, End: rows.length - 1, PageDown: index + page, PageUp: index - page }[event.key];
-    if (to !== undefined) { event.preventDefault(); move(rows[Math.max(0, Math.min(rows.length - 1, to))].id); return; }
+    const where = listMove(event);
+    if (where) {
+      event.preventDefault();
+      const to = listStep(where, index, rows.length, page);
+      if (to >= 0) move(rows[to].id);
+      return;
+    }
     if (!row) return;
     if (event.key === "ArrowRight") {
       event.preventDefault();

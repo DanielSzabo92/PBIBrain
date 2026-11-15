@@ -28,7 +28,6 @@ import { OriginBadge } from "./OriginBadge";
 import { isTextEntry } from "../shortcuts";
 
 const EMPTY_FILTERS = { modelId: "", reportId: "", query: "", artifact: "", objectType: "", status: "", edgeType: "" };
-const scopeOptions = scopeChoices;
 const DEFAULT_LIMIT = 80;
 // Density rules (visual contract §11.8).
 const AUTO_COLLAPSE_ABOVE = 40;
@@ -46,8 +45,6 @@ function zoomTier(zoom) {
   return (Math.floor(zoom * 20 + 1e-6) / 20).toFixed(2);
 }
 const nameScale = (tier) => tier === "full" || tier === "far" ? 1 : 11 / (13 * Number(tier));
-// Lineage fits no further out than the smallest zoom that still shows names (see GLYPH_ZOOM).
-const FULL_GRAPH_MIN_ZOOM = 0.55;
 const DETAIL_PANE_WIDTH = 360;
 const NAME_WIDTH_MAX = 320;
 // Room for a name and three inside counts.
@@ -262,8 +259,8 @@ function FiltersPopoverContent({ filters, depth, centerId, overview, edgeTypes, 
   return <>
     <div className="graph-popover-grid">
       <SelectField label="Objects" value={filters.artifact} onChange={(artifact) => onFilters({ artifact })}><option value="">All objects</option>{Object.entries(ARTIFACT_GROUPS).map(([key, group]) => <option key={key} value={key}>{group.label.replace(" artifacts", " objects")}</option>)}</SelectField>
-      <SelectField label="Model" value={filters.modelId} onChange={(modelId) => onScope({ modelId, reportId: "" })}><option value="">All models</option>{scopeOptions(overview, "model").map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</SelectField>
-      <SelectField label="Report" value={filters.reportId} onChange={(reportId) => onScope({ reportId, modelId: "" })}><option value="">All reports</option>{scopeOptions(overview, "report").map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</SelectField>
+      <SelectField label="Model" value={filters.modelId} onChange={(modelId) => onScope({ modelId, reportId: "" })}><option value="">All models</option>{scopeChoices(overview, "model").map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</SelectField>
+      <SelectField label="Report" value={filters.reportId} onChange={(reportId) => onScope({ reportId, modelId: "" })}><option value="">All reports</option>{scopeChoices(overview, "report").map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</SelectField>
       <SelectField label="Status" value={filters.status} onChange={(status) => onFilters({ status })}><option value="">All statuses</option>{["factual", "candidate", "approved", "rejected", "overridden"].map((status) => <option key={status} value={status}>{statusLabel(status)}</option>)}</SelectField>
       <SelectField label="Relationship" value={filters.edgeType} onChange={(edgeType) => onFilters({ edgeType })}><option value="">All relationships</option>{edgeTypes.map((type) => <option key={type} value={type}>{typeLabel(type)}</option>)}</SelectField>
       <SelectField label="Distance" value={depth} disabled={!centerId} onChange={(value) => onDepth(Number(value))}>{[1, 2, 3, 4].map((value) => <option key={value} value={value}>{value} {value === 1 ? "connection away" : "connections away"}</option>)}</SelectField>
@@ -331,6 +328,7 @@ export default function GraphView({ transport, overview, snapshot, selectedId, c
   const [focusedNode, setFocusedNode] = useState(null);
   const [paneSettled, setPaneSettled] = useState(false);
   const canvasApi = useRef(null);
+  const [canvasZoom, setCanvasZoom] = useState(null);
   const request = useRef(0);
   const controlled = typeof onSession === "function";
   const rawSession = controlled ? session : uncontrolledSession;
@@ -645,7 +643,14 @@ export default function GraphView({ transport, overview, snapshot, selectedId, c
       </div> : null}
       <span className="graph-toolbar-spacer" />
       <span className="graph-summary" role="status" aria-live="polite" data-ui-number="" title={summaryDetail}>{summary}<span className="sr-only">{summaryDetail ? `. ${summaryDetail}` : ""}</span></span>
-      <Button variant="ghost" size="sm" aria-label="Fit view" tooltip="Fit view (F)" disabled={!canvasNodes.length} onClick={() => canvasApi.current?.fit()}><Maximize />Fit</Button>
+      {canvasZoom !== null ? <div className="graph-zoom-controls">
+        <Button variant="ghost" size="icon-sm" aria-label="Zoom out" tooltip="Zoom out (−)" onClick={() => canvasApi.current?.zoomOut()}><Minus /></Button>
+        <Tooltip content="Reset zoom (0)">
+          <button type="button" className="graph-zoom-value" data-ui-number="" aria-label={`Zoom ${Math.round(canvasZoom * 100)} percent. Reset to 100 percent`} onClick={() => canvasApi.current?.zoomReset()}>{Math.round(canvasZoom * 100)}%</button>
+        </Tooltip>
+        <Button variant="ghost" size="icon-sm" aria-label="Zoom in" tooltip="Zoom in (+)" onClick={() => canvasApi.current?.zoomIn()}><Plus /></Button>
+      </div> : null}
+      <Button variant="ghost" size="icon-sm" aria-label="Fit view" tooltip="Fit view (F)" disabled={!canvasNodes.length} onClick={() => canvasApi.current?.fit()}><Maximize /></Button>
     </div>
     {lanesView ? <LaneChips nodes={versioned ? versioned.nodes : nodes} hidden={hiddenLanes} matrix={viewMode === "matrix"} colors={colors} onChange={(next) => { updateSession({ hiddenLanes: next }); setFocusedNode(null); }}
       versionGroups={versionGroups} versionsFolded={graphSession.groupVersions} onVersions={(next) => { updateSession({ groupVersions: next }); setFocusedNode(null); }}
@@ -656,7 +661,7 @@ export default function GraphView({ transport, overview, snapshot, selectedId, c
         {viewMode === "matrix" ? <ImpactMatrix graph={graph} error={error} onRetry={loadGraph} query={query} hiddenLanes={hiddenLanes} groupVersions={graphSession.groupVersions} versionLinks={versionLinks} colors={colors} selectedId={focusedNode?.id} onSelect={setFocusedNode} />
           : error ? <div className="graph-empty" role="alert"><span className="empty-icon tone-bad" aria-hidden="true"><TriangleAlert /></span><h3>Graph unavailable</h3><p>{error}</p><Button variant="outline" onClick={loadGraph}>Retry graph</Button></div>
           : !graph ? <div className="graph-empty graph-loading" role="status"><p>Loading graph…</p></div>
-          : canvasNodes.length ? <GraphCanvas key={canvasKey} rawById={rawById} apiRef={canvasApi} overview={overviewMode} full={viewMode === "full"} grouped={!overviewMode && grouped} onCenter={center} onInspect={inspect} nodes={canvasNodes} edges={canvasEdges} layoutEdges={layoutEdges} undrawn={undrawn} relatedOnly={relatedOnly} selectedId={focusedNode?.id || centerId} docked={docked} warningIds={warningIds} direction={direction} showLabels={showLabels} colors={colors} onSelect={selectNode} onToggleGroup={toggleGroup} viewport={graphSession.viewports[canvasKey]} onViewportChange={saveViewport} placements={graphSession.placements[canvasKey]} onPlacementsChange={savePlacements} />
+          : canvasNodes.length ? <GraphCanvas key={canvasKey} rawById={rawById} apiRef={canvasApi} onZoomChange={setCanvasZoom} overview={overviewMode} full={viewMode === "full"} grouped={!overviewMode && grouped} onCenter={center} onInspect={inspect} nodes={canvasNodes} edges={canvasEdges} layoutEdges={layoutEdges} undrawn={undrawn} relatedOnly={relatedOnly} selectedId={focusedNode?.id || centerId} docked={docked} warningIds={warningIds} direction={direction} showLabels={showLabels} colors={colors} onSelect={selectNode} onToggleGroup={toggleGroup} viewport={graphSession.viewports[canvasKey]} onViewportChange={saveViewport} placements={graphSession.placements[canvasKey]} onPlacementsChange={savePlacements} />
           : <div className="graph-empty"><span className="empty-icon" aria-hidden="true"><Search /></span><h3>{hasFilters || overview?.counts?.objects ? "No matching objects" : "No sources scanned yet"}</h3><p>{hasFilters ? "Try another filter or clear the filters." : "Scan project sources to see their relationships."}</p>{hasFilters ? <Button variant="outline" onClick={reset}>Clear filters</Button> : null}</div>}
         <div className="graph-overlay graph-overlay-top" data-ui-actions="">
           {overviewMode && graphSession.expandedIds != null && explorer.collapsedCount < explorer.nodes.filter((node) => node.explorerChildCount > 0).length ? <Button variant="outline" size="xs" className="graph-overlay-button" onClick={() => updateSession({ expandedIds: null })}><ChevronsDownUp />Collapse all</Button> : null}
@@ -733,9 +738,12 @@ function edgeGeometry(source, target, direction, offset) {
   return { path, labelX: labelX + shiftX, labelY: labelY + shiftY };
 }
 
-function GraphCanvas({ rawById, apiRef, overview, full, grouped, onCenter, onInspect, nodes, edges, layoutEdges = edges, undrawn = null, relatedOnly = false, selectedId, docked, warningIds, direction, showLabels, colors, onSelect, onToggleGroup, viewport, onViewportChange, placements, onPlacementsChange }) {
+function GraphCanvas({ rawById, apiRef, onZoomChange, overview, full, grouped, onCenter, onInspect, nodes, edges, layoutEdges = edges, undrawn = null, relatedOnly = false, selectedId, docked, warningIds, direction, showLabels, colors, onSelect, onToggleGroup, viewport, onViewportChange, placements, onPlacementsChange }) {
   const [flow, setFlow] = useState(null);
   const [zoom, setZoom] = useState(viewport?.zoom || 1);
+  // The zoom control sits in the toolbar beside Fit, so the canvas reports its zoom upward.
+  useEffect(() => { onZoomChange?.(zoom); }, [zoom, onZoomChange]);
+  useEffect(() => () => onZoomChange?.(null), [onZoomChange]);
   const [tier, setTier] = useState(() => zoomTier(viewport?.zoom || 1));
   const [labelsReadable, setLabelsReadable] = useState(() => (viewport?.zoom || 1) >= LABEL_ZOOM);
   const far = tier === "far";
@@ -1091,13 +1099,6 @@ function GraphCanvas({ rawById, apiRef, overview, full, grouped, onCenter, onIns
       {laneCount ? <StickyLanes lanes={layout.lanes} /> : null}
       {showMinimap ? <MiniMap pannable zoomable bgColor="var(--surface)" nodeColor={(node) => node.type === "lane" ? "transparent" : node.data?.color || "var(--artifact-other, #94a3b8)"} nodeStrokeColor={(node) => node.type === "lane" ? "transparent" : node.data?.color || "var(--artifact-other, #94a3b8)"} nodeBorderRadius={4} nodeClassName={(node) => node.type === "artifactGroup" ? "minimap-artifact-group" : ""} maskColor="var(--minimap-mask)" style={{ width: 168, height: 112 }} /> : null}
     </ReactFlow>
-    <div className="graph-zoom-controls" data-ui-actions="">
-      <Button variant="ghost" size="icon-sm" aria-label="Zoom out" tooltip="Zoom out (−)" onClick={() => flow?.zoomOut(travel(stepDuration))}><Minus /></Button>
-      <Tooltip content="Reset zoom (0)">
-        <button type="button" className="graph-zoom-value" data-ui-number="" aria-label={`Zoom ${Math.round(zoom * 100)} percent. Reset to 100 percent`} onClick={() => flow?.zoomTo(1, travel(stepDuration))}>{Math.round(zoom * 100)}%</button>
-      </Tooltip>
-      <Button variant="ghost" size="icon-sm" aria-label="Zoom in" tooltip="Zoom in (+)" onClick={() => flow?.zoomIn(travel(stepDuration))}><Plus /></Button>
-    </div>
   </div>;
 }
 

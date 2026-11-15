@@ -14,7 +14,6 @@
 }
 .dc-apply-h3 { margin: var(--space-1) 0 0; font-size: var(--fs-body); font-weight: 600; color: var(--text); }
 .dc-apply-counts { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-4); margin: 0; padding: 0; list-style: none; font-size: var(--fs-body); }
-.dc-apply-deletes { margin: 0; font-size: var(--fs-body); color: var(--text); }
 .dc-apply-approvals { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; font-size: var(--fs-body); }
 .dc-apply-approvals li { display: flex; align-items: baseline; gap: var(--space-2); }
 .dc-apply-severity { min-width: 88px; font-weight: 600; color: var(--text-2); }

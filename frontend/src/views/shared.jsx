@@ -83,3 +83,14 @@ export function EmptyState({ title, detail, action, icon, tone }) { return <div 
 export function formatDate(value) { if (!value || value === "Not scanned") return value || "Not scanned"; const date = new Date(value); return Number.isNaN(date.valueOf()) ? String(value) : date.toLocaleString([], { dateStyle: "medium", timeStyle: "short" }); }
 export function formatValue(value) { return readableText(value) || "—"; }
 
+export function dataCounts(nodes, edges, candidates, conflicts) {
+  const isOpen = (item) => !["approved", "rejected", "overridden"].includes(String(item.status || "candidate").toLowerCase());
+  return {
+    models: nodes.filter((node) => node.type === "MODEL").length,
+    reports: nodes.filter((node) => node.type === "REPORT").length,
+    objects: nodes.length,
+    edges: edges.length,
+    candidates: candidates.filter(isOpen).length,
+    warnings: conflicts.filter(isOpen).length,
+  };
+}

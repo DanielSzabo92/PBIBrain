@@ -27,9 +27,9 @@ Explore relationships between data sources, tables, columns, measures, calculati
 Query your model directly using the docked AI chat (`Ctrl+J`) powered by local LLMs or cloud providers, using the same tools as the MCP server.
 ![In-App AI Chat](docs/screenshots/chat.png)
 
-### Development Center (Merge Models)
+### Merge Models
 Compare models side by side, align drifted measures, resolve naming conflicts, run change-safety guards, and deploy changes to local PBIP or cloud workspaces.
-![Development Center Merge Models](docs/screenshots/devcenter.png)
+![Merge Models](docs/screenshots/devcenter.png)
 
 ### Project Overview & Health
 View cross-model commonality, duplicated business logic, orphan objects, and unresolved bindings across all configured sources.
@@ -50,7 +50,7 @@ The web and desktop workbench features **7 dedicated views** designed for Power 
 - **Graph:** Interactive topological map with node clustering, edge filtering (`DEPENDS_ON`, `REFERENCES`, `USES`, `SOURCES_FROM`), and neighborhood focusing.
 - **Inspector:** Detailed view of any node—DAX formula with syntax highlighting, AST analysis, filter contexts, report visual bindings, and evidence trail.
 - **Review Queue:** Human-in-the-loop review workflow for inferred business concepts, selectors, and conflict resolution.
-- **Merge Models (Development Center):** Structured model comparison and consolidation. Compare schemas, resolve differences, enforce removal policies, simulate impact, and apply guarded changes.
+- **Merge Models:** Structured model comparison and consolidation. Compare schemas, resolve differences, enforce removal policies, simulate impact, and apply guarded changes.
 - **Settings:** Customize project paths, graph color palettes, and configure local or cloud AI providers.
 
 **Built-in Productivity Features:**
@@ -88,7 +88,7 @@ Add the following to your `claude_desktop_config.json` or cursor MCP settings:
 ---
 
 ### 3. Guarded Model Merging & Deployment
-The Development Center lets teams consolidate diverging models safely:
+Merge models lets teams consolidate diverging models safely:
 * **Alignment Engine:** Matches objects across models using stable native `lineageTag` identifiers, names, and normalized DAX logic.
 * **Change Guards:** Enforces strict safety rules (e.g. preventing unreferenced measure deletions or broken visual bindings) defined in `docs/CHANGE_GUARD_CONTRACT.md`.
 * **Multi-Target Deployment:** Deploy merged changes locally to PBIP TMDL files or directly to Microsoft Fabric / Power BI Service via XMLA delta deployment and Fabric REST report updates.

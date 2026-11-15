@@ -1,0 +1,352 @@
+/* ---------- Graph (visual contract §11) ---------------------------------- */
+.graph-page { display: flex; flex: 1; flex-direction: column; gap: 6px; min-height: 480px; }
+/* One 44px toolbar: find, view, types, display, filters, count, fit. */
+.graph-toolbar { display: flex; flex: none; align-items: center; gap: var(--space-2); min-width: 0; height: 44px; padding: 0 2px; }
+.graph-search { position: relative; flex: 0 1 240px; min-width: 150px; }
+.graph-search > svg { position: absolute; top: 50%; left: 10px; width: 16px; height: 16px; color: var(--text-3); transform: translateY(-50%); pointer-events: none; }
+.graph-search .ui-input { height: 32px; padding-left: 32px; }
+.graph-toolbar [data-slot="tabs"] { flex: none; gap: 0; }
+.toolbar-divider { flex: none; width: 1px; height: 20px; margin: 0 2px; background: var(--line-strong); }
+.graph-toolbar-spacer { flex: 1; min-width: 8px; }
+.graph-tool-trigger {
+  display: inline-flex; flex: none; align-items: center; gap: 6px; height: 32px; padding: 0 8px; border: 0; border-radius: var(--r-xs);
+  background: transparent; color: var(--text-2); font: inherit; font-size: var(--fs-body); font-weight: 500; cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+}
+.graph-tool-trigger svg { width: 16px; height: 16px; }
+.graph-tool-trigger .graph-tool-chevron { width: 14px; height: 14px; color: var(--text-3); transition: transform var(--dur) var(--ease-out); }
+.graph-tool-trigger[data-state="open"] .graph-tool-chevron { transform: rotate(180deg); }
+.graph-tool-trigger:hover, .graph-tool-trigger[data-state="open"] { background: var(--surface-hover); color: var(--text); }
+.graph-tool-trigger[data-active] { background: var(--surface-3); color: var(--text); }
+.graph-tool-trigger:active { transform: scale(0.985); transition-duration: var(--dur-press); }
+.graph-tool-trigger:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+.graph-tool-count { min-width: 18px; height: 18px; padding: 0 5px; border-radius: 99px; background: var(--brand); color: var(--brand-ink); font-size: var(--fs-micro); font-weight: 600; line-height: 18px; text-align: center; font-variant-numeric: tabular-nums; }
+.graph-summary { flex: none; color: var(--text-3); font-size: var(--fs-meta); font-variant-numeric: tabular-nums; white-space: nowrap; cursor: default; }
+/* Toolbar popovers: Types (legend + visibility), Display, Filters. */
+.graph-popover { padding: 6px; }
+.graph-popover[data-state="open"] { animation: graph-pop-in var(--dur) var(--ease-out); }
+@keyframes graph-pop-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+.graph-types-popover { width: 280px; }
+.graph-type-list { display: flex; flex-direction: column; max-height: min(420px, 60vh); margin: 0; padding: 0; overflow-y: auto; overscroll-behavior: contain; list-style: none; }
+.graph-type-row { display: grid; grid-template-columns: 24px 20px minmax(0, 1fr) auto 40px; align-items: center; gap: 8px; min-height: 32px; padding: 0 4px; border-radius: var(--r-xs); }
+.graph-type-row:hover { background: var(--surface-hover); }
+.graph-type-row label { overflow: hidden; color: var(--text); font-size: var(--fs-body); text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
+.graph-type-count { color: var(--text-3); font-size: var(--fs-meta); font-variant-numeric: tabular-nums; text-align: right; }
+.graph-type-only { height: 24px; padding: 0 6px; border: 0; border-radius: var(--r-xs); background: transparent; color: var(--text-2); font: inherit; font-size: var(--fs-meta); cursor: pointer; opacity: 0; transition: opacity var(--dur-fast) var(--ease-out), background-color var(--dur-fast) var(--ease-out); }
+.graph-type-row:hover .graph-type-only, .graph-type-only:focus-visible { opacity: 1; }
+.graph-type-only:hover { background: var(--surface-3); color: var(--text); }
+.graph-type-only:focus-visible { outline: 2px solid var(--brand); outline-offset: -2px; }
+.graph-popover-reset { margin: 4px 0 0; }
+.graph-popover-section { margin-top: 6px; padding: 10px 4px 4px; border-top: 1px solid var(--line); }
+.graph-popover-heading { display: block; margin-bottom: 6px; color: var(--text-3); font-size: var(--fs-meta); font-weight: 500; }
+.graph-popover-stack { display: flex; flex-direction: column; gap: 12px; min-width: 240px; padding: 6px; }
+.graph-popover-stack .graph-filter-field { flex-direction: row; align-items: center; justify-content: space-between; gap: 12px; }
+.graph-popover-stack .graph-filter-field [data-slot="native-select-wrapper"] { width: auto; }
+.graph-popover-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; width: 440px; max-width: calc(100vw - 32px); padding: 6px; }
+.graph-filter-field { display: flex; flex-direction: column; align-items: stretch; gap: 5px; min-width: 0; }
+.graph-filter-field > span { color: var(--text-2); font-size: var(--fs-meta); font-weight: 500; }
+.graph-filter-field [data-slot="native-select-wrapper"] { width: 100%; }
+.graph-filter-field select { text-overflow: ellipsis; }
+.graph-label-control { display: inline-flex; align-items: center; gap: 8px; color: var(--text); font-size: var(--fs-body); font-weight: 400; cursor: pointer; }
+.graph-evidence-key { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 0; padding: 0; color: var(--text-2); font-size: var(--fs-meta); list-style: none; }
+.graph-evidence-key li { display: inline-flex; align-items: center; gap: 6px; }
+.graph-evidence-key svg { width: 24px; height: 4px; overflow: visible; }
+.graph-evidence-key line { stroke: var(--graph-edge); stroke-width: 1.5; }
+/* Canvas and the docked details pane. */
+.graph-body { position: relative; display: flex; flex: 1; min-height: 0; }
+.graph-canvas-card { position: relative; display: flex; flex: 1; flex-direction: column; min-width: 0; min-height: 0; overflow: hidden; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--bg); transition: margin-right var(--dur-fit) var(--ease-out); }
+.artifact-flow { position: relative; flex: 1; min-height: 300px; background: var(--bg); }
+.graph-empty { display: flex; flex: 1; flex-direction: column; align-items: center; justify-content: center; gap: 6px; min-height: 300px; padding: 24px; background: var(--bg); text-align: center; }
+.graph-empty h3 { font-size: var(--fs-emphasis); font-weight: 600; }
+.graph-empty p { max-width: 360px; color: var(--text-2); font-size: var(--fs-body); }
+.graph-empty > .ui-button { margin-top: 10px; }
+.graph-loading p { color: var(--text-3); }
+.graph-overlay { position: absolute; z-index: 5; pointer-events: none; }
+.graph-overlay > * { pointer-events: auto; }
+.graph-overlay-top { top: 10px; right: 10px; display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: flex-end; gap: 8px; }
+.graph-overlay-button { background: var(--surface); }
+.graph-center { display: inline-flex; align-items: center; gap: 8px; max-width: 100%; height: 32px; padding: 0 4px 0 10px; border: 1px solid var(--line-strong); border-radius: var(--r-sm); background: var(--surface); font-size: var(--fs-meta); flex-shrink: 0; }
+.graph-center > svg { flex: none; width: 14px; height: 14px; color: var(--text-2); }
+.graph-center-label { flex: none; color: var(--text-2); }
+.graph-center-name { overflow: hidden; max-width: 280px; min-width: 0; color: var(--text); font-size: var(--fs-body); font-weight: 600; text-overflow: ellipsis; white-space: nowrap; flex-shrink: 1; }
+.graph-center-actions { display: inline-flex; flex: none; gap: 2px; padding-left: 4px; border-left: 1px solid var(--line); }
+.graph-toolbar .graph-center { flex: 0 1 auto; }
+.graph-toolbar .graph-center-name { max-width: 240px; }
+.scope-notice { display: inline-flex; align-items: center; gap: 4px; height: 32px; padding: 0 10px; border: 1px solid var(--line-strong); border-radius: var(--r-sm); background: var(--surface); color: var(--text-2); font-size: var(--fs-meta); font-variant-numeric: tabular-nums; }
+.scope-notice .ui-button-link { min-height: 24px; padding: 0 2px; color: var(--text); font-size: var(--fs-meta); text-decoration: underline; }
+.graph-overlay-key { left: 136px; bottom: 10px; display: flex; align-items: center; height: 34px; padding: 0 10px; border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--surface); }
+.graph-zoom-controls { display: flex; flex: none; align-items: center; gap: 2px; }
+.graph-zoom-value { min-width: 46px; height: 28px; padding: 0 4px; border: 0; border-radius: var(--r-xs); background: transparent; color: var(--text-2); font: inherit; font-size: var(--fs-meta); font-variant-numeric: tabular-nums; cursor: pointer; transition: background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out); }
+.graph-zoom-value:hover { background: var(--surface-hover); color: var(--text); }
+.graph-zoom-value:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+/* React Flow */
+.react-flow { --xy-edge-label-color-default: var(--text); }
+.react-flow__pane { cursor: grab; }
+.react-flow__pane.dragging { cursor: grabbing; }
+.react-flow__node { transition: opacity var(--dur) var(--ease-out); }
+.react-flow__node-brain { animation: fade-in var(--dur) var(--ease-out); }
+.react-flow__node.is-dimmed { opacity: .25; }
+.react-flow__node-brain:focus-visible { outline: none; }
+.react-flow__node-brain:focus-visible .flow-node { box-shadow: 0 0 0 4px var(--bg), 0 0 0 6px var(--brand); }
+.react-flow__minimap { overflow: hidden; margin: 10px; border: 1px solid var(--line-strong); border-radius: var(--r-sm); background: var(--surface); }
+.minimap-artifact-group { fill-opacity: .06; stroke-width: 2px; }
+/* Edges: one neutral, opaque ink; provenance by dash pattern; never coloured by type. */
+.react-flow__edge { transition: opacity var(--dur) var(--ease-out); }
+.react-flow__edge .react-flow__edge-path { stroke: var(--graph-edge); stroke-width: 1.25; fill: none; }
+.react-flow__edge.inferred .react-flow__edge-path { stroke-dasharray: 6 4; }
+.react-flow__edge.observed .react-flow__edge-path { stroke-dasharray: 1.5 3; stroke-linecap: round; }
+.react-flow__edge.is-structure .react-flow__edge-path { stroke: var(--graph-structure); stroke-width: 1; }
+.react-flow__edge.warning .react-flow__edge-path { stroke: var(--warn); }
+.react-flow__edge:hover .react-flow__edge-path { stroke: var(--text-2); }
+.react-flow__edge.on-path .react-flow__edge-path { stroke: var(--brand); stroke-width: 2; }
+.react-flow__edge.is-dimmed { opacity: .12; }
+.react-flow__edge-textwrapper { opacity: 0; pointer-events: none; transition: opacity var(--dur-fast) var(--ease-out); }
+.react-flow__edge.show-label .react-flow__edge-textwrapper, .react-flow__edge:hover .react-flow__edge-textwrapper { opacity: 1; }
+.react-flow__edge-text { fill: var(--text); font-size: var(--fs-meta); font-weight: 500; }
+.react-flow__edge-textbg { fill: var(--surface-2); stroke: var(--line-strong); stroke-width: 1px; }
+/* Nodes: a type chip and one line of name. Hue lives only in the chip. */
+.flow-node {
+  position: relative; display: flex; align-items: center; gap: 8px; width: 100%; height: 100%; padding: 0 10px 0 3px;
+  border: 1px solid var(--line-strong); border-radius: var(--r-sm); background: var(--surface); color: var(--text); cursor: pointer;
+  animation: node-enter var(--dur-enter) var(--ease-out);
+  transition: border-color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
+}
+.flow-node:hover { border-color: var(--line-focus); }
+.flow-node.selected { box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--brand); }
+.flow-node.is-suggested { border-style: dashed; border-color: var(--text-3); }
+.flow-node.has-warning { border-color: color-mix(in srgb, var(--warn) 60%, var(--line-strong)); }
+.flow-node-text { display: flex; flex: 1; flex-direction: column; gap: 1px; min-width: 0; }
+.flow-node-name { overflow: hidden; font-size: var(--fs-body); font-weight: 500; line-height: 16px; text-overflow: ellipsis; white-space: nowrap; }
+/* Long names take a second line before they are shortened (lineage lanes, TWO_LINE_HEIGHT). */
+.flow-node.is-two-line .flow-node-name { display: -webkit-box; white-space: normal; overflow-wrap: anywhere; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+/* "Group versions": one node stands for its copies in every version, drawn as a small stack. */
+.flow-node.is-stack { box-shadow: 3px 3px 0 -1px var(--surface), 3px 3px 0 0 var(--line-strong); }
+.flow-node.is-stack.selected { box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--brand); }
+.version-badge {
+  position: relative; display: inline-flex; flex: none; align-items: center; justify-content: center; min-width: 22px; height: 16px; padding: 0 4px;
+  border: 1px solid var(--line-strong); border-radius: 8px; color: var(--text-2); font-size: var(--fs-meta); font-variant-numeric: tabular-nums; font-weight: 600; line-height: 1;
+}
+.version-badge.is-partial { border-style: dashed; color: var(--text-3); }
+/* Versions whose definitions differ: a neutral mark, not a warning. */
+.version-badge.differs::after { content: "≠"; margin-left: 2px; color: var(--text-2); }
+.is-far .version-badge { display: none; }
+.flow-node-meta { color: var(--text-3); font-size: var(--fs-meta); line-height: 15px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.flow-node-meta { display: flex; align-items: center; gap: 10px; }
+.flow-node-count { display: inline-flex; align-items: center; gap: 3px; }
+.flow-node-count svg { width: 12px; height: 12px; }
+.flow-edge.is-bundle .react-flow__edge-path { stroke-linecap: round; opacity: .8; }
+.flow-node.is-fold { border-style: solid; background: var(--surface-2); box-shadow: 2px 2px 0 -1px var(--surface-2), 2px 2px 0 0 var(--line-strong); }
+.fold-count { display: inline-flex; flex: none; align-items: center; gap: 2px; color: var(--text-2); font-size: var(--fs-meta); font-variant-numeric: tabular-nums; font-weight: 600; }
+.fold-count svg { width: 12px; height: 12px; color: var(--text-3); }
+.is-far .fold-count { display: none; }
+.sticky-lanes { position: absolute; inset: 0 0 auto 0; z-index: 5; height: 28px; overflow: hidden; border-bottom: 1px solid var(--line); background: color-mix(in srgb, var(--surface) 92%, transparent); pointer-events: none; }
+.sticky-lane { position: absolute; top: 0; display: flex; align-items: center; gap: 6px; height: 28px; padding: 0 4px; overflow: hidden; color: var(--text-2); font-size: var(--fs-meta); font-weight: 600; white-space: nowrap; }
+.flow-node-status { display: inline-grid; flex: none; place-items: center; width: 16px; height: 16px; color: var(--text-2); }
+.flow-node-status svg { width: 14px; height: 14px; }
+.flow-node-status.warning { color: var(--warn); }
+.flow-node-status.approved { color: var(--ok); }
+.flow-node-status.rejected { color: var(--bad); }
+.flow-node .flow-handle { width: 1px; height: 1px; min-width: 0; min-height: 0; border: 0; background: transparent; opacity: 0; pointer-events: none; }
+.explorer-group-node { padding: 0 8px 0 11px; }
+.graph-group-toggle {
+  display: inline-grid; flex: none; place-items: center; width: 24px; height: 24px; padding: 0; border: 1px solid var(--line-strong); border-radius: var(--r-xs);
+  background: var(--surface-2); color: var(--text-2); cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out);
+}
+.graph-group-toggle svg { width: 14px; height: 14px; transition: transform var(--dur) var(--ease-out); }
+.graph-group-toggle[aria-expanded="true"] svg { transform: rotate(90deg); }
+.graph-group-toggle:hover { border-color: var(--line-focus); background: var(--surface-hover); color: var(--text); }
+.graph-group-toggle:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+/* Semantic zoom: below a readable zoom the name would fall under 11px, so a node shows only its glyph. */
+.is-mid .flow-node-text { overflow: visible; }
+.is-mid .flow-node-name { width: calc(100% / var(--name-scale)); transform: scale(var(--name-scale)); transform-origin: left center; }
+.is-mid .flow-node-meta { display: none; }
+.labels-off .react-flow__edge .react-flow__edge-textwrapper { opacity: 0; }
+.is-far .flow-node { justify-content: center; padding: 0; }
+.is-far .flow-node-text, .is-far .flow-node-status, .is-far .graph-group-toggle { display: none; }
+.is-far .flow-node .type-glyph { transform: scale(1.25); }
+.graph-far-label { position: absolute; z-index: 6; max-width: 240px; padding: 2px 8px; overflow: hidden; border: 1px solid var(--line-strong); border-radius: var(--r-xs); background: var(--surface-2); color: var(--text); font-size: var(--fs-meta); font-weight: 500; text-overflow: ellipsis; white-space: nowrap; transform: translate(-50%, calc(-100% - 6px)); pointer-events: none; animation: fade-in var(--dur-fast) var(--ease-out); }
+/* Ownership frames ("Group by ownership" in Full graph and Connections). */
+.artifact-group { width: 100%; height: 100%; border: 1px solid var(--line); border-radius: var(--r-md); background: color-mix(in srgb, var(--surface) 50%, transparent); }
+.artifact-group-title { display: inline-flex; align-items: center; gap: 8px; margin: 10px 12px; color: var(--text-2); font-size: var(--fs-meta); font-weight: 600; }
+.artifact-group-title > span { color: var(--text-3); font-weight: 500; font-variant-numeric: tabular-nums; }
+/* Docked details pane: overlays during the double-click window, then the canvas makes room for it. */
+.graph-detail-pane {
+  position: absolute; top: 0; right: 0; bottom: 0; z-index: 10; display: flex; flex-direction: column; width: 360px; overflow: hidden;
+  border: 1px solid var(--line-strong); border-radius: var(--r-md); background: var(--surface); overscroll-behavior: contain;
+  animation: sheet-in var(--dur-pane) var(--ease-out);
+}
+.graph-detail-pane.is-entering { pointer-events: none; }
+.graph-detail-header { position: relative; display: flex; flex: none; flex-direction: column; gap: 4px; padding: 14px 16px; border-bottom: 1px solid var(--line); }
+.graph-detail-kicker { display: flex; align-items: center; gap: 8px; min-height: 24px; padding-right: 36px; color: var(--text-2); font-size: var(--fs-meta); font-weight: 500; }
+.graph-provenance { display: inline-flex; align-items: center; gap: 4px; margin-left: 4px; color: var(--text-3); font-weight: 400; }
+.graph-provenance svg { width: 12px; height: 12px; }
+.graph-detail-title { margin-top: 4px; font-size: var(--fs-title); font-weight: 600; line-height: 1.3; overflow-wrap: anywhere; }
+.graph-detail-scope { color: var(--text-3); font-size: var(--fs-meta); }
+.graph-detail-close { position: absolute; top: 10px; right: 10px; }
+.graph-detail-actions { display: flex; gap: 8px; margin-top: 10px; }
+.graph-detail-actions .ui-button { flex: 1; }
+.graph-detail-body { flex: 1; min-height: 0; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; padding: 12px 16px 16px; }
+.graph-detail-body [data-slot="tabs-list"] { width: 100%; }
+.detail-loading { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; color: var(--text-3); font-size: var(--fs-meta); }
+.detail-error { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; margin-bottom: 14px; padding: 12px; border: 1px solid color-mix(in srgb, var(--bad) 35%, transparent); border-radius: var(--r-md); background: var(--bad-soft); color: var(--text); font-size: var(--fs-body); }
+.detail-description { margin: 16px 0; color: var(--text-2); font-size: var(--fs-body); line-height: 1.65; white-space: pre-wrap; overflow-wrap: anywhere; }
+.detail-fields { display: flex; flex-direction: column; gap: 0; margin-bottom: 18px; overflow: hidden; border: 1px solid var(--line); border-radius: var(--r-md); }
+.detail-fields:empty { display: none; }
+.detail-fields > div { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 12px; padding: 9px 12px; }
+.detail-fields > div + div { border-top: 1px solid var(--line); }
+.detail-fields dt { color: var(--text-3); font-size: var(--fs-meta); }
+.detail-fields dd { font-size: var(--fs-body); overflow-wrap: anywhere; white-space: pre-wrap; }
+.detail-fields > .detail-field-code { display: block; padding: 0; background: var(--code-bg); }
+.detail-field-code dt { padding: 8px 12px; border-bottom: 1px solid var(--line); background: var(--surface-2); }
+.detail-expression { padding: 12px; font-family: var(--font-code); font-size: var(--fs-meta); line-height: 1.65; }
+.detail-section { margin-top: 18px; }
+.detail-section h3 { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-size: var(--fs-body); font-weight: 600; }
+.detail-related {
+  display: flex; justify-content: flex-start; gap: 10px; width: 100%; min-width: 0; height: auto; min-height: 38px; padding: 6px 8px; color: var(--text); text-align: left; white-space: normal; border-radius: var(--r-sm);
+  transition: background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+}
+@media (hover: hover) and (pointer: fine) {
+  .detail-related:hover { background: var(--row-hover); color: var(--text); }
+}
+.detail-related > span:nth-child(2), .binding-row > span:first-child { flex: 1; min-width: 0; }
+.detail-related strong { display: block; font-size: var(--fs-body); font-weight: 500; overflow-wrap: anywhere; }
+.detail-related small { display: block; color: var(--text-3); font-size: var(--fs-meta); font-weight: 400; }
+.detail-edge { display: flex; flex-direction: column; gap: 4px; margin-top: 6px; padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--r-md); font-size: var(--fs-meta); }
+.detail-edge > div { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-weight: 500; }
+.detail-edge small { color: var(--text-3); overflow-wrap: anywhere; }
+.detail-evidence { margin-top: 6px; padding: 8px 10px; border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--surface-2); color: var(--text-2); font-size: var(--fs-meta); white-space: pre-wrap; overflow-wrap: anywhere; }
+/* Sheet (side pane fallback) */
+.ui-sheet {
+  top: 64px; right: 14px; bottom: 14px; width: min(420px, calc(100vw - 28px)); overflow: hidden;
+  border: 1px solid var(--line-strong); border-radius: var(--r-md); background: var(--surface); box-shadow: var(--shadow-lg);
+}
+.ui-sheet[data-state="open"] { animation: sheet-in var(--dur-slow) var(--ease-out); }
+.ui-sheet[data-state="closed"] { animation: sheet-out var(--dur) ease-in forwards; }
+.ui-sheet::before { content: ""; position: absolute; inset: 0 0 auto; height: 3px; background: var(--artifact-color, var(--brand)); opacity: .85; }
+.ui-sheet.is-entering { pointer-events: none; }
+.ui-sheet-close { position: absolute; top: 14px; right: 14px; }
+.connecting-indicator i { width: 7px; height: 7px; border-radius: 50%; background: var(--brand); opacity: .7; }
+/* ---------- Lineage lanes ---------------------------------------------- */
+/* Lane headers sit above each column: Models › Tables › Columns › Calculations › Visuals › … › Reports. */
+.react-flow__node-lane { cursor: default; }
+.lineage-lane {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 8px; height: 28px; padding: 0 2px;
+  border-bottom: 1px solid var(--line-strong); color: var(--text-2); font-size: var(--fs-meta); font-weight: 600; white-space: nowrap;
+}
+/* Lane names keep a readable on-screen size when zoomed out, the same way node names do. */
+.is-mid .lineage-lane > span { transform: scale(var(--name-scale)); transform-origin: left bottom; }
+.is-mid .lineage-lane > .lineage-lane-count { transform-origin: right bottom; }
+.lineage-lane-count { color: var(--text-3); font-weight: 500; font-variant-numeric: tabular-nums; }
+/* ---------- Impact matrix ----------------------------------------------- */
+.impact-matrix-view { display: flex; flex: 1; flex-direction: column; min-height: 0; background: var(--bg); }
+.mx-bar { display: flex; align-items: center; gap: 16px; min-height: 40px; padding: 0 12px; border-bottom: 1px solid var(--line); background: var(--surface); }
+.mx-legend { display: inline-flex; align-items: center; gap: 16px; color: var(--text-2); font-size: var(--fs-meta); }
+.mx-legend > span { display: inline-flex; align-items: center; gap: 6px; }
+.mx-summary { color: var(--text-2); font-size: var(--fs-meta); font-variant-numeric: tabular-nums; }
+.mx-summary strong { color: var(--warn); font-weight: 600; }
+.mx-toggle { display: inline-flex; align-items: center; gap: 6px; color: var(--text-2); font-size: var(--fs-meta); font-weight: 500; cursor: pointer; }
+.mx-notice { margin: 0; padding: 6px 12px; border-bottom: 1px solid var(--line); background: var(--warn-tint); color: var(--warn); font-size: var(--fs-meta); }
+.mx-scroll { flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; }
+.impact-matrix { border-collapse: separate; border-spacing: 0; font-size: var(--fs-meta); }
+.impact-matrix th, .impact-matrix td { padding: 0; border-bottom: 1px solid var(--line); background: var(--bg); }
+.impact-matrix td { width: 26px; min-width: 26px; height: 26px; border-right: 1px solid color-mix(in srgb, var(--line) 60%, transparent); text-align: center; vertical-align: middle; }
+.impact-matrix thead th { position: sticky; z-index: 2; background: var(--surface); }
+.impact-matrix thead tr:nth-child(1) th { top: 0; height: 30px; }
+.impact-matrix thead tr:nth-child(2) th { top: 30px; height: 28px; }
+.impact-matrix thead tr:nth-child(3) th { top: 58px; }
+.impact-matrix tbody th { position: sticky; left: 0; z-index: 1; width: 248px; min-width: 248px; max-width: 248px; border-right: 1px solid var(--line-strong); background: var(--bg); text-align: left; }
+.impact-matrix .mx-corner { left: 0; z-index: 3; width: 248px; min-width: 248px; padding: 8px 12px; border-right: 1px solid var(--line-strong); color: var(--text-2); font-weight: 500; text-align: left; vertical-align: bottom; }
+.mx-corner { display: table-cell; }
+.mx-corner > span { display: block; }
+.mx-corner-x { margin-top: 4px; color: var(--text-3); font-weight: 400; }
+/* min-width: 32px keeps group headers from collapsing into single-letter truncation. */
+.mx-report, .mx-page { min-width: 32px; overflow: hidden; border-left: 1px solid var(--line-strong); text-align: left; }
+.mx-col { width: 32px; min-width: 32px; height: 160px; padding: 0 0 4px !important; vertical-align: bottom; text-align: center; border-right: 1px solid color-mix(in srgb, var(--line) 60%, transparent); }
+.mx-col.is-folded { height: 160px; }
+/* Column labels read bottom-up, the way spreadsheet headers are rotated. */
+.mx-col-label {
+  display: inline-flex; align-items: center; gap: 6px; width: 32px; max-height: 152px; padding: 6px 0; overflow: hidden;
+  writing-mode: vertical-rl; transform: rotate(180deg); border: 0; border-radius: var(--r-xs); background: none;
+  color: var(--text-2); font: inherit; white-space: nowrap; cursor: pointer; text-align: left;
+  transition: background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+}
+.mx-col-label .type-glyph { transform: rotate(90deg); }
+.mx-col-label:hover { background: var(--surface-hover); }
+.mx-col-label > span:last-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.mx-col-label:hover, .mx-col.is-selected .mx-col-label { color: var(--text); }
+.mx-col-label.mx-dim { justify-content: flex-start; cursor: default; }
+.mx-total-head { min-width: 96px; padding: 0 10px; color: var(--text-2); font-weight: 500; text-align: left; vertical-align: bottom; padding-bottom: 8px; border-left: 1px solid var(--line-strong); }
+.mx-fold, .mx-row-label {
+  display: flex; align-items: center; gap: 6px; width: 100%; height: 26px; padding: 0 8px; overflow: hidden; border: 0; background: none;
+  color: var(--text); font: inherit; text-align: left; white-space: nowrap; cursor: pointer; border-radius: var(--r-xs);
+  transition: background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+}
+.mx-fold > span:not(.type-glyph), .mx-row-label > span:not(.type-glyph) { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.mx-fold svg:first-child { flex: none; width: 14px; height: 14px; color: var(--text-3); }
+.mx-fold:hover, .mx-row-label:hover { background: var(--surface-hover); }
+.mx-fold:focus-visible, .mx-row-label:focus-visible, .mx-col-label:focus-visible { outline: 2px solid var(--brand); outline-offset: -2px; }
+.mx-report .mx-fold { font-weight: 600; }
+.mx-page .mx-fold { color: var(--text-2); }
+.mx-dim { color: var(--text-3); font-weight: 400; font-variant-numeric: tabular-nums; }
+.mx-fold .mx-dim { margin-left: auto; }
+.mx-page-folded { padding: 0 8px !important; text-align: left; }
+.mx-model-row th { background: var(--surface) !important; }
+.mx-model-row th .mx-fold { font-weight: 600; }
+.mx-model-row td { background: var(--surface); }
+.mx-table-row th .mx-fold { padding-left: 16px; color: var(--text-2); font-weight: 500; }
+.mx-table-row.is-folded th .mx-fold { color: var(--text); }
+.mx-object-row th .mx-row-label { padding-left: 34px; }
+.mx-object-row:hover th, .mx-object-row:hover td, .mx-table-row:hover td, .mx-table-row:hover th { background: var(--surface-hover); }
+.mx-object-row.is-selected th .mx-row-label { background: var(--surface-3); }
+.mx-object-row.is-unused .mx-row-label > span:last-child { color: var(--text-3); }
+.mx-band { background: transparent; }
+/* Cell marks: solid = direct use, outline = through a calculation (circular dot indicators). */
+.mx-mark { display: inline-block; width: 10px; height: 10px; border-radius: 50%; vertical-align: middle; transition: transform var(--dur-fast) var(--ease-out); }
+.mx-mark.is-direct { background: var(--text); }
+.mx-mark.is-indirect { border: 1.5px solid var(--text-2); }
+td:hover > .mx-mark { transform: scale(1.2); }
+.mx-heat {
+  display: inline-grid; place-items: center; width: 22px; height: 18px; border-radius: var(--r-3xs); font-size: var(--fs-micro); font-weight: 600; font-variant-numeric: tabular-nums;
+  background: color-mix(in srgb, var(--text) calc(var(--heat) * 70%), transparent); color: var(--text);
+}
+.mx-off { background: repeating-linear-gradient(135deg, transparent 0 4px, color-mix(in srgb, var(--line-strong) 70%, transparent) 4px 5px) !important; }
+.mx-swatch-off { display: inline-block; width: 10px; height: 10px; border: 1px solid var(--line-strong); border-radius: 50%; background: repeating-linear-gradient(135deg, transparent 0 3px, var(--line-strong) 3px 4px); }
+.mx-total { min-width: 96px; padding: 0 10px !important; border-left: 1px solid var(--line-strong); text-align: left !important; white-space: nowrap; }
+.mx-total > span[data-ui-number] { color: var(--text-2); font-variant-numeric: tabular-nums; }
+.mx-total-bar { display: inline-block; width: 40px; height: 4px; margin-right: 8px; border-radius: var(--r-2xs); background: var(--surface-3); vertical-align: middle; position: relative; overflow: hidden; }
+.mx-total-bar::after { content: ""; position: absolute; inset: 0; background: var(--text-2); transform: scaleX(var(--share)); transform-origin: left; }
+.mx-unused { color: var(--warn); font-size: var(--fs-meta); }
+/* Lane chips: the lineage lanes in dependency order, each a toggle (Lineage and Matrix). */
+.lane-chips { display: flex; flex: none; flex-wrap: wrap; align-items: center; gap: 2px 2px; min-width: 0; padding: 0 2px; }
+.lane-chip {
+  display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 8px 0 5px; border: 1px solid var(--line); border-radius: var(--radius-full);
+  background: var(--surface); color: var(--text); font-size: var(--fs-meta); font-weight: 500; cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out), opacity var(--dur-fast) var(--ease-out);
+}
+.lane-chip:hover:not(:disabled) { border-color: var(--line-focus); background: var(--surface-hover); }
+.lane-chip:focus-visible { outline: 2px solid var(--brand); outline-offset: 1px; }
+.lane-chip[aria-pressed="false"] { border-style: dashed; background: transparent; color: var(--text-3); }
+.lane-chip[aria-pressed="false"] .type-glyph { opacity: 0.4; filter: grayscale(1); }
+.lane-chip:disabled { cursor: default; opacity: 0.7; }
+.lane-chip-count { color: var(--text-3); font-variant-numeric: tabular-nums; }
+.lane-chip-sep { width: 12px; height: 12px; flex: none; color: var(--text-3); }
+.mx-mark.is-partial.is-direct { background: linear-gradient(135deg, var(--text) 50%, transparent 50%); box-shadow: inset 0 0 0 1.5px var(--text); }
+.mx-mark.is-partial.is-indirect { background: linear-gradient(135deg, var(--text-2) 50%, transparent 50%); }
+.mx-row-label .version-badge, .mx-fold .version-badge { margin-left: 4px; }
+.mx-col-label .version-badge { min-width: 0; height: auto; padding: 3px 0; writing-mode: inherit; border-radius: 6px; font-size: var(--fs-meta); }
+/* Versions dialog: which models and reports are folded as versions, and the user's corrections. */
+.lane-chip.version-edit svg { width: 12px; height: 12px; }
+.version-groups section + section { margin-top: 18px; }
+.version-groups h3 { margin-bottom: 8px; color: var(--text-2); font-size: var(--fs-meta); font-weight: 500; }
+.version-groups ul { display: flex; flex-direction: column; gap: 2px; margin: 0; padding: 0; list-style: none; }
+.version-group { padding: 8px 10px; border: 1px solid var(--line); border-radius: var(--r-md); }
+.version-group + .version-group { margin-top: 8px; }
+.version-group-title { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; font-weight: 600; }
+.version-group-title svg { width: 14px; height: 14px; color: var(--text-3); }
+.version-group ul li, .version-single-list li { display: flex; align-items: center; gap: 8px; min-height: 32px; }
+.version-group ul li > .type-glyph, .version-single-list li > .type-glyph { flex: none; }
+.version-member-name { flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.version-single-list [data-slot="native-select-wrapper"] { flex: 0 0 210px; width: 210px; }
+.version-single-list { max-height: 38vh; overflow-y: auto; padding-right: 4px; }
+.version-group-list { max-height: 30vh; overflow-y: auto; }

@@ -30,6 +30,8 @@ data/*-identity.json
 *.jpeg
 *.gif
 !docs/screenshots/*.png
+# Approved pictures of the screenshot comparison (frontend/e2e/visual.spec.js).
+!frontend/e2e/*-snapshots/*.png
 *.zip
 *.7z
 *.rar

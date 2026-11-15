@@ -1,0 +1,13 @@
+/* Export Dialog */
+.export-dialog {
+  max-width: 720px;
+  width: 92vw;
+}
+.export-tabs {
+  margin-top: 14px;
+}
+.export-tab-content {
+  margin-top: 16px;
+  max-height: 60vh;
+  overflow-y: auto;
+}

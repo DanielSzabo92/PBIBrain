@@ -13,12 +13,11 @@ import {
   AlertDialogTrigger,
 } from "./ui/dialog";
 import BrandMark from "./BrandMark";
-import { formatObjectRef } from "../presentation.js";
+
 import { TriangleAlert } from "lucide-react";
 import "../guard.css";
 
 import {
-  GUARD_PHRASES,
   explain,
   formatGuardObjectName,
   valueText,

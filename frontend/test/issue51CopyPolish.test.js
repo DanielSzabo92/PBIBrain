@@ -8,6 +8,7 @@ import { fileURLToPath } from "node:url";
 import { COPY, formatPlural, plural, t, tn } from "../src/devcenter/copy.js";
 import { progressRows } from "../src/devcenter/screens/plan/applyModel.js";
 import { readableText, sanitizeDoublePunctuation, formatPlural as presFormatPlural } from "../src/presentation.js";
+import { appCss as readAppCss } from "./appSource.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -108,7 +109,7 @@ test("Issue #51: ImpactExplorer contains friendly read-only guidance", () => {
 });
 
 test("Issue #51: active nav marker is flush with pill at left: 0", () => {
-  const css = fs.readFileSync(path.join(__dirname, "../src/app.css"), "utf8");
+  const css = readAppCss();
   assert.ok(
     css.includes('.nav-button[aria-current="page"]::before { content: ""; position: absolute; left: 0;'),
     "Active nav marker must be flush at left: 0"
@@ -126,7 +127,7 @@ test("Issue #51: menu shortcuts are right-aligned with fixed tabular column styl
     "AppShell MenuItem keys must have right-aligned tabular column classes"
   );
 
-  const css = fs.readFileSync(path.join(__dirname, "../src/app.css"), "utf8");
+  const css = readAppCss();
   assert.ok(css.includes(".app-menu-keys {"), "app-menu-keys rule must exist");
   assert.ok(css.includes("tabular-nums"), "app-menu-keys must use tabular-nums");
   assert.ok(css.includes("text-align: right"), "app-menu-keys must be right-aligned");

@@ -2,30 +2,25 @@ import React, { useEffect, useId, useRef, useState } from "react";
 import {
   ArrowRight,
   Bot,
-  Command,
   Compass,
   FileCode,
   FileDown,
-  FileText,
   FolderGit2,
   Inbox,
   Keyboard,
   Layers,
   LoaderCircle,
   Moon,
-  PanelLeft,
   RefreshCw,
   ScanLine,
-  ScanSearch,
   Search,
   SlidersHorizontal,
   Sun,
   Waypoints,
-  X,
 } from "lucide-react";
 import { Dialog, DialogContent } from "./ui/dialog";
-import { displayKeys, shortcutKeys } from "../shortcuts";
-import { artifactColor, typeLabel } from "../graphPresentation";
+import { displayKeys } from "../shortcuts";
+import { typeLabel } from "../graphPresentation";
 import { objectName } from "../presentation";
 import { TypeGlyph } from "./TypeGlyph";
 

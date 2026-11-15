@@ -4,6 +4,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { getAIStatus } from "../src/chat.js";
+import { appCss as readAppCss } from "./appSource.js";
 
 const SRC = fileURLToPath(new URL("../src/", import.meta.url));
 
@@ -95,7 +96,7 @@ test("Issue #47: AISettings source code implements single-step key setup and eli
 
 test("Issue #47: ChatPanel source code includes tooltips on header buttons, chips, and view starter prompts", async () => {
   const code = await readFile(path.join(SRC, "components/ChatPanel.jsx"), "utf8");
-  const css = await readFile(path.join(SRC, "app.css"), "utf8");
+  const css = readAppCss();
 
   // Header button tooltips and labels
   assert.ok(code.includes('aria-label="Copy transcript"'), "Copy transcript button has explicit accessible label");

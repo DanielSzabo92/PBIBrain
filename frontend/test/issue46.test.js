@@ -3,12 +3,14 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { appSource as readAppSource } from "./appSource.js";
+import { appCss as readAppCss } from "./appSource.js";
 
 const SRC = fileURLToPath(new URL("../src/", import.meta.url));
 
 test("Issue #46: Motion token scale, keyframes cleanup, and comment reconciliation", async () => {
   const themeCss = await readFile(path.join(SRC, "theme.css"), "utf8");
-  const appCss = await readFile(path.join(SRC, "app.css"), "utf8");
+  const appCss = readAppCss();
 
   // Motion token scale in theme.css
   assert.ok(themeCss.includes("--dur-press: 90ms;"), "theme.css defines --dur-press");
@@ -38,8 +40,8 @@ test("Issue #46: Motion token scale, keyframes cleanup, and comment reconciliati
 });
 
 test("Issue #46: List row enter and exit animation with tokenized durations", async () => {
-  const appCss = await readFile(path.join(SRC, "app.css"), "utf8");
-  const appJsx = await readFile(path.join(SRC, "App.jsx"), "utf8");
+  const appCss = readAppCss();
+  const appJsx = readAppSource();
 
   // .review-item animations
   assert.ok(appCss.includes("row-enter var(--dur-enter)"), "review-item has row-enter animation");
@@ -73,7 +75,7 @@ test("Issue #46: Mutated rows and cells tint flash with --dur-flash", async () =
 });
 
 test("Issue #46: Badges and count pills count tween and smooth transitions", async () => {
-  const appCss = await readFile(path.join(SRC, "app.css"), "utf8");
+  const appCss = readAppCss();
   const devcenterCss = await readFile(path.join(SRC, "devcenter/devcenter.css"), "utf8");
   const tabsJsx = await readFile(path.join(SRC, "components/ui/tabs.jsx"), "utf8");
 
@@ -87,7 +89,7 @@ test("Issue #46: Badges and count pills count tween and smooth transitions", asy
 });
 
 test("Issue #46: Details pane open smooth fitView and group expand reflow", async () => {
-  const appCss = await readFile(path.join(SRC, "app.css"), "utf8");
+  const appCss = readAppCss();
   const graphJsx = await readFile(path.join(SRC, "components/GraphView.jsx"), "utf8");
 
   // Canvas card smooth margin transition
@@ -115,7 +117,7 @@ test("Issue #46: Apply progress dialog stable layout and smooth phase transition
 
 test("Issue #46: Stronger hover tokens and interactive feedback on type chips and lineage rows", async () => {
   const themeCss = await readFile(path.join(SRC, "theme.css"), "utf8");
-  const appCss = await readFile(path.join(SRC, "app.css"), "utf8");
+  const appCss = readAppCss();
 
   // Stronger surface-hover tokens
   assert.ok(themeCss.includes("--surface-hover: #222226;"), "theme.css dark mode has stronger surface-hover");
@@ -131,7 +133,7 @@ test("Issue #46: Stronger hover tokens and interactive feedback on type chips an
 });
 
 test("Issue #46: Strict prefers-reduced-motion safety across all motion layers", async () => {
-  const appCss = await readFile(path.join(SRC, "app.css"), "utf8");
+  const appCss = readAppCss();
   const compareCss = await readFile(path.join(SRC, "devcenter/components/compare.css"), "utf8");
   const applyCss = await readFile(path.join(SRC, "devcenter/screens/plan/apply.css"), "utf8");
   const devcenterCss = await readFile(path.join(SRC, "devcenter/devcenter.css"), "utf8");

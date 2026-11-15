@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Menubar as MenubarPrimitive } from "radix-ui";
-import { Check, CircleCheck, Keyboard, Moon, Sun, TriangleAlert } from "lucide-react";
+import { Check, ChevronsUpDown, CircleCheck, Keyboard, Moon, Sun, TriangleAlert } from "lucide-react";
+import { Menu } from "./ui/menu";
 import BrandMark from "./BrandMark";
 import { PRODUCT_CREDIT } from "../brand";
 import { Dialog, DialogContent } from "./ui/dialog";
@@ -34,7 +35,7 @@ function MenuItem({ item }) {
   );
 }
 
-export function AppMenuBar({ menus, projectName, children }) {
+export function AppMenuBar({ menus, projectName, projectMenu, onProjectMenu, children }) {
   const [value, setValue] = useState("");
   const bar = useRef(null);
   useEffect(() => {
@@ -82,7 +83,11 @@ export function AppMenuBar({ menus, projectName, children }) {
         ))}
       </MenubarPrimitive.Root>
       <div className="app-titlebar-center">{children}</div>
-      <Tooltip content={projectName}><span className="app-titlebar-project">{projectName}</span></Tooltip>
+      {projectMenu ? (
+        // The project name is the project switcher: recent projects and "Open another project…".
+        <Menu align="end" label="Switch project" groups={projectMenu} onOpenChange={(open) => { if (open) onProjectMenu?.(); }}
+          trigger={<button type="button" className="app-titlebar-project app-titlebar-switch" title={projectName} aria-label={`Project ${projectName}. Switch project`}><span>{projectName}</span><ChevronsUpDown aria-hidden="true" /></button>} />
+      ) : <Tooltip content={projectName}><span className="app-titlebar-project">{projectName}</span></Tooltip>}
     </header>
   );
 }

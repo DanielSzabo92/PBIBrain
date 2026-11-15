@@ -1,0 +1,22 @@
+/* ---------- Onboarding -------------------------------------------------- */
+.onboarding-shell {
+  position: relative; display: grid; place-items: center; min-height: 100vh; min-height: 100dvh; padding: 24px; overflow: hidden;
+  background: var(--bg);
+}
+.onboarding-card { position: relative; align-items: flex-start; gap: 0; width: min(480px, 100%); padding: 36px; border-radius: var(--r-md); box-shadow: var(--shadow-lg), var(--inset-hi); animation: rise-in var(--dur-slow) var(--ease-out); }
+.onboarding-mark { margin-bottom: 22px; }
+.brand-credit { margin-top: 20px; color: var(--text-3); font-size: var(--fs-meta); letter-spacing: 0.01em; }
+.onboarding-card h1 { margin-top: 6px; font-size: var(--fs-page); font-weight: 600; letter-spacing: -0.024em; }
+.onboarding-copy { margin-top: 8px; color: var(--text-2); font-size: var(--fs-emphasis); }
+.onboarding-form { display: flex; flex-direction: column; gap: 16px; width: 100%; margin-top: 26px; }
+.folder-picker { display: flex; gap: 8px; }
+.folder-picker .ui-input { height: 36px; }
+.folder-picker .ui-button { height: 36px; }
+.onboarding-error { display: flex; align-items: center; gap: 8px; color: var(--bad); font-size: var(--fs-body); }
+.onboarding-error svg { width: 16px; height: 16px; flex: none; }
+.onboarding-submit { width: 100%; margin-top: 4px; }
+.onboarding-note { margin-top: 18px; color: var(--text-3); font-size: var(--fs-meta); }
+.connecting-card { align-items: center; text-align: center; }
+.connecting-card .ui-button { margin-top: 22px; }
+.connecting-indicator { display: inline-flex; align-items: center; gap: 6px; margin-top: 24px; color: var(--text-3); font-size: var(--fs-meta); }
+.connecting-indicator span { margin-left: 6px; }

@@ -13,7 +13,6 @@ import { errorCopy, t, tn } from "../copy.js";
 import { useAction } from "../useDevCenter.js";
 import TargetChoice from "./TargetChoice.jsx";
 import { targetNames, targetPayload } from "./sessionModel.js";
-import NamingRules from "./sources/NamingRules.jsx";
 
 const STATUS = {
   ok: { tone: "ok", key: "sources.status.ok" },

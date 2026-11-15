@@ -28,7 +28,7 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { Tooltip } from "@/components/ui/tooltip";
 import { useToast } from "@/components/ui/toast";
 import { errorCopy, t } from "../copy.js";
-import { formatDaxName, formatObjectRef, phraseText } from "../phrases.js";
+import { phraseText } from "../phrases.js";
 import { formatBlockingFix, formatBlockingText } from "../screens/plan/planModel.js";
 import { useAction, useResource } from "../useDevCenter.js";
 import NameField from "./NameField.jsx";

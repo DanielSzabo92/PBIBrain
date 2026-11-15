@@ -1,8 +1,8 @@
 import * as React from "react";
 import { useState } from "react";
-import { FileCode, ArrowRight, Waypoints, Code2, Layers, ExternalLink } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { HoverCard, HoverCardTrigger, HoverCardContent } from "./ui/hover-card";
-import { Sheet, SheetTrigger, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "./ui/sheet";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "./ui/sheet";
 import { Button } from "./ui/button";
 import { TypeGlyph } from "./TypeGlyph";
 import { typeLabel } from "../graphPresentation";

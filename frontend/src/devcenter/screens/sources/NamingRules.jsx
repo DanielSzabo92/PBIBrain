@@ -1,6 +1,6 @@
 // Naming rules section of the Sources tab (UI design 4.8 and 13, U5).
 import React, { useEffect, useRef, useState } from "react";
-import { Check, LoaderCircle, MoreHorizontal, Pencil, Plus, RotateCcw, Tag, Trash2, TriangleAlert, X } from "lucide-react";
+import { Check, LoaderCircle, MoreHorizontal, Pencil, Plus, RotateCcw, Trash2, TriangleAlert, X } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
