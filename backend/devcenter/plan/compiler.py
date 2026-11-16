@@ -35,6 +35,8 @@ REWRITE_EXPRESSION with the same resolution.
 
 from __future__ import annotations
 
+import re
+
 from dataclasses import dataclass, field
 import hashlib
 import json
@@ -75,7 +77,18 @@ EDITABLE_PROPERTIES: dict[str, dict[str, Any]] = {
     "column": {"expression": str, "format_string": str, "display_folder": str, "description": str, "is_hidden": bool,
                "data_category": str, "summarize_by": SUMMARIZE_BY, "is_key": bool},
     "table": {"description": str, "is_hidden": bool, "data_category": str},
+    # The DAX body of a user-defined function, ``(param : TYPE, ...) => body``.
+    "function": {"expression": str},
+    # The DAX of one calculation item of a calculation group.
+    "calculation_item": {"expression": str},
+    # Power Query (M): a shared expression (query or parameter) and the source query of a table's partition.
+    "expression": {"expression": str},
+    "partition": {"expression": str},
 }
+# The head of a user-defined function text: ``(param : TYPE, ...) =>``.
+FUNCTION_SIGNATURE = re.compile(r"\s*\([^()]*\)\s*=>")
+# Object types whose ``expression`` is M, not DAX: written as given, never resolved as DAX.
+M_KINDS = ("expression", "partition")
 COMPARE_NAMES = {"is_hidden": "hidden", "is_key": "key"}
 RENAMABLE_KINDS = ("measure", "column", "table", "hierarchy", "calculation_item", "role", "expression", "function")
 
@@ -88,7 +101,13 @@ def edit_value_error(object_type: str, prop: str, value: Any) -> str | None:
         return "unknown_property"
     kind = allowed[prop]
     if prop == "expression":
-        return None if isinstance(value, str) and value.strip() else "expression_required"
+        if not (isinstance(value, str) and value.strip()):
+            return "expression_required"
+        if object_type in M_KINDS:
+            from backend.devcenter.session.change_rules import m_syntax_error
+
+            return m_syntax_error(value)
+        return None
     if kind is bool:
         return None if isinstance(value, bool) else "invalid_value"
     if kind is str:
@@ -97,6 +116,8 @@ def edit_value_error(object_type: str, prop: str, value: Any) -> str | None:
 
 
 def current_value(item: CompareObject, prop: str) -> Any:
+    if prop == "expression" and item.kind in M_KINDS:
+        return item.props.get("m_text")
     value = item.props.get(COMPARE_NAMES.get(prop, prop))
     if prop == "summarize_by" and value is None:
         return "default"
@@ -902,11 +923,22 @@ class _Compiler:
         key = row["row_key"]
         self.rename_op(step, key, target)
         props = {prop: value for prop, value in sorted((choice.get("set") or {}).items()) if current_value(target, prop) != value}
-        if "expression" in props and self.data.target_model is not None:
+        if "expression" in props and target.kind in M_KINDS:
+            # M is written as given: PBIBrain resolves DAX names only.
+            self.op(step, "REWRITE_EXPRESSION", key, property="expression", old_text=current_value(target, "expression"),
+                    new_text=props.pop("expression"))
+        elif "expression" in props and self.data.target_model is not None:
             # A new DAX text is resolved against the target like a donor text: renamed names are written
             # with the plan's names, and a missing or deleted object blocks.
             old = target.props.get("expression")
-            new_text, needs = self.translate(step, self.data.target_model, props.pop("expression"), target.table, "expression")
+            text = props.pop("expression")
+            signature = FUNCTION_SIGNATURE.match(text) if target.kind == "function" else None
+            if signature is not None:
+                # The DAX lexer reads expressions, not the ``(param : TYPE) =>`` head: resolve the body only.
+                body, needs = self.translate(step, self.data.target_model, text[signature.end():], target.table, "expression")
+                new_text = text[:signature.end()] + (body or "")
+            else:
+                new_text, needs = self.translate(step, self.data.target_model, text, target.table, "expression")
             needs.discard(key)
             if new_text != old:
                 self.op(step, "REWRITE_EXPRESSION", key, needs=needs, property="expression", old_text=old, new_text=new_text)

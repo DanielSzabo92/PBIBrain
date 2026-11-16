@@ -540,6 +540,39 @@
             "items_total": {
               "type": "integer",
               "minimum": 0
+            },
+            "rules": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "rule",
+                  "level",
+                  "message",
+                  "objects"
+                ],
+                "properties": {
+                  "rule": {
+                    "type": "string"
+                  },
+                  "level": {
+                    "enum": [
+                      "breaks",
+                      "warning"
+                    ]
+                  },
+                  "message": {
+                    "type": "string"
+                  },
+                  "objects": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
             }
           },
           "required": [

@@ -1,6 +1,6 @@
 """The one tool registry shared by the MCP server and the in-app chat (issue #7).
 
-``build_tools`` returns the 17 tools as plain Python functions: their names, docstrings and
+``build_tools`` returns the 20 tools as plain Python functions: their names, docstrings and
 annotated signatures are the tool contract. ``backend/mcp_server.py`` adds each one to the
 FastMCP server; ``backend/chat`` calls the same functions in process and derives the JSON
 schema it sends to the AI provider from the same signatures (``tool_schema``). The two
@@ -19,6 +19,7 @@ from typing import Any
 from collections.abc import Callable
 from urllib.parse import quote
 
+from backend.agent_knowledge import guide
 from backend.devcenter.agent_tools import DEFAULT_CLIENT, AgentTools
 from backend.mcp_budget import META_RESERVE, budget_for, fit_reply, size
 
@@ -26,12 +27,22 @@ Tool = Callable[..., dict[str, Any]]
 
 
 def brain_tools(client: Any, freshness: Callable[[], dict[str, Any]]) -> list[Tool]:
-    """The nine read-only project tools. Every reply is cut to its budget (``TOOL_BUDGETS``)."""
+    """The eleven read-only project tools. Every reply is cut to its budget (``TOOL_BUDGETS``)."""
 
     def reply(tool: str, detail: str, call: Any) -> dict[str, Any]:
         budget_for(tool, detail)  # refuse an unknown detail before any work
         payload = call()
         return fit_reply(payload, tool=tool, detail=detail, meta={"freshness": freshness()})
+
+    def brain_dependencies(object: str, direction: str = "both", depth: int = 1, model_id: str | None = None,
+                           object_type: str | None = None, detail: str = "compact") -> dict[str, Any]:
+        """One call for dependency questions: what an object is built from, what uses it, where reports show it.
+
+        object: a name ("Total Sales", "[Total Sales]", "Sales[Amount]") or an exact ID. direction: upstream (built
+        from), downstream (used by, with report pages and visuals) or both. depth 1-5 (2-3 for indirect). Answers
+        from the graph; status AMBIGUOUS lists candidates, NOT_FOUND means the graph has no such object."""
+        return reply("brain_dependencies", detail, lambda: client.get(
+            "dependencies", target=object, direction=direction, depth=depth, model_id=model_id, object_type=object_type))
 
     def brain_overview(detail: str = "compact") -> dict[str, Any]:
         """List project model/report IDs, object counts, and known scan status. detail: compact|full."""
@@ -98,12 +109,19 @@ def brain_tools(client: Any, freshness: Callable[[], dict[str, Any]]) -> list[To
         status UNCHANGED means the files match the last scan."""
         return reply("brain_pending_changes", detail, lambda: client.get("pending-changes"))
 
-    return [brain_overview, brain_search, brain_object, brain_context, brain_graph, brain_impact, brain_compare,
-            brain_commonality, brain_pending_changes]
+    def brain_guide(topic: str | None = None) -> dict[str, Any]:
+        """How to write a change correctly before proposing it: syntax, best practice and what it breaks downstream.
+
+        topic: measure, column, function (DAX UDF), m_query (partition and shared M), calculation_group or
+        rename_delete. No topic lists them with the change workflow. Static notes; needs no scan."""
+        return reply("brain_guide", "compact", lambda: guide(topic))
+
+    return [brain_dependencies, brain_overview, brain_search, brain_object, brain_context, brain_graph, brain_impact, brain_compare,
+            brain_commonality, brain_pending_changes, brain_guide]
 
 
 def merge_tools(client: Any, client_label: Callable[[], str]) -> list[Tool]:
-    """The eight Merge models (Development Center) agent tools: reads and proposals only."""
+    """The nine Merge models (Development Center) agent tools: reads, the proposal dry run, and proposals only."""
 
     def send(method: str, path: str, query: Any, body: Any) -> dict[str, Any]:
         payload = client.devcenter(method, path, query, body)
@@ -145,15 +163,30 @@ def merge_tools(client: Any, client_label: Callable[[], str]) -> list[Tool]:
         return tools.name_propose(name=name, object_type=object_type, table=table, display_folder=display_folder,
                                   source_id=source_id, candidate=candidate)
 
+    def proposal_check(kind: str, target: str, payload: dict[str, Any]) -> dict[str, Any]:
+        """Dry-run a proposal before proposal_submit: the same checks, nothing saved. Same kind, target and payload.
+
+        The reply has valid; when invalid, refusal says what to fix (a DAX parse error, a missing name, a broken M
+        query, a value the object cannot take). When valid, check has the plan blocking items, the Breaks/Needs
+        impact items (visuals and measures that use the object) and rules: the change rules with level breaks or
+        warning (a measure that now returns text instead of a number, a function whose callers pass the wrong
+        number of arguments, a query that drops a source column). Fix what you can, then submit and name in the
+        reason the Breaks you accept.
+        """
+        return tools.proposal_check(kind=kind, target=target, payload=payload)
+
     def proposal_submit(kind: str, target: str, payload: dict[str, Any], confidence: float, reason: str, base_revision: int,
                         target_name: str | None = None) -> dict[str, Any]:
         """Propose a change for the user to accept. The user decides. Confidence must be 0.9 or more and the reason must not be empty.
 
         kind: merge_choice, alignment, removal_policy, impact_action, need_mapping, name, or the object kinds
-        object_edit {set: {expression, format_string, description, display_folder, is_hidden, ...}},
-        object_rename {new_name}, object_delete {}, object_create {object_type, table, name, properties}.
-        An object proposal is checked on submit: the reply's proposal.check has the plan blocking items and the
-        Breaks/Needs impact; a DAX error or a missing name is refused with details.reason proposal_not_valid.
+        object_edit {set: {...}}: a measure or column (expression, format_string, description, display_folder,
+        is_hidden, ...), a table (description, is_hidden), a function, a calculation item, a shared M expression or
+        a partition (expression: the DAX or M text). object_rename {new_name}, object_delete {},
+        object_create {object_type, table, name, properties}.
+        An object proposal is checked on submit like proposal_check: the reply's proposal.check has the plan
+        blocking items, the Breaks/Needs impact and the change rules; a DAX error, a broken M query or a missing
+        name is refused with details.reason proposal_not_valid.
         """
         return tools.proposal_submit(kind=kind, target=target, payload=payload, confidence=confidence, reason=reason,
                                      base_revision=base_revision, target_name=target_name, client=label())
@@ -168,8 +201,8 @@ def merge_tools(client: Any, client_label: Callable[[], str]) -> list[Tool]:
         """Validate the Change Plan. mode is quick or full. include_proposals adds the open agent proposals."""
         return tools.plan_validate(mode=mode, include_proposals=include_proposals)
 
-    return [session_get, compare_rows_list, impact_get, naming_rules_get, name_propose, proposal_submit, question_ask,
-            plan_validate]
+    return [session_get, compare_rows_list, impact_get, naming_rules_get, name_propose, proposal_check, proposal_submit,
+            question_ask, plan_validate]
 
 
 def pbi_tools(client: Any) -> list[Tool]:

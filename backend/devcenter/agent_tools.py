@@ -1,4 +1,4 @@
-"""The eight agent tools of the "PBIBrain" MCP server (technical design section 12, build step S10).
+"""The nine agent tools of the "PBIBrain" MCP server (technical design section 12, build step S10).
 
 Each tool maps to exactly one HTTP route of ``TOOL_ROUTES``. That table is the
 fixed endpoint allowlist of the MCP adapter: it holds only read routes and the
@@ -21,6 +21,7 @@ TOOL_ROUTES: dict[str, tuple[str, str]] = {
     "impact_get": ("GET", "impact"),
     "naming_rules_get": ("GET", "naming-rules"),
     "name_propose": ("POST", "name-propose"),
+    "proposal_check": ("POST", "proposal-check"),
     "proposal_submit": ("POST", "proposals"),
     "question_ask": ("POST", "questions"),
     "plan_validate": ("POST", "plan-validate"),
@@ -74,6 +75,9 @@ class AgentTools:
         if candidate is not None:
             body["candidate"] = candidate
         return self._call("name_propose", body=body)
+
+    def proposal_check(self, *, kind: str, target: str, payload: Mapping[str, Any]) -> dict[str, Any]:
+        return self._call("proposal_check", body={"kind": kind, "target": target, "payload": dict(payload)})
 
     def proposal_submit(self, *, kind: str, target: str, payload: Mapping[str, Any], confidence: float, reason: str,
                         base_revision: int, target_name: str | None = None, client: str | None = None) -> dict[str, Any]:

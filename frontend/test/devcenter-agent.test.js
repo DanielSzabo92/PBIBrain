@@ -14,6 +14,7 @@ import {
   proposalStatus,
   questionSections,
   readyProposals,
+  ruleLines,
   statusText,
   visibleProposals,
 } from "../src/devcenter/screens/agent/agentModel.js";
@@ -110,6 +111,16 @@ test("issue #13: a destructive object proposal needs review and stays out of Acc
   assert.deepEqual(readyProposals([review, edit]).map((item) => item.id), ["p-2"]);
   assert.equal(checkText(review), "Safety check: 2 breaks, 0 needs, 1 blocking items");
   assert.equal(checkText(edit), null);
+  const typed = { ...edit, check: { breaks: 1, needs: 0, blocking: [], rules: [
+    { rule: "calc_item_without_measure", level: "warning", message: "No SELECTEDMEASURE().", objects: [] },
+    { rule: "result_type_change", level: "breaks", message: "Margin now returns text.",
+      objects: ["visual a", "visual b", "visual c", "visual d", "visual e", "measure f", "measure g"] },
+  ] } };
+  assert.deepEqual(ruleLines(typed), [
+    { level: "breaks", text: "Can break: Margin now returns text.", objects: "visual a, visual b, visual c, visual d, visual e and 2 more" },
+    { level: "warning", text: "Check: No SELECTEDMEASURE().", objects: "" },
+  ]);
+  assert.deepEqual(ruleLines(edit), []);
   const summary = acceptAllSummary({ open: [review, edit] });
   assert.equal(summary.n, 1);
   assert.deepEqual(summary.skipped.map((item) => item.reason), ["needs_review"]);

@@ -50,7 +50,7 @@ def _http_message(status: int, detail: str = "") -> str:
 
 
 class AnthropicProvider:
-    def __init__(self, *, model: str, api_key: str | None, base_url: str = ANTHROPIC_URL) -> None:
+    def __init__(self, *, model: str, api_key: str | None, base_url: str = ANTHROPIC_URL, effort: str = "") -> None:
         try:
             import anthropic
         except ImportError as exc:
@@ -58,6 +58,7 @@ class AnthropicProvider:
         self._sdk = anthropic
         self.model = model
         self.base_url = base_url.rstrip("/")
+        self.effort = effort
         self.client = anthropic.Anthropic(api_key=api_key, base_url=self.base_url, max_retries=2, timeout=TIMEOUT_SECONDS)
 
     def _error(self, exc: Exception) -> ProviderError:
@@ -77,6 +78,14 @@ class AnthropicProvider:
             return {"ok": False, "message": str(self._error(exc))}
         return {"ok": True, "message": f"Connected. {getattr(model, 'display_name', '') or self.model} is available."}
 
+    def list_models(self) -> list[Any]:
+        """The models this key can use, with their capabilities (the Models API)."""
+
+        try:
+            return list(self.client.models.list())
+        except self._sdk.APIError as exc:
+            raise self._error(exc) from exc
+
     def stream(self, *, system: str, messages: Sequence[Mapping[str, Any]], tools: Sequence[Mapping[str, Any]],
                should_stop: Callable[[], bool]) -> Iterator[Event]:
         request: dict[str, Any] = {
@@ -85,6 +94,8 @@ class AnthropicProvider:
             # The tools and the system prompt are the same on every turn: a stable, cacheable prefix.
             "cache_control": {"type": "ephemeral"},
         }
+        if self.effort:
+            request["output_config"] = {"effort": self.effort}
         if self.model in FALLBACK_MODELS and self.base_url == ANTHROPIC_URL:
             # A refusal is retried on a fallback model chosen by the server.
             opened = self.client.beta.messages.stream(**request, betas=[FALLBACK_BETA], fallbacks="default")
@@ -110,9 +121,10 @@ class AnthropicProvider:
 
 
 class OpenAICompatibleProvider:
-    def __init__(self, *, model: str, api_key: str | None, base_url: str) -> None:
+    def __init__(self, *, model: str, api_key: str | None, base_url: str, effort: str = "") -> None:
         self.model = model
         self.api_key = api_key
+        self.effort = effort
         self.base_url = base_url.rstrip("/")
         host = urlsplit(self.base_url).hostname or ""
         # A local endpoint is reached directly, never through a proxy.
@@ -141,6 +153,15 @@ class OpenAICompatibleProvider:
         except (URLError, OSError) as exc:
             host = urlsplit(self.base_url).hostname
             raise ProviderError(f"Could not reach {host}. Check the base URL and that the endpoint is running.") from exc
+
+    def list_models(self) -> list[str]:
+        """The model ids of the endpoint (``GET /models``)."""
+
+        try:
+            with self._open(self._request("models")) as response:
+                return [str(item.get("id")) for item in json.load(response).get("data") or [] if isinstance(item, Mapping)]
+        except (ValueError, AttributeError) as exc:
+            raise ProviderError("The endpoint answered, but not with an OpenAI-compatible model list.") from exc
 
     def test(self) -> dict[str, Any]:
         try:
@@ -183,6 +204,8 @@ class OpenAICompatibleProvider:
             "tools": [{"type": "function", "function": {"name": tool["name"], "description": tool["description"],
                                                         "parameters": tool["input_schema"]}} for tool in tools],
         }
+        if self.effort:
+            body["reasoning_effort"] = self.effort
         text: list[str] = []
         calls: dict[int, dict[str, str]] = {}
         finish = "end_turn"
@@ -228,6 +251,14 @@ class OpenAICompatibleProvider:
 
 
 def create_provider(settings: Mapping[str, Any], api_key: str | None) -> Any:
+    from .cli_providers import PRESETS, SubscriptionCLIProvider
+
+    if settings["provider"] in PRESETS:
+        # A subscription through the vendor's signed-in CLI; never given an API key.
+        return SubscriptionCLIProvider(preset=settings["provider"], model=settings.get("model") or "",
+                                       command=settings.get("command") or "", effort=settings.get("effort") or "")
     if settings["provider"] == "anthropic":
-        return AnthropicProvider(model=settings["model"], api_key=api_key, base_url=settings["base_url"])
-    return OpenAICompatibleProvider(model=settings["model"], api_key=api_key, base_url=settings["base_url"])
+        return AnthropicProvider(model=settings["model"], api_key=api_key, base_url=settings["base_url"],
+                                 effort=settings.get("effort") or "")
+    return OpenAICompatibleProvider(model=settings["model"], api_key=api_key, base_url=settings["base_url"],
+                                    effort=settings.get("effort") or "")

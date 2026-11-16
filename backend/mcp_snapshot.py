@@ -33,7 +33,7 @@ MAX_CHANGED_LISTED = 10
 _SKIPPED_FILES = {"cache.abf", "localsettings.json"}
 
 # Routes the snapshot answers. Everything else needs the running app.
-SNAPSHOT_GET_ROUTES = ("overview", "search", "objects/", "context", "graph", "commonality")
+SNAPSHOT_GET_ROUTES = ("overview", "search", "objects/", "context", "graph", "commonality", "dependencies")
 SNAPSHOT_POST_ROUTES = ("impact",)
 
 _hash_cache: dict[str, tuple[int, int, str]] = {}

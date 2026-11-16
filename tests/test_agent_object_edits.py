@@ -153,7 +153,7 @@ class SubmitCheckTests(_AgentCase):
     def test_an_expression_change_returns_its_impact_and_changes_no_accepted_state(self) -> None:
         proposal = self.proposed("object_edit", MARGIN, {"set": {"expression": NEW_MARGIN_TEXT, "format_string": "0.00"}})
         check = proposal["check"]
-        self.assertEqual(set(check), {"plan_status", "blocking", "breaks", "needs", "items", "items_total"})
+        self.assertEqual(set(check), {"plan_status", "blocking", "breaks", "needs", "items", "items_total", "rules"})
         self.assertEqual([], [item for item in check["blocking"] if item["row_key"] == MARGIN])
         for item in check["items"]:
             self.assertIn(item["direction"], {"breaks", "needs"})

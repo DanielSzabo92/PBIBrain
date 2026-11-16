@@ -757,6 +757,11 @@ static class ModelWriter
                     var expr = model.Expressions.Find(name);
                     if (expr != null) expr.Expression = newText;
                     break;
+                case "partition":
+                    // The Power Query (M) source of an import or DirectQuery partition.
+                    var part = model.Tables.Find(tableName)?.Partitions.Find(name);
+                    if (part?.Source is MPartitionSource mp) mp.Expression = newText;
+                    break;
             }
         }
         else if (property == "format_string_expression")
