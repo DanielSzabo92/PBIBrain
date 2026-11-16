@@ -136,10 +136,11 @@ function DevCenterScreens({ onOpenProject }) {
     }
   };
 
-  // The first view: GET session tells if a session is open. session_not_open gives the list.
+  // The first view: GET sessions tells if a session is open (its revision is null when none is), and only
+  // then GET session reads it. Asking for the session with none open answers 409, which the browser logs.
   useEffect(() => {
     let active = true;
-    store.load("session").then((data) => {
+    store.load("sessions").then((list) => (list && !Number.isInteger(list.revision) ? null : store.load("session"))).then((data) => {
       if (active) setView((current) => current ?? (data ? "work" : "list"));
     });
     return () => {

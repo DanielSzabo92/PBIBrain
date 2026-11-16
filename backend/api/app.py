@@ -1141,6 +1141,11 @@ class BrainApp:
                     store=self.api.overrides,
                 )
                 data = result.pop("data")
+                if result["format"] == "document":
+                    # The workbench draws the PDF itself (pdfcn on Takumi) from these blocks.
+                    import json
+
+                    return 200, {**result, "document": json.loads(data)}
                 return 200, {**result, "bytes": len(data), "content_base64": base64.b64encode(data).decode("ascii")}
             if method == "GET" and parts == ["brain"]:
                 return 200, self.api.get_snapshot()

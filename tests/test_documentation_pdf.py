@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import base64
 import io
+import json
 import re
 import shutil
 import subprocess
@@ -129,7 +130,8 @@ class DocumentationPdfTests(unittest.TestCase):
         self.assertEqual(document.scope, {"model_ids": [self.models["SalesB"]], "report_ids": [], "sections": ["overview", "measures"]})
         reports_only = render_document_markdown(build_document(self.repository, generated_at=STAMP, model_ids=[], report_ids=[self.reports["SalesA"]]))
         self.assertIn("## Report: SalesA", reports_only)
-        self.assertIn("| marginbymonth | clusteredColumnChart | Date[Month]; Sales[Margin] |", reports_only)
+        self.assertIn("| marginbymonth | Clustered column chart | Date[Month]; Sales[Margin] |", reports_only)
+        self.assertIn("| metrictable | Table | Store[Store Name]; Metric Selector[Metric Selector] |", reports_only)
         self.assertNotIn("## Model:", reports_only)
         for bad in ({"model_ids": ["model:nope"]}, {"sections": ["everything"]}, {"sections": []}, {"model_ids": [], "report_ids": []}):
             with self.subTest(bad=bad), self.assertRaises(DocumentationScopeError):
@@ -140,15 +142,19 @@ class DocumentationPdfTests(unittest.TestCase):
     def test_markdown_has_diagrams_lineage_markers_and_not_checked(self):
         markdown = self.export("markdown")["data"].decode("utf-8")
         self.assertTrue(markdown.startswith("# Merge Lab documentation\n"))
-        self.assertIn("```mermaid\nflowchart TB", markdown)
+        self.assertNotIn("flowchart TB", markdown)  # no model diagram
         self.assertIn("```mermaid\nflowchart LR", markdown)
         self.assertIn('["dbo.FactSales<br/>Data source"]', markdown)
         self.assertIn("| dbo.FactSales | Sql.Database | sql01/Sales/dbo.FactSales | Sales | SalesA |", markdown)
-        self.assertIn("| Store | PARTITION | m not read | Custom.Connector( is not known |", markdown)
+        self.assertIn("| Store | Table partition | M not read | Custom.Connector( is not known |", markdown)
         self.assertIn("Description: Árbevétel mínusz költség, ő és ű", markdown)  # exact text in Markdown
-        self.assertIn("| INFERRED | candidate |", markdown)
-        self.assertIn("| SEMANTICALLY_MAPS_TO | INFERRED |", markdown)
-        self.assertIn("| OBSERVED_WITH | OBSERVED |", markdown)
+        # Documentation is for Power BI developers and customers: no graph terms, IDs or JSON (issue #71).
+        for graph_term in ("FACT", "INFERRED", "OBSERVED", "Evidence", "evidence", "SEMANTICALLY_MAPS_TO", "Content identity",
+'{"', "Graph validation"):
+            self.assertNotIn(graph_term, markdown)
+        self.assertIsNone(re.search(r"\b(model|report|table):\S", markdown))  # no graph node IDs
+        self.assertIn("| Table | Storage mode | Columns | Measures | Hidden | Description |", markdown)
+        self.assertIn("| Sales | Import | 2 | 2 | No |  |", markdown)
         self.assertIn("```dax\n[Total Sales] - [Total Cost]\n```", markdown)
 
     def test_running_app_exports_through_the_api(self):
@@ -207,10 +213,6 @@ class PdfTextTests(unittest.TestCase):
         self.assertEqual(wrap("VAR  x = 1\nRETURN x", "mono", 8, 400), ["VAR  x = 1", "RETURN x"])
 
 
-if __name__ == "__main__":
-    unittest.main()
-
-
 class LargeModelLayoutTests(unittest.TestCase):
     def test_long_dax_many_tables_and_long_cells_lay_out_on_pages(self):
         model = "model:big"
@@ -232,7 +234,53 @@ class LargeModelLayoutTests(unittest.TestCase):
         pages = int(re.search(rb"/Type /Pages /Kids \[[^\]]*\] /Count (\d+)", result["data"]).group(1))
         self.assertGreater(pages, 10)
         self.assertIn(b"VAR v399", content)  # the whole expression is printed across pages
-        self.assertIn(b"(*:1) Tj", content)  # cardinality label on the diagram line
-        self.assertIn(b"[3 2] 0 d", content)  # inactive relationship is dashed
         markdown = render_document_markdown(document)
-        self.assertIn("-.-|*:1|", markdown)
+        self.assertIn("[Key] | *:1 | Single | No |", markdown)  # the inactive relationship is listed
+
+    def test_storage_mode_plain_references_and_no_model_diagram(self):
+        model = "model:star"
+        nodes = [Node(model, "MODEL", "Star")]
+        for name in ("Sales", "Date", "Store", "Notes"):
+            nodes.append(Node(f"{model}/table:{name}", "TABLE", name, model_id=model))
+        for table, column in (("Sales", "DateKey"), ("Sales", "StoreKey"), ("Date", "DateKey"), ("Store", "StoreKey")):
+            nodes.append(Node(f"{model}/table:{table}/column:{column}", "COLUMN", column, model_id=model,
+                              properties={"table_id": f"{model}/table:{table}"}))
+        nodes.append(Node(f"{model}/table:Store/partition:p", "PARTITION", "Store", model_id=model,
+                          properties={"table_id": f"{model}/table:Store", "mode": "directQuery"}))
+        nodes.append(Node(f"{model}/table:Date/partition:p", "PARTITION", "Date", model_id=model,
+                          properties={"table_id": f"{model}/table:Date", "mode": "dual"}))
+        for key in ("Date", "Store"):
+            nodes.append(Node(f"{model}/relationship:{key}", "RELATIONSHIP", key, model_id=model, properties={
+                "from_column_id": f"{model}/table:Sales/column:{key}Key", "to_column_id": f"{model}/table:{key}/column:{key}Key",
+                "cardinality": "manyToOne", "cross_filter_direction": "bothDirections" if key == "Store" else "oneDirection"}))
+        nodes.append(Node(f"{model}/relationship:broken", "RELATIONSHIP", "broken", model_id=model, properties={
+            "from_ref": {"table": "Sales", "column": "Gone"}, "to_column_id": f"{model}/table:Date/column:DateKey"}))
+        repository = GraphRepository(use_sqlite=False)
+        repository.replace(nodes, [])
+        document = build_document(repository, generated_at=STAMP)
+        self.assertFalse(any(block.kind == "diagram" and block.text != "Lineage" for block in document.blocks))
+        markdown = render_document_markdown(document)
+        self.assertNotIn("Model diagram", markdown)
+        self.assertIn("| Store | DirectQuery | 1 | 0 | No |  |", markdown)
+        self.assertIn("| Date | Dual | 1 | 0 | No |  |", markdown)
+        self.assertIn("| Notes | Not recorded |", markdown)
+        self.assertIn("| Sales[StoreKey] | Store[StoreKey] | *:1 | Both | Yes |", markdown)
+        self.assertIn("| Sales[Gone] (not found in the model) | Date[DateKey] |", markdown)
+        self.assertNotIn('{"', markdown)
+
+    def test_document_format_gives_the_blocks_as_json(self):
+        model = "model:m"
+        repository = GraphRepository(use_sqlite=False)
+        repository.replace([Node(model, "MODEL", "M"), Node(f"{model}/table:t", "TABLE", "Facts", model_id=model)], [])
+        result = export_documentation(repository, fmt="document", project_name="Finance & Sales", generated_at=STAMP)
+        self.assertEqual(("document", "finance-sales-documentation.pdf"), (result["format"], result["filename"]))
+        payload = json.loads(result["data"])
+        self.assertEqual("Finance & Sales documentation", payload["title"])
+        kinds = {block["kind"] for block in payload["blocks"]}
+        self.assertLessEqual(kinds, {"heading", "paragraph", "note", "table", "code", "diagram"})
+        table = next(block for block in payload["blocks"] if block["kind"] == "table" and "Storage mode" in block["headers"])
+        self.assertEqual(["Facts", "Not recorded", "0", "0", "No", ""], table["rows"][0])
+
+
+if __name__ == "__main__":
+    unittest.main()

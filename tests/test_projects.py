@@ -18,7 +18,6 @@ from backend.projects import (
     ProjectConfigError,
     ProjectConfigStore,
     ProjectService,
-    ProjectSourceCollisionError,
     ProjectSourceError,
 )
 from tests.fixtures.phase1_sources import REPORT_A_ID, model_source, report_source
@@ -243,12 +242,41 @@ class ProjectTests(unittest.TestCase):
         self.assertIsNone(repository.get_object("model:inventory"))
         self.assertFalse(any(node.model_id == "model:inventory" for node in repository.all_nodes()))
 
-    def test_collision_and_broken_source_leave_previous_graph_unchanged(self):
+    def test_two_versions_of_one_model_scan_side_by_side(self):
         first = self._write_source("first.json", "shared", "first-report")
         second = self._write_source("second.json", "shared", "second-report")
         second_payload = json.loads(second.read_text(encoding="utf-8"))
-        second_payload["models"][0]["name"] = "Conflicting Shared Model"
+        second_payload["models"][0]["name"] = "Shared Model v2"
         second.write_text(json.dumps(second_payload), encoding="utf-8")
+        self._save([first, second])
+        repository = GraphRepository(use_sqlite=False)
+
+        ProjectService(self.config_path).scan(repository)
+
+        models = sorted(node.name for node in repository.all_nodes() if node.type == "MODEL")
+        self.assertEqual(["Shared", "Shared Model v2"], models)
+        self.assertIsNotNone(repository.get_object("model:shared"))
+        second_report = next(node for node in repository.all_nodes() if node.type == "REPORT" and node.name.startswith("Shared Report") and node.id.endswith("second-report"))
+        self.assertNotEqual("model:shared", second_report.properties.get("model_id") or second_report.model_id)
+
+    def test_two_copies_of_one_pbip_project_scan_as_versions(self):
+        first = write_pbip_project(self.root / "v1")
+        second = write_pbip_project(self.root / "v2", include_extra=True)
+        self._save([first, second])
+        repository = GraphRepository(use_sqlite=False)
+
+        result = ProjectService(self.config_path).scan(repository)
+
+        self.assertEqual(2, result.model_count)
+        self.assertEqual(2, result.report_count)
+        model_ids = {node.id for node in repository.all_nodes() if node.type == "MODEL"}
+        self.assertIn(f"model:{MODEL_LINEAGE}", model_ids)
+        reports = [node for node in repository.all_nodes() if node.type == "REPORT"]
+        self.assertEqual(model_ids, {node.model_id for node in reports})
+
+    def test_broken_source_leaves_previous_graph_unchanged(self):
+        first = self._write_source("first.json", "shared", "first-report")
+        second = self._write_source("second.json", "other", "second-report")
         self._save([first])
         repository = GraphRepository(use_sqlite=False)
         service = ProjectService(self.config_path)
@@ -256,9 +284,6 @@ class ProjectTests(unittest.TestCase):
         before = ([node.to_dict() for node in repository.all_nodes()], [edge.to_dict() for edge in repository.all_edges()])
 
         self._save([first, second])
-        with self.assertRaisesRegex(ProjectSourceCollisionError, "model:shared"):
-            service.scan(repository)
-        self.assertEqual(before, ([node.to_dict() for node in repository.all_nodes()], [edge.to_dict() for edge in repository.all_edges()]))
 
         second.write_text("{broken", encoding="utf-8")
         with self.assertRaises(ProjectSourceError):

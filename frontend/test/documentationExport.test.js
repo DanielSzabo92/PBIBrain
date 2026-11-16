@@ -8,7 +8,8 @@ const everySection = new Set(DOC_SECTIONS.map(([key]) => key));
 
 test("everything chosen is sent as null, so a later scan's new objects are included", () => {
   const request = exportRequest({ format: "pdf", models: new Set(["m1", "m2"]), reports: new Set(["r1"]), sections: everySection }, overview);
-  assert.deepEqual(request, { format: "pdf", modelIds: null, reportIds: null, sections: null });
+  // A PDF asks the server for the content blocks; the workbench draws it with pdfcn on Takumi.
+  assert.deepEqual(request, { format: "document", modelIds: null, reportIds: null, sections: null });
 });
 
 test("a partial scope sends the exact ids and sections in a stable order", () => {
