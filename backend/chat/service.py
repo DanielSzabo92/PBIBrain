@@ -26,13 +26,15 @@ from urllib.parse import urlencode
 from backend.devcenter.agent_tools import TOOL_ROUTES
 from backend.tool_registry import build_tools, tool_schema
 
+from . import models as model_catalog
 from .credentials import CredentialStore, default_store
 from .providers import ProviderError, create_provider
-from .settings import ChatSettings, settings_path
+from .settings import PROVIDERS, ChatSettings, settings_path
 
 CHAT_CLIENT = "Brain chat"
 MAX_TOOL_ROUNDS = 5
 MAX_TEXT_CHARS = 8_000
+MODELS_CACHE_SECONDS = 600  # a live model list is read again after ten minutes, or on refresh
 MAX_HISTORY_MESSAGES = 60
 KEPT_CONVERSATIONS = 10
 KEPT_RUNS = 5
@@ -181,6 +183,7 @@ class ChatService:
         self.schemas = [tool_schema(tool) for tool in self.tools.values()]
         self._conversations: OrderedDict[str, list[dict[str, Any]]] = OrderedDict()
         self._runs: OrderedDict[str, ChatRun] = OrderedDict()
+        self._models: dict[tuple[str, str, bool], tuple[float, dict[str, Any]]] = {}
         self._lock = threading.Lock()
 
     # HTTP --------------------------------------------------------------------------------
@@ -190,6 +193,8 @@ class ChatService:
             return 200, self.settings.public()
         if parts == ["settings"] and method == "POST":
             return 200, self.settings.save(body)
+        if parts == ["models"] and method == "GET":
+            return 200, self.models(str((query.get("provider") or [""])[0]), refresh=(query.get("refresh") or [""])[0] == "true")
         if parts == ["test"] and method == "POST":
             return 200, self.test_connection()
         if parts == ["start"] and method == "POST":
@@ -213,12 +218,41 @@ class ChatService:
 
     # Settings ----------------------------------------------------------------------------
 
-    def _provider(self) -> Any:
-        public = self.settings.public()
-        if not public["ready"]:
-            raise ValueError(public["reason"])
-        current = self.settings.stored()
+    def _provider(self, body: Mapping[str, Any] | None = None) -> Any:
+        body = body or {}
+        current = self.settings.selection(body.get("provider"), body.get("model"), body.get("effort"))
         return self.provider_factory(current, self.settings.api_key(current))
+
+    def models(self, provider: str, *, refresh: bool = False) -> dict[str, Any]:
+        """The models and efforts a provider offers: live where it can list them, else the built-in catalog."""
+
+        if provider not in PROVIDERS:
+            raise ValueError("The provider must be one of: " + ", ".join(PROVIDERS))
+        current = self.settings.profile(provider)
+        key = (provider, current["base_url"], bool(self.settings.api_key(current)))
+        now = time.monotonic()
+        with self._lock:
+            cached = self._models.get(key)
+        if cached and not refresh and now - cached[0] < MODELS_CACHE_SECONDS:
+            return cached[1]
+        items, source, problem = model_catalog.catalog(provider), "catalog", ""
+        if provider in {"anthropic", "openai", "local"} and (self.settings.api_key(current) or not PROVIDERS[provider]["needs_key"]) \
+                and current["base_url"]:
+            try:
+                lister = getattr(self.provider_factory({**current, "model": current["model"] or "list"}, self.settings.api_key(current)),
+                                 "list_models", None)
+                if lister is not None:
+                    found = lister()
+                    live = model_catalog.anthropic_live(found) if provider == "anthropic" else model_catalog.openai_live(provider, found)
+                    if live:
+                        items, source = live, "live"
+            except (ProviderError, OSError, ValueError) as exc:
+                problem = str(exc)
+        reply = {"provider": provider, "source": source, "models": items, "efforts": list(model_catalog.EFFORTS.get(provider, ())),
+                 "error": problem}
+        with self._lock:
+            self._models[key] = (now, reply)
+        return reply
 
     def test_connection(self) -> dict[str, Any]:
         current = self.settings.stored()
@@ -238,7 +272,7 @@ class ChatService:
             raise ValueError("Type a message first")
         if len(text) > MAX_TEXT_CHARS:
             raise ValueError(f"The message is longer than {MAX_TEXT_CHARS} characters")
-        provider = self._provider()
+        provider = self._provider(body)
         with self._lock:
             if any(not run.done for run in self._runs.values()):
                 raise ValueError("The chat is still answering. Stop it or wait for the answer.")

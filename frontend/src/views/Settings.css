@@ -96,6 +96,14 @@
 .ai-settings-fields .config-field { width: 100%; }
 .ai-key-hint { display: flex; align-items: flex-start; gap: 6px; margin: 4px 0 0; color: var(--text-2); font-size: var(--fs-meta); line-height: 1.45; }
 .ai-key-icon { flex: none; width: 14px; height: 14px; margin-top: 2px; color: var(--text-3); }
+.ai-favourites { border-top: 1px solid var(--line); }
+.ai-favourites-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.ai-favourites-list { display: flex; flex-direction: column; gap: 2px; margin: 0; padding: 0; list-style: none; max-height: 360px; overflow-y: auto; }
+.ai-favourites-list li { display: flex; align-items: center; gap: 8px; min-height: 36px; padding: 2px 6px; border-radius: var(--r-sm); }
+.ai-favourites-list li.is-favourite { background: var(--surface-2, transparent); }
+.ai-favourite-name { display: flex; flex: 1 1 auto; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; min-width: 0; cursor: pointer; }
+.ai-favourite-name code { color: var(--text-3); font-size: var(--fs-meta); overflow-wrap: anywhere; }
+.ai-favourites-add { display: flex; align-items: center; gap: 8px; }
 .inline-error-text { color: var(--bad-strong); font-size: var(--fs-meta); font-weight: 500; }
 /* ---------- Sources: name first, state at a glance (review 18) ----------- */
 .source-row { display: grid; grid-template-columns: 8px minmax(96px, 200px) minmax(0, 1fr) auto; gap: 10px; }

@@ -63,6 +63,8 @@ from .providers import ProviderError
 CLI_TIMEOUT_SECONDS = 300
 CLI_MAX_OUTPUT = 2 * 1024 * 1024
 MODEL_PATTERN = re.compile(r"[A-Za-z0-9][A-Za-z0-9._:/@\[\]-]{0,199}")
+MODEL_WITH_SPACES = re.compile(r"[A-Za-z0-9][A-Za-z0-9._:/@\[\]() -]{0,198}[A-Za-z0-9.)\]]|[A-Za-z0-9]")
+EFFORT_PATTERN = re.compile(r"[a-z]{1,12}")
 TOOL_CALL = re.compile(r"<tool_call>\s*(.*?)\s*</tool_call>", re.DOTALL)
 PROBE = "This is a connection test from PBIBrain.\nReply with the single word OK and nothing else."
 
@@ -101,10 +103,15 @@ PRESETS: dict[str, dict[str, Any]] = {
 }
 
 
-def validate_model(model: str) -> str:
+def validate_model(model: str, *, spaces: bool = False) -> str:
+    """A model name that is safe as one program argument. ``spaces`` allows Antigravity's display
+    names such as "Gemini 3.1 Pro (High)": spaces and parentheses, still no shell character."""
+
     model = model.strip()
-    if model and not MODEL_PATTERN.fullmatch(model):
-        raise ValueError("The model name may hold only letters, digits and . _ : / @ [ ] -")
+    pattern = MODEL_WITH_SPACES if spaces else MODEL_PATTERN
+    if model and not pattern.fullmatch(model):
+        extra = ", spaces, ( )" if spaces else ""
+        raise ValueError(f"The model name may hold only letters, digits and . _ : / @ [ ] -{extra}")
     return model
 
 
@@ -209,17 +216,21 @@ def parse_reply(text: str) -> dict[str, Any]:
 class SubscriptionCLIProvider:
     """One chat provider that answers through a signed-in vendor CLI (see the module text)."""
 
-    def __init__(self, *, preset: str, model: str = "", command: str = "", timeout: float = CLI_TIMEOUT_SECONDS,
+    def __init__(self, *, preset: str, model: str = "", command: str = "", effort: str = "", timeout: float = CLI_TIMEOUT_SECONDS,
                  runner: Callable[..., Any] = run_bounded) -> None:
         if preset not in PRESETS:
             raise ProviderError(f"Unknown subscription provider {preset}")
         self.preset = preset
         self.spec = PRESETS[preset]
         try:
-            self.model = validate_model(model)
+            self.model = validate_model(model, spaces=preset == "antigravity")
             self.command = validate_command(preset, command)
         except ValueError as exc:
             raise ProviderError(str(exc)) from exc
+        effort = str(effort or "")
+        if effort and (not EFFORT_PATTERN.fullmatch(effort) or preset == "antigravity"):
+            raise ProviderError(f"The {self.spec['executable']} program takes no effort {effort}")
+        self.effort = effort
         self.timeout = timeout
         self.runner = runner
 
@@ -230,17 +241,20 @@ class SubscriptionCLIProvider:
         model = ["--model", self.model] if self.model else []
         if self.preset == "claude_code":
             (workdir / "mcp.json").write_text('{"mcpServers": {}}', encoding="utf-8")
+            effort = ["--effort", self.effort] if self.effort else []
             return ["-p", "--output-format", "json", "--max-turns", "1", "--tools", "", "--disallowedTools", _CLAUDE_TOOLS,
                     "--permission-mode", "default", "--strict-mcp-config", "--mcp-config", str(workdir / "mcp.json"),
-                    "--disable-slash-commands", "--no-session-persistence", *model], "text"
+                    "--disable-slash-commands", "--no-session-persistence", *model, *effort], "text"
         if self.preset == "codex":
+            effort = ["-c", f'model_reasoning_effort="{self.effort}"'] if self.effort else []
             return ["exec", "--sandbox", "read-only", "--disable", "shell_tool", "-c", 'web_search="disabled"',
-                    "--ignore-user-config", "--ignore-rules", "--ephemeral", "--skip-git-repo-check", *model, "-"], "text"
+                    "--ignore-user-config", "--ignore-rules", "--ephemeral", "--skip-git-repo-check", *model, *effort, "-"], "text"
         if self.preset == "copilot":
             # Piped input without -p is Copilot's documented non-interactive mode; no tool is pre-approved,
             # every tool kind is denied, and deny wins over any allow in the user's settings.
+            effort = [f"--reasoning-effort={self.effort}"] if self.effort else []
             return ["-s", "--no-custom-instructions", "--disable-builtin-mcps", "--no-ask-user",
-                    f"--deny-tool={_COPILOT_DENY}", *model], "text"
+                    f"--deny-tool={_COPILOT_DENY}", *model, *effort], "text"
         return ["--input-format", "stream-json", "--output-format", "stream-json", "--sandbox",
                 "--disable-slash-commands", *model], "agy-stream"
 
@@ -260,7 +274,11 @@ class SubscriptionCLIProvider:
                 data = (json.dumps({"event": "user", "message": {"content": prompt}}, ensure_ascii=False) + "\n").encode("utf-8")
             else:
                 data = prompt.encode("utf-8")
-            environment = scrubbed_environment(self.spec["keep_env"], extra={"PBIBRAIN_CHAT_SANDBOX": "1", "NO_COLOR": "1"})
+            extra = {"PBIBRAIN_CHAT_SANDBOX": "1", "NO_COLOR": "1"}
+            if self.preset == "claude_code" and self.effort:
+                # The variable wins over --effort in Claude Code, and some versions ignore the flag.
+                extra["CLAUDE_CODE_EFFORT_LEVEL"] = self.effort
+            environment = scrubbed_environment(self.spec["keep_env"], extra=extra)
             try:
                 finished = self.runner([program, *arguments], cwd=workdir, env=environment, timeout=self.timeout, input=data,
                                        should_stop=should_stop, max_output=CLI_MAX_OUTPUT)

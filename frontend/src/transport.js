@@ -93,11 +93,17 @@ export function createBrainTransport({ baseUrl = API_ROOT, fetcher = globalThis.
     testChatConnection() {
       return request("/chat/test", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
     },
-    startChat({ text, conversationId = null, context = {} }) {
+    /** The models and efforts of one provider: live where it can list them, else the built-in list. */
+    getChatModels(provider, refresh = false) {
+      return request(`/chat/models?provider=${encodeURIComponent(provider)}${refresh ? "&refresh=true" : ""}`);
+    },
+    startChat({ text, conversationId = null, context = {}, provider = null, model = null, effort = null }) {
+      // The provider, model and effort of the chat's pickers; null keeps the default of Settings.
+      const pick = Object.fromEntries(Object.entries({ provider, model, effort }).filter(([, value]) => value !== null && value !== undefined));
       return request("/chat/start", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text, conversation_id: conversationId, context }),
+        body: JSON.stringify({ text, conversation_id: conversationId, context, ...pick }),
       });
     },
     chatEvents(runId, after = 0) {

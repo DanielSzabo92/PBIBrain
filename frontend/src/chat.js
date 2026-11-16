@@ -275,3 +275,51 @@ export function getAIStatus({ draft, settings, provider, apiKey = "", keySaved =
   }
   return { ready: true, message: "The chat is ready." };
 }
+
+// ---- Provider, model and effort pickers ------------------------------------------------
+
+export const EFFORT_LABELS = { "": "Default", minimal: "Minimal", low: "Low", medium: "Medium", high: "High", xhigh: "Extra high", max: "Max" };
+
+export const effortLabel = (effort) => EFFORT_LABELS[effort || ""] || effort;
+
+/** The efforts a model takes: its entry in the models list, else the provider's levels. */
+export function modelEfforts(modelId, models = [], providerEfforts = []) {
+  const found = models.find((item) => item.id === (modelId || ""));
+  return found ? found.efforts || [] : providerEfforts || [];
+}
+
+/**
+ * The models the chat picker offers for one provider. With favourites, only those (the user's
+ * short list); without, every model the provider lists. The provider's saved model always stays.
+ * The default effort is the favourite's, else the provider's saved effort for its model, else the model's own.
+ */
+export function pickerModels({ profile = {}, favourites = [], models = [], providerEfforts = [] } = {}) {
+  const info = (id, label = "") => {
+    const found = models.find((item) => item.id === id);
+    return { id, label: label || found?.label || id || "Default of your plan", efforts: found ? found.efforts || [] : providerEfforts };
+  };
+  const picked = favourites.length
+    ? favourites.map((item) => ({ ...info(item.model), effort: item.effort || "" }))
+    : models.map((item) => ({ ...info(item.id, item.label), effort: item.default_effort || "" }));
+  const saved = profile.model || "";
+  if (!picked.some((item) => item.id === saved) && (saved || models.some((item) => item.id === ""))) {
+    picked.unshift({ ...info(saved), effort: profile.effort || "" });
+  }
+  // A favourite's effort is the user's choice for the picker; the profile's effort counts only when the model is not one.
+  if (!favourites.length) return picked.map((item) => (item.id === saved && profile.effort ? { ...item, effort: profile.effort } : item));
+  return picked;
+}
+
+/** The effort to preselect: the model's favourite or saved default, if the model takes it. */
+export function pickerEffort(model) {
+  if (!model) return "";
+  return model.efforts.includes(model.effort) ? model.effort : "";
+}
+
+/** The provider the chat starts on: the default if it is set up, else the first that is. */
+export function pickerProvider(settings, current = "") {
+  const configured = settings?.configured || [];
+  if (current && configured.includes(current)) return current;
+  if (configured.includes(settings?.provider)) return settings.provider;
+  return configured[0] || "";
+}

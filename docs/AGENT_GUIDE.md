@@ -279,6 +279,34 @@ itself, so no approval prompt can appear during a chat answer (see
 The vendors' headless flags can change between versions; when a test fails after a CLI update,
 update PBIBrain too.
 
+### Providers, models and thinking effort
+
+Each provider keeps its own settings (model, base URL or program, default thinking effort). The
+one you save last is the chat's default. The chat panel has three pickers above the message box:
+the providers you set up, a model, and a thinking effort. They apply to the next message, so one
+conversation can move from a local model to Claude and back.
+
+Favourite models (Settings, AI provider) narrow the model picker: mark the models you use, each
+with its default effort. With no favourites the picker offers every model the provider lists.
+Anthropic and OpenAI-compatible or local endpoints list their models live (`GET /api/chat/models`,
+cached ten minutes; Refresh asks again). The subscription CLIs have no list command, so Claude Code
+gets a built-in list and the others only "Default of your plan": add your plan's model names by
+hand. Antigravity names the effort in the model ("Gemini 3.1 Pro (High)").
+
+The effort list follows the model. PBIBrain sends it the way each provider documents it and
+refuses a level the model does not take:
+
+| Provider | Levels | Sent as |
+| --- | --- | --- |
+| Anthropic API | low, medium, high, xhigh, max (per model, from the Models API) | `output_config.effort` |
+| OpenAI-compatible | low, medium, high (o-series and GPT-5 models) | `reasoning_effort` |
+| Claude Code | low, medium, high, xhigh, max | `--effort` and `CLAUDE_CODE_EFFORT_LEVEL` |
+| Codex | minimal, low, medium, high, xhigh | `-c model_reasoning_effort="..."` |
+| Copilot CLI | low, medium, high | `--reasoning-effort` |
+| Antigravity, local endpoints | none | |
+
+Default sends nothing, so the provider or your own CLI configuration decides.
+
 ## Markdown export
 
 Export the canonical project snapshot with the CLI:

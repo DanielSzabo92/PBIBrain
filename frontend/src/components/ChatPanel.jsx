@@ -1,9 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Bot, Copy, GitBranch, MessageSquarePlus, Send, Settings, Sparkles, Square, TriangleAlert, Wrench, X } from "lucide-react";
 import { Button } from "./ui/button";
+import { NativeSelect, NativeSelectOption } from "./ui/native-select";
 import { Tooltip } from "./ui/tooltip";
 import {
-  POLL_MS, answerText, applyEvents, chatContext, contextChips, emptyAnswer, parseMarkdown, starterPrompts, toolLabel, transcriptMarkdown,
+  POLL_MS, answerText, applyEvents, chatContext, contextChips, effortLabel, emptyAnswer, parseMarkdown, pickerEffort, pickerModels, pickerProvider,
+  starterPrompts, toolLabel, transcriptMarkdown,
 } from "../chat";
 import { routeHash } from "../routes";
 
@@ -85,6 +87,11 @@ export default function ChatPanel({ open, onClose, transport, view, selection, o
   const [text, setText] = useState("");
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
+  // The pickers: provider, model and effort of the next message. null follows the provider's defaults.
+  const [pickProvider, setPickProvider] = useState("");
+  const [pickModel, setPickModel] = useState(null);
+  const [pickEffort, setPickEffort] = useState(null);
+  const [modelLists, setModelLists] = useState({});
   const input = useRef(null);
   const list = useRef(null);
   const runRef = useRef(null);
@@ -99,6 +106,23 @@ export default function ChatPanel({ open, onClose, transport, view, selection, o
     requestAnimationFrame(() => input.current?.focus());
     return () => { live = false; };
   }, [open, transport]);
+
+  // Keep the picked provider while it is still set up; else start on the default.
+  useEffect(() => {
+    if (!settings) return;
+    const chosen = pickerProvider(settings, pickProvider);
+    if (chosen !== pickProvider) { setPickProvider(chosen); setPickModel(null); setPickEffort(null); }
+  }, [settings]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // The models of the picked provider (the backend caches the live list for a few minutes).
+  useEffect(() => {
+    if (!open || !pickProvider || !transport.getChatModels) return undefined;
+    let live = true;
+    transport.getChatModels(pickProvider)
+      .then((reply) => { if (live) setModelLists((current) => ({ ...current, [pickProvider]: reply.models || [] })); })
+      .catch(() => { if (live) setModelLists((current) => ({ ...current, [pickProvider]: [] })); });
+    return () => { live = false; };
+  }, [open, pickProvider, transport]);
 
   // Poll the running answer. Each poll returns only the events after the last one seen.
   useEffect(() => {
@@ -130,6 +154,19 @@ export default function ChatPanel({ open, onClose, transport, view, selection, o
     if (element) element.scrollTop = element.scrollHeight;
   }, [messages]);
 
+  const providerEntry = (settings?.providers || []).find((item) => item.id === pickProvider);
+  const modelOptions = pickProvider ? pickerModels({
+    profile: settings?.profiles?.[pickProvider] || {},
+    favourites: settings?.favourites?.[pickProvider] || [],
+    models: modelLists[pickProvider] || [],
+    providerEfforts: providerEntry?.efforts || [],
+  }) : [];
+  const savedModel = settings?.profiles?.[pickProvider]?.model || "";
+  const pickedModel = modelOptions.find((item) => item.id === (pickModel ?? savedModel)) || modelOptions[0] || null;
+  const effortOptions = pickedModel?.efforts || [];
+  const pickedEffort = pickEffort !== null && effortOptions.includes(pickEffort) ? pickEffort : pickerEffort(pickedModel);
+  const pick = pickProvider ? { provider: pickProvider, ...(pickedModel ? { model: pickedModel.id, effort: pickedEffort } : {}) } : {};
+
   const chips = contextChips({ view, selection, session }, removed);
   const prompts = starterPrompts({ view, selection, session });
   const send = useCallback(async (event, textOverride) => {
@@ -138,7 +175,7 @@ export default function ChatPanel({ open, onClose, transport, view, selection, o
     if (!value || runRef.current) return;
     setError("");
     try {
-      const reply = await transport.startChat({ text: value, conversationId, context: chatContext(chips, { view, selection, session }) });
+      const reply = await transport.startChat({ text: value, conversationId, context: chatContext(chips, { view, selection, session }), ...pick });
       setConversationId(reply.conversation_id);
       setMessages((current) => [...current, { id: `${reply.run_id}-user`, role: "user", text: value }, emptyAnswer(reply.run_id)]);
       setText("");
@@ -146,7 +183,7 @@ export default function ChatPanel({ open, onClose, transport, view, selection, o
     } catch (cause) {
       setError(cause.message || "The message could not be sent.");
     }
-  }, [chips, conversationId, selection, session, text, transport, view]);
+  }, [chips, conversationId, pick.provider, pick.model, pick.effort, selection, session, text, transport, view]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleStarter = (promptText) => {
     setText(promptText);
@@ -169,7 +206,9 @@ export default function ChatPanel({ open, onClose, transport, view, selection, o
   };
 
   if (!open) return null;
-  const ready = settings?.ready;
+  // Ready when the default provider can answer, or any other provider the chat can switch to.
+  const configured = settings?.configured || [];
+  const ready = Boolean(settings?.ready || (settings?.enabled && configured.length));
   return (
     <aside className="chat-panel" aria-label="Chat" data-testid="chat-panel" onKeyDown={(event) => { if (event.key === "Escape" && !runId) { event.stopPropagation(); onClose(); } }}>
       <header className="chat-head">
@@ -238,6 +277,24 @@ export default function ChatPanel({ open, onClose, transport, view, selection, o
           ))}
         </div>
         {error ? <div role="alert" className="inline-error chat-error"><TriangleAlert aria-hidden="true" /><p>{error}</p></div> : null}
+        <div className="chat-pickers" role="group" aria-label="Provider, model and thinking effort" data-testid="chat-pickers">
+          <NativeSelect size="sm" aria-label="Provider" value={pickProvider} disabled={Boolean(runId) || configured.length < 2}
+            title="The providers you set up in Settings, AI provider"
+            onChange={(event) => { setPickProvider(event.target.value); setPickModel(null); setPickEffort(null); }}>
+            {configured.map((id) => <NativeSelectOption key={id} value={id}>{(settings.providers || []).find((item) => item.id === id)?.label || id}</NativeSelectOption>)}
+          </NativeSelect>
+          {modelOptions.length ? <NativeSelect size="sm" aria-label="Model" value={pickedModel?.id ?? ""} disabled={Boolean(runId)}
+            title="Your favourite models, or every listed model when you marked none"
+            onChange={(event) => { setPickModel(event.target.value); setPickEffort(null); }}>
+            {modelOptions.map((item) => <NativeSelectOption key={item.id || "default"} value={item.id}>{item.label}</NativeSelectOption>)}
+          </NativeSelect> : null}
+          {effortOptions.length ? <NativeSelect size="sm" aria-label="Thinking effort" value={pickedEffort} disabled={Boolean(runId)}
+            title="How long the model thinks before it answers"
+            onChange={(event) => setPickEffort(event.target.value)}>
+            {["", ...effortOptions].map((level) => <NativeSelectOption key={level} value={level}>{level ? `Effort: ${effortLabel(level)}` : "Effort: Default"}</NativeSelectOption>)}
+          </NativeSelect> : null}
+          <Button variant="ghost" size="icon-sm" onClick={onSettings} aria-label="Model settings" tooltip="Favourite models and providers in Settings"><Settings aria-hidden="true" /></Button>
+        </div>
         <form className="chat-compose" onSubmit={send}>
           <label htmlFor="chat-input" className="sr-only">Message</label>
           <textarea id="chat-input" ref={input} rows={3} value={text} placeholder="Ask about this project…" maxLength={8000}
