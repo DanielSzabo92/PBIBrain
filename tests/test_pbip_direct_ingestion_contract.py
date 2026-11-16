@@ -81,22 +81,12 @@ def _status_map(sync_result) -> dict[str, str]:
     return {}
 
 
-def _native_ladybug_available() -> bool:
-    try:
-        with tempfile.TemporaryDirectory() as directory:
-            repository = GraphRepository(Path(directory) / "probe.lbug")
-            repository.close()
-        return True
-    except Exception:
-        return False
-
-
 class DirectPBIPIngestionContractTests(unittest.TestCase):
     def setUp(self) -> None:
         self.tempdir = tempfile.TemporaryDirectory()
         self.root = Path(self.tempdir.name)
         self.project = write_pbip_project(self.root / "fixture")
-        self.repository = GraphRepository(use_native=False)
+        self.repository = GraphRepository(use_sqlite=False)
         self.scanner = Scanner(
             self.repository,
             identity_path=self.root / "identity.json",
@@ -212,7 +202,7 @@ class DirectPBIPIngestionContractTests(unittest.TestCase):
                 result = cli_main(
                     [
                         "--db",
-                        str(self.root / "brain.lbug"),
+                        str(self.root / "brain.sqlite"),
                         "--identity",
                         str(self.root / "identity.json"),
                         "scan",
@@ -294,15 +284,14 @@ class DirectPBIPIngestionContractTests(unittest.TestCase):
         self.assertEqual(statuses.get(gross_visual.id), "NEW", statuses)
 
 
-@unittest.skipUnless(_native_ladybug_available(), "Ladybug C API shared library is unavailable")
-class NativePBIPLadybugIngestionTests(unittest.TestCase):
+class PBIPSQLiteIngestionTests(unittest.TestCase):
     def test_committed_pbip_rescan_survives_abrupt_process_exit(self):
         import subprocess
         import sys
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             project = write_pbip_project(root / "fixture")
-            database = root / "brain.lbug"
+            database = root / "brain.sqlite"
             script = """
 import os, sys
 from backend.graph.repository import GraphRepository
@@ -327,7 +316,7 @@ os._exit(0)
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             project = write_pbip_project(root / "fixture")
-            database = root / "brain.lbug"
+            database = root / "brain.sqlite"
             repository = GraphRepository(database)
 
             graph = Scanner(repository, identity_path=root / "identity.json").scan(project)

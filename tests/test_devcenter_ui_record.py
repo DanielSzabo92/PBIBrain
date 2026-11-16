@@ -100,11 +100,11 @@ class RecorderMergeLabTest(unittest.TestCase):
             self.assertEqual(2, code)
             self.assertFalse(out.exists())
             self.assertIn("Run the tool on the Windows PC with the TOM bridge", stderr.getvalue())
-            self.assertEqual(False, reader.call_args.kwargs["use_native"])
+            self.assertEqual(False, reader.call_args.kwargs["use_sqlite"])
 
     def test_the_session_reads_of_the_merge_lab_pass_their_contracts(self) -> None:
         with tempfile.TemporaryDirectory(prefix="t26-lab-") as folder:
-            get, source_ids, close = recorder.lab_reader(Path(folder) / "project", use_native=False)
+            get, source_ids, close = recorder.lab_reader(Path(folder) / "project", use_sqlite=False)
             try:
                 self.assertEqual(["src-1", "src-2"], source_ids)
                 session = get("session")

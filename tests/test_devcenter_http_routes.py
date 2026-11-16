@@ -66,7 +66,7 @@ class RouteListTests(unittest.TestCase):
         shutil.copytree(LAB / "SalesA", self.root / "SalesA")
         self.devcenter = DevCenterSessions(app_data_dir=None)
         self.devcenter.attach_project(self.root)
-        self.app = create_app(use_native=False)
+        self.app = create_app(use_sqlite=False)
         self.app.devcenter = self.devcenter
 
     def tearDown(self) -> None:
@@ -133,8 +133,7 @@ class RouteListTests(unittest.TestCase):
         static = Path(self.temporary.name) / "dist"
         static.mkdir()
         (static / "index.html").write_text("<main></main>", encoding="utf-8")
-        controller = DesktopController(static_dir=static, repository_factory=lambda path: GraphRepository(path, use_native=False),
-                                       runtime_configurer=lambda: None, devcenter=DevCenterSessions(app_data_dir=None))
+        controller = DesktopController(static_dir=static, repository_factory=lambda path: GraphRepository(path, use_sqlite=False), devcenter=DevCenterSessions(app_data_dir=None))
         try:
             host = DesktopApplication(controller)
             for name in state_change_names():

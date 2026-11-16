@@ -34,7 +34,7 @@ test("graph filters are sent before the server truncates the result", async () =
 
 test("config save preserves the complete server contract", async () => {
   const fake = fakeFetch({ version: 1 });
-  const payload = { version: 1, name: "Finance", sources: ["C:\\Finance.pbip"], database: "../data/brain.lbug", identity_map: "identity.json" };
+  const payload = { version: 1, name: "Finance", sources: ["C:\\Finance.pbip"], database: "../data/brain.sqlite", identity_map: "identity.json" };
   await createBrainTransport({ baseUrl: "/api", fetcher: fake.fetch }).saveConfig(payload);
   assert.equal(fake.calls[0].options.method, "POST");
   assert.deepEqual(JSON.parse(fake.calls[0].options.body), payload);

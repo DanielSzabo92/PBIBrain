@@ -151,11 +151,11 @@ class Scanner:
         *,
         database_path: str | Path | None = None,
         identity_path: str | Path | None = None,
-        use_native: bool | None = None,
+        use_sqlite: bool = True,
         overrides_path: str | Path | None = None,
         override_store: Any = None,
     ) -> None:
-        self.repository = repository or GraphRepository(database_path, use_native=use_native)
+        self.repository = repository or GraphRepository(database_path, use_sqlite=use_sqlite)
         self.identity_path = identity_path
         self.overrides_path = Path(overrides_path) if overrides_path is not None else None
         self.override_store = override_store
@@ -377,7 +377,7 @@ def scan(
     repository: GraphRepository | None = None,
     database_path: str | Path | None = None,
     identity_path: str | Path | None = None,
-    use_native: bool | None = None,
+    use_sqlite: bool = True,
     overrides_path: str | Path | None = None,
     override_store: Any = None,
 ) -> FactGraph:
@@ -385,7 +385,7 @@ def scan(
         repository,
         database_path=database_path,
         identity_path=identity_path,
-        use_native=use_native,
+        use_sqlite=use_sqlite,
         overrides_path=overrides_path,
         override_store=override_store,
     ).scan(model_source, report_source)

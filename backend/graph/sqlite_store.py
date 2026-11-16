@@ -1,6 +1,6 @@
 """SQLite and Trail graph storage engine for PBIBrain.
 
-Replaces LadybugDB with a pure-Python, zero-DLL SQLite engine providing:
+A pure-Python SQLite engine, with no native libraries to ship, providing:
 - ACID transactions, write-ahead logging (WAL), and concurrent reader safety.
 - Sub-millisecond lookups, indexed edge traversals, and FTS5 full-text search.
 - Deterministic export of Trail cache cards and wiring (``.graph/wiring.json``,
@@ -141,7 +141,7 @@ class SQLiteStore:
             if self.location.is_dir():
                 self.directory = self.location
                 self.db_path = self.directory / "brain.sqlite"
-            elif self.location.suffix.lower() in {".lbug", ".sqlite", ".db"}:
+            elif self.location.suffix.lower() in {".sqlite", ".db"}:
                 self.db_path = self.location
                 self.directory = self.location.parent
             else:
@@ -427,26 +427,35 @@ class SQLiteStore:
         nodes: Iterable[Node | Mapping[str, Any]],
         edges: Iterable[Edge | Mapping[str, Any]],
         last_scan: Mapping[str, Any] | None = None,
-        *,
-        in_transaction: bool = False,
     ) -> None:
-        """Atomically replace the full graph."""
+        """Atomically replace the full graph, then checkpoint the write-ahead log."""
         node_objs = [n if isinstance(n, Node) else node_from_dict(n) for n in nodes]
         edge_objs = [e if isinstance(e, Edge) else edge_from_dict(e) for e in edges]
 
         conn = self._get_connection()
-        if in_transaction:
+        try:
+            # Take the write lock up front, so a reader never sees the graph half replaced.
+            conn.execute("BEGIN IMMEDIATE;")
             self._write_records(conn, node_objs, edge_objs, last_scan)
-        else:
-            with conn:
-                self._write_records(conn, node_objs, edge_objs, last_scan)
-
-        # Export Trail cache cards if directory is configured
-        if self.directory is not None:
+            # Export Trail cache cards if directory is configured
+            if self.directory is not None:
+                try:
+                    self.export_trail()
+                except Exception:
+                    LOGGER.warning("Exporting Trail cache failed", exc_info=True)
+            conn.commit()
+        except Exception as exc:
             try:
-                self.export_trail()
+                conn.rollback()
             except Exception:
-                LOGGER.warning("Exporting Trail cache failed", exc_info=True)
+                LOGGER.debug("Rollback unavailable", exc_info=True)
+            LOGGER.error("Graph replacement failed", exc_info=True)
+            raise RuntimeError(f"Graph replacement failed: {exc}") from exc
+        if not self.is_memory:
+            try:
+                conn.execute("PRAGMA wal_checkpoint(PASSIVE);")
+            except Exception:
+                LOGGER.warning("Graph committed, but the checkpoint failed; close the database cleanly", exc_info=True)
 
     def upsert_node(self, node: Node | Mapping[str, Any]) -> Node:
         n = node if isinstance(node, Node) else node_from_dict(node)

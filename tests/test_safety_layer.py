@@ -275,7 +275,7 @@ def write_project(root: Path) -> Path:
     config = root / ".pbibrain" / "brain.json"
     config.parent.mkdir(parents=True, exist_ok=True)
     config.write_text(json.dumps({"version": 1, "name": "Sales", "sources": [os.path.relpath(source, config.parent)],
-                                  "database": "brain.lbug", "identity_map": "identity.json"}), encoding="utf-8")
+                                  "database": "brain.sqlite", "identity_map": "identity.json"}), encoding="utf-8")
     return config
 
 
@@ -294,7 +294,7 @@ class PendingChangesTests(unittest.TestCase):
         self.config = write_project(self.root)
 
     def scan(self) -> None:
-        with GraphRepository(use_native=False) as repository:
+        with GraphRepository(use_sqlite=False) as repository:
             ProjectService(self.config).scan(repository)
 
     def test_no_scan_then_unchanged_then_breaks_then_rescan(self) -> None:
@@ -337,7 +337,7 @@ class PendingChangesTests(unittest.TestCase):
         watcher.stop()
 
         project = ProjectService(self.config)
-        app = BrainApp(BrainAPI(GraphRepository(use_native=False)), project=project)
+        app = BrainApp(BrainAPI(GraphRepository(use_sqlite=False)), project=project)
         status, first = app.handle("GET", "/api/pending-changes")
         self.assertEqual(200, status)
         self.assertIn(first["status"], {"CHECKING", "BREAKS"})
@@ -345,7 +345,7 @@ class PendingChangesTests(unittest.TestCase):
         self.addCleanup(app._source_watcher.stop)
         self.assertIsNotNone(app._source_watcher.wait_for(lambda value: value["status"] == "BREAKS"))
         self.assertEqual("BREAKS", app.handle("GET", "/api/pending-changes")[1]["status"])
-        status, reply = BrainApp(BrainAPI(GraphRepository(use_native=False))).handle("GET", "/api/pending-changes")
+        status, reply = BrainApp(BrainAPI(GraphRepository(use_sqlite=False))).handle("GET", "/api/pending-changes")
         self.assertGreaterEqual(status, 400)
 
     def test_the_snapshot_client_answers_without_the_app(self) -> None:

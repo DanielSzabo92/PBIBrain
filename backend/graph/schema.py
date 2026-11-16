@@ -250,17 +250,3 @@ def serialize_nodes(nodes: Iterable[Node]) -> list[dict[str, Any]]:
 
 def serialize_edges(edges: Iterable[Edge]) -> list[dict[str, Any]]:
     return [edge.to_dict() for edge in sorted(edges, key=lambda item: item.id)]
-
-
-# Friendly aliases for callers that prefer the contract's terminology.
-CanonicalNode = Node
-CanonicalEdge = Edge
-
-
-def ladybug_schema() -> tuple[str, str]:
-    """Return the minimal Ladybug schema used by the native repository."""
-
-    return (
-        "CREATE NODE TABLE BrainNode(id STRING PRIMARY KEY, type STRING, name STRING, description STRING, model_id STRING, report_id STRING, source_id STRING, status STRING, source STRING, properties STRING)",
-        "CREATE REL TABLE BrainEdge(FROM BrainNode TO BrainNode, id STRING, type STRING, source STRING, confidence DOUBLE, status STRING, evidence_class STRING, evidence STRING, properties STRING)",
-    )

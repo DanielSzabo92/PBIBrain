@@ -107,7 +107,7 @@ def write_project(folder: str | Path, **sizes: int) -> Path:
         source.write_text(json.dumps({"models": [model], "reports": [report for report in reports if report["modelId"] == model["id"]]}), encoding="utf-8")
         sources.append(source.name)
     config = folder / "brain.json"
-    ProjectService(config).save_config({"version": 1, "name": "Contoso Enterprise BI", "sources": sources, "database": "brain.lbug", "identity_map": "identity.json"})
+    ProjectService(config).save_config({"version": 1, "name": "Contoso Enterprise BI", "sources": sources, "database": "brain.sqlite", "identity_map": "identity.json"})
     return config
 
 
@@ -130,13 +130,13 @@ def main(argv: list[str] | None = None) -> int:
     from backend.graph.repository import GraphRepository
     from backend.projects import ProjectService
 
-    database = config.parent / "brain.lbug"
+    database = config.parent / "brain.sqlite"
     if not database.exists():
         started = time.perf_counter()
-        with GraphRepository(database, use_native=False) as repository:
+        with GraphRepository(database, use_sqlite=False) as repository:
             ProjectService(config).scan(repository)
         print(f"scanned in {time.perf_counter() - started:.1f} s", flush=True)
-    serve(port=args.port, database_path=database, overrides_path=config.parent / "overrides.json", use_native=False,
+    serve(port=args.port, database_path=database, overrides_path=config.parent / "overrides.json", use_sqlite=False,
           config_path=config, static_dir=Path(__file__).resolve().parents[1] / "frontend" / "dist")
     return 0
 

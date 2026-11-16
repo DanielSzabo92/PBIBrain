@@ -35,8 +35,8 @@ def _scan(root: Path) -> tuple[GraphRepository, Path]:
     config = root / "brain.json"
     service = ProjectService(config)
     service.save_config({"version": 1, "name": "Merge Lab", "sources": [str(path) for path in sorted(LAB.glob("*/*.pbip"))],
-                         "database": "brain.lbug", "identity_map": "identity.json"})
-    repository = GraphRepository(use_native=False)
+                         "database": "brain.sqlite", "identity_map": "identity.json"})
+    repository = GraphRepository(use_sqlite=False)
     service.scan(repository)
     # A data source, a query PBIBrain could not read, and a description with Hungarian letters.
     nodes = repository.all_nodes()
@@ -224,7 +224,7 @@ class LargeModelLayoutTests(unittest.TestCase):
                           properties={"from_column_id": f"{model}/column:a", "to_column_id": f"{model}/column:b", "cardinality": "manyToOne", "active": False}))
         dax = "\n".join(f"VAR v{index} = CALCULATE([Base], 'Table'[Column] = {index}) + " + "1" * 150 for index in range(400)) + "\nRETURN v1"
         nodes.append(Node(f"{model}/measure:m", "MEASURE", "Huge", model_id=model, properties={"table_id": f"{model}/table:0", "expression": dax}))
-        repository = GraphRepository(use_native=False)
+        repository = GraphRepository(use_sqlite=False)
         repository.replace(nodes, [])
         document = build_document(repository, generated_at=STAMP)
         result = export_documentation(repository, fmt="pdf", generated_at=STAMP)

@@ -14,7 +14,7 @@ frontend/test-results/
 frontend/playwright-report/
 
 # Local/runtime data
-*.lbug
+*.sqlite
 data/*-identity.json
 *.log
 *.tmp
@@ -45,7 +45,6 @@ config/identity.json
 .venv-build/
 build/
 dist/
-runtime/native/
 .cache/
 .pbibrain/
 

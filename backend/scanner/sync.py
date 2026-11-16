@@ -23,7 +23,7 @@ def sync(
     repository: Any = None,
     database_path: str | Path | None = None,
     identity_path: str | Path | None = None,
-    use_native: bool | None = None,
+    use_sqlite: bool = True,
     overrides_path: str | Path | None = None,
     override_store: Any = None,
 ):
@@ -33,7 +33,7 @@ def sync(
         repository,
         database_path=database_path,
         identity_path=identity_path,
-        use_native=use_native,
+        use_sqlite=use_sqlite,
         overrides_path=overrides_path,
         override_store=override_store,
     ).scan_incremental(model_source, report_source)

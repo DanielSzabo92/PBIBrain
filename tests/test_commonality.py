@@ -172,7 +172,7 @@ class CommonalityReportTests(unittest.TestCase):
 
 class CommonalityRouteTests(unittest.TestCase):
     def test_route(self):
-        repository = GraphRepository(use_native=False)
+        repository = GraphRepository(use_sqlite=False)
         self.addCleanup(repository.close)
         build_fact_graph(three_models()).load(repository)
         app = create_app(repository)

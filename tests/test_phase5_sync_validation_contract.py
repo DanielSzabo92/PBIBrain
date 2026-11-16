@@ -222,7 +222,7 @@ class Phase5IncrementalSyncContractTests(unittest.TestCase):
     def test_sync_exposes_new_unchanged_changed_and_deleted(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            repository = GraphRepository(use_native=False)
+            repository = GraphRepository(use_sqlite=False)
             try:
                 engine = _make_incremental_sync(repository, root)
                 self.assertEqual(_status_for(_sync(engine, phase5_model_source()), MEASURE_NET), "NEW")
@@ -236,7 +236,7 @@ class Phase5IncrementalSyncContractTests(unittest.TestCase):
     def test_rename_keeps_stable_id_and_updates_display_name(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            repository = GraphRepository(use_native=False)
+            repository = GraphRepository(use_sqlite=False)
             try:
                 engine = _make_incremental_sync(repository, root)
                 _sync(engine, phase5_model_source())
@@ -251,7 +251,7 @@ class Phase5IncrementalSyncContractTests(unittest.TestCase):
     def test_changed_expression_reanalyzes_only_affected_dax_and_keeps_fact_edges(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            repository = GraphRepository(use_native=False)
+            repository = GraphRepository(use_sqlite=False)
             try:
                 engine = _make_incremental_sync(repository, root)
                 _sync(engine, phase5_model_source())
@@ -282,8 +282,8 @@ class Phase5IncrementalSyncContractTests(unittest.TestCase):
     def test_repeated_sync_is_deterministic(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            first_repo = GraphRepository(use_native=False)
-            second_repo = GraphRepository(use_native=False)
+            first_repo = GraphRepository(use_sqlite=False)
+            second_repo = GraphRepository(use_sqlite=False)
             try:
                 first = _make_incremental_sync(first_repo, root / "one")
                 second = _make_incremental_sync(second_repo, root / "two")
@@ -306,7 +306,7 @@ class Phase5IncrementalSyncContractTests(unittest.TestCase):
     def test_override_reconciliation_preserves_known_override_and_flags_stale_target(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            repository = GraphRepository(use_native=False)
+            repository = GraphRepository(use_sqlite=False)
             overrides = OverrideStore(root / "overrides.json")
             try:
                 engine = _make_incremental_sync(repository, root, overrides)
@@ -386,7 +386,7 @@ class Phase5ValidationContractTests(unittest.TestCase):
         self.assertIn("missing_object_reference", codes)
 
     def test_validation_separates_reference_dax_semantic_and_override_classes(self):
-        repository = GraphRepository(use_native=False)
+        repository = GraphRepository(use_sqlite=False)
         try:
             graph = build_fact_graph(phase5_model_source(), analyze_dax=True)
             broken = Edge(
@@ -413,7 +413,7 @@ class Phase5ValidationContractTests(unittest.TestCase):
             repository.close()
 
     def test_validation_is_read_only(self):
-        repository = GraphRepository(use_native=False)
+        repository = GraphRepository(use_sqlite=False)
         try:
             graph = build_fact_graph(phase5_model_source(), analyze_dax=True)
             repository.replace(graph.nodes, graph.edges)
@@ -426,7 +426,7 @@ class Phase5ValidationContractTests(unittest.TestCase):
             repository.close()
 
     def test_override_conflict_and_generated_fact_mutation_are_reviewable(self):
-        repository = GraphRepository(use_native=False)
+        repository = GraphRepository(use_sqlite=False)
         try:
             graph = build_fact_graph(phase5_model_source(), analyze_dax=True)
             repository.replace(graph.nodes, graph.edges)

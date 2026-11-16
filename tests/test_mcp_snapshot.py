@@ -35,12 +35,12 @@ def _write_small_project(root: Path, *, expression: str = "SUM('Facts'[Amount])"
     config = root / ".pbibrain" / "brain.json"
     config.parent.mkdir(parents=True, exist_ok=True)
     config.write_text(json.dumps({"version": 1, "name": "Sales", "sources": [os.path.relpath(source, config.parent)],
-                                  "database": "brain.lbug", "identity_map": "identity.json"}), encoding="utf-8")
+                                  "database": "brain.sqlite", "identity_map": "identity.json"}), encoding="utf-8")
     return config
 
 
 def _scan(config: Path) -> None:
-    with GraphRepository(use_native=False) as repository:
+    with GraphRepository(use_sqlite=False) as repository:
         ProjectService(config).scan(repository)
 
 
@@ -86,7 +86,7 @@ class SnapshotWriteTests(unittest.TestCase):
     def test_snapshot_answers_like_the_live_api(self) -> None:
         from backend.api.app import BrainAPI, BrainApp
 
-        with GraphRepository(use_native=False) as repository:
+        with GraphRepository(use_sqlite=False) as repository:
             ProjectService(self.config).scan(repository)
             live = BrainApp(BrainAPI(repository, overrides_path=self.root / "none.json"))
             snapshot = SnapshotClient(self.config)

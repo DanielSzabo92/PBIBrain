@@ -156,7 +156,7 @@ def write(files: dict[str, Any], out: Path) -> list[Path]:
     return written
 
 
-def lab_reader(project: Path, *, use_native: bool = True) -> tuple[Get, list[str], Callable[[], None]]:
+def lab_reader(project: Path, *, use_sqlite: bool = True) -> tuple[Get, list[str], Callable[[], None]]:
     """Make a session on a copy of the merge lab in ``project``. Give (get, source ids, close)."""
 
     from backend.api.app import create_app
@@ -167,7 +167,7 @@ def lab_reader(project: Path, *, use_native: bool = True) -> tuple[Get, list[str
         shutil.copytree(LAB / name, project / name)
     devcenter = DevCenterSessions(app_data_dir=None)
     devcenter.attach_project(project)
-    app = create_app(use_native=use_native)
+    app = create_app(use_sqlite=use_sqlite)
     app.devcenter = devcenter
 
     def call(method: str, request: dict[str, Any]) -> dict[str, Any]:
@@ -206,7 +206,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--no-native", action="store_true", help="Do not use the TOM bridge (the compare is then empty).")
     args = parser.parse_args(argv)
     with tempfile.TemporaryDirectory(prefix="t26-record-") as folder:
-        get, _, close = lab_reader(Path(folder) / "project", use_native=not args.no_native)
+        get, _, close = lab_reader(Path(folder) / "project", use_sqlite=not args.no_native)
         try:
             missing: list[str] = []
             files = record(get, missing)

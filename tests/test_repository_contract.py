@@ -5,8 +5,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from backend.graph.repository import GraphRepository, LadybugRepository
-from backend.graph.schema import Edge, Node, ladybug_schema
+from backend.graph.repository import GraphRepository
+from backend.graph.schema import Edge, Node
 
 
 MODEL = Node(
@@ -87,24 +87,17 @@ FACT_EDGES = [
 
 
 class RepositoryContractTests(unittest.TestCase):
-    def test_schema_declares_ladybug_node_and_relationship_tables(self):
-        node_statement, edge_statement = ladybug_schema()
-        self.assertIn("CREATE NODE TABLE", node_statement)
-        self.assertIn("BrainNode", node_statement)
-        self.assertIn("CREATE REL TABLE", edge_statement)
-        self.assertIn("BrainEdge", edge_statement)
-
     def test_reopen_preserves_nodes_edges_and_queries(self):
         with tempfile.TemporaryDirectory() as directory:
-            path = Path(directory) / "brain.lbug"
-            repository = GraphRepository(path, use_native=False)
+            path = Path(directory) / "brain.sqlite"
+            repository = GraphRepository(path, use_sqlite=False)
             repository.upsert_nodes([VISUAL, MEASURE, REPORT, MODEL, TABLE])
             repository.upsert_edges(FACT_EDGES)
             self.assertEqual(repository.storage, "json")
             self.assertTrue(path.exists())
             repository.close()
 
-            reopened = GraphRepository(path, use_native=False)
+            reopened = GraphRepository(path, use_sqlite=False)
             self.assertEqual(reopened.get_object(MEASURE.id).name, "Sales")
             self.assertEqual([item.id for item in reopened.get_dependencies(MEASURE.id)], [])
             self.assertEqual([item.id for item in reopened.get_usage(MEASURE.id)], [VISUAL.id])
@@ -125,12 +118,11 @@ class RepositoryContractTests(unittest.TestCase):
                 [REPORT.id, MODEL.id, TABLE.id],
             )
 
-            rows = reopened.query_graph("MATCH (n:BrainNode) RETURN n.*")
-            self.assertEqual({row["id"] for row in rows}, {node.id for node in [MODEL, TABLE, MEASURE, REPORT, VISUAL]})
+            self.assertEqual({node.id for node in reopened.all_nodes()}, {node.id for node in [MODEL, TABLE, MEASURE, REPORT, VISUAL]})
             reopened.close()
 
     def test_fact_edges_keep_fact_evidence_class_and_provenance(self):
-        with GraphRepository(use_native=False) as repository:
+        with GraphRepository(use_sqlite=False) as repository:
             repository.upsert_nodes([MODEL, TABLE])
             edge = repository.upsert_edge(FACT_EDGES[0])
             value = edge.to_dict()
@@ -155,7 +147,7 @@ class RepositoryContractTests(unittest.TestCase):
             source="dax_analysis",
             evidence=["[Base Sales]"],
         )
-        with GraphRepository(use_native=False) as repository:
+        with GraphRepository(use_sqlite=False) as repository:
             repository.upsert_nodes([MEASURE, base])
             repository.upsert_edge(edge)
             self.assertEqual([item.id for item in repository.get_dependencies(MEASURE.id)], [base.id])
@@ -163,10 +155,10 @@ class RepositoryContractTests(unittest.TestCase):
 
     def test_rebuild_is_deterministic_independent_of_insert_order(self):
         with tempfile.TemporaryDirectory() as directory:
-            first_path = Path(directory) / "first.lbug"
-            second_path = Path(directory) / "second.lbug"
-            first = GraphRepository(first_path, use_native=False)
-            second = GraphRepository(second_path, use_native=False)
+            first_path = Path(directory) / "first.sqlite"
+            second_path = Path(directory) / "second.sqlite"
+            first = GraphRepository(first_path, use_sqlite=False)
+            second = GraphRepository(second_path, use_sqlite=False)
             nodes = [MODEL, TABLE, MEASURE, REPORT, VISUAL]
             first.upsert_nodes(nodes)
             first.upsert_edges(FACT_EDGES)
@@ -181,12 +173,6 @@ class RepositoryContractTests(unittest.TestCase):
                 [edge.to_dict() for edge in second.all_edges()],
             )
             self.assertEqual(json.loads(first_path.read_text()), json.loads(second_path.read_text()))
-
-    def test_named_ladybug_repository_keeps_repository_contract(self):
-        with tempfile.TemporaryDirectory() as directory:
-            repository = LadybugRepository(Path(directory) / "brain.lbug", use_native=False)
-            repository.upsert_node(MODEL)
-            self.assertEqual(repository.get_node(MODEL.id).id, MODEL.id)
 
 
 if __name__ == "__main__":

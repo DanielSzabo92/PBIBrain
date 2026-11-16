@@ -177,7 +177,7 @@ class DataSourceLineageTests(unittest.TestCase):
         self.project = write_sourced_project(Path(temporary.name))
         self.graph = build_fact_graph(self.project, analyze_dax=True)
         self.nodes = {node.id: node for node in self.graph.nodes}
-        self.repository = GraphRepository(use_native=False)
+        self.repository = GraphRepository(use_sqlite=False)
         self.graph.load(self.repository)
         self.addCleanup(self.repository.close)
 

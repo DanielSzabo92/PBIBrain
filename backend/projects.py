@@ -323,7 +323,7 @@ class ProjectService:
         if not source_paths:
             raise ProjectConfigError("Project has no local sources")
         project_paths = _project_paths(config, self.config_path.parent)
-        return self._scan_paths(GraphRepository(use_native=False), source_paths, project_paths, None, publish=False)
+        return self._scan_paths(GraphRepository(use_sqlite=False), source_paths, project_paths, None, publish=False)
 
     def cloud_reader(self) -> ProjectCloudReader:
         service = self.cloud() if callable(self.cloud) else self.cloud
@@ -392,7 +392,7 @@ class ProjectService:
             identity = _CollisionCheckingIdentity(staged_identity)
             build_fact_graph(models, reports, identity=identity, analyze_dax=False)
 
-            staging = GraphRepository(use_native=False)
+            staging = GraphRepository(use_sqlite=False)
             scanner = Scanner(
                 staging,
                 identity_path=staged_identity,

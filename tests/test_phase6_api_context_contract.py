@@ -1,7 +1,7 @@
 """Phase 6 Brain API and context compiler contracts.
 
 These tests use the canonical graph as the input boundary.  They do not
-prescribe Ladybug queries or a particular context implementation.
+prescribe storage queries or a particular context implementation.
 """
 
 from __future__ import annotations
@@ -126,7 +126,7 @@ class Phase6BrainAPIContractTests(unittest.TestCase):
     def setUp(self) -> None:
         self.tempdir = tempfile.TemporaryDirectory()
         root = Path(self.tempdir.name)
-        self.repository = GraphRepository(use_native=False)
+        self.repository = GraphRepository(use_sqlite=False)
         graph = build_fact_graph(
             semantic_model_source(),
             semantic_report_source(),
@@ -330,7 +330,7 @@ class Phase6BrainAPIContractTests(unittest.TestCase):
         )
 
     def test_api_outputs_are_deterministic(self):
-        other_repository = GraphRepository(use_native=False)
+        other_repository = GraphRepository(use_sqlite=False)
         other_tempdir = tempfile.TemporaryDirectory()
         try:
             graph = build_fact_graph(

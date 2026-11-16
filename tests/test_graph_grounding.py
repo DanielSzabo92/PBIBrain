@@ -34,14 +34,14 @@ def sample_repository(*, twin: bool = False) -> GraphRepository:
     edges = list(graph.edges.values()) if isinstance(graph.edges, dict) else list(graph.edges)
     if twin:  # the same measure name in a second model
         nodes.append(Node(id="model:other/table:t/measure:active", type="MEASURE", name="Active Customers", model_id="model:other"))
-    repository = GraphRepository(use_native=False)
+    repository = GraphRepository(use_sqlite=False)
     repository.replace(nodes, edges)
     return repository
 
 
 class DependencyRouteTests(unittest.TestCase):
     def setUp(self) -> None:
-        self.app = create_app(sample_repository(), use_native=False)
+        self.app = create_app(sample_repository(), use_sqlite=False)
 
     def tearDown(self) -> None:
         self.app.close()
@@ -77,7 +77,7 @@ class DependencyRouteTests(unittest.TestCase):
 
     def test_a_shared_name_is_ambiguous(self):
         self.app.close()
-        self.app = create_app(sample_repository(twin=True), use_native=False)
+        self.app = create_app(sample_repository(twin=True), use_sqlite=False)
         answer = self.get(target="Active Customers")
         self.assertEqual("AMBIGUOUS", answer["status"])
         self.assertEqual(2, len(answer["candidates"]))
@@ -138,7 +138,7 @@ class GroundedProvider:
 
 class ChatGroundingTests(unittest.TestCase):
     def setUp(self) -> None:
-        self.app = create_app(sample_repository(), use_native=False)
+        self.app = create_app(sample_repository(), use_sqlite=False)
         self.provider = GroundedProvider()
         self.app.chat = ChatService(self.app, store=MemoryStore(), provider_factory=lambda settings, key: self.provider,
                                     lock=self.app.request_lock, use_settings_file=False)

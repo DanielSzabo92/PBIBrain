@@ -11,7 +11,7 @@ from backend.graph.schema import Edge, Node
 
 class FieldWellTests(unittest.TestCase):
     def setUp(self) -> None:
-        self.repository = GraphRepository(use_native=False)
+        self.repository = GraphRepository(use_sqlite=False)
         for node in (Node(id="c:category", type="COLUMN", name="Category"), Node(id="m:sales", type="MEASURE", name="Sales"),
                      Node(id="c:price", type="COLUMN", name="Price")):
             self.repository.upsert_node(node)
@@ -39,7 +39,7 @@ class FieldWellTests(unittest.TestCase):
 
 class ContentsTests(unittest.TestCase):
     def test_a_table_lists_measures_before_columns_and_a_measure_has_no_contents(self) -> None:
-        repository = GraphRepository(use_native=False)
+        repository = GraphRepository(use_sqlite=False)
         nodes = [Node(id="t", type="TABLE", name="Sales"), Node(id="c2", type="COLUMN", name="Qty", properties={"data_type": "int64"}),
                  Node(id="c1", type="COLUMN", name="Amount", properties={"is_hidden": True}), Node(id="m", type="MEASURE", name="Total")]
         for node in nodes:

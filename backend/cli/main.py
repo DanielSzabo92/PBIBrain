@@ -25,7 +25,7 @@ def _write_stdout_utf8(value: str) -> None:
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="brain", description="Power BI Brain factual graph")
     parser.add_argument("--config", default="config/brain.json", help="Brain project configuration file")
-    parser.add_argument("--db", default=None, help="override Ladybug database path")
+    parser.add_argument("--db", default=None, help="override the graph database path")
     parser.add_argument("--identity", default=None, help="override generated identity map path")
     parser.add_argument("--verbose", action="store_true")
     commands = parser.add_subparsers(dest="command", required=True)

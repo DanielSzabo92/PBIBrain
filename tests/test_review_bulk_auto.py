@@ -22,7 +22,7 @@ class ReviewBulkAndAutoAcceptTests(unittest.TestCase):
         root = Path(cls.template.name) / "project"
         root.mkdir()
         cls.config_name = write_large_project(root).relative_to(root)
-        app = create_app(database_path=root / "brain.db", overrides_path=root / "overrides.json", use_native=False)
+        app = create_app(database_path=root / "brain.db", overrides_path=root / "overrides.json", use_sqlite=False)
         app.project = ProjectService(root / cls.config_name)
         status, _ = app.handle("POST", "/api/scan")
         app.close()
@@ -38,7 +38,7 @@ class ReviewBulkAndAutoAcceptTests(unittest.TestCase):
         root = Path(self.temporary.name) / "project"
         shutil.copytree(Path(self.template.name) / "project", root)
         self.config = root / self.config_name
-        self.app = create_app(database_path=root / "brain.db", overrides_path=root / "overrides.json", use_native=False)
+        self.app = create_app(database_path=root / "brain.db", overrides_path=root / "overrides.json", use_sqlite=False)
         self.addCleanup(self.app.close)
         self.app.project = ProjectService(self.config)
 

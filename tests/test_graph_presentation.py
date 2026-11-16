@@ -14,7 +14,7 @@ from backend.projects import ProjectConfigError, ProjectConfigStore, ProjectServ
 
 class GraphPresentationTests(unittest.TestCase):
     def setUp(self):
-        self.repository = GraphRepository(use_native=False)
+        self.repository = GraphRepository(use_sqlite=False)
         self.repository.replace([
             Node("m", "MODEL", "Finance"),
             Node("r", "REPORT", "Finance report", model_id="m", report_id="r"),
@@ -65,7 +65,7 @@ class GraphColorConfigTests(unittest.TestCase):
         self.addCleanup(temporary.cleanup)
         self.path = Path(temporary.name) / "brain.json"
         self.store = ProjectConfigStore(self.path)
-        self.config = {"version": 1, "name": "Finance", "sources": [], "database": "graph.lbug", "identity_map": "identity.json"}
+        self.config = {"version": 1, "name": "Finance", "sources": [], "database": "graph.sqlite", "identity_map": "identity.json"}
         self.store.save(self.config)
 
     def test_colors_round_trip_without_changing_source_or_storage_contract(self):
@@ -84,11 +84,11 @@ class GraphColorConfigTests(unittest.TestCase):
             self.assertEqual(self.path.read_bytes(), original)
 
     def test_settings_api_accepts_colors_and_still_blocks_storage_changes(self):
-        app = create_app(use_native=False)
+        app = create_app(use_sqlite=False)
         self.addCleanup(app.close)
         app.project = ProjectService(self.path)
         code, saved = app.handle("POST", "/api/config", {**self.config, "graph_colors": {"groups": {"model": "#123456"}}})
         self.assertEqual(code, 200)
         self.assertEqual(app.handle("GET", "/api/config")[1], saved)
-        self.assertEqual(app.handle("POST", "/api/config", {**saved, "database": "other.lbug"})[0], 400)
+        self.assertEqual(app.handle("POST", "/api/config", {**saved, "database": "other.sqlite"})[0], 400)
         self.assertEqual(self.store.get(), saved)

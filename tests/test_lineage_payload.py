@@ -9,7 +9,7 @@ from tests.test_report_hierarchy import hierarchy_sources
 class LineagePayloadTests(unittest.TestCase):
     def setUp(self):
         model, report = hierarchy_sources()
-        self.repository = GraphRepository(use_native=False)
+        self.repository = GraphRepository(use_sqlite=False)
         build_fact_graph(model, report).load(self.repository)
         self.addCleanup(self.repository.close)
 

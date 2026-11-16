@@ -22,7 +22,7 @@ SOURCE = {"id": "shared-model", "name": "Shared", "tables": [{
 class SharedSemanticReviewTests(unittest.TestCase):
     def setUp(self):
         self.directory = tempfile.TemporaryDirectory()
-        self.path = Path(self.directory.name) / "brain.lbug"
+        self.path = Path(self.directory.name) / "brain.sqlite"
         self.repository = GraphRepository(self.path)
         Scanner(repository=self.repository).scan(SOURCE)
         self.shared = next(n for n in self.repository.all_nodes() if n.properties.get("candidate_ids"))

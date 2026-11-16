@@ -1,6 +1,6 @@
 """Evidence contracts for deterministic DAX analysis.
 
-The analyzer emits plain dictionaries so evidence survives JSON and LadybugDB
+The analyzer emits plain dictionaries so evidence survives JSON and SQLite
 round trips without a custom serializer.  This module only formats locations;
 it does not interpret DAX or infer business meaning.
 """

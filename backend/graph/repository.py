@@ -1,7 +1,8 @@
-"""Graph repository abstraction backed by pure-Python SQLite and Trail.
+"""Graph repository backed by SQLite.
 
-The JSON implementation is an explicit test double selected with
-``use_native=False``.  Production callers use the Trail SQLite store.
+``use_sqlite=False`` keeps the graph in memory, or in a JSON file when a path is
+given; scans stage their graphs that way and tests use it as a double.
+Production callers use the SQLite store.
 """
 
 from __future__ import annotations
@@ -9,7 +10,6 @@ from __future__ import annotations
 import json
 import os
 import logging
-import re
 import threading
 from contextlib import contextmanager
 from pathlib import Path
@@ -26,45 +26,14 @@ def _json_default(value: Any) -> str:
     return str(value)
 
 
-class _NativeConnectionWrapper:
-    """Compatibility bridge for native transaction and checkpoint operations."""
-
-    def __init__(self, store: SQLiteStore) -> None:
-        self._store = store
-
-    def execute(self, statement: str, params: Any = None) -> Any:
-        conn = self._store._get_connection()
-        stmt = statement.strip()
-        if stmt.startswith("MATCH (n:BrainNode) DETACH DELETE"):
-            conn.execute("DELETE FROM edges;")
-            return conn.execute("DELETE FROM nodes;")
-        if stmt == "BEGIN TRANSACTION":
-            return conn.execute("BEGIN IMMEDIATE;")
-        if stmt == "COMMIT":
-            return conn.commit()
-        if stmt == "ROLLBACK":
-            return conn.rollback()
-        if stmt == "CHECKPOINT":
-            return conn.execute("PRAGMA wal_checkpoint(PASSIVE);")
-        return conn.execute(statement, params or ())
-
-    def close(self) -> None:
-        pass
-
-    def __getattr__(self, name: str) -> Any:
-        return getattr(self._store._get_connection(), name)
-
-
 class GraphRepository:
-    """Store and query canonical nodes and edges in SQLite + Trail."""
+    """Store and query canonical nodes and edges in SQLite."""
 
-    def __init__(self, path: str | Path | None = None, *, use_native: bool | None = None) -> None:
+    def __init__(self, path: str | Path | None = None, *, use_sqlite: bool = True) -> None:
         self.path = Path(path) if path is not None else None
         self.nodes: dict[str, Node] = {}
         self.edges: dict[str, Edge] = {}
         self._store: SQLiteStore | None = None
-        self._native: tuple[Any, Any] | None = None
-        self._native_error: str | None = None
         self.storage = "memory"
         # Validation is a read-only runtime result.  Source synchronization
         # owns when it is refreshed; graph persistence stays canonical facts.
@@ -75,7 +44,7 @@ class GraphRepository:
         self._shared_read: tuple[tuple[Any, ...], list[Node], list[Edge]] | None = None
         self._shared_lock = threading.Lock()
 
-        if use_native is False:
+        if not use_sqlite:
             if self.path and self.path.is_file():
                 payload = json.loads(self.path.read_text(encoding="utf-8"))
                 self._load_payload(payload)
@@ -88,14 +57,11 @@ class GraphRepository:
 
         try:
             self._store = SQLiteStore(self.path)
-            self._native = (self._store, _NativeConnectionWrapper(self._store))
             self.storage = "trail"
             self._load_store()
         except Exception as exc:
-            self._native_error = str(exc)
             LOGGER.debug("SQLiteStore initialization failed", exc_info=True)
             self._store = None
-            self._native = None
             raise RuntimeError(f"Failed to initialize graph storage: {exc}") from exc
 
     # State that answers are built from but that is set as a plain attribute (the scanner sets the
@@ -108,10 +74,6 @@ class GraphRepository:
         if name in self._COUNTED and "revision" in self.__dict__:
             object.__setattr__(self, "revision", self.revision + 1)
 
-    @property
-    def is_native(self) -> bool:
-        return self._store is not None
-
     def _load_store(self) -> None:
         if self._store is None:
             return
@@ -121,9 +83,9 @@ class GraphRepository:
             self.edges[edge.id] = edge
 
     def _load_payload(self, payload: Mapping[str, Any]) -> None:
-        from .migrations import migrate_payload
-
-        payload = migrate_payload(payload)
+        version = payload.get("schema_version")
+        if version != GRAPH_SCHEMA_VERSION:
+            raise ValueError(f"The graph file has schema version {version!r}. This app reads version {GRAPH_SCHEMA_VERSION}")
         for value in payload.get("nodes", []):
             node = node_from_dict(value)
             self.nodes[node.id] = node
@@ -135,9 +97,6 @@ class GraphRepository:
         return {"schema_version": GRAPH_SCHEMA_VERSION, "nodes": serialize_nodes(self.nodes.values()), "edges": serialize_edges(self.edges.values())}
 
     def _persist(self) -> None:
-        if self._native is not None:
-            self._sync_native()
-            return
         if self._store is not None:
             self._store.replace_all(self.nodes.values(), self.edges.values())
             return
@@ -166,83 +125,11 @@ class GraphRepository:
             handle.write("}\n")
         os.replace(partial, self.path)
 
-    def _sync_native(self) -> None:
-        if self._native is None:
-            return
-        _, connection = self._native
-        try:
-            connection.execute("BEGIN TRANSACTION")
-            self._write_native_graph(connection)
-            connection.execute("COMMIT")
-        except Exception as exc:
-            try:
-                connection.execute("ROLLBACK")
-            except Exception:
-                LOGGER.debug("Native rollback unavailable", exc_info=True)
-            LOGGER.error("Native graph replacement failed", exc_info=True)
-            raise RuntimeError(f"Native graph replacement failed: {exc}") from exc
-        try:
-            connection.execute("CHECKPOINT")
-        except Exception:
-            LOGGER.warning("Graph committed, but native checkpoint failed; close the database cleanly", exc_info=True)
-
-    def _write_native_graph(self, connection: Any) -> None:
-        if self._store is not None and isinstance(connection, _NativeConnectionWrapper):
-            self._store.replace_all(self.nodes.values(), self.edges.values(), in_transaction=True)
-            return
-        connection.execute("MATCH (n:BrainNode) DETACH DELETE n")
-        for node in self.nodes.values():
-            props = json.dumps(node.properties, ensure_ascii=False, sort_keys=True, default=_json_default)
-            connection.execute(
-                "CREATE (n:BrainNode {"
-                "id: $id, type: $type, name: $name, description: $description, "
-                "model_id: $model_id, report_id: $report_id, source_id: $source_id, "
-                "status: $status, source: $source, properties: $properties"
-                "})",
-                {
-                    "id": node.id,
-                    "type": node.type,
-                    "name": node.name,
-                    "description": node.description,
-                    "model_id": node.model_id,
-                    "report_id": node.report_id,
-                    "source_id": node.source_id,
-                    "status": node.status,
-                    "source": node.source,
-                    "properties": props,
-                },
-            )
-        for edge in self.edges.values():
-            evidence = json.dumps(edge.evidence, ensure_ascii=False, sort_keys=True, default=_json_default)
-            properties = json.dumps(edge.properties, ensure_ascii=False, sort_keys=True, default=_json_default)
-            connection.execute(
-                "MATCH (a:BrainNode {id: $from_id}), (b:BrainNode {id: $to_id}) "
-                "CREATE (a)-[:BrainEdge {"
-                "id: $id, type: $type, source: $source, confidence: $confidence, "
-                "status: $status, evidence_class: $evidence_class, "
-                "evidence: $evidence, properties: $properties"
-                "}]->(b)",
-                {
-                    "from_id": edge.from_id,
-                    "to_id": edge.to_id,
-                    "id": edge.id,
-                    "type": edge.type,
-                    "source": edge.source,
-                    "confidence": edge.confidence,
-                    "status": edge.status,
-                    "evidence_class": edge.evidence_class,
-                    "evidence": evidence,
-                    "properties": properties,
-                },
-            )
-
     def upsert_node(self, node: Node | Mapping[str, Any]) -> Node:
         self.revision += 1
         value = node if isinstance(node, Node) else node_from_dict(node)
         self.nodes[value.id] = value
-        if self._native is not None and not isinstance(self._native[1], _NativeConnectionWrapper):
-            self._persist()
-        elif self._store is not None:
+        if self._store is not None:
             self._store.upsert_node(value)
         elif self.path is not None:
             self._persist()
@@ -259,9 +146,6 @@ class GraphRepository:
         elif self.path is not None:
             self._persist()
         return values
-
-    add_node = upsert_node
-    add_nodes = upsert_nodes
 
     def upsert_edge(self, edge: Edge | Mapping[str, Any]) -> Edge:
         self.revision += 1
@@ -284,9 +168,6 @@ class GraphRepository:
         elif self.path is not None:
             self._persist()
         return values
-
-    add_edge = upsert_edge
-    add_edges = upsert_edges
 
     def replace(self, nodes: Iterable[Node | Mapping[str, Any]], edges: Iterable[Edge | Mapping[str, Any]]) -> None:
         node_values = [node if isinstance(node, Node) else node_from_dict(node) for node in nodes]
@@ -335,8 +216,6 @@ class GraphRepository:
                 self.nodes[found.id] = found
             return found
         return None
-
-    get_node = get_object
 
     @contextmanager
     def reading(self) -> Iterator[None]:
@@ -401,8 +280,6 @@ class GraphRepository:
             or needle in json.dumps(node.properties, ensure_ascii=False, default=_json_default).casefold()
         ]
 
-    search = search_objects
-
     def get_neighbors(
         self,
         object_id: str,
@@ -427,17 +304,11 @@ class GraphRepository:
                 result_ids.add(edge.from_id)
         return [self.nodes[item] for item in sorted(result_ids) if item in self.nodes]
 
-    neighbors = get_neighbors
-
     def get_dependencies(self, object_id: str) -> list[Node]:
         return self.get_neighbors(object_id, ["DEPENDS_ON"], direction="out")
 
-    dependencies = get_dependencies
-
     def get_dependents(self, object_id: str) -> list[Node]:
         return self.get_neighbors(object_id, ["DEPENDS_ON"], direction="in")
-
-    dependents = get_dependents
 
     def get_usage(self, object_id: str) -> list[Node]:
         if self._store is not None:
@@ -447,8 +318,6 @@ class GraphRepository:
         target = str(object_id)
         ids = {edge.from_id for edge in self.edges.values() if edge.to_id == target and edge.type == "USES"}
         return [self.nodes[item] for item in sorted(ids) if item in self.nodes]
-
-    usage = get_usage
 
     def get_edges(
         self,
@@ -497,26 +366,6 @@ class GraphRepository:
             current = previous[current]
         return list(reversed(path))
 
-    def query_graph(self, cypher: str, params: Mapping[str, Any] | None = None) -> Any:
-        """Run trusted query on SQLite or the explicit test double."""
-
-        text = " ".join(str(cypher).split())
-        if re.fullmatch(r"MATCH \(\w+:BrainNode\) RETURN \w+\.\*", text, re.I):
-            return [node.to_dict() for node in self.all_nodes()]
-        match = re.fullmatch(
-            r"MATCH \(\w+:BrainNode \{type:\s*'([^']+)'\}\) RETURN \w+\.\*", text, re.I
-        )
-        if match:
-            wanted = match.group(1).upper()
-            return [node.to_dict() for node in self.all_nodes() if node.type == wanted]
-        if self._store is not None:
-            conn = self._store._get_connection()
-            cursor = conn.execute(cypher, params or ())
-            return cursor.fetchall()
-        raise RuntimeError("Cypher fallback supports only simple BrainNode reads")
-
-    execute = query_graph
-
     def close(self) -> None:
         if self._store is not None:
             self._store.close()
@@ -528,6 +377,3 @@ class GraphRepository:
     def __exit__(self, *_: Any) -> None:
         self.close()
 
-
-class LadybugRepository(GraphRepository):
-    """Explicit name for callers that want to document the canonical store."""

@@ -78,8 +78,8 @@ class FactGraphContractTests(unittest.TestCase):
 
     def test_scan_loads_reconstructed_graph_into_repository(self):
         with tempfile.TemporaryDirectory() as directory:
-            path = Path(directory) / "brain.lbug"
-            repository = GraphRepository(path, use_native=False)
+            path = Path(directory) / "brain.sqlite"
+            repository = GraphRepository(path, use_sqlite=False)
             graph = scan_sources(
                 model_source(),
                 report_source(REPORT_A_ID),

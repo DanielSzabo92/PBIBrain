@@ -39,7 +39,7 @@ class PublicationContractTests(unittest.TestCase):
         required_sections = {
             "architecture": ("Power BI metadata / PBIP files", "canonical nodes", "Brain is infrastructure"),
             "trust model": ("## Trust model", "`FACT`", "`INFERRED`", "`OBSERVED`", "overrides"),
-            "setup": ("## Requirements", "python -m pip install -e .", "LBUG_C_API_LIB_PATH"),
+            "setup": ("## Requirements", "python -m pip install -e .", "SQLite"),
             "direct PBIP": (".pbip", "TMDL", "PBIR", "brain scan"),
             "CLI": ("brain status", "brain search", "brain object"),
             "API": ("BrainAPI", "search_objects(query)", "get_context(target, task=None)", "/api/brain"),
@@ -66,7 +66,7 @@ class PublicationContractTests(unittest.TestCase):
 
     def test_gitignore_protects_local_runtime_and_private_artifacts(self):
         protected_patterns = {
-            "native database": "*.lbug",
+            "graph database": "*.sqlite",
             "identity state": "config/identity.json",
             "frontend dependencies": "frontend/node_modules/",
             "frontend build": "frontend/dist/",

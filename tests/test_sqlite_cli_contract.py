@@ -1,4 +1,4 @@
-"""Native Ladybug and CLI smoke tests for Phase 1."""
+"""SQLite persistence and CLI smoke tests for Phase 1."""
 
 from __future__ import annotations
 
@@ -15,21 +15,6 @@ from backend.graph.schema import Edge, Node
 from tests.fixtures.phase1_sources import REPORT_A_ID, model_source, report_source
 
 
-def _native_available() -> bool:
-    """Return whether this interpreter can open a real Ladybug database."""
-
-    try:
-        with tempfile.TemporaryDirectory() as directory:
-            repository = GraphRepository(Path(directory) / "probe.lbug")
-            repository.close()
-        return True
-    except Exception:
-        return False
-
-
-NATIVE_AVAILABLE = _native_available()
-
-
 def _run_cli(*arguments: str) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         [sys.executable, "-m", "backend.cli.main", *arguments],
@@ -40,8 +25,7 @@ def _run_cli(*arguments: str) -> subprocess.CompletedProcess[str]:
     )
 
 
-@unittest.skipUnless(NATIVE_AVAILABLE, "Ladybug C API shared library is unavailable")
-class NativeLadybugPersistenceTests(unittest.TestCase):
+class SQLitePersistenceTests(unittest.TestCase):
     def test_native_graph_reopens_with_nodes_edges_and_queries(self):
         model = Node(
             id="model:native-model",
@@ -72,7 +56,7 @@ class NativeLadybugPersistenceTests(unittest.TestCase):
         )
 
         with tempfile.TemporaryDirectory() as directory:
-            path = Path(directory) / "brain.lbug"
+            path = Path(directory) / "brain.sqlite"
             repository = GraphRepository(path)
             repository.upsert_nodes([model, measure])
             repository.upsert_edge(edge)
@@ -114,14 +98,13 @@ class NativeLadybugPersistenceTests(unittest.TestCase):
             self.assertEqual(payload["edge_ids"], [edge.id])
 
 
-@unittest.skipUnless(NATIVE_AVAILABLE, "Native storage engine is unavailable")
-class NativeCliSmokeTests(unittest.TestCase):
+class CliSmokeTests(unittest.TestCase):
     def test_cli_scan_then_separate_status_and_search_processes(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             model_path = root / "model.json"
             report_path = root / "report.json"
-            database_path = root / "brain.lbug"
+            database_path = root / "brain.sqlite"
             identity_path = root / "identity.json"
             model_path.write_text(json.dumps(model_source()), encoding="utf-8")
             report_path.write_text(json.dumps(report_source(REPORT_A_ID)), encoding="utf-8")

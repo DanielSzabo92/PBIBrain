@@ -31,6 +31,6 @@ UI primitives are the basic [shadcn/ui components](https://ui.shadcn.com/docs/in
 
 ## Browser acceptance
 
-Run `npx playwright install chromium` once, then `npm run test:e2e`. Python dependencies (including the native Ladybug runtime) must be installed. The suite scans an isolated temporary model/report project, closes and reopens its native database, and serves the production frontend through the real API. It covers grouping, filters, node details, persisted colors, keyboard/mobile use, failure recovery, stale responses, and the shared GUI. It never uses the current project's sources or database.
+Run `npx playwright install chromium` once, then `npm run test:e2e`. Python dependencies must be installed. The suite scans an isolated temporary model/report project, closes and reopens its SQLite database, and serves the production frontend through the real API. It covers grouping, filters, node details, persisted colors, keyboard/mobile use, failure recovery, stale responses, and the shared GUI. It never uses the current project's sources or database.
 
 Set `PLAYWRIGHT_CHANNEL=msedge` to use an installed Edge browser instead. Screenshots and failure traces go to `frontend/test-results/`.

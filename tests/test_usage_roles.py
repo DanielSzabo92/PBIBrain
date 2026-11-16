@@ -80,7 +80,7 @@ class UsageRoleTests(unittest.TestCase):
         self.model, self.report = usage_sources()
         self.graph = build_fact_graph(self.model, self.report)
         self.nodes = {node.id: node for node in self.graph.nodes}
-        self.repository = GraphRepository(use_native=False)
+        self.repository = GraphRepository(use_sqlite=False)
         self.graph.load(self.repository)
         self.addCleanup(self.repository.close)
 

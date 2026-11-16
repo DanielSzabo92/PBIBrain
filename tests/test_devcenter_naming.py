@@ -174,7 +174,7 @@ class NamingSessionTests(unittest.TestCase):
         shutil.copytree(LAB / "SalesA", self.root / "SalesA")
         self.devcenter = DevCenterSessions(app_data_dir=None)
         self.devcenter.attach_project(self.root)
-        self.app = create_app(use_native=False)
+        self.app = create_app(use_sqlite=False)
         self.app.devcenter = self.devcenter
         self.ok("session_create", {"display_name": "Naming"})
         self.target = self.add("Target.SemanticModel")
@@ -421,7 +421,7 @@ class NoTargetTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as folder:
             devcenter = DevCenterSessions(app_data_dir=None)
             devcenter.attach_project(folder)
-            app = create_app(use_native=False)
+            app = create_app(use_sqlite=False)
             app.devcenter = devcenter
             try:
                 status, payload = app.handle("GET", "/api/devcenter/naming-rules")

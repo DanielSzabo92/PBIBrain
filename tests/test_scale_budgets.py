@@ -23,7 +23,7 @@ class ScaleBudgetTests(unittest.TestCase):
     def setUpClass(cls) -> None:
         cls.temporary = tempfile.TemporaryDirectory()
         config = write_large_project(Path(cls.temporary.name))
-        with GraphRepository(use_native=False) as repository:
+        with GraphRepository(use_sqlite=False) as repository:
             ProjectService(config).scan(repository)
         cls.client = SnapshotClient(config)
         cls.client.get("overview")  # the first read loads the project; budgets are for a loaded one

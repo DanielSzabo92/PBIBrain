@@ -35,7 +35,7 @@ class RealAppRouteListTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         cls.folder = tempfile.TemporaryDirectory(prefix="pbibrain-route-list-")
-        cls.repository = GraphRepository(use_native=False)
+        cls.repository = GraphRepository(use_sqlite=False)
         cls.app = BrainApp(BrainAPI(cls.repository, overrides_path=Path(cls.folder.name) / "overrides.json"))
 
     @classmethod

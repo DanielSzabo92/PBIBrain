@@ -1,4 +1,4 @@
-"""Production desktop path: PBIP scan, live agent reads, close and native reopen."""
+"""Production desktop path: PBIP scan, live agent reads, close and reopen."""
 
 import hashlib
 import json
@@ -13,15 +13,10 @@ from backend.graph.repository import GraphRepository
 from tests.fixtures.pbip_sources import write_pbip_project
 
 
-class DesktopNativeTests(unittest.TestCase):
+class DesktopEndToEndTests(unittest.TestCase):
     def test_scan_live_reads_switch_guard_and_reopen(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            try:
-                probe = GraphRepository(root / "probe.lbug")
-                probe.close()
-            except RuntimeError as exc:
-                self.skipTest(f"Native runtime unavailable: {exc}")
             project = root / "Finance project"
             write_pbip_project(project)
             before = {path.relative_to(project): hashlib.sha256(path.read_bytes()).hexdigest()
@@ -53,8 +48,8 @@ class DesktopNativeTests(unittest.TestCase):
                 reopened = live_client(config)
                 self.assertEqual(reopened.get("overview")["counts"], expected)
                 self.assertTrue(controller.close_project()["ok"])
-                with GraphRepository(config.parent / "brain.lbug") as repository:
-                    self.assertTrue(repository.is_native)
+                with GraphRepository(config.parent / "brain.sqlite") as repository:
+                    self.assertEqual(repository.storage, "trail")
                     self.assertEqual(len(repository.all_nodes()), expected["nodes"])
                     self.assertEqual(len(repository.all_edges()), expected["edges"])
                 after = {path.relative_to(project): hashlib.sha256(path.read_bytes()).hexdigest()

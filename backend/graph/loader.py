@@ -325,11 +325,11 @@ def scan_sources(
     repository: GraphRepository | None = None,
     database_path: str | Path | None = None,
     identity_path: str | Path | None = None,
-    use_native: bool | None = None,
+    use_sqlite: bool = True,
     analyze_dax: bool = False,
 ) -> FactGraph:
     graph = build_fact_graph(model_sources, report_sources, identity_path=identity_path, analyze_dax=analyze_dax)
-    target = repository or GraphRepository(database_path, use_native=use_native)
+    target = repository or GraphRepository(database_path, use_sqlite=use_sqlite)
     graph.load(target)
     return graph
 

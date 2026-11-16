@@ -108,8 +108,7 @@ class ConnectionMarkerTests(unittest.TestCase):
             marker_path = root / ".pbibrain" / "connection.json"
             marker_path.parent.mkdir()
             marker_path.write_text(json.dumps({"url": "http://127.0.0.1:9999", "config_path": "old", "session_id": "old"}), encoding="utf-8")
-            controller = DesktopController(static_dir=static, repository_factory=lambda path: GraphRepository(path, use_native=False),
-                                           runtime_configurer=lambda: None)
+            controller = DesktopController(static_dir=static, repository_factory=lambda path: GraphRepository(path, use_sqlite=False))
             try:
                 controller.attach_server("http://127.0.0.1:8123")
                 self.assertTrue(controller.open_project("Project", str(root))["ok"])

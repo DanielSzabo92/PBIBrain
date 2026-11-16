@@ -243,7 +243,7 @@ class SnapshotClient:
                                "Open the project in PBIBrain and scan it once, then retry.")
         self.snapshot = payload
         self.scanned_at = payload.get("scanned_at")
-        repository = GraphRepository(use_native=False)
+        repository = GraphRepository(use_sqlite=False)
         repository._load_payload(payload["graph"])
         repository.storage = "snapshot"
         repository.last_scan = self.scanned_at

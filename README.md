@@ -160,7 +160,7 @@ Each project uses a single configuration file defining local PBIP files and clou
       "access_type": "Read/Write"
     }
   ],
-  "database": "brain.lbug",
+  "database": "brain.sqlite",
   "identity_map": "identity.json"
 }
 ```
@@ -207,7 +207,7 @@ PBIBrain/
 │   ├── dax/            # ANTLR4 DAX lexer, parser, and semantic analyzer
 │   ├── devcenter/      # Merge models engine, TOM bridge, and apply workflows
 │   ├── diff/           # Model and object diff comparison algorithms
-│   ├── graph/          # Canonical ontology and LadybugDB persistence layer
+│   ├── graph/          # Canonical ontology and SQLite persistence layer
 │   ├── impact/         # Downstream dependency and usage impact analyzer
 │   ├── mcp_server.py   # Stdio Model Context Protocol (MCP) server implementation
 │   ├── scanner/        # PBIP, TMDL, PBIR, and cloud artifact ingestion
@@ -222,7 +222,7 @@ PBIBrain/
 ## Requirements
 
 Windows or Linux, Python 3.11+, and Node.js 20+ to build the UI (`npm run dev`).
-Zero-DLL SQLite engine powers the graph storage and Trail cache; historical setups used `LBUG_C_API_LIB_PATH`.
+The graph is stored in SQLite (Python's built-in `sqlite3`), so no native database runtime is needed.
 Install dependencies with:
 ```powershell
 python -m pip install -e .

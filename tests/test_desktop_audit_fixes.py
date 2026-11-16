@@ -15,7 +15,7 @@ class DesktopAuditFixes(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             project = Path(temporary)
             write_pbip_project(project, include_extra=True)
-            with GraphRepository(use_native=False) as repository:
+            with GraphRepository(use_sqlite=False) as repository:
                 for _ in range(2):
                     Scanner(repository).scan(project / "Finance.pbip")
                     nodes = {node.id: node for node in repository.all_nodes()}
@@ -25,7 +25,7 @@ class DesktopAuditFixes(unittest.TestCase):
                     self.assertNotEqual(get_overview(repository)["validation_state"], "invalid")
 
     def test_overview_preserves_actionable_validation_issues_separately(self):
-        with GraphRepository(use_native=False) as repository:
+        with GraphRepository(use_sqlite=False) as repository:
             repository.validation_result = ValidationResult([
                 ValidationIssue("invalid_containment", "ERROR", "MODEL cannot contain REPORT",
                                 object_id="report:finance", edge_id="edge:invalid")])

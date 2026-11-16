@@ -12,8 +12,6 @@ a = Analysis(
     binaries=[],
     datas=[
         (str(ROOT / "frontend" / "dist"), "frontend/dist"),
-        (str(ROOT / "runtime" / "native"), "runtime/native"),
-        (str(ROOT / "runtime" / "licenses"), "licenses"),
         (str(ROOT / "backend" / "devcenter" / "contracts"), "backend/devcenter/contracts"),
     ],
     hiddenimports=[

@@ -149,7 +149,7 @@ class FloodProvider:
 
 class ChatLimitTests(unittest.TestCase):
     def setUp(self) -> None:
-        self.app = create_app(use_native=False)
+        self.app = create_app(use_sqlite=False)
 
     def tearDown(self) -> None:
         self.app.close()
@@ -416,7 +416,7 @@ class CLIEndToEndTests(unittest.TestCase):
             program = Path(folder) / "copilot"
             program.write_text(self.FAKE, encoding="utf-8")
             program.chmod(program.stat().st_mode | stat.S_IEXEC)
-            app = create_app(use_native=False)
+            app = create_app(use_sqlite=False)
             try:
                 env = {"PATH": folder + os.pathsep + os.environ.get("PATH", ""), "OPENAI_API_KEY": "leak"}
                 with mock.patch.dict(os.environ, env):

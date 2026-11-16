@@ -101,17 +101,14 @@ class Phase1EdgeCaseTests(unittest.TestCase):
         item = next(node for node in graph.nodes if node.type == "CALCULATION_ITEM")
         self.assertEqual(item.properties.get("format_expression"), "SELECTEDMEASUREFORMATSTRING()")
 
-    def test_native_sync_errors_are_not_swallowed(self):
-        class FailingConnection:
-            def execute(self, *_args, **_kwargs):
-                raise RuntimeError("native sync failed")
-
-        repository = GraphRepository(use_native=False)
-        repository._native = (object(), FailingConnection())
-        with self.assertRaises(RuntimeError) as raised:
-            repository.upsert_node(Node(id="model:sync", type="MODEL", name="Sync"))
-        self.assertIn("native sync failed", str(raised.exception.__cause__ or raised.exception))
-
+    def test_store_write_errors_are_not_swallowed(self):
+        with GraphRepository() as repository:
+            def fail(_node):
+                raise RuntimeError("store write failed")
+            repository._store.upsert_node = fail
+            with self.assertRaises(RuntimeError) as raised:
+                repository.upsert_node(Node(id="model:sync", type="MODEL", name="Sync"))
+            self.assertIn("store write failed", str(raised.exception))
 
 if __name__ == "__main__":
     unittest.main()
