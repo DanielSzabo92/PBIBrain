@@ -24,6 +24,21 @@ export function checkText(proposal) {
   return t("agent.card.check", { breaks: check.breaks ?? 0, needs: check.needs ?? 0, blocking: check.blocking?.length ?? 0 });
 }
 
+// The change rules of an object proposal: what the change means for its dependents, worst first.
+const RULE_OBJECTS_SHOWN = 5;
+export function ruleLines(proposal) {
+  const rules = Array.isArray(proposal?.check?.rules) ? proposal.check.rules : [];
+  return [...rules]
+    .sort((a, b) => (a.level === "breaks" ? 0 : 1) - (b.level === "breaks" ? 0 : 1))
+    .map((rule) => {
+      const objects = Array.isArray(rule.objects) ? rule.objects : [];
+      const shown = objects.slice(0, RULE_OBJECTS_SHOWN).join(", ");
+      const more = objects.length > RULE_OBJECTS_SHOWN ? " " + t("agent.card.rule.more", { count: objects.length - RULE_OBJECTS_SHOWN }) : "";
+      const text = t(rule.level === "breaks" ? "agent.card.rule.breaks" : "agent.card.rule.warning", { message: rule.message });
+      return { level: rule.level === "breaks" ? "breaks" : "warning", text, objects: shown ? shown + more : "" };
+    });
+}
+
 export function statusText(status) {
   return t(`agent.status.${status}`);
 }

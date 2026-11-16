@@ -77,8 +77,8 @@ def _parser() -> argparse.ArgumentParser:
     server = commands.add_parser("serve", help="serve the local config, graph UI, and agent API")
     server.add_argument("--port", type=int, default=8000)
     server.add_argument("--ui", default=str(Path(__file__).resolve().parents[2] / "frontend" / "dist"), help="built Inspector directory")
-    agents = commands.add_parser("agent-setup", help="connect GitHub Copilot (VS Code, CLI) and Antigravity agents to this project's graph")
-    agents.add_argument("--client", choices=("all", "copilot", "antigravity"), default="all")
+    agents = commands.add_parser("agent-setup", help="connect Claude Code, GitHub Copilot (VS Code, CLI), Codex and Antigravity agents to this project's graph, behind hooks")
+    agents.add_argument("--client", choices=("all", "claude", "copilot", "codex", "antigravity"), default="all")
     agents.add_argument("--folder", default=None, help="the folder opened in the editor; default: the project folder")
     agents.add_argument("--force", action="store_true", help="replace agent and rule files edited by hand")
     mcp = commands.add_parser("mcp", help="run the optional read-only MCP adapter: the open app, else the last scan snapshot")
@@ -87,7 +87,7 @@ def _parser() -> argparse.ArgumentParser:
 
 
 def agent_setup_command(args: argparse.Namespace) -> int:
-    """Write the Copilot and Antigravity workspace files (backend/agent_setup.py); print the report."""
+    """Write the editor workspace files and hooks (backend/agent_setup.py); print the report."""
 
     from backend.agent_setup import CLIENTS, setup
 

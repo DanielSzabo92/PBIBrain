@@ -9,7 +9,7 @@ from __future__ import annotations
 from typing import Any
 from collections.abc import Mapping, Sequence
 
-from backend.devcenter.http_routes import PROPOSAL, route
+from backend.devcenter.http_routes import PROPOSAL, READ, route
 from backend.devcenter.session import proposals
 from backend.devcenter.http_routes import json_body as _json
 
@@ -17,6 +17,12 @@ from backend.devcenter.http_routes import json_body as _json
 @route("POST", "proposals", kind=PROPOSAL, contract="http/proposals.reply.json")
 def post_proposal(devcenter: Any, query: Mapping[str, Sequence[str]], body: Any) -> Mapping[str, Any]:
     return proposals.proposal_submit(devcenter, _json(body))
+
+
+@route("POST", "proposal-check", kind=READ, contract="http/proposal-check.reply.json")
+def post_proposal_check(devcenter: Any, query: Mapping[str, Sequence[str]], body: Any) -> Mapping[str, Any]:
+    # A dry run of POST proposals: the same checks, nothing saved.
+    return proposals.proposal_check(devcenter, _json(body))
 
 
 @route("POST", "questions", kind=PROPOSAL, contract="http/questions.reply.json")

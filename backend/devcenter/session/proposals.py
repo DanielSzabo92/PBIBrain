@@ -415,6 +415,7 @@ def _object_check(devcenter: Any, document: Mapping[str, Any], kind: str, target
     from backend.devcenter.plan import compiler
     from backend.devcenter.plan import service as plan_service
 
+    item = None
     if kind != "object_create":
         item = _target_object(devcenter, document, target)
         if kind == "object_rename" and item.kind not in compiler.RENAMABLE_KINDS:
@@ -438,6 +439,7 @@ def _object_check(devcenter: Any, document: Mapping[str, Any], kind: str, target
         raise DevCenterError("invalid_payload", "The proposal is not valid for the target. Fix it and submit again.",
                              {"reason": "proposal_not_valid", "blocking": blocking[:CHECK_ITEMS_MAX]})
     items = _impact_items(devcenter, draft, plan, target)
+    rules = _change_rules(devcenter, document, item, payload, items) if kind == "object_edit" and item is not None else []
     return {
         "plan_status": plan["status"],
         "blocking": blocking[:CHECK_ITEMS_MAX],
@@ -445,7 +447,21 @@ def _object_check(devcenter: Any, document: Mapping[str, Any], kind: str, target
         "needs": sum(1 for entry in items if entry["direction"] == "needs"),
         "items": items[:CHECK_ITEMS_MAX],
         "items_total": len(items),
+        "rules": rules[:CHECK_ITEMS_MAX],
     }
+
+
+def _change_rules(devcenter: Any, document: Mapping[str, Any], item: Any, payload: Mapping[str, Any],
+                  items: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]]:
+    """The advisory change rules (``change_rules``) of an edit, against the objects of the target model."""
+
+    from backend.devcenter.compare import service as compare_service
+    from backend.devcenter.session.change_rules import change_rules
+
+    model, _ = compare_service.targets(document)
+    result = compare_service.compute(devcenter, document)
+    objects = [value for (source_id, _), value in result.objects.items() if source_id == model]
+    return change_rules(item, payload.get("set") or {}, objects, items)
 
 
 def _impact_items(devcenter: Any, draft: Mapping[str, Any], plan: Mapping[str, Any], target: str) -> list[dict[str, Any]]:
@@ -469,9 +485,9 @@ def _impact_items(devcenter: Any, draft: Mapping[str, Any], plan: Mapping[str, A
 
 
 def _needs_review(kind: str, payload: Mapping[str, Any], check: Mapping[str, Any]) -> bool:
-    """A delete, a rename with Breaks, or an expression change with Breaks always needs the user's review."""
+    """A delete, a change rule that breaks, a rename with Breaks, or an expression change with Breaks needs the user's review."""
 
-    if kind == "object_delete":
+    if kind == "object_delete" or any(rule["level"] == "breaks" for rule in check.get("rules", [])):
         return True
     breaks = check["breaks"] > 0 or any(entry["kind"] in {"removed", "renamed"} for entry in check["blocking"])
     if kind == "object_rename":
@@ -554,6 +570,45 @@ def proposal_submit(devcenter: Any, body: Any) -> dict[str, Any]:
 
         saved = devcenter._change(body, "proposal_submit", target, mutate, log=log)
         return {"revision": saved["revision"], "proposal": proposal_view(saved, proposal), "replaced_ids": replaced}
+
+
+def proposal_check(devcenter: Any, body: Any) -> dict[str, Any]:
+    """``POST proposal-check``: check a proposal like ``proposal_submit`` does, and save nothing.
+
+    The reply has ``valid``; a valid object proposal also has the ``check`` that submit would store
+    (plan blocking items, Breaks/Needs impact, change rules) and ``needs_review``. An invalid one
+    has the ``refusal`` (the error that submit would give), so the agent can fix the proposal first.
+    """
+
+    if not isinstance(body, Mapping):
+        body = {}
+    with devcenter._lock:
+        document = devcenter._require_open().document
+        request = {"confidence": 1.0, "reason": "check", **dict(body), "base_revision": document["revision"]}
+        try:
+            request = _check(PROPOSAL_REQUEST, request)
+            kind, target, payload = request["kind"], request["target"], request["payload"]
+            if kind == "object_create":
+                target = created_key(payload)
+            if _marked(document, target):
+                raise DevCenterError("source_changed", "The source of this row changed. The user must confirm the row first.", {"target": target})
+            if KINDS[kind].user_choice(document, target, payload):
+                raise DevCenterError("user_choice_exists", "The user made a choice for this target. An agent proposal cannot replace it.",
+                                     {"target": target, "kind": kind})
+            if kind == "name":
+                found = _naming_breaks(devcenter, document, payload)
+                if found:
+                    raise DevCenterError("naming_rule_violation", "The name breaks a confirmed naming rule.",
+                                         {"rule_ids": [item["rule_id"] for item in found], "rules": found})
+            check = _object_check(devcenter, document, kind, target, payload) if kind in OBJECT_KINDS else None
+        except DevCenterError as exc:
+            return {"revision": document["revision"], "valid": False,
+                    "refusal": {"code": exc.code, "message": exc.message, "details": exc.details}}
+        reply: dict[str, Any] = {"revision": document["revision"], "valid": True, "kind": kind, "target": target}
+        if check is not None:
+            reply["check"] = check
+            reply["needs_review"] = _needs_review(kind, payload, check)
+        return reply
 
 
 def question_ask(devcenter: Any, body: Any) -> dict[str, Any]:

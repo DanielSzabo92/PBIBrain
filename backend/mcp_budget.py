@@ -36,6 +36,8 @@ TOOL_BUDGETS: dict[str, dict[str, int]] = {
     "brain_commonality": {"compact": 12_000, "full": 32_000},
     # Issue #17: files changed outside the app since the last scan, with Breaks and Needs.
     "brain_pending_changes": {"compact": 12_000, "full": 32_000},
+    # Static authoring notes, one topic per call.
+    "brain_guide": {"compact": 12_000, "full": 12_000},
     # The Development Center agent tools page on their own; this is only the ceiling.
     "devcenter": {"compact": 24_000, "full": 24_000},
 }

@@ -42,6 +42,10 @@ thead .dc-agent-col-actions { z-index: 2; background: var(--surface-3); }
 .dc-question-rec { display: inline-flex; padding: 1px 6px; border: 1px solid var(--control-border); border-radius: 999px; font-size: var(--fs-meta); color: var(--text); }
 .dc-proposal-label { color: var(--text-2); }
 .dc-proposal-line { margin: 0; color: var(--text); }
+.dc-proposal-rules { display: flex; flex-direction: column; gap: 2px; margin: 0; padding: 0; list-style: none; }
+.dc-proposal-rules li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px; }
+.dc-proposal-rules li[data-level="breaks"] svg { width: 14px; height: 14px; flex: none; align-self: center; color: var(--warn, currentColor); }
+.dc-proposal-rule-objects { color: var(--text-2); font-size: var(--fs-meta); }
 
 .dc-accept-files { margin: 0 0 var(--space-2); color: var(--text-2); font-size: var(--fs-body); }
 .dc-accept-h3 { margin: var(--space-2) 0 var(--space-1); font-size: var(--fs-body); font-weight: 600; }

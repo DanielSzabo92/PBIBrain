@@ -121,6 +121,7 @@ class ToolContractTests(AgentToolsTestCase):
             "impact_get": self.tools.impact_get(limit=5),
             "naming_rules_get": self.tools.naming_rules_get(),
             "name_propose": self.tools.name_propose(name="Margin", object_type="measure", table="Sales", source_id="src-2"),
+            "proposal_check": self.tools.proposal_check(kind="merge_choice", target=AVERAGE, payload=TAKE_B),
             "proposal_submit": self.propose(),
             "question_ask": self.tools.question_ask(
                 target=AVERAGE, text="Add Average Sale from SalesB?", recommended_option="yes", reason="The target has no such measure.",
@@ -180,12 +181,12 @@ class AllowlistTests(AgentToolsTestCase):
                 client.devcenter(method, path, None, {})
 
     @unittest.skipUnless(importlib.util.find_spec("mcp"), "optional MCP SDK is not installed")
-    def test_the_server_registers_the_eight_tools(self):
+    def test_the_server_registers_the_nine_tools(self):
         from backend.mcp_server import create_server
 
         names = {tool.name for tool in create_server("http://127.0.0.1:8766")._tool_manager.list_tools()}
         self.assertLessEqual(set(TOOL_ROUTES), names)
-        self.assertEqual(8, len(names - {name for name in names if name.startswith("brain_")}))
+        self.assertEqual(9, len(names - {name for name in names if name.startswith("brain_")}))
 
 
 class SubmitTests(AgentToolsTestCase):

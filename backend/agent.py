@@ -8,6 +8,11 @@ import sys
 from pathlib import Path
 from urllib.parse import quote
 
+if __name__ == "__main__" and "agent-hook" in sys.argv[1:]:
+    # The editor hook runs before every agent tool call: answer before the heavy imports below.
+    from backend.agent_hook import main as _hook_main
+    raise SystemExit(_hook_main(sys.argv[sys.argv.index("agent-hook") + 1:]))
+
 from backend.cli.main import _parser, _write_stdout_utf8
 from backend.mcp_server import BrainClient, live_client  # noqa: F401 - live_client is part of this module's API
 

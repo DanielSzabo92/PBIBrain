@@ -1,6 +1,7 @@
 """The grounding rules every PBIBrain agent follows: the in-app chat, MCP clients, and the
-workspace agents for GitHub Copilot (VS Code, Copilot CLI) and Antigravity that
-``brain agent-setup`` writes.
+workspace agents for Claude Code, GitHub Copilot (VS Code, Copilot CLI), Codex and Antigravity
+that ``brain agent-setup`` writes. In the editors, hooks enforce the boundary these rules
+describe (``backend/agent_hook.py``); the rules make the agent take the shortest path inside it.
 
 PBIBrain has already parsed the project into a graph of exact objects and edges. An agent that
 answers from that graph is fast and cannot invent a dependency; an agent that greps TMDL or
@@ -18,7 +19,24 @@ TOOL_PLAYBOOK = (
     "- The formula, properties or evidence of one object: brain_object with its exact ID.\n"
     "- The effect of a proposed change: brain_impact. A neighbourhood picture: brain_graph.\n"
     "- Same or different logic across models: brain_commonality. Files edited since the scan: brain_pending_changes.\n"
-    "- Counts and the list of models and reports: brain_overview."
+    "- Counts and the list of models and reports: brain_overview.\n"
+    "- DAX, M (Power Query), function or calculation group syntax, best practices, and what a kind of change breaks: "
+    "brain_guide with the topic."
+)
+
+# How a change to the model is made. Every step is a PBIBrain tool; nothing touches project files.
+WORKFLOW_RULES = (
+    "How to change the model (measures, calculated columns and tables, functions, M queries, calculation items, "
+    "descriptions, formats, folders, names, merge choices): you prepare, the user decides.\n"
+    "1. session_get: an open Merge models session in PBIBrain is where proposals live. If none is open, tell the user "
+    "to open or create one for the target model; do not look for another way.\n"
+    "2. Read what you change and what depends on it: brain_dependencies (downstream, depth 2), compare_rows_list for "
+    "the row key. If the syntax or a rule is unclear, brain_guide.\n"
+    "3. proposal_check with the exact proposal: it compiles it against the plan and returns the DAX or M errors, missing "
+    "names and the impact (Breaks: dependents, visuals, result type and function signature changes). Fix and check "
+    "again until it is clean, or until the remaining Breaks are what the user asked for.\n"
+    "4. proposal_submit the same proposal, with the reason naming the Breaks you accept. Then tell the user what you "
+    "proposed and what it affects. Never say a change was made or applied: the user accepts and applies it in PBIBrain."
 )
 
 GROUNDING_RULES = (

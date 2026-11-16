@@ -1,0 +1,122 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pbibrain.local/devcenter/contracts/http/proposal-check.reply.json",
+  "title": "POST /api/devcenter/proposal-check: reply (a dry run of POST proposals; nothing is saved)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "revision",
+    "valid"
+  ],
+  "properties": {
+    "revision": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "valid": {
+      "type": "boolean"
+    },
+    "kind": {
+      "type": "string"
+    },
+    "target": {
+      "type": "string"
+    },
+    "check": {
+      "type": "object",
+      "properties": {
+        "plan_status": {
+          "type": "string"
+        },
+        "blocking": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "breaks": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "needs": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "items_total": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "rules": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "rule",
+              "level",
+              "message",
+              "objects"
+            ],
+            "properties": {
+              "rule": {
+                "type": "string"
+              },
+              "level": {
+                "enum": [
+                  "breaks",
+                  "warning"
+                ]
+              },
+              "message": {
+                "type": "string"
+              },
+              "objects": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "required": [
+        "plan_status",
+        "blocking",
+        "breaks",
+        "needs",
+        "items",
+        "items_total"
+      ],
+      "additionalProperties": false
+    },
+    "needs_review": {
+      "type": "boolean"
+    },
+    "refusal": {
+      "type": "object",
+      "required": [
+        "code",
+        "message",
+        "details"
+      ],
+      "properties": {
+        "code": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        },
+        "details": {
+          "type": "object"
+        }
+      }
+    }
+  }
+}

@@ -213,7 +213,7 @@ class AgentSetupTests(unittest.TestCase):
     def test_running_again_updates_in_place(self):
         setup(self.config)
         again = {item["path"]: item["result"] for item in setup(self.config)["files"]}
-        self.assertEqual("updated", again[".vscode/mcp.json"])
+        self.assertEqual("unchanged", again[".vscode/mcp.json"])
         self.assertEqual("unchanged", again[".agents/rules/pbibrain.md"])
 
     def test_the_command_line(self):
@@ -223,7 +223,7 @@ class AgentSetupTests(unittest.TestCase):
         with redirect_stdout(out):
             code = main(["--project", str(self.root), "agent-setup", "--client", "antigravity"])
         self.assertEqual(0, code)
-        self.assertEqual({".agents/mcp_config.json", ".agents/rules/pbibrain.md"},
+        self.assertEqual({".pbibrain/agent-context.md", ".agents/mcp_config.json", ".agents/hooks.json", ".agents/rules/pbibrain.md"},
                          {item["path"] for item in json.loads(out.getvalue())["files"]})
 
 

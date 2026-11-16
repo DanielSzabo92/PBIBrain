@@ -101,7 +101,8 @@ ADR 0003), through the change guard, and Undo works as for any plan.
 
 | `kind` | `target` | `payload` |
 | --- | --- | --- |
-| `object_edit` | compare row key, e.g. `measure:Sales/Margin` | `{"set": {"expression": "...", "format_string": "0.0%", "description": "...", "display_folder": "KPI", "is_hidden": true}}` (columns also `data_category`, `summarize_by`, `is_key`; tables `description`, `is_hidden`, `data_category`; `expression` only on measures and calculated columns; `null` clears a text) |
+| `object_edit` | compare row key, e.g. `measure:Sales/Margin` | `{"set": {"expression": "...", "format_string": "0.0%", "description": "...", "display_folder": "KPI", "is_hidden": true}}` (columns also `data_category`, `summarize_by`, `is_key`; tables `description`, `is_hidden`, `data_category`; `expression` on measures and calculated columns; `null` clears a text) |
+| `object_edit` | `function:AddTax`, `calculation_item:Time Intelligence/YTD`, `expression:<query>`, `partition:Sales/Sales` | `{"set": {"expression": "..."}}`: a function's `(param : TYPE, ...) => body`, a calculation item's DAX, or the M of a shared query or a table partition (written as given; PBIBrain does not run M) |
 | `object_rename` | compare row key | `{"new_name": "Gross Margin"}` (DAX and report references are rewritten) |
 | `object_delete` | compare row key | `{}` |
 | `object_create` | ignored (use `"new"`); the reply gives `new:<type>:<table>/<name>` | `{"object_type": "measure" or "column", "table": "Sales", "name": "Margin %", "properties": {"expression": "DIVIDE([Margin], [Total Sales])", "format_string": "0.0%"}}` (a column is a calculated column) |
@@ -112,10 +113,30 @@ or a property the object cannot take is refused with `invalid_payload`, `details
 "proposal_not_valid"` and the plan `blocking` items: fix the proposal and submit again. A
 valid proposal comes back with `check`: `plan_status`, the plan `blocking` items of the target
 (for example `removed` when a delete leaves users), `breaks` and `needs` counts and the impact
-`items` (`direction`, `severity`, `certainty`, `blocking`, `object`).
+`items` (`direction`, `severity`, `certainty`, `blocking`, `object`), and the change `rules`.
 
-`needs_review` is true for a delete, a rename with Breaks and an expression change with
-Breaks, whatever the confidence: "Accept all" skips them and the user accepts each one alone.
+The change rules (`backend/devcenter/session/change_rules.py`) say what the impact list does
+not: what the change means for each dependent. Each is `{rule, level, message, objects}`:
+
+| rule | level | when |
+| --- | --- | --- |
+| `result_type_change` | breaks | a measure or calculated column now returns another kind of value (number, text, true/false, date, mixed); lists the visuals and measures that use it |
+| `format_string_ignored` | warning | a measure now returns text but keeps a number format |
+| `function_signature` | breaks / warning | a function's parameter count changed (lists callers with the old count) or a parameter type changed |
+| `function_result_type` | breaks | a function now returns another kind of value; lists its callers |
+| `source_column_dropped` | breaks | a partition query no longer names a source column a model column reads |
+| `query_dependents` | warning | a shared M query changed; lists the queries and tables that use it |
+| `calc_item_without_measure` | warning | a calculation item does not use `SELECTEDMEASURE()` |
+
+A clearly broken M text (open bracket or text, `let` without `in`) is refused like a DAX error
+(`m_unbalanced_brackets`, `m_unclosed_text`, `m_let_without_in`). `proposal_check` takes the
+same `kind`, `target` and `payload` and runs every check without saving: `{valid, check,
+needs_review}` or `{valid: false, refusal}`. `brain_guide(topic)` gives the agent the syntax,
+best practice and break rules of measures, columns, functions, M queries, calculation groups
+and renames before it writes the change.
+
+`needs_review` is true for a delete, a change rule at level breaks, a rename with Breaks and
+an expression change with Breaks, whatever the confidence: "Accept all" skips them and the user accepts each one alone.
 A delete of a used object stays blocked in the plan until the user chooses a Removal Policy
 (cascade or repoint); the agent can propose one with `removal_policy`.
 
@@ -188,24 +209,53 @@ capitalised) and puts them, with their direct dependencies, in a `<graph>` block
 question such as "what does Sales per Customer depend on?" is then answered with no tool call.
 An answer has at most 5 rounds and 15 tool calls.
 
-## Copilot and Antigravity agents in your editor
+## Agents in your editor: Claude Code, Copilot, Codex, Antigravity
 
-`brain agent-setup` (or `PBIBrain-Agent.exe --project <folder> agent-setup`) writes the files that
-connect GitHub Copilot and Antigravity to the project's graph, in the project folder you open in
-the editor. `--client copilot|antigravity` limits it to one; `--folder` picks another folder.
+`brain agent-setup` (or `PBIBrain-Agent.exe --project <folder> agent-setup`) connects the editor
+agents to the project's graph **behind a hook boundary**, in the project folder you open in the
+editor. `--client claude|copilot|codex|antigravity` limits it to one; `--folder` picks another
+folder.
 
 | File | Used by | Content |
 | --- | --- | --- |
+| `.mcp.json` | Claude Code, Copilot CLI | the `pbibrain` MCP server |
+| `.claude/settings.json` | Claude Code (Copilot CLI reads it too) | the server enabled, its tools pre-approved (`mcp__pbibrain`), the hooks |
 | `.vscode/mcp.json` | VS Code | the `pbibrain` MCP server |
-| `.mcp.json` | Copilot CLI and the Copilot harness | the same server |
-| `.github/agents/pbibrain.agent.md` | VS Code and Copilot CLI | the **PBIBrain** custom agent, `tools: ['pbibrain/*']`: it has no file, search, terminal or web tool, so it answers from the graph only |
+| `.github/hooks/pbibrain.json` | VS Code, Copilot CLI, Copilot cloud agent | the hooks |
+| `.github/agents/pbibrain.agent.md` | VS Code, Copilot CLI | the **PBIBrain** custom agent, `tools: ['pbibrain/*']` |
+| `.codex/config.toml` | Codex CLI, IDE, app | the server with `default_tools_approval_mode = "approve"`, `web_search = "disabled"` (Codex web search cannot be hooked) |
+| `.codex/hooks.json` | Codex | the hooks |
 | `.agents/mcp_config.json` | Antigravity app, IDE and CLI | the `pbibrain` MCP server |
+| `.agents/hooks.json` | Antigravity | the hooks |
 | `.agents/rules/pbibrain.md` | Antigravity | an always-on rule with the grounding rules |
+| `.pbibrain/agent-context.md` | all | the rules the session-start hook adds to every new session |
 
-JSON files are merged (other servers stay). Agent and rule files are rewritten only while they
-still carry the PBIBrain marker line; `--force` replaces a hand-edited one. In VS Code, trust the
-folder, start `pbibrain` (MCP: List Servers) and pick the PBIBrain agent in Chat. With the
-Copilot CLI, run `copilot --agent pbibrain` in the folder.
+**The boundary is enforced by the editor, not by the model.** Before every tool call the editor
+runs `backend/agent_hook.py` (in the installed app: `PBIBrain-Agent.exe agent-hook`) and obeys it:
+
+| Tool | Decision |
+| --- | --- |
+| a `pbibrain` tool (reads, `brain_guide`, `proposal_check`, `proposal_submit`, ...) | approved without a prompt (Antigravity: `auto_approve`, Claude Code: `allow`, Copilot: `allow`, Codex: server approval in its config) |
+| a to-do list, a question to the user, loading tool schemas | allowed |
+| reading, searching or editing files, terminal, web, subagents, any other MCP server | **denied**, with a reason that names the PBIBrain tool to use instead |
+
+A hook error denies the call. At session start the same hook adds the grounding and change rules
+to the agent's context. Every decision is appended to `.pbibrain/agent-hook.log`. To work on
+something else in the folder for a while, write `{"mode": "off"}` to
+`.pbibrain/agent-policy.json` (an agent cannot: it cannot write files) and delete it afterwards.
+
+Inside the boundary nothing is held back: an agent can read the whole graph, check and propose
+merge choices, measure, column, table, function, M query and calculation item edits, renames,
+deletes and new objects, removal policies, names and questions. All of them land in the open
+Merge models session as proposals; you accept, apply or reject them in PBIBrain.
+
+JSON files are merged (other servers and hooks stay). `.codex/config.toml` keeps PBIBrain's lines
+between marker comments. Agent and rule files are rewritten only while they still carry the
+PBIBrain marker line; `--force` replaces a hand-edited one. First use: Claude Code asks once to
+approve the project settings; in VS Code trust the folder and start `pbibrain` (MCP: List
+Servers); Codex needs the project trusted and the hooks trusted once in `/hooks` (it skips hooks it
+has not trusted); Antigravity loads the workspace files when the folder opens. The hooks need
+timeouts not to expire: a hook that times out counts as "no decision" in every editor.
 
 ## In-app chat with a subscription
 
