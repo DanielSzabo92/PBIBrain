@@ -261,8 +261,53 @@ class CLIProviderTests(unittest.TestCase):
         return list(provider.stream(system="S", messages=[{"role": "user", "content": [{"type": "text", "text": text}]}],
                                     tools=[], should_stop=lambda: False))
 
-    def test_only_copilot_and_antigravity_are_offered(self):
-        self.assertEqual({"copilot", "antigravity"}, set(PRESETS))
+    def test_the_four_subscriptions_are_offered(self):
+        self.assertEqual({"claude_code", "copilot", "codex", "antigravity"}, set(PRESETS))
+
+    def test_claude_runs_with_no_tool_and_no_mcp_server(self):
+        runner = RecordingRunner(b'{"type":"result","subtype":"success","is_error":false,"result":"Answer."}\n')
+        with mock.patch.dict(os.environ, {"ANTHROPIC_API_KEY": "sk-ant", "CLAUDE_CODE_OAUTH_TOKEN": "plan"}):
+            events = self.stream(SubscriptionCLIProvider(preset="claude_code", model="opus", runner=runner))
+        call = runner.calls[0]
+        args = call["command"]
+        self.assertEqual("", args[args.index("--tools") + 1])
+        self.assertIn("Bash", args[args.index("--disallowedTools") + 1])
+        for flag in ("-p", "--strict-mcp-config", "--disable-slash-commands", "--no-session-persistence"):
+            self.assertIn(flag, args)
+        self.assertEqual("1", args[args.index("--max-turns") + 1])
+        self.assertEqual(["mcp.json"], call["listing"], "only an empty MCP config is in the work folder")
+        self.assertNotIn("ANTHROPIC_API_KEY", call["env"], "the plan is used, never an API key")
+        self.assertEqual("plan", call["env"]["CLAUDE_CODE_OAUTH_TOKEN"])
+        self.assertIn(b"question\nwith\nlines", call["input"])
+        self.assertEqual("Answer.", events[-1]["content"][0]["text"])
+
+    def test_a_claude_error_is_reported(self):
+        from backend.chat.providers import ProviderError
+
+        runner = RecordingRunner(b'{"type":"result","is_error":true,"result":"Not logged in"}\n', code=1)
+        with self.assertRaises(ProviderError) as caught:
+            self.stream(SubscriptionCLIProvider(preset="claude_code", runner=runner))
+        self.assertIn("Not logged in", str(caught.exception))
+
+    def test_codex_runs_read_only_without_its_command_tool(self):
+        runner = RecordingRunner(b"Answer.\n")
+        with mock.patch.dict(os.environ, {"OPENAI_API_KEY": "sk-openai", "CODEX_HOME": "/home/u/.codex"}):
+            events = self.stream(SubscriptionCLIProvider(preset="codex", model="gpt-6.1-sol", runner=runner))
+        call = runner.calls[0]
+        args = call["command"]
+        self.assertEqual(["/usr/bin/codex", "exec"], args[:2])
+        self.assertEqual("read-only", args[args.index("--sandbox") + 1])
+        self.assertEqual("shell_tool", args[args.index("--disable") + 1])
+        self.assertIn('web_search="disabled"', args)
+        for flag in ("--ignore-user-config", "--ignore-rules", "--ephemeral", "--skip-git-repo-check"):
+            self.assertIn(flag, args)
+        self.assertEqual("-", args[-1], "the prompt is read from stdin")
+        self.assertNotIn("--yolo", args)
+        self.assertEqual("gpt-6.1-sol", args[args.index("--model") + 1])
+        self.assertNotIn("OPENAI_API_KEY", call["env"])
+        self.assertEqual("/home/u/.codex", call["env"]["CODEX_HOME"])
+        self.assertEqual([], call["listing"])
+        self.assertEqual("Answer.", events[-1]["content"][0]["text"])
 
     def test_copilot_runs_without_any_of_its_tools_in_an_empty_folder(self):
         runner = RecordingRunner(b"Answer.")
@@ -292,7 +337,7 @@ class CLIProviderTests(unittest.TestCase):
         agy = RecordingRunner(stream)
         events = self.stream(SubscriptionCLIProvider(preset="antigravity", runner=agy))
         args = agy.calls[0]["command"]
-        self.assertEqual("plan", args[args.index("--mode") + 1])
+        self.assertNotIn("--mode", args, "plan mode waits for a plan review instead of answering")
         for flag in ("--sandbox", "--disable-slash-commands"):
             self.assertIn(flag, args)
         self.assertEqual("stream-json", args[args.index("--input-format") + 1])
@@ -334,12 +379,13 @@ class CLISettingsTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.settings.save({"provider": "antigravity", "command": "/usr/bin/python3"})
         with self.assertRaises(ValueError):
-            self.settings.save({"provider": "claude_code"})
+            self.settings.save({"provider": "gemini_cli"})
         saved = self.settings.save({"provider": "antigravity", "enabled": True})
         self.assertEqual("", saved["base_url"])
         self.assertIsNone(self.settings.api_key())
         kinds = {item["id"]: item["kind"] for item in saved["providers"]}
-        self.assertEqual({"anthropic": "api", "openai": "api", "local": "api", "copilot": "cli", "antigravity": "cli"}, kinds)
+        self.assertEqual({"anthropic": "api", "openai": "api", "local": "api", "claude_code": "cli", "copilot": "cli", "codex": "cli",
+                          "antigravity": "cli"}, kinds)
 
     def test_ready_needs_the_program_but_no_model(self):
         self.settings.save({"provider": "copilot", "enabled": True})

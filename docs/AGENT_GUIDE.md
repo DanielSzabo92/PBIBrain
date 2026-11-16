@@ -209,18 +209,22 @@ Copilot CLI, run `copilot --agent pbibrain` in the folder.
 
 ## In-app chat with a subscription
 
-Settings, AI provider offers, besides an API key or a local endpoint, two subscriptions that need
-no API key. PBIBrain starts the vendor's own signed-in command-line program:
+Settings, AI provider offers, besides an API key or a local endpoint, four subscriptions that
+need no API key. PBIBrain starts the vendor's own signed-in command-line program:
 
 | Provider | Program | Sign in once |
 | --- | --- | --- |
+| Claude subscription (Pro, Max) | `claude` (Claude Code CLI) | run `claude` and log in with your Claude plan |
 | GitHub Copilot subscription (the one VS Code uses) | `copilot` (GitHub Copilot CLI) | run `copilot` and log in with the GitHub account of your Copilot plan |
+| ChatGPT subscription | `codex` (Codex CLI) | run `codex` and sign in with ChatGPT |
 | Google Antigravity subscription | `agy` (Antigravity CLI) | run `agy` and log in with your Google account |
 
 Leave Program empty to find it on PATH, or give its full path. Leave Model empty for the plan's
-default. The CLI's own tools are turned off (Copilot: every tool kind denied; Antigravity: plan
-mode, terminal sandbox, and headless soft-denial of anything that needs approval); it only
-answers, and the chat runs the PBIBrain tools for it under the usual limits (see
+default. The CLI's own tools are turned off (Claude: `--tools ""` and no MCP server; Copilot:
+every tool kind denied; Codex: read-only sandbox, no command tool, no web search; Antigravity:
+terminal sandbox, and headless soft-denial of anything that needs approval); it only answers, and
+the chat runs the PBIBrain tools for it under the usual limits. No CLI ever runs a PBIBrain tool
+itself, so no approval prompt can appear during a chat answer (see
 `docs/SECURITY_BOUNDARIES.md`, Agent guardrails). Test connection sends a short multi-line prompt.
 The vendors' headless flags can change between versions; when a test fails after a CLI update,
 update PBIBrain too.
