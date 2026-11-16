@@ -165,6 +165,18 @@ Each project uses a single configuration file defining local PBIP files and clou
 }
 ```
 
+Relative paths resolve from the folder that holds `brain.json`. The desktop app creates the file in `<project>\.pbibrain\` and keeps everything it writes there:
+
+| File | Contents |
+| :--- | :--- |
+| `brain.sqlite` (+ `-wal`, `-shm`) | The graph: one SQLite database, written in a single transaction per scan. |
+| `identity-map.json` | Stable object IDs, so IDs survive renames and rescans. |
+| `overrides.json` | Your review decisions and edits, kept apart from scanned facts. |
+| `agent-snapshot.json` | Compact copy of the graph that MCP reads while the app is closed. |
+| `INDEX.md`, `.graph/`, `.cache/` | Trail cards exported from the graph for coding agents. |
+
+Projects created before the switch to SQLite have `"database": "brain.lbug"`. That file is no longer read: change the value to `brain.sqlite` and rescan, or delete `.pbibrain` and open the folder again.
+
 Scan all configured sources into the graph:
 ```powershell
 brain --config C:\Reports\brain.json project-scan
@@ -222,7 +234,9 @@ PBIBrain/
 ## Requirements
 
 Windows or Linux, Python 3.11+, and Node.js 20+ to build the UI (`npm run dev`).
-The graph is stored in SQLite (Python's built-in `sqlite3`), so no native database runtime is needed.
+The graph is stored in SQLite through Python's built-in `sqlite3`: there is no database server, DLL or environment variable to set up.
+The Development Center's model verification also needs the .NET 8 SDK to build the TOM bridge
+(`dotnet build -c Release backend/adapters/tabular_metadata/dotnet/TabularMetadata.csproj`).
 Install dependencies with:
 ```powershell
 python -m pip install -e .
