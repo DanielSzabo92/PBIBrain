@@ -34,13 +34,14 @@ from backend.pdf_writer import BOTTOM, CONTENT_WIDTH, MARGIN, TOP, DiagramBox, D
 
 SECTIONS: dict[str, str] = {
     "overview": "Overview and scope",
-    "models": "Model diagram, relationships and tables",
+    "models": "Relationships and tables",
     "measures": "Measure catalogue with DAX",
     "reports": "Report pages and visual fields",
     "lineage": "Lineage summary",
     "not_checked": "Not checked and unresolved",
 }
-FORMATS = ("pdf", "markdown")
+# "document" is the content model as JSON: the workbench draws the PDF from it with pdfcn (Takumi).
+FORMATS = ("pdf", "markdown", "document")
 _REPORT_FILTERS = {"VISUAL_FILTER", "PAGE_FILTER", "REPORT_FILTER"}
 
 
@@ -278,7 +279,7 @@ def build_document(
                              "Could not be read" if _props(model).get("check_status") == "not_checked" else "Read",
                              _source_path(model) or ""))
             add(Block("table", headers=("Model", "Tables", "Measures", "Relationships", "Status", "Location"),
-                      widths=(2, 0.7, 0.8, 1, 0.9, 3), rows=rows))
+                      widths=(2, 0.7, 0.9, 1.3, 0.9, 2.8), rows=rows))
         if reports:
             add(Block("heading", "Reports", 2))
             rows = []
@@ -303,19 +304,6 @@ def build_document(
             add(Block("paragraph", f"Description (from source): {model.description}"))
         add(Block("note", f"{_count(len(tables), 'table')} · {_count(len(measures), 'measure')} · {_count(len(relationships), 'relationship')}"))
         if "models" in chosen_sections:
-            add(Block("heading", "Model diagram", 2))
-            if tables:
-                diagram, unrelated = _model_diagram(tables, relationships, nodes, children)
-                if diagram.boxes:
-                    add(diagram)
-                    add(Block("note", "Each box is a table with its storage mode and the key columns of its relationships. "
-                              "Tables on the many side of relationships (fact tables) are in the middle row, the tables they "
-                              "look up (dimensions) around them. Lines show cardinality (many *, one 1) and filter direction; "
-                              "dashed lines are inactive relationships. Blue: Import, orange: DirectQuery, purple: Dual, green: Direct Lake."))
-                if unrelated:
-                    add(Block("paragraph", "Tables without relationships: " + ", ".join(table.name or table.id for table in unrelated) + "."))
-            else:
-                add(Block("paragraph", "No tables recorded."))
             add(Block("heading", "Relationships", 2))
             if relationships:
                 add(Block("table", headers=("From (many side)", "To (one side)", "Cardinality", "Cross-filter direction", "Active"),
@@ -508,10 +496,6 @@ def _query_label(node: Node, nodes: Mapping[str, Node]) -> str:
     return node.name or node.id
 
 
-_MODE_KIND = {"Import": "fact", "DirectQuery": "directquery", "Dual": "dual", "Direct Lake": "source"}
-_ROW_LIMIT = 6
-
-
 def _cross_filter(value: Any) -> str:
     text = re.sub(r"[^a-z]", "", str(value or "").casefold())
     if text in {"bothdirections", "both"}:
@@ -539,110 +523,6 @@ def _visual_type(value: Any) -> str:
 def _type_label(value: Any) -> str:
     return {"SHARED_EXPRESSION": "Shared query", "PARTITION": "Table partition", "MODEL": "Semantic model",
             "DATA_SOURCE": "Data source"}.get(str(value), str(value or "").replace("_", " ").capitalize())
-
-
-def _model_diagram(tables: list[Node], relationships: list[Node], nodes: Mapping[str, Node],
-                   children: Mapping[str, list[Node]]) -> tuple[Block, list[Node]]:
-    """A star layout: fact tables (the many side) in the middle row, the tables they look up above and below.
-
-    Gives the diagram and the tables that have no relationship (listed under it, not drawn).
-    """
-
-    def column_of(column_id: Any) -> Node | None:
-        return nodes.get(str(column_id or ""))
-
-    def table_of(column: Node | None) -> str | None:
-        return str(_props(column).get("table_id")) if column is not None and _props(column).get("table_id") else None
-
-    by_id = {table.id: table for table in tables}
-    links: list[DiagramLink] = []
-    neighbours: dict[str, set[str]] = defaultdict(set)
-    many: Counter[str] = Counter()
-    one: Counter[str] = Counter()
-    keys: dict[str, set[str]] = defaultdict(set)
-    for rel in relationships:
-        from_column, to_column = column_of(_props(rel).get("from_column_id")), column_of(_props(rel).get("to_column_id"))
-        source, target = table_of(from_column), table_of(to_column)
-        if not (source in by_id and target in by_id) or source == target:
-            continue
-        cardinality = _cardinality(_props(rel).get("cardinality")) or "*:1"
-        if cardinality == "1:*":
-            source, target, from_column, to_column = target, source, to_column, from_column
-            cardinality = "*:1"
-        many[source] += 1
-        one[target] += 1
-        neighbours[source].add(target)
-        neighbours[target].add(source)
-        keys[source].add(from_column.name)
-        keys[target].add(to_column.name)
-        label = cardinality + (" (both)" if _cross_filter(_props(rel).get("cross_filter_direction")) == "Both" else "")
-        links.append(DiagramLink(source, target, label, dashed=str(_props(rel).get("active", "true")).casefold() == "false"))
-    related = [table for table in tables if table.id in neighbours]
-    unrelated = [table for table in tables if table.id not in neighbours]
-    if not related:
-        return Block("diagram", "Model diagram"), unrelated
-
-    facts = [table for table in related if many[table.id] > one[table.id]]
-    if not facts:
-        facts = [max(related, key=lambda table: (len(neighbours[table.id]), (table.name or "").casefold()))]
-    level = {table.id: 0 for table in facts}
-    frontier = [table.id for table in facts]
-    while frontier:
-        following = []
-        for table_id in sorted(frontier):
-            for other in sorted(neighbours[table_id]):
-                if other not in level:
-                    level[other] = level[table_id] + 1
-                    following.append(other)
-        frontier = following
-    # Rows from the top: ... level 2 above, level 1 above, facts, level 1 below, level 2 below ...
-    rows: dict[int, list[Node]] = defaultdict(list)
-    rows[0] = sorted(facts, key=lambda table: (-len(neighbours[table.id]), (table.name or "").casefold(), table.id))
-    side: dict[str, int] = {}
-    outer = sorted((table for table in related if level.get(table.id, 0) > 0),
-                   key=lambda table: (level[table.id], -len(neighbours[table.id]), (table.name or "").casefold(), table.id))
-    counts = Counter()
-    for table in outer:
-        parents = [side[item] for item in neighbours[table.id] if item in side]
-        sign = parents[0] if parents else (-1 if counts[-level[table.id]] <= counts[level[table.id]] else 1)
-        side[table.id] = sign
-        rows[sign * level[table.id]].append(table)
-        counts[sign * level[table.id]] += 1
-    # Long rows wrap outward, so the diagram stays readable at page width.
-    stacked: list[list[Node]] = []
-    for key in sorted(rows):
-        items = rows[key]
-        chunks = [items[index:index + _ROW_LIMIT] for index in range(0, len(items), _ROW_LIMIT)] or [[]]
-        stacked.extend(reversed(chunks) if key < 0 else chunks)
-    w, gap_x, gap_y = 150.0, 34.0, 48.0
-    position: dict[str, float] = {}
-    boxes = []
-    y = 0.0
-    widest = max(len(row) for row in stacked) * (w + gap_x)
-    for row in stacked:
-        # Order each row by where its neighbours already are, to keep lines short and uncrossed.
-        row = sorted(row, key=lambda table: (
-            sum(position[item] for item in neighbours[table.id] if item in position) / max(1, sum(1 for item in neighbours[table.id] if item in position))
-            if any(item in position for item in neighbours[table.id]) else 1e9,
-            (table.name or "").casefold(), table.id))
-        start = (widest - len(row) * (w + gap_x)) / 2
-        height = 0.0
-        for index, table in enumerate(row):
-            mode = _storage_mode(table, children.get(table.id, []))
-            hidden = str(_props(table).get("hidden", "")).casefold() == "true"
-            lines = [f"{table.name or table.id}{' (hidden)' if hidden else ''}", mode]
-            listed = sorted(keys[table.id], key=str.casefold)
-            lines.extend(f"Key: {name}" for name in listed[:3])
-            if len(listed) > 3:
-                lines.append(f"+{len(listed) - 3} more keys")
-            h = 14.0 + 10.5 * len(lines)
-            x = start + index * (w + gap_x)
-            position[table.id] = x
-            boxes.append(DiagramBox(table.id, tuple(lines), x, y, w, h, "muted" if hidden else _MODE_KIND.get(mode, "fact")))
-            height = max(height, h)
-        y += height + gap_y
-    return (Block("diagram", "Model diagram", boxes=tuple(boxes),
-                  links=tuple(sorted(links, key=lambda item: (item.source, item.target, item.label)))), unrelated)
 
 
 def _lineage_diagram(sources: list[Node], models: list[Node], reports: list[Node], reads: Mapping[str, list[str]],
@@ -797,16 +677,44 @@ def _draw_toc(pdf: PdfDocument, document: Document, marks: list, toc_pages: int)
         raise RuntimeError("Table of contents page count changed during layout")
 
 
+def document_payload(document: Document) -> dict[str, Any]:
+    """The content model as JSON for the workbench's PDF renderer (pdfcn on Takumi)."""
+
+    def block(item: Block) -> dict[str, Any]:
+        value: dict[str, Any] = {"kind": item.kind, "text": item.text}
+        if item.kind == "heading":
+            value["level"] = item.level
+        if item.kind == "table":
+            value["headers"] = list(item.headers)
+            value["rows"] = [["" if cell is None else str(cell) for cell in row] for row in item.rows]
+            value["widths"] = list(item.widths) if item.widths else None
+        if item.kind == "code":
+            value["language"] = item.language
+        if item.kind == "diagram":
+            value["boxes"] = [{"key": box.key, "lines": list(box.lines), "kind": box.kind} for box in item.boxes]
+            value["links"] = [{"source": link.source, "target": link.target, "label": link.label} for link in item.links]
+        return value
+
+    return {"title": document.title, "project": document.project, "generated_at": document.generated_at,
+            "blocks": [block(item) for item in document.blocks]}
+
+
 def export_documentation(repository: GraphRepository, *, fmt: str, project_name: str = "PBIBrain",
                          model_ids: Sequence[str] | None = None, report_ids: Sequence[str] | None = None,
                          sections: Sequence[str] | None = None, generated_at: str | None = None, store: Any = None) -> dict[str, Any]:
     """Build and render one export. Returns bytes plus a file name and media type."""
 
     if fmt not in FORMATS:
-        raise DocumentationScopeError(f"Unknown documentation format: {fmt}. Use pdf or markdown.")
+        raise DocumentationScopeError(f"Unknown documentation format: {fmt}. Use pdf, markdown or document.")
     document = build_document(repository, project_name=project_name, model_ids=model_ids, report_ids=report_ids,
                               sections=sections, generated_at=generated_at, store=store)
     slug = re.sub(r"[^A-Za-z0-9]+", "-", project_name).strip("-").lower() or "pbibrain"
+    if fmt == "document":
+        import json
+
+        data = json.dumps(document_payload(document), ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+        return {"format": "document", "filename": f"{slug}-documentation.pdf", "content_type": "application/json", "data": data,
+                "generated_at": document.generated_at, "scope": document.scope}
     if fmt == "pdf":
         data = render_pdf(document)
         return {"format": "pdf", "filename": f"{slug}-documentation.pdf", "content_type": "application/pdf", "data": data,

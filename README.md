@@ -30,7 +30,7 @@ It never changes your Power BI files on its own. The only thing that writes to t
 | **Review queue** | Things PBIBrain guessed (for example "this measure is the same KPI as that one"). You accept or reject them; facts read from files are never changed | When you want those guesses to count |
 | **Merge models** | Combine several models and reports into one target model: compare, choose objects, check rules, apply with backup and undo | When consolidating models. Desktop app only — see below |
 | **MCP server / `agent-setup`** | Lets Claude Code, Copilot, Codex, Cursor etc. ask the graph questions and propose (not apply) changes | When you work with an AI coding agent |
-| **Documentation export** | A PDF or Markdown document for developers and customers: model diagram with storage modes, relationships, tables, measures with DAX, report pages and fields, data sources | Handing a model over, or reviewing it |
+| **Documentation export** | A PDF or Markdown document for developers and customers: relationships, tables with storage modes, measures with DAX, report pages and fields, data sources. The app draws the PDF itself with [pdfcn](https://pdfcn.dev) (Takumi), offline | Handing a model over, or reviewing it |
 
 ### Desktop app or browser?
 

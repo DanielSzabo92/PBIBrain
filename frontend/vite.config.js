@@ -9,6 +9,8 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [tailwindcss(), devcenterFakePlugin({ enabled: fake })],
     build: {
+      // takumi-pdf (the documentation PDF) uses top-level await; WebView2 and current browsers support es2022.
+      target: "es2022",
       rollupOptions: {
         output: {
           // Libraries change far less often than the app: separate files stay cached across releases.
@@ -23,6 +25,9 @@ export default defineConfig(({ mode }) => {
         },
       },
     },
+    optimizeDeps: { esbuildOptions: { target: "es2022" } },
+    // The pdfcn components (shadcn registry) do not import React; the automatic runtime needs no import.
+    esbuild: { jsx: "automatic" },
     resolve: { alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) } },
     server: {
       host: "127.0.0.1",

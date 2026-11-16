@@ -2,7 +2,7 @@
 
 export const DOC_SECTIONS = [
   ["overview", "Overview and scope"],
-  ["models", "Model diagram, relationships and tables"],
+  ["models", "Relationships and tables"],
   ["measures", "Measure catalogue with DAX"],
   ["reports", "Report pages and visual fields"],
   ["lineage", "Lineage summary"],
@@ -19,7 +19,8 @@ export function exportRequest({ format, models, reports, sections }, overview) {
   const pick = (chosen, all) => (all.length && all.every((id) => chosen.has(id)) ? null : all.filter((id) => chosen.has(id)));
   const allSections = DOC_SECTIONS.map(([key]) => key);
   return {
-    format: format === "markdown" ? "markdown" : "pdf",
+    // A PDF is drawn in the workbench (pdfcn on Takumi) from the server's content blocks.
+    format: format === "markdown" ? "markdown" : "document",
     modelIds: pick(models, allModels),
     reportIds: pick(reports, allReports),
     sections: allSections.every((key) => sections.has(key)) ? null : allSections.filter((key) => sections.has(key)),

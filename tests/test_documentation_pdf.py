@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import base64
 import io
+import json
 import re
 import shutil
 import subprocess
@@ -141,7 +142,7 @@ class DocumentationPdfTests(unittest.TestCase):
     def test_markdown_has_diagrams_lineage_markers_and_not_checked(self):
         markdown = self.export("markdown")["data"].decode("utf-8")
         self.assertTrue(markdown.startswith("# Merge Lab documentation\n"))
-        self.assertIn("```mermaid\nflowchart TB", markdown)
+        self.assertNotIn("flowchart TB", markdown)  # no model diagram
         self.assertIn("```mermaid\nflowchart LR", markdown)
         self.assertIn('["dbo.FactSales<br/>Data source"]', markdown)
         self.assertIn("| dbo.FactSales | Sql.Database | sql01/Sales/dbo.FactSales | Sales | SalesA |", markdown)
@@ -154,8 +155,6 @@ class DocumentationPdfTests(unittest.TestCase):
         self.assertIsNone(re.search(r"\b(model|report|table):\S", markdown))  # no graph node IDs
         self.assertIn("| Table | Storage mode | Columns | Measures | Hidden | Description |", markdown)
         self.assertIn("| Sales | Import | 2 | 2 | No |  |", markdown)
-        self.assertIn('n1["Sales<br/>Import<br/>Key: Order Date"]', markdown)
-        self.assertIn("Tables without relationships: Budget.", markdown)
         self.assertIn("```dax\n[Total Sales] - [Total Cost]\n```", markdown)
 
     def test_running_app_exports_through_the_api(self):
@@ -235,12 +234,10 @@ class LargeModelLayoutTests(unittest.TestCase):
         pages = int(re.search(rb"/Type /Pages /Kids \[[^\]]*\] /Count (\d+)", result["data"]).group(1))
         self.assertGreater(pages, 10)
         self.assertIn(b"VAR v399", content)  # the whole expression is printed across pages
-        self.assertIn(b"(*:1) Tj", content)  # cardinality label on the diagram line
-        self.assertIn(b"[3 2] 0 d", content)  # inactive relationship is dashed
         markdown = render_document_markdown(document)
-        self.assertIn("-.-|*:1|", markdown)
+        self.assertIn("[Key] | *:1 | Single | No |", markdown)  # the inactive relationship is listed
 
-    def test_star_diagram_storage_mode_and_plain_references(self):
+    def test_storage_mode_plain_references_and_no_model_diagram(self):
         model = "model:star"
         nodes = [Node(model, "MODEL", "Star")]
         for name in ("Sales", "Date", "Store", "Notes"):
@@ -252,8 +249,6 @@ class LargeModelLayoutTests(unittest.TestCase):
                           properties={"table_id": f"{model}/table:Store", "mode": "directQuery"}))
         nodes.append(Node(f"{model}/table:Date/partition:p", "PARTITION", "Date", model_id=model,
                           properties={"table_id": f"{model}/table:Date", "mode": "dual"}))
-        nodes.append(Node(f"{model}/table:Sales/partition:p", "PARTITION", "Sales", model_id=model,
-                          properties={"table_id": f"{model}/table:Sales"}))
         for key in ("Date", "Store"):
             nodes.append(Node(f"{model}/relationship:{key}", "RELATIONSHIP", key, model_id=model, properties={
                 "from_column_id": f"{model}/table:Sales/column:{key}Key", "to_column_id": f"{model}/table:{key}/column:{key}Key",
@@ -263,20 +258,28 @@ class LargeModelLayoutTests(unittest.TestCase):
         repository = GraphRepository(use_sqlite=False)
         repository.replace(nodes, [])
         document = build_document(repository, generated_at=STAMP)
-        diagram = next(block for block in document.blocks if block.kind == "diagram" and block.text == "Model diagram")
-        boxes = {box.key.rsplit(":", 1)[1]: box for box in diagram.boxes}
-        self.assertEqual({"Sales", "Date", "Store"}, set(boxes))  # Notes has no relationship
-        self.assertLess(min(boxes["Date"].y, boxes["Store"].y), boxes["Sales"].y)
-        self.assertGreater(max(boxes["Date"].y, boxes["Store"].y), boxes["Sales"].y)
-        self.assertEqual(("Store", "DirectQuery", "Key: StoreKey"), boxes["Store"].lines)
-        self.assertEqual(("directquery", "dual", "fact"), (boxes["Store"].kind, boxes["Date"].kind, boxes["Sales"].kind))
-        self.assertIn("*:1 (both)", {link.label for link in diagram.links})
+        self.assertFalse(any(block.kind == "diagram" and block.text != "Lineage" for block in document.blocks))
         markdown = render_document_markdown(document)
-        self.assertIn("Tables without relationships: Notes.", markdown)
+        self.assertNotIn("Model diagram", markdown)
         self.assertIn("| Store | DirectQuery | 1 | 0 | No |  |", markdown)
+        self.assertIn("| Date | Dual | 1 | 0 | No |  |", markdown)
         self.assertIn("| Notes | Not recorded |", markdown)
+        self.assertIn("| Sales[StoreKey] | Store[StoreKey] | *:1 | Both | Yes |", markdown)
         self.assertIn("| Sales[Gone] (not found in the model) | Date[DateKey] |", markdown)
         self.assertNotIn('{"', markdown)
+
+    def test_document_format_gives_the_blocks_as_json(self):
+        model = "model:m"
+        repository = GraphRepository(use_sqlite=False)
+        repository.replace([Node(model, "MODEL", "M"), Node(f"{model}/table:t", "TABLE", "Facts", model_id=model)], [])
+        result = export_documentation(repository, fmt="document", project_name="Finance & Sales", generated_at=STAMP)
+        self.assertEqual(("document", "finance-sales-documentation.pdf"), (result["format"], result["filename"]))
+        payload = json.loads(result["data"])
+        self.assertEqual("Finance & Sales documentation", payload["title"])
+        kinds = {block["kind"] for block in payload["blocks"]}
+        self.assertLessEqual(kinds, {"heading", "paragraph", "note", "table", "code", "diagram"})
+        table = next(block for block in payload["blocks"] if block["kind"] == "table" and "Storage mode" in block["headers"])
+        self.assertEqual(["Facts", "Not recorded", "0", "0", "No", ""], table["rows"][0])
 
 
 if __name__ == "__main__":

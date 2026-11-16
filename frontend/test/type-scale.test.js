@@ -37,6 +37,8 @@ test("CSS and JSX use type scale tokens, not literal font sizes", async () => {
   const allowed = new Set(Object.values(await scale()));
   for (const file of await files(SRC)) {
     if (file.endsWith("theme.css")) continue;
+    // The documentation PDF (pdfcn on Takumi) sets print sizes in points, not the screen type scale.
+    if (/(^|[\\/])(pdf|pdf-themes)[\\/]/.test(path.relative(SRC, file))) continue;
     const source = await readFile(file, "utf8");
     for (const match of source.matchAll(/font-size:\s*([^;}\n]+)/g)) {
       const value = match[1].trim();

@@ -47,13 +47,23 @@ export default function DocumentationExport({ overview, transport, scanning }) {
     setBusy(true); setError(""); setNotice("");
     try {
       const reply = await transport.exportDocumentation(exportRequest(scope, overview));
-      const url = URL.createObjectURL(new Blob([replyBytes(reply)], { type: reply.content_type }));
+      let bytes;
+      let type = reply.content_type;
+      if (reply.format === "document") {
+        // The PDF is drawn here with pdfcn on Takumi; its WebAssembly loads only when someone exports.
+        const { renderDocumentationPdf } = await import("../pdf/documentationPdf.jsx");
+        bytes = await renderDocumentationPdf(reply.document);
+        type = "application/pdf";
+      } else {
+        bytes = replyBytes(reply);
+      }
+      const url = URL.createObjectURL(new Blob([bytes], { type }));
       const link = document.createElement("a");
       link.href = url;
       link.download = reply.filename;
       document.body.appendChild(link); link.click(); link.remove();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
-      setNotice(`${reply.filename} prepared (${formatSize(reply.bytes)}).`);
+      setNotice(`${reply.filename} prepared (${formatSize(bytes.length)}).`);
     } catch (cause) {
       setError(cause.message || "Documentation could not be exported. Try again.");
     } finally {
@@ -62,7 +72,7 @@ export default function DocumentationExport({ overview, transport, scanning }) {
   };
 
   return <Card className="panel doc-export-panel">
-    <div className="settings-panel-head"><div><h2>Export documentation</h2><p className="muted-copy">A document of the last scan: model diagram, measures with DAX, report pages and fields, lineage, and what was not checked. The app can stay open.</p></div></div>
+    <div className="settings-panel-head"><div><h2>Export documentation</h2><p className="muted-copy">A document of the last scan: relationships and tables with storage modes, measures with DAX, report pages and fields, lineage, and what was not checked. The app can stay open.</p></div></div>
     {models.length || reports.length ? <>
       <div className="doc-export-format">
         <Label id="doc-export-format-label">Format</Label>
