@@ -75,7 +75,7 @@ Configure any stdio MCP client with command `brain` and arguments
 `["-m", "backend.cli.main", "--config", "...", "mcp"]`. `--url` reads only that running
 local server (the earlier behaviour).
 The adapter uses the [official MCP Python SDK v1](https://github.com/modelcontextprotocol/python-sdk/tree/v1.x).
-Its read-only tools are `brain_overview`, `brain_search`, `brain_object`, `brain_context`,
+Its read-only tools are `brain_dependencies`, `brain_overview`, `brain_search`, `brain_object`, `brain_context`,
 `brain_graph`, `brain_impact`, `brain_compare`, `brain_commonality` and `brain_pending_changes`, plus the eight
 Development Center agent tools. Configuration, scanning, and review writes are
 intentionally absent from the agent tool surface. MCP never opens the database.
@@ -147,6 +147,7 @@ a `budget` block. Budgets are characters of JSON (about 4 characters per token):
 
 | Tool | compact | full |
 | --- | --- | --- |
+| `brain_dependencies` | 12,000 | 40,000 |
 | `brain_overview` | 8,000 | 24,000 |
 | `brain_search` | 12,000 | 32,000 |
 | `brain_object` | 12,000 | 40,000 |
@@ -164,22 +165,65 @@ sets `has_more` and `next_offset` to continue after the last kept item. The budg
 are a tested contract on a 500-measure, 50-page project (`tests/test_mcp_snapshot.py`);
 a new tool adds its row to `TOOL_BUDGETS` in `backend/mcp_budget.py`.
 
+## Answer from the graph, not from files
+
+PBIBrain has already parsed every TMDL, model and report file into a graph of exact objects and
+edges, so an agent should never grep project files to answer a question about the model. Every
+agent surface carries the same rules (`backend/agent_rules.py`): answer only from PBIBrain, report
+only edges the graph returned, say "not in the graph" instead of guessing, ask when a name is
+ambiguous, and use the fewest calls.
+
+**One call for dependency questions.** `brain_dependencies` takes a name (`Total Sales`,
+`[Total Sales]`, `Sales[Amount]`) or an exact ID and returns, from one read of the graph, the
+object with its formula, what it is built from (`upstream`: measures it calls, columns and tables
+it reads, data sources), what is built on it (`downstream`) and the report pages and visuals that
+show it (`report_usage`), with a one-line `summary`. `depth` 1–5 follows indirect dependencies.
+`status` is `OK`, `AMBIGUOUS` (with `candidates`; pass the exact ID or `model_id`) or `NOT_FOUND`.
+The same answer is `GET /api/dependencies?target=...&direction=both|upstream|downstream&depth=1`,
+and it works from the scan snapshot while the app is closed.
+
+**Names resolved before the chat model starts.** The in-app chat looks up the objects a question
+names (exact names; `[Name]` and `Table[Column]`; a single plain word counts only when written
+capitalised) and puts them, with their direct dependencies, in a `<graph>` block of the turn. A
+question such as "what does Sales per Customer depend on?" is then answered with no tool call.
+An answer has at most 5 rounds and 15 tool calls.
+
+## Copilot and Antigravity agents in your editor
+
+`brain agent-setup` (or `PBIBrain-Agent.exe --project <folder> agent-setup`) writes the files that
+connect GitHub Copilot and Antigravity to the project's graph, in the project folder you open in
+the editor. `--client copilot|antigravity` limits it to one; `--folder` picks another folder.
+
+| File | Used by | Content |
+| --- | --- | --- |
+| `.vscode/mcp.json` | VS Code | the `pbibrain` MCP server |
+| `.mcp.json` | Copilot CLI and the Copilot harness | the same server |
+| `.github/agents/pbibrain.agent.md` | VS Code and Copilot CLI | the **PBIBrain** custom agent, `tools: ['pbibrain/*']`: it has no file, search, terminal or web tool, so it answers from the graph only |
+| `.agents/mcp_config.json` | Antigravity app, IDE and CLI | the `pbibrain` MCP server |
+| `.agents/rules/pbibrain.md` | Antigravity | an always-on rule with the grounding rules |
+
+JSON files are merged (other servers stay). Agent and rule files are rewritten only while they
+still carry the PBIBrain marker line; `--force` replaces a hand-edited one. In VS Code, trust the
+folder, start `pbibrain` (MCP: List Servers) and pick the PBIBrain agent in Chat. With the
+Copilot CLI, run `copilot --agent pbibrain` in the folder.
+
 ## In-app chat with a subscription
 
-Settings, AI provider offers, besides an API key or a local endpoint, three subscriptions that
-need no API key. PBIBrain starts the vendor's own signed-in command-line program:
+Settings, AI provider offers, besides an API key or a local endpoint, two subscriptions that need
+no API key. PBIBrain starts the vendor's own signed-in command-line program:
 
 | Provider | Program | Sign in once |
 | --- | --- | --- |
-| Claude subscription | `claude` (Claude Code) | run `claude` and log in with your Claude plan (or `claude setup-token`, kept as `CLAUDE_CODE_OAUTH_TOKEN`) |
 | GitHub Copilot subscription (the one VS Code uses) | `copilot` (GitHub Copilot CLI) | run `copilot` and log in with the GitHub account of your Copilot plan |
 | Google Antigravity subscription | `agy` (Antigravity CLI) | run `agy` and log in with your Google account |
 
 Leave Program empty to find it on PATH, or give its full path. Leave Model empty for the plan's
-default. The CLI's own tools (shell, file edits, web) are turned off; it only answers, and the
-chat runs the PBIBrain tools for it under the usual limits (see `docs/SECURITY_BOUNDARIES.md`,
-Agent guardrails). Test connection sends a short multi-line prompt. The vendors' headless
-flags can change between versions; when a test fails after a CLI update, update PBIBrain too.
+default. The CLI's own tools are turned off (Copilot: every tool kind denied; Antigravity: plan
+mode, terminal sandbox, and headless soft-denial of anything that needs approval); it only
+answers, and the chat runs the PBIBrain tools for it under the usual limits (see
+`docs/SECURITY_BOUNDARIES.md`, Agent guardrails). Test connection sends a short multi-line prompt.
+The vendors' headless flags can change between versions; when a test fails after a CLI update,
+update PBIBrain too.
 
 ## Markdown export
 

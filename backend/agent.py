@@ -38,6 +38,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.description += "; --project FOLDER selects a desktop project (otherwise discovered from the current folder)"
     args = parser.parse_args(arguments)
     try:
+        if args.command == "agent-setup":
+            from backend.cli.main import agent_setup_command
+            return agent_setup_command(args)
         if args.command == "mcp":
             # The MCP server follows the project: the open app, else the last scan snapshot (issue #18).
             if args.db or args.identity:

@@ -24,6 +24,7 @@ DETAILS = ("compact", "full")
 
 # Reply budget in characters of JSON, per tool and detail level.
 TOOL_BUDGETS: dict[str, dict[str, int]] = {
+    "brain_dependencies": {"compact": 12_000, "full": 40_000},
     "brain_overview": {"compact": 8_000, "full": 24_000},
     "brain_search": {"compact": 12_000, "full": 32_000},
     "brain_object": {"compact": 12_000, "full": 40_000},
@@ -43,7 +44,7 @@ TOOL_BUDGETS: dict[str, dict[str, int]] = {
 PRIMARY_FIELDS = {
     "brain_search": "items", "brain_object": "object", "brain_context": "target", "brain_graph": "nodes",
     "brain_impact": "direct_impacts", "brain_commonality": "groups",
-    "brain_pending_changes": "safety",
+    "brain_pending_changes": "safety", "brain_dependencies": "object",
 }
 
 # Room left in each budget for the ``budget`` and ``freshness`` blocks.

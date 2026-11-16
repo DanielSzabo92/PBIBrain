@@ -261,56 +261,65 @@ class CLIProviderTests(unittest.TestCase):
         return list(provider.stream(system="S", messages=[{"role": "user", "content": [{"type": "text", "text": text}]}],
                                     tools=[], should_stop=lambda: False))
 
-    def test_claude_runs_without_its_tools_in_an_empty_folder_on_the_subscription(self):
-        runner = RecordingRunner(json.dumps({"type": "result", "is_error": False, "result": "Hello."}).encode())
-        with mock.patch.dict(os.environ, {"ANTHROPIC_API_KEY": "api-key", "CLAUDE_CODE_OAUTH_TOKEN": "plan"}):
-            events = self.stream(SubscriptionCLIProvider(preset="claude_code", model="claude-opus-5-5", runner=runner))
+    def test_only_copilot_and_antigravity_are_offered(self):
+        self.assertEqual({"copilot", "antigravity"}, set(PRESETS))
+
+    def test_copilot_runs_without_any_of_its_tools_in_an_empty_folder(self):
+        runner = RecordingRunner(b"Answer.")
+        with mock.patch.dict(os.environ, {"OPENAI_API_KEY": "api-key", "COPILOT_GITHUB_TOKEN": "plan"}):
+            events = self.stream(SubscriptionCLIProvider(preset="copilot", model="gpt-6-astra", runner=runner))
         call = runner.calls[0]
         args = call["command"]
-        self.assertEqual("", args[args.index("--tools") + 1])
-        self.assertIn("Bash", args[args.index("--disallowedTools") + 1])
-        self.assertIn("--strict-mcp-config", args)
-        self.assertEqual("1", args[args.index("--max-turns") + 1])
-        self.assertFalse(any("question" in arg for arg in args), "the prompt must not be on the command line")
-        self.assertIn(b"question\nwith\nlines", call["input"])
-        self.assertEqual(["mcp.json"], call["listing"])
-        self.assertTrue(call["cwd"].name.startswith("pbibrain-cli-"))
-        self.assertFalse(call["cwd"].exists(), "the work folder is deleted")
-        self.assertNotIn("ANTHROPIC_API_KEY", call["env"])
-        self.assertEqual("plan", call["env"]["CLAUDE_CODE_OAUTH_TOKEN"])
-        self.assertEqual("Hello.", events[-1]["content"][0]["text"])
-
-    def test_copilot_and_antigravity_deny_their_own_tools(self):
-        runner = RecordingRunner(b"Answer.")
-        self.stream(SubscriptionCLIProvider(preset="copilot", runner=runner))
-        args = runner.calls[0]["command"]
-        for tool in ("shell", "write", "url"):
-            self.assertIn(tool, [args[i + 1] for i, arg in enumerate(args) if arg == "--deny-tool"])
+        self.assertIn("--deny-tool=shell,write,read,url,memory", args)
+        for flag in ("-s", "--no-custom-instructions", "--disable-builtin-mcps", "--no-ask-user"):
+            self.assertIn(flag, args)
         self.assertNotIn("--allow-all-tools", args)
         self.assertNotIn("-p", args)
-        agy = RecordingRunner(b'{"event":"assistant","message":{"content":"Hi"}}\n{"event":"result","result":"Hi there."}\n')
+        self.assertEqual("gpt-6-astra", args[args.index("--model") + 1])
+        self.assertFalse(any("question" in arg for arg in args), "the prompt must not be on the command line")
+        self.assertIn(b"question\nwith\nlines", call["input"])
+        self.assertEqual([], call["listing"])
+        self.assertTrue(call["cwd"].name.startswith("pbibrain-cli-"))
+        self.assertFalse(call["cwd"].exists(), "the work folder is deleted")
+        self.assertNotIn("OPENAI_API_KEY", call["env"])
+        self.assertEqual("plan", call["env"]["COPILOT_GITHUB_TOKEN"])
+        self.assertEqual("Answer.", events[-1]["content"][0]["text"])
+
+    def test_antigravity_reads_the_documented_stream(self):
+        stream = (b'{"event":"init","init":{"cwd":"/tmp/x","tools":["run_command"],"permission_mode":"request-review"}}\n'
+                  b'{"event":"step_update","step_update":{"step_index":3,"state":"ACTIVE","step_type":"agent_response","text_delta":"Hi "}}\n'
+                  b'{"event":"result","result":{"conversation_id":"c","status":"SUCCESS","response":"Hi there.","num_turns":1}}\n')
+        agy = RecordingRunner(stream)
         events = self.stream(SubscriptionCLIProvider(preset="antigravity", runner=agy))
         args = agy.calls[0]["command"]
         self.assertEqual("plan", args[args.index("--mode") + 1])
-        self.assertEqual("user", json.loads(agy.calls[0]["input"])["event"])
+        for flag in ("--sandbox", "--disable-slash-commands"):
+            self.assertIn(flag, args)
+        self.assertEqual("stream-json", args[args.index("--input-format") + 1])
+        self.assertEqual("stream-json", args[args.index("--output-format") + 1])
+        self.assertNotIn("--dangerously-skip-permissions", args)
+        sent = json.loads(agy.calls[0]["input"])
+        self.assertEqual("user", sent["event"])
+        self.assertIn("question\nwith\nlines", sent["message"]["content"])
         self.assertEqual("Hi there.", events[-1]["content"][0]["text"])
+
+    def test_an_antigravity_error_is_reported(self):
+        from backend.chat.providers import ProviderError
+
+        runner = RecordingRunner(b'{"event":"result","result":{"status":"ERROR","response":"","error":"authentication required"}}\n', code=1)
+        with self.assertRaises(ProviderError) as caught:
+            self.stream(SubscriptionCLIProvider(preset="antigravity", runner=runner))
+        self.assertIn("authentication required", str(caught.exception))
 
     def test_model_and_program_settings_are_checked(self):
         from backend.chat.providers import ProviderError
 
         with self.assertRaises(ProviderError):
-            SubscriptionCLIProvider(preset="claude_code", model="x & del /q *")
+            SubscriptionCLIProvider(preset="copilot", model="x & del /q *")
         with self.assertRaises(ProviderError):
-            SubscriptionCLIProvider(preset="claude_code", command="/tmp/evil")
-        SubscriptionCLIProvider(preset="claude_code", command=str(Path("/opt/tools/claude.cmd").absolute()))
-
-    def test_an_error_result_is_reported(self):
-        from backend.chat.providers import ProviderError
-
-        runner = RecordingRunner(json.dumps({"type": "result", "is_error": True, "result": "Not signed in"}).encode())
-        with self.assertRaises(ProviderError) as caught:
-            self.stream(SubscriptionCLIProvider(preset="claude_code", runner=runner))
-        self.assertIn("Not signed in", str(caught.exception))
+            SubscriptionCLIProvider(preset="copilot", command="/tmp/evil")
+        SubscriptionCLIProvider(preset="copilot", command=str(Path("/opt/tools/copilot.cmd").absolute()))
+        SubscriptionCLIProvider(preset="antigravity", command=str(Path("/opt/tools/agy.exe").absolute()))
 
 
 class CLISettingsTests(unittest.TestCase):
@@ -319,17 +328,18 @@ class CLISettingsTests(unittest.TestCase):
 
     def test_a_subscription_takes_no_key_and_no_url(self):
         with self.assertRaises(ValueError):
-            self.settings.save({"provider": "claude_code", "api_key": "sk-123"})
+            self.settings.save({"provider": "copilot", "api_key": "sk-123"})
         with self.assertRaises(ValueError):
             self.settings.save({"provider": "copilot", "base_url": "https://evil.example"})
         with self.assertRaises(ValueError):
             self.settings.save({"provider": "antigravity", "command": "/usr/bin/python3"})
-        saved = self.settings.save({"provider": "claude_code", "enabled": True})
+        with self.assertRaises(ValueError):
+            self.settings.save({"provider": "claude_code"})
+        saved = self.settings.save({"provider": "antigravity", "enabled": True})
         self.assertEqual("", saved["base_url"])
         self.assertIsNone(self.settings.api_key())
         kinds = {item["id"]: item["kind"] for item in saved["providers"]}
-        self.assertEqual("cli", kinds["claude_code"])
-        self.assertEqual("api", kinds["anthropic"])
+        self.assertEqual({"anthropic": "api", "openai": "api", "local": "api", "copilot": "cli", "antigravity": "cli"}, kinds)
 
     def test_ready_needs_the_program_but_no_model(self):
         self.settings.save({"provider": "copilot", "enabled": True})
@@ -341,32 +351,31 @@ class CLISettingsTests(unittest.TestCase):
 
 @unittest.skipUnless(POSIX, "the fake CLI is a shell-less Python script with a shebang")
 class CLIEndToEndTests(unittest.TestCase):
-    """A fake ``claude`` on PATH drives a real chat answer: it calls a PBIBrain tool, then answers."""
+    """A fake ``copilot`` on PATH drives a real chat answer: it calls a PBIBrain tool, then answers."""
 
     FAKE = textwrap.dedent(f"""\
         #!{PY}
-        import json, os, sys
+        import os, sys
         prompt = sys.stdin.read()
-        assert "--tools" in sys.argv and "Bash" in sys.argv[sys.argv.index("--disallowedTools") + 1]
-        assert os.listdir(".") == ["mcp.json"], os.listdir(".")
+        assert "--deny-tool=shell,write,read,url,memory" in sys.argv, sys.argv
+        assert os.listdir(".") == [], os.listdir(".")
         if "<tool_result id=" not in prompt:
-            text = '<tool_call>{{"name": "brain_overview", "input": {{}}}}</tool_call>'
+            print('<tool_call>{{"name": "brain_overview", "input": {{}}}}</tool_call>')
         else:
-            text = "The project has " + ("data" if "counts" in prompt else "nothing") + ". " + ("SECRET" if os.environ.get("ANTHROPIC_API_KEY") else "clean")
-        print(json.dumps({{"type": "result", "is_error": False, "result": text}}))
+            print("The project has " + ("data" if "counts" in prompt else "nothing") + ". " + ("SECRET" if os.environ.get("OPENAI_API_KEY") else "clean"))
         """)
 
     def test_a_tool_loop_through_the_cli(self):
         with tempfile.TemporaryDirectory() as folder:
-            program = Path(folder) / "claude"
+            program = Path(folder) / "copilot"
             program.write_text(self.FAKE, encoding="utf-8")
             program.chmod(program.stat().st_mode | stat.S_IEXEC)
             app = create_app(use_native=False)
             try:
-                env = {"PATH": folder + os.pathsep + os.environ.get("PATH", ""), "ANTHROPIC_API_KEY": "leak"}
+                env = {"PATH": folder + os.pathsep + os.environ.get("PATH", ""), "OPENAI_API_KEY": "leak"}
                 with mock.patch.dict(os.environ, env):
                     app.chat = ChatService(app, store=MemoryStore(), lock=app.request_lock, use_settings_file=False)
-                    status, reply = json_post(app, "/api/chat/settings", {"enabled": True, "provider": "claude_code"})
+                    status, reply = json_post(app, "/api/chat/settings", {"enabled": True, "provider": "copilot"})
                     self.assertTrue(reply["ready"], reply)
                     status, reply = json_post(app, "/api/chat/start", {"text": "What is in the project?"})
                     self.assertEqual(200, status, reply)

@@ -1,9 +1,9 @@
-"""Subscription providers of the in-app chat: the Claude, GitHub Copilot and Antigravity CLIs.
+"""Subscription providers of the in-app chat: the GitHub Copilot and Antigravity CLIs.
 
-A user who pays for Claude (Pro/Max), GitHub Copilot (the VS Code subscription) or Google
-Antigravity can let the chat answer with that subscription instead of an API key. PBIBrain
-starts the vendor's own command-line program (``claude``, ``copilot``, ``agy``), which is
-signed in already, and uses it as a plain text model.
+A user who pays for GitHub Copilot (the VS Code subscription) or Google Antigravity can let the
+chat answer with that subscription instead of an API key. PBIBrain starts the vendor's own
+command-line program (``copilot``, ``agy``), which is signed in already, and uses it as a plain
+text model.
 
 These programs are full coding agents: they can run shell commands, edit files and browse.
 Inside PBIBrain they must not. The CLI is a text generator here and nothing else:
@@ -22,8 +22,19 @@ Inside PBIBrain they must not. The CLI is a text generator here and nothing else
 - **Tool results are quoted data.** ``<`` in a tool result is written as ``&lt;``, so text in a
   model description cannot fake a ``<tool_call>`` or close its own result block.
 
-The flags of each preset follow the vendors' documented headless modes. A vendor can change
-them; "Test connection" sends a multi-line probe so a broken setup shows before a chat.
+The flags follow the vendors' documented headless modes (checked 2026-11-16):
+
+- Copilot CLI: a piped prompt without ``-p`` is its non-interactive mode; ``-s`` prints only the
+  answer; ``--deny-tool`` with every tool kind (shell, write, read, url, memory) refuses all of
+  its tools, and deny wins over any allow; ``--disable-builtin-mcps``, ``--no-custom-instructions``
+  and ``--no-ask-user`` drop its GitHub servers, AGENTS.md files and questions.
+- Antigravity CLI: ``--input-format stream-json`` reads ``{"event": "user", "message": {"content"}}``
+  from stdin and needs ``--output-format stream-json``; the answer is the ``response`` of the final
+  ``result`` event. ``--mode plan`` (no edits), ``--sandbox`` (OS containment) and
+  ``--disable-slash-commands``; in headless mode any tool that needs approval is soft-denied.
+
+A vendor can change them; "Test connection" sends a multi-line probe so a broken setup shows
+before a chat.
 """
 
 from __future__ import annotations
@@ -46,17 +57,10 @@ MODEL_PATTERN = re.compile(r"[A-Za-z0-9][A-Za-z0-9._:/@\[\]-]{0,199}")
 TOOL_CALL = re.compile(r"<tool_call>\s*(.*?)\s*</tool_call>", re.DOTALL)
 PROBE = "This is a connection test from PBIBrain.\nReply with the single word OK and nothing else."
 
-# Claude Code tools named again in --disallowedTools, in case a CLI version ignores --tools "".
-_CLAUDE_TOOLS = "Bash,Edit,Write,MultiEdit,NotebookEdit,Read,Glob,Grep,WebFetch,WebSearch,Task,TodoWrite"
+# Every Copilot CLI tool kind; denied together, the CLI has no tool left.
+_COPILOT_DENY = "shell,write,read,url,memory"
 
 PRESETS: dict[str, dict[str, Any]] = {
-    "claude_code": {
-        "label": "Claude subscription (Claude Code CLI)",
-        "executable": "claude",
-        "sign_in": "Install Claude Code and run claude once to sign in with your Claude plan.",
-        # A subscription sign-in made with `claude setup-token`; any API key is dropped so the plan is used.
-        "keep_env": ("CLAUDE_CODE_OAUTH_TOKEN", "CLAUDE_CONFIG_DIR"),
-    },
     "copilot": {
         "label": "GitHub Copilot subscription (VS Code, Copilot CLI)",
         "executable": "copilot",
@@ -199,17 +203,13 @@ class SubscriptionCLIProvider:
         """(argv after the program, the input format: text or agy-stream)."""
 
         model = ["--model", self.model] if self.model else []
-        if self.preset == "claude_code":
-            (workdir / "mcp.json").write_text('{"mcpServers": {}}', encoding="utf-8")
-            return ["-p", "--output-format", "json", "--max-turns", "1", "--tools", "", "--disallowedTools", _CLAUDE_TOOLS,
-                    "--permission-mode", "default", "--strict-mcp-config", "--mcp-config", str(workdir / "mcp.json"),
-                    *model], "text"
         if self.preset == "copilot":
             # Piped input without -p is Copilot's documented non-interactive mode; no tool is pre-approved,
-            # so in this mode every tool request is refused, and the deny rules win over any allow.
-            return ["-s", "--no-custom-instructions", "--disable-builtin-mcps", "--deny-tool", "shell", "--deny-tool", "write",
-                    "--deny-tool", "url", *model], "text"
-        return ["--input-format", "stream-json", "--output-format", "stream-json", "--mode", "plan", *model], "agy-stream"
+            # every tool kind is denied, and deny wins over any allow in the user's settings.
+            return ["-s", "--no-custom-instructions", "--disable-builtin-mcps", "--no-ask-user",
+                    f"--deny-tool={_COPILOT_DENY}", *model], "text"
+        return ["--input-format", "stream-json", "--output-format", "stream-json", "--mode", "plan", "--sandbox",
+                "--disable-slash-commands", *model], "agy-stream"
 
     def _program(self) -> str:
         program = find_program(self.preset, self.command)
@@ -243,16 +243,6 @@ class SubscriptionCLIProvider:
 
     def _reply_text(self, out: str, err: str, code: int) -> str:
         name = self.spec["executable"]
-        if self.preset == "claude_code":
-            try:
-                result = json.loads(out.strip().splitlines()[-1] if out.strip() else "{}")
-            except ValueError:
-                result = {}
-            if isinstance(result, Mapping) and result.get("type") == "result":
-                if result.get("is_error"):
-                    raise ProviderError(f"{name}: {str(result.get('result') or result.get('subtype') or 'error')[:400]}")
-                return str(result.get("result") or "")
-            raise ProviderError(f"{name} did not answer (exit {code}). {err[:300] or self.spec['sign_in']}")
         if self.preset == "antigravity":
             return self._agy_text(out, err, code)
         if code != 0:
@@ -260,7 +250,9 @@ class SubscriptionCLIProvider:
         return out.strip()
 
     def _agy_text(self, out: str, err: str, code: int) -> str:
-        final: str | None = None
+        """The ``response`` of the final ``result`` event; the ``text_delta`` pieces when it is missing."""
+
+        result: Mapping[str, Any] | None = None
         pieces: list[str] = []
         for line in out.splitlines():
             try:
@@ -269,22 +261,17 @@ class SubscriptionCLIProvider:
                 continue
             if not isinstance(event, Mapping):
                 continue
-            kind = str(event.get("event") or event.get("type") or "")
-            if kind == "error":
-                detail = event.get("message") or event.get("error") or "error"
-                raise ProviderError(f"agy: {str(detail.get('message') if isinstance(detail, Mapping) else detail)[:400]}")
-            if isinstance(event.get("result"), str):
-                final = event["result"]
-                continue
-            message = event.get("message")
-            content = message.get("content") if isinstance(message, Mapping) else event.get("text") or event.get("content")
-            if kind in {"assistant", "text", "delta", "message", "agent"} and content:
-                if isinstance(content, str):
-                    pieces.append(content)
-                elif isinstance(content, list):
-                    pieces.extend(str(item.get("text", "")) for item in content if isinstance(item, Mapping))
-        if final is not None:
-            return final
+            if event.get("event") == "result" and isinstance(event.get("result"), Mapping):
+                result = event["result"]
+            elif event.get("event") == "step_update" and isinstance(event.get("step_update"), Mapping):
+                step = event["step_update"]
+                if step.get("step_type") == "agent_response" and isinstance(step.get("text_delta"), str):
+                    pieces.append(step["text_delta"])
+        if result is not None:
+            if result.get("status") not in {None, "SUCCESS"}:
+                detail = result.get("error") or result.get("status")
+                raise ProviderError(f"agy: {str(detail)[:400]}")
+            return str(result.get("response") or "".join(pieces))
         if pieces:
             return "".join(pieces)
         raise ProviderError(f"agy did not answer (exit {code}). {err[:300] or self.spec['sign_in']}")

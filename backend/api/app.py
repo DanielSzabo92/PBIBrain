@@ -1089,6 +1089,20 @@ class BrainApp:
                     store=self.api.overrides,
                     project_objects_only=str(self._query_values(query, "kind") or "") == "objects",
                 )
+            if method == "GET" and parts == ["dependencies"]:
+                # One call: a name or ID, resolved in the graph, with what it is built from and what uses it.
+                from .dependencies import dependencies
+                target = self._query_values(query, "target") or self._query_values(query, "object") or self._query_values(query, "name")
+                if not isinstance(target, str) or not target.strip():
+                    raise ValueError("dependencies needs target: an object name or exact ID")
+                return 200, dependencies(
+                    self.api.repository, target,
+                    direction=str(self._query_values(query, "direction") or "both"),
+                    depth=int(str(self._query_values(query, "depth") or "1")),
+                    model_id=self._query_values(query, "model_id"),
+                    report_id=self._query_values(query, "report_id"),
+                    object_type=self._query_values(query, "object_type") or self._query_values(query, "type"),
+                )
             if method == "GET" and parts == ["overview"]:
                 return 200, self.api.get_overview()
             if method == "GET" and parts == ["pending-changes"]:

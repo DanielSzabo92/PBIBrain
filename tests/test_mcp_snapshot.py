@@ -99,6 +99,11 @@ class SnapshotWriteTests(unittest.TestCase):
                     key, _, value = query.partition("=")
                     # Only the cached parse tree (dax_ast) is left out of the snapshot.
                     self.assertEqual(_without_ast(expected), snapshot.get(route, **{key: value}))
+            # The one-call dependency answer works with the app closed too.
+            status, expected = live.handle("GET", "/api/dependencies?target=Total+Sales")
+            self.assertEqual(200, status)
+            self.assertEqual("OK", expected["status"])
+            self.assertEqual(expected, snapshot.get("dependencies", target="Total Sales"))
 
 
 class SnapshotClientTests(unittest.TestCase):

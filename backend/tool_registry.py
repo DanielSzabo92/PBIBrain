@@ -1,6 +1,6 @@
 """The one tool registry shared by the MCP server and the in-app chat (issue #7).
 
-``build_tools`` returns the 17 tools as plain Python functions: their names, docstrings and
+``build_tools`` returns the 18 tools as plain Python functions: their names, docstrings and
 annotated signatures are the tool contract. ``backend/mcp_server.py`` adds each one to the
 FastMCP server; ``backend/chat`` calls the same functions in process and derives the JSON
 schema it sends to the AI provider from the same signatures (``tool_schema``). The two
@@ -26,12 +26,22 @@ Tool = Callable[..., dict[str, Any]]
 
 
 def brain_tools(client: Any, freshness: Callable[[], dict[str, Any]]) -> list[Tool]:
-    """The nine read-only project tools. Every reply is cut to its budget (``TOOL_BUDGETS``)."""
+    """The ten read-only project tools. Every reply is cut to its budget (``TOOL_BUDGETS``)."""
 
     def reply(tool: str, detail: str, call: Any) -> dict[str, Any]:
         budget_for(tool, detail)  # refuse an unknown detail before any work
         payload = call()
         return fit_reply(payload, tool=tool, detail=detail, meta={"freshness": freshness()})
+
+    def brain_dependencies(object: str, direction: str = "both", depth: int = 1, model_id: str | None = None,
+                           object_type: str | None = None, detail: str = "compact") -> dict[str, Any]:
+        """One call for dependency questions: what an object is built from, what uses it, where reports show it.
+
+        object: a name ("Total Sales", "[Total Sales]", "Sales[Amount]") or an exact ID. direction: upstream (built
+        from), downstream (used by, with report pages and visuals) or both. depth 1-5 (2-3 for indirect). Answers
+        from the graph; status AMBIGUOUS lists candidates, NOT_FOUND means the graph has no such object."""
+        return reply("brain_dependencies", detail, lambda: client.get(
+            "dependencies", target=object, direction=direction, depth=depth, model_id=model_id, object_type=object_type))
 
     def brain_overview(detail: str = "compact") -> dict[str, Any]:
         """List project model/report IDs, object counts, and known scan status. detail: compact|full."""
@@ -98,7 +108,7 @@ def brain_tools(client: Any, freshness: Callable[[], dict[str, Any]]) -> list[To
         status UNCHANGED means the files match the last scan."""
         return reply("brain_pending_changes", detail, lambda: client.get("pending-changes"))
 
-    return [brain_overview, brain_search, brain_object, brain_context, brain_graph, brain_impact, brain_compare,
+    return [brain_dependencies, brain_overview, brain_search, brain_object, brain_context, brain_graph, brain_impact, brain_compare,
             brain_commonality, brain_pending_changes]
 
 

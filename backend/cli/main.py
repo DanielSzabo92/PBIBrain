@@ -77,9 +77,28 @@ def _parser() -> argparse.ArgumentParser:
     server = commands.add_parser("serve", help="serve the local config, graph UI, and agent API")
     server.add_argument("--port", type=int, default=8000)
     server.add_argument("--ui", default=str(Path(__file__).resolve().parents[2] / "frontend" / "dist"), help="built Inspector directory")
+    agents = commands.add_parser("agent-setup", help="connect GitHub Copilot (VS Code, CLI) and Antigravity agents to this project's graph")
+    agents.add_argument("--client", choices=("all", "copilot", "antigravity"), default="all")
+    agents.add_argument("--folder", default=None, help="the folder opened in the editor; default: the project folder")
+    agents.add_argument("--force", action="store_true", help="replace agent and rule files edited by hand")
     mcp = commands.add_parser("mcp", help="run the optional read-only MCP adapter: the open app, else the last scan snapshot")
     mcp.add_argument("--url", default=None, help="read only this running local server, for example http://127.0.0.1:8000")
     return parser
+
+
+def agent_setup_command(args: argparse.Namespace) -> int:
+    """Write the Copilot and Antigravity workspace files (backend/agent_setup.py); print the report."""
+
+    from backend.agent_setup import CLIENTS, setup
+
+    clients = CLIENTS if args.client == "all" else (args.client,)
+    try:
+        report = setup(args.config, clients=clients, folder=args.folder, force=args.force)
+    except ValueError as exc:
+        print(str(exc), file=sys.stderr)
+        return 2
+    _write_stdout_utf8(json.dumps(report, ensure_ascii=False, indent=2) + "\n")
+    return 0
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -93,6 +112,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             parser.error(f"Project configuration not found: {config}. Pass --config, or --url for a running server.")
         run(args.url, config_path=config if config.is_file() else None)
         return 0
+    if args.command == "agent-setup":
+        return agent_setup_command(args)
     if args.command == "compare":
         from backend.diff import compare_snapshots
         from backend.snapshots import Snapshot

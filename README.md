@@ -13,7 +13,7 @@ PBIBrain turns Power BI metadata / PBIP files (`.pbip`, TMDL, PBIR) and cloud se
 PBIBrain provides two complementary ways to work with your Power BI ecosystem:
 
 1. **Interactive Workbench (GUI):** A desktop and web application for visual graph exploration, DAX inspection, semantic reviews, side-by-side model merging, in-app AI chat, and automated documentation.
-2. **Model Context Protocol (MCP) Server:** A stdio server (`brain mcp`) providing 17 specialized tools for AI coding assistants (Claude Desktop, Cursor, Gemini, Copilot) to query semantic metadata, trace dependencies, evaluate downstream impact, and guide model merges.
+2. **Model Context Protocol (MCP) Server:** A stdio server (`brain mcp`) providing 18 specialized tools for AI coding assistants (Claude Desktop, Cursor, Gemini, Copilot) to query semantic metadata, trace dependencies, evaluate downstream impact, and guide model merges.
 
 ---
 
@@ -54,7 +54,7 @@ The web and desktop workbench features **7 dedicated views** designed for Power 
 - **Settings:** Customize project paths, graph color palettes, and configure local or cloud AI providers.
 
 **Built-in Productivity Features:**
-- **In-App AI Chat (`Ctrl+J`):** Docked conversational panel supporting Anthropic, OpenAI-compatible APIs, local LLMs (Ollama), or your existing Claude, GitHub Copilot (VS Code) or Google Antigravity subscription through its signed-in CLI, with context chips for active selections. The agent can read and propose, never apply, and runs under fixed limits (see `docs/SECURITY_BOUNDARIES.md`).
+- **In-App AI Chat (`Ctrl+J`):** Docked conversational panel supporting Anthropic, OpenAI-compatible APIs, local LLMs (Ollama), or your existing GitHub Copilot (VS Code) or Google Antigravity subscription through its signed-in CLI, with context chips for active selections. Answers come from the graph: object names in a question are resolved before the model starts, and the agent can read and propose, never apply, under fixed limits (see `docs/SECURITY_BOUNDARIES.md`).
 - **Command Palette (`Ctrl+K`):** Fast keyboard-first navigation and action launcher.
 - **Documentation Export:** Generate complete, styled PDF or Markdown project documentation with table of contents, diagrams, and measure catalogues.
 
@@ -67,9 +67,17 @@ PBIBrain exposes a standard stdio MCP server for agentic workflows:
 brain --config C:\Reports\brain.json mcp
 ```
 
-* **17 Unified Tools:** Includes `brain_overview`, `brain_search`, `brain_object`, `brain_context`, `brain_impact`, `brain_graph`, `brain_commonality`, `session_get`, `plan_validate`, and `proposal_submit`.
+* **18 Unified Tools:** Includes `brain_dependencies` (one-call dependencies, report usage and formula by object name), `brain_overview`, `brain_search`, `brain_object`, `brain_context`, `brain_impact`, `brain_graph`, `brain_commonality`, `session_get`, `plan_validate`, and `proposal_submit`.
 * **Hybrid Operation:** Answers directly from the active live application when running, or falls back to the read-only `.pbibrain/agent-snapshot.json` snapshot when the app is closed.
 * **Token Budgeting:** Every tool response adheres to strict JSON character budgets to prevent LLM context-window exhaustion.
+
+#### Connecting GitHub Copilot (VS Code) and Antigravity
+
+```powershell
+brain --config C:\Reports\Finance\.pbibrain\brain.json agent-setup
+```
+
+writes `.vscode/mcp.json`, `.mcp.json`, a **PBIBrain** Copilot custom agent restricted to the PBIBrain tools (`.github/agents/pbibrain.agent.md`), and the Antigravity server config and always-on rule (`.agents/`). See `docs/AGENT_GUIDE.md`.
 
 #### Connecting to Claude Desktop / Cursor
 Add the following to your `claude_desktop_config.json` or cursor MCP settings:
