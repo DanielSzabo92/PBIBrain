@@ -112,9 +112,15 @@ export function createBrainTransport({ baseUrl = API_ROOT, fetcher = globalThis.
     stopChat(runId) {
       return request(`/chat/runs/${encodeURIComponent(runId)}/stop`, { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
     },
-    /** The open Merge models session, or null when none is open (the context chip of the chat). */
+    /**
+     * The open Merge models session, or null when none is open (the context chip of the chat).
+     * The session list always answers 200 and has a null revision when no session is open, so it is
+     * read first: asking for the session itself with none open gives a 409 the browser logs as an error.
+     */
     async getMergeSession() {
       try {
+        const list = await request("/devcenter/sessions");
+        if (!Number.isInteger(list?.revision)) return null;
         return await request("/devcenter/session");
       } catch {
         return null;

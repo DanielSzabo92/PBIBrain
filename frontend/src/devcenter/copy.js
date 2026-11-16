@@ -68,6 +68,8 @@ export const COPY = Object.freeze({
   "list.title": "Merge sessions",
   "list.description": "Combine many models and reports into one target.",
   "list.new": "New merge session",
+  "list.browser.title": "Merge sessions run in the desktop app",
+  "list.browser.body": "This page is open in a browser. Merging changes Power BI files and needs the file picker, so it only runs in the PBIBrain desktop app (the Windows installer, or `pbibrain` from source). Here you can still look at the sessions of this project.",
   "list.no_project.title": "Open a project to start a merge session",
   "list.no_project.body": "Merge sessions are saved in the project folder. Open a PBIP project first.",
   "list.no_project.action": "Open project",

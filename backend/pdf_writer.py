@@ -370,7 +370,8 @@ class PdfDocument:
                 self.rect(mx - lw / 2 - 1.5, my - size / 2 - 1, lw + 3, size + 2, fill=(1, 1, 1))
                 self.text(mx - lw / 2, my - size / 2 + 1, label, size=size, color=(0.3, 0.3, 0.35))
         palette = {"fact": ((0.91, 0.94, 0.99), (0.45, 0.58, 0.8)), "source": ((0.92, 0.97, 0.93), (0.4, 0.65, 0.48)),
-                   "report": ((0.99, 0.95, 0.9), (0.8, 0.6, 0.35)), "muted": ((0.95, 0.95, 0.95), (0.6, 0.6, 0.6))}
+                   "report": ((0.99, 0.95, 0.9), (0.8, 0.6, 0.35)), "muted": ((0.95, 0.95, 0.95), (0.6, 0.6, 0.6)),
+                   "directquery": ((1.0, 0.93, 0.86), (0.85, 0.5, 0.2)), "dual": ((0.95, 0.92, 0.99), (0.55, 0.42, 0.78))}
         for box in boxes:
             x, y, w, h = frames[box.key]
             fill, stroke = palette.get(box.kind, palette["fact"])

@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Tooltip } from "@/components/ui/tooltip";
 import { useToast } from "@/components/ui/toast";
 import { errorCopy, t } from "../copy.js";
+import { hasDesktopApi } from "../../desktop.js";
 import { useAction, useDevCenterState, useDevCenterStore, useResource } from "../useDevCenter.js";
 import { formatTime, listPlanLabel, listRowState, sortSessions } from "./sessionModel.js";
 
@@ -34,6 +35,15 @@ export default function SessionList({
   const current = useDevCenterState((state) => state.session);
   const busy = useDevCenterState((state) => state.busy);
   const toast = useToast();
+  // pywebview adds its bridge before the page or with pywebviewready; a plain browser tab never has it.
+  const [desktop, setDesktop] = React.useState(() => hasDesktopApi());
+  React.useEffect(() => {
+    if (desktop) return undefined;
+    const ready = () => setDesktop(hasDesktopApi());
+    globalThis.addEventListener?.("pywebviewready", ready);
+    return () => globalThis.removeEventListener?.("pywebviewready", ready);
+  }, [desktop]);
+  const browserNotice = desktop ? null : <Notice tone="warn" title={t("list.browser.title")}>{t("list.browser.body")}</Notice>;
   const [opening, setOpening] = React.useState(null);
   const [renameTarget, setRenameTarget] = React.useState(null);
   const [deleteTarget, setDeleteTarget] = React.useState(null);
@@ -132,7 +142,8 @@ export default function SessionList({
       <div className="dc-page">
         <h1 className="sr-only">{t("list.title")}</h1>
         {sessionBanner}
-        <EmptyState headingLevel={2} title={t("list.empty.title")} action={<Button onClick={onNew}><Plus aria-hidden="true" />{t("list.empty.action")}</Button>}>
+        {browserNotice}
+        <EmptyState headingLevel={2} title={t("list.empty.title")} action={<Button onClick={onNew} disabled={!desktop}><Plus aria-hidden="true" />{t("list.empty.action")}</Button>}>
           {t("list.empty.body")}
         </EmptyState>
       </div>
@@ -146,9 +157,10 @@ export default function SessionList({
           <h1 className="dc-title">{t("list.title")}</h1>
           <p className="dc-subtitle">{t("list.description")}</p>
         </div>
-        <Button onClick={onNew} disabled={busy === "long"}><Plus aria-hidden="true" />{t("list.new")}</Button>
+        <Button onClick={onNew} disabled={busy === "long" || !desktop}><Plus aria-hidden="true" />{t("list.new")}</Button>
       </header>
       {sessionBanner}
+      {browserNotice}
       {current && !deletedSessions.has(current.session_id) ? (
         <div className="dc-active-session-banner">
           <div className="dc-active-session-copy">

@@ -2,26 +2,100 @@
 
 *A DownDraughtLab product.*
 
-Semantic graph of your Power BI / Fabric models and reports — a desktop workbench and an MCP server for AI agents.
+PBIBrain reads your Power BI project files and builds one searchable map of everything in them: models, tables, columns, measures, DAX, Power Query sources, report pages and visuals, and how they depend on each other. You use that map to understand a model, see what breaks if you change something, compare and merge models, export documentation, and give AI agents accurate answers about your reports.
 
-- **Reads:** PBIP, TMDL, PBIR, cloud semantic models and reports
-- **Builds:** one graph of models, tables, columns, measures, calculation groups, DAX functions, M sources, report pages and visuals
-- **Serves:** a workbench (desktop or browser), a CLI, and an MCP server
+It never changes your Power BI files on its own. The only thing that writes to them is **Merge models → Apply**, after you confirm, with a backup and undo.
 
 ---
 
-## Start
+## How the parts fit together
+
+```text
+ Your files                    PBIBrain                                 You and your tools
+ ──────────                    ────────                                 ──────────────────
+ .pbip / TMDL / PBIR  ──scan──▶  graph (.pbibrain/brain.sqlite)  ──▶  Workbench (desktop app or browser)
+ model.bim, .json                 one node per object,                 CLI  (brain …)
+ Power BI service items           one link per dependency        ──▶  MCP server for AI agents
+                                                                  ──▶  Documentation export (PDF / Markdown)
+                                         ▲
+                                         └── Merge models: compare → choose → guard check → apply (desktop app only)
+```
+
+| Part | What it is | When you use it |
+|---|---|---|
+| **Project** | A folder with a `.pbibrain/` subfolder: the list of sources (`brain.json`), the graph, your review decisions | Always — everything belongs to one project |
+| **Sources** | The Power BI items the project reads: `.pbip` projects, model folders (TMDL), `model.bim`, report folders (PBIR), cloud models and reports | Add them in **Settings**, then **Scan** |
+| **Scan** | Reads every source and rebuilds the graph. Read-only. Two copies of the same model (e.g. `Sales v1` and `Sales v2`) are kept side by side as versions | After you add sources or edit the Power BI files |
+| **Workbench** | The app: Overview, Search, Graph, Inspector, Review queue, Merge models, Settings, AI chat | Day-to-day exploring |
+| **Review queue** | Things PBIBrain guessed (for example "this measure is the same KPI as that one"). You accept or reject them; facts read from files are never changed | When you want those guesses to count |
+| **Merge models** | Combine several models and reports into one target model: compare, choose objects, check rules, apply with backup and undo | When consolidating models. Desktop app only — see below |
+| **MCP server / `agent-setup`** | Lets Claude Code, Copilot, Codex, Cursor etc. ask the graph questions and propose (not apply) changes | When you work with an AI coding agent |
+| **Documentation export** | A PDF or Markdown document for developers and customers: model diagram with storage modes, relationships, tables, measures with DAX, report pages and fields, data sources | Handing a model over, or reviewing it |
+
+### Desktop app or browser?
+
+The same workbench runs in two ways. Both read the same project folder.
+
+| | Desktop app | Browser tab |
+|---|---|---|
+| How to start | Windows installer → **PBIBrain**, or `pbibrain` from source | `start.bat` / `./start.sh` → opens `http://127.0.0.1:8000/` |
+| Explore, search, graph, review, chat, export docs | Yes | Yes |
+| File and folder pickers | Yes | No — type or paste paths in **Settings** |
+| **Merge models** (create session, add sources, apply) | Yes | No — shows a notice. A browser tab is not allowed to change Power BI files ([why](docs/SECURITY_BOUNDARIES.md)) |
+| Cloud items (Power BI service sign-in) | Yes | No |
+
+---
+
+## Getting started
+
+### 1. Install and open
 
 | Option | How |
 |---|---|
-| Windows installer | Install, open **PBIBrain**, pick the folder with the `.pbip`, **Scan**. See [`docs/DESKTOP.md`](docs/DESKTOP.md). |
-| From source (Windows) | `start.bat` |
-| From source (Linux / macOS) | `./start.sh` |
+| Windows installer (recommended) | Install, then open **PBIBrain** from Start. Nothing else to install. See [`docs/DESKTOP.md`](docs/DESKTOP.md). |
+| Desktop app from source | `python -m pip install -e ".[mcp,chat,cloud,desktop]"`, build the UI once (`cd frontend && npm install && npm run build`), then run `pbibrain` |
+| Browser, from source (Windows) | `start.bat` |
+| Browser, from source (Linux / macOS) | `./start.sh` |
 
-- Source start: creates `.venv`, installs, builds the UI, opens `http://127.0.0.1:8000/`
-- No project? Empty Overview → **Open sample project**
-- Requires: Python 3.11+, Node.js 20+ (source only). The graph is SQLite via Python's built-in `sqlite3` — no database, DLL or environment variable to set up
-- Merge model verification also builds the TOM bridge: .NET 8 SDK, `dotnet build -c Release backend/adapters/tabular_metadata/dotnet/TabularMetadata.csproj`
+- `start.bat` / `start.sh` create `.venv`, install, build the UI, start the server and open the browser
+- Requires (source only): Python 3.11+, Node.js 20+. The graph is SQLite through Python's built-in `sqlite3` — no database to install
+- Merge models also checks changes with the TOM bridge: .NET 8 SDK, `dotnet build -c Release backend/adapters/tabular_metadata/dotnet/TabularMetadata.csproj`
+
+### 2. Open a project
+
+- Desktop app: pick the folder that holds your `.pbip` file. PBIBrain creates `.pbibrain/` in it.
+- Browser: the server uses the project in `config/brain.json` (or `--config <path>`).
+- Just looking? On the empty Overview choose **Open sample project**.
+
+### 3. Add sources and scan
+
+**Settings** (`Ctrl+,`) → **Add source files** (or drop files on the window, or type paths) → **Scan** (`Ctrl+F5`). The scan runs in the background; you can cancel it. Rescan whenever you change the Power BI files — PBIBrain does not watch them.
+
+### 4. Explore
+
+| I want to… | Go to |
+|---|---|
+| See what is in the project and what differs between models | **Overview** (`Ctrl+1`) |
+| Find a measure, column or visual by name | **Search** (`Ctrl+2`) or `Ctrl+K` |
+| See where a field comes from and which visuals use it | **Graph** (`Ctrl+3`) → Lineage / Field usage |
+| Read one measure's DAX, its dependencies and the visuals that show it | **Inspector** (`Ctrl+4`) |
+| Know what breaks if I change or delete something | **Graph** → select it (trace on select), or `brain impact <id>` |
+| Ask a question in plain language | **AI chat** (`Ctrl+J`) — set up a provider in Settings first |
+| Hand the model to someone | **File → Export documentation…** (PDF or Markdown) |
+
+### 5. Merge models (desktop app)
+
+1. **Merge models** (`Ctrl+6`) → **New merge session**.
+2. Add the source models and reports, pick the target (a copy of one source, or an existing PBIP), name the session.
+3. **Compare**: every table, column, measure and relationship lined up across the sources — identical, different, or only in one.
+4. Choose what goes into the target. Change guards block unsafe edits (broken DAX references, lost report fields).
+5. **Plan** → **Apply**. A backup is taken first; **Undo apply** restores it.
+
+Close Power BI Desktop on the target before applying: Desktop does not reload files changed on disk and may overwrite them.
+
+### 6. Connect an AI agent (optional)
+
+`brain --config <project>/.pbibrain/brain.json agent-setup` — then your editor's agent can search the graph, check impact and send merge proposals that wait for you in the app. Details below and in [`docs/AGENT_GUIDE.md`](docs/AGENT_GUIDE.md).
 
 ---
 

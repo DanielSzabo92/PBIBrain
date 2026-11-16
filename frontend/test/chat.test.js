@@ -159,3 +159,21 @@ test("no merge session reads as null", async () => {
   const transport = createBrainTransport({ fetcher: async () => ({ ok: false, status: 409, statusText: "Conflict", json: async () => ({ error: { code: "session_not_open" } }) }) });
   assert.equal(await transport.getMergeSession(), null);
 });
+
+test("no open merge session never asks for the session (no 409 in the console)", async () => {
+  const urls = [];
+  const transport = createBrainTransport({ fetcher: async (url) => { urls.push(url); return { ok: true, status: 200, json: async () => ({ revision: null, sessions: [] }) }; } });
+  assert.equal(await transport.getMergeSession(), null);
+  assert.deepEqual(urls, ["/api/devcenter/sessions"]);
+});
+
+test("an open merge session is read after the session list", async () => {
+  const urls = [];
+  const transport = createBrainTransport({ fetcher: async (url) => {
+    urls.push(url);
+    const body = url.endsWith("/sessions") ? { revision: 3, sessions: [] } : { session_id: "s1", revision: 3 };
+    return { ok: true, status: 200, json: async () => body };
+  } });
+  assert.equal((await transport.getMergeSession()).session_id, "s1");
+  assert.deepEqual(urls, ["/api/devcenter/sessions", "/api/devcenter/session"]);
+});

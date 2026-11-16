@@ -367,8 +367,11 @@ class ProjectService:
                 state.update(state="failed", detail=str(error))
                 raise
             state.update(state="read", models=len(source_models), reports=len(source_reports))
-            models.extend(_stable_roots(source_models, source_path, "model"))
-            reports.extend(_stable_roots(source_reports, source_path, "report"))
+            source_models = _stable_roots(source_models, source_path, "model")
+            source_reports = _stable_roots(source_reports, source_path, "report")
+            _separate_versions(source_models, source_reports, models, reports, source_path)
+            models.extend(source_models)
+            reports.extend(source_reports)
         not_checked: list[dict[str, Any]] = []
         cloud_states: list[dict[str, Any]] = []
         if cloud_entries:
@@ -611,6 +614,51 @@ def _stable_roots(values: list[dict[str, Any]], path: Path, kind: str) -> list[d
     return stable
 
 
+def _root_payload(value: Mapping[str, Any]) -> str:
+    return json.dumps(value, ensure_ascii=False, sort_keys=True, default=str, separators=(",", ":"))
+
+
+def _separate_versions(
+    source_models: list[dict[str, Any]],
+    source_reports: list[dict[str, Any]],
+    models: list[dict[str, Any]],
+    reports: list[dict[str, Any]],
+    path: Path,
+) -> None:
+    """Give a second version of an already-read model or report its own identity.
+
+    Copies of one PBIP (``Sales v1`` and ``Sales v2``) keep the same ``lineageTag``
+    and ``logicalId``. The first source read keeps the id; a later source whose
+    model or report differs gets the id plus a digest of its own path, so both
+    versions sit side by side for Overview and Merge models. Reports of that
+    source follow their renamed model. Identical roots are left alone and are
+    merged by ``_deduplicate_roots``.
+    """
+
+    marker = hashlib.sha256(str(path.resolve()).casefold().encode()).hexdigest()[:8]
+    for kind, values, existing in (("model", source_models, models), ("report", source_reports, reports)):
+        known = {str(source_id(item)).casefold(): _root_payload(item) for item in existing}
+        renamed: dict[str, str] = {}
+        for item in values:
+            identifier = source_id(item)
+            if identifier is None:
+                continue
+            previous = known.get(str(identifier).casefold())
+            if previous is None or previous == _root_payload(item):
+                continue
+            new_id = f"{identifier}@{marker}"
+            renamed[str(identifier).casefold()] = new_id
+            for key in ("source_id", "sourceId", "object_id", "objectId", "guid", "lineage_tag", "lineageTag"):
+                item.pop(key, None)
+            item["id"] = new_id
+        if kind == "model" and renamed:
+            for report in source_reports:
+                for key in ("model_id", "modelId", "dataset_id", "datasetId", "semanticModelId"):
+                    model_id = report.get(key)
+                    if isinstance(model_id, str) and model_id.casefold() in renamed:
+                        report[key] = renamed[model_id.casefold()]
+
+
 def _deduplicate_roots(values: list[dict[str, Any]], kind: str) -> list[dict[str, Any]]:
     unique: list[dict[str, Any]] = []
     seen: dict[str, str] = {}
@@ -618,7 +666,7 @@ def _deduplicate_roots(values: list[dict[str, Any]], kind: str) -> list[dict[str
         identifier = source_id(value)
         assert identifier is not None
         key = str(identifier).casefold()
-        payload = json.dumps(value, ensure_ascii=False, sort_keys=True, default=str, separators=(",", ":"))
+        payload = _root_payload(value)
         previous = seen.get(key)
         if previous is None:
             seen[key] = payload

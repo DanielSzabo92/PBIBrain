@@ -129,7 +129,8 @@ class DocumentationPdfTests(unittest.TestCase):
         self.assertEqual(document.scope, {"model_ids": [self.models["SalesB"]], "report_ids": [], "sections": ["overview", "measures"]})
         reports_only = render_document_markdown(build_document(self.repository, generated_at=STAMP, model_ids=[], report_ids=[self.reports["SalesA"]]))
         self.assertIn("## Report: SalesA", reports_only)
-        self.assertIn("| marginbymonth | clusteredColumnChart | Date[Month]; Sales[Margin] |", reports_only)
+        self.assertIn("| marginbymonth | Clustered column chart | Date[Month]; Sales[Margin] |", reports_only)
+        self.assertIn("| metrictable | Table | Store[Store Name]; Metric Selector[Metric Selector] |", reports_only)
         self.assertNotIn("## Model:", reports_only)
         for bad in ({"model_ids": ["model:nope"]}, {"sections": ["everything"]}, {"sections": []}, {"model_ids": [], "report_ids": []}):
             with self.subTest(bad=bad), self.assertRaises(DocumentationScopeError):
@@ -144,11 +145,17 @@ class DocumentationPdfTests(unittest.TestCase):
         self.assertIn("```mermaid\nflowchart LR", markdown)
         self.assertIn('["dbo.FactSales<br/>Data source"]', markdown)
         self.assertIn("| dbo.FactSales | Sql.Database | sql01/Sales/dbo.FactSales | Sales | SalesA |", markdown)
-        self.assertIn("| Store | PARTITION | m not read | Custom.Connector( is not known |", markdown)
+        self.assertIn("| Store | Table partition | M not read | Custom.Connector( is not known |", markdown)
         self.assertIn("Description: Árbevétel mínusz költség, ő és ű", markdown)  # exact text in Markdown
-        self.assertIn("| INFERRED | candidate |", markdown)
-        self.assertIn("| SEMANTICALLY_MAPS_TO | INFERRED |", markdown)
-        self.assertIn("| OBSERVED_WITH | OBSERVED |", markdown)
+        # Documentation is for Power BI developers and customers: no graph terms, IDs or JSON (issue #71).
+        for graph_term in ("FACT", "INFERRED", "OBSERVED", "Evidence", "evidence", "SEMANTICALLY_MAPS_TO", "Content identity",
+'{"', "Graph validation"):
+            self.assertNotIn(graph_term, markdown)
+        self.assertIsNone(re.search(r"\b(model|report|table):\S", markdown))  # no graph node IDs
+        self.assertIn("| Table | Storage mode | Columns | Measures | Hidden | Description |", markdown)
+        self.assertIn("| Sales | Import | 2 | 2 | No |  |", markdown)
+        self.assertIn('n1["Sales<br/>Import<br/>Key: Order Date"]', markdown)
+        self.assertIn("Tables without relationships: Budget.", markdown)
         self.assertIn("```dax\n[Total Sales] - [Total Cost]\n```", markdown)
 
     def test_running_app_exports_through_the_api(self):
@@ -207,10 +214,6 @@ class PdfTextTests(unittest.TestCase):
         self.assertEqual(wrap("VAR  x = 1\nRETURN x", "mono", 8, 400), ["VAR  x = 1", "RETURN x"])
 
 
-if __name__ == "__main__":
-    unittest.main()
-
-
 class LargeModelLayoutTests(unittest.TestCase):
     def test_long_dax_many_tables_and_long_cells_lay_out_on_pages(self):
         model = "model:big"
@@ -236,3 +239,45 @@ class LargeModelLayoutTests(unittest.TestCase):
         self.assertIn(b"[3 2] 0 d", content)  # inactive relationship is dashed
         markdown = render_document_markdown(document)
         self.assertIn("-.-|*:1|", markdown)
+
+    def test_star_diagram_storage_mode_and_plain_references(self):
+        model = "model:star"
+        nodes = [Node(model, "MODEL", "Star")]
+        for name in ("Sales", "Date", "Store", "Notes"):
+            nodes.append(Node(f"{model}/table:{name}", "TABLE", name, model_id=model))
+        for table, column in (("Sales", "DateKey"), ("Sales", "StoreKey"), ("Date", "DateKey"), ("Store", "StoreKey")):
+            nodes.append(Node(f"{model}/table:{table}/column:{column}", "COLUMN", column, model_id=model,
+                              properties={"table_id": f"{model}/table:{table}"}))
+        nodes.append(Node(f"{model}/table:Store/partition:p", "PARTITION", "Store", model_id=model,
+                          properties={"table_id": f"{model}/table:Store", "mode": "directQuery"}))
+        nodes.append(Node(f"{model}/table:Date/partition:p", "PARTITION", "Date", model_id=model,
+                          properties={"table_id": f"{model}/table:Date", "mode": "dual"}))
+        nodes.append(Node(f"{model}/table:Sales/partition:p", "PARTITION", "Sales", model_id=model,
+                          properties={"table_id": f"{model}/table:Sales"}))
+        for key in ("Date", "Store"):
+            nodes.append(Node(f"{model}/relationship:{key}", "RELATIONSHIP", key, model_id=model, properties={
+                "from_column_id": f"{model}/table:Sales/column:{key}Key", "to_column_id": f"{model}/table:{key}/column:{key}Key",
+                "cardinality": "manyToOne", "cross_filter_direction": "bothDirections" if key == "Store" else "oneDirection"}))
+        nodes.append(Node(f"{model}/relationship:broken", "RELATIONSHIP", "broken", model_id=model, properties={
+            "from_ref": {"table": "Sales", "column": "Gone"}, "to_column_id": f"{model}/table:Date/column:DateKey"}))
+        repository = GraphRepository(use_sqlite=False)
+        repository.replace(nodes, [])
+        document = build_document(repository, generated_at=STAMP)
+        diagram = next(block for block in document.blocks if block.kind == "diagram" and block.text == "Model diagram")
+        boxes = {box.key.rsplit(":", 1)[1]: box for box in diagram.boxes}
+        self.assertEqual({"Sales", "Date", "Store"}, set(boxes))  # Notes has no relationship
+        self.assertLess(min(boxes["Date"].y, boxes["Store"].y), boxes["Sales"].y)
+        self.assertGreater(max(boxes["Date"].y, boxes["Store"].y), boxes["Sales"].y)
+        self.assertEqual(("Store", "DirectQuery", "Key: StoreKey"), boxes["Store"].lines)
+        self.assertEqual(("directquery", "dual", "fact"), (boxes["Store"].kind, boxes["Date"].kind, boxes["Sales"].kind))
+        self.assertIn("*:1 (both)", {link.label for link in diagram.links})
+        markdown = render_document_markdown(document)
+        self.assertIn("Tables without relationships: Notes.", markdown)
+        self.assertIn("| Store | DirectQuery | 1 | 0 | No |  |", markdown)
+        self.assertIn("| Notes | Not recorded |", markdown)
+        self.assertIn("| Sales[Gone] (not found in the model) | Date[DateKey] |", markdown)
+        self.assertNotIn('{"', markdown)
+
+
+if __name__ == "__main__":
+    unittest.main()

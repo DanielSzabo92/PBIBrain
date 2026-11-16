@@ -25,13 +25,11 @@ from backend.documentation_export import (
     _expression_items,
     _cell,
     _fenced,
-    _json,
     _source_path,
     _unresolved,
-    snapshot_content_identity,
 )
 from backend.graph.repository import GraphRepository
-from backend.graph.schema import Edge, Node
+from backend.graph.schema import Node
 from backend.pdf_writer import BOTTOM, CONTENT_WIDTH, MARGIN, TOP, DiagramBox, DiagramLink, PdfDocument, pdf_text, text_width
 
 SECTIONS: dict[str, str] = {
@@ -44,7 +42,6 @@ SECTIONS: dict[str, str] = {
 }
 FORMATS = ("pdf", "markdown")
 _REPORT_FILTERS = {"VISUAL_FILTER", "PAGE_FILTER", "REPORT_FILTER"}
-_SEMANTIC = {"BUSINESS_CONCEPT", "ROLE", "GRAIN", "KPI", "METRIC_FAMILY", "SEMANTIC_LABEL"}
 
 
 class DocumentationScopeError(ValueError):
@@ -83,10 +80,82 @@ def _sort_key(node: Node) -> tuple[str, str]:
     return ((node.name or "").casefold(), node.id)
 
 
-def _marker(node: Node) -> str:
-    """FACT for extracted metadata; anything not factual is shown with its status."""
+_STORAGE_MODES = {"import": "Import", "directquery": "DirectQuery", "dual": "Dual", "directlake": "Direct Lake",
+                  "push": "Push", "default": "Import"}
 
-    return "FACT" if node.status in ("factual", "fact", "", None) else f"INFERRED ({node.status})"
+
+def _storage_mode(table: Node, children: Sequence[Node]) -> str:
+    """The storage mode of a table as Power BI shows it. TMDL and TOM keep it on the partitions."""
+
+    own = _props(table).get("storage_mode") or _props(table).get("mode")
+    if own:
+        return _STORAGE_MODES.get(re.sub(r"[^a-z]", "", str(own).casefold()), str(own))
+    partitions = [child for child in children if child.type == "PARTITION"]
+    if not partitions:
+        return "Not recorded"
+    modes = set()
+    for partition in partitions:
+        mode = _props(partition).get("mode")
+        if mode:
+            modes.add(_STORAGE_MODES.get(re.sub(r"[^a-z]", "", str(mode).casefold()), str(mode)))
+        elif str(_props(partition).get("source_type") or "").casefold() == "entity":
+            modes.add("Direct Lake")
+        else:
+            modes.add("Import")
+    return " / ".join(sorted(modes)) if len(modes) > 1 else modes.pop()
+
+
+_TABLE_KEYS = ("table", "Table", "entity", "Entity", "table_name", "tableName")
+_FIELD_KEYS = ("column", "Column", "measure", "Measure", "property", "Property", "hierarchy", "Hierarchy", "level", "Level", "name", "Name")
+
+
+def _plain(value: Any) -> str:
+    """A reference or detail written as text a Power BI developer reads, never as JSON.
+
+    ``{"table": "Sales", "column": "Amount"}`` and the PBIR form
+    ``{"Column": {"Expression": {"SourceRef": {"Entity": "Sales"}}, "Property": "Amount"}}`` both give
+    ``Sales[Amount]``; a DAX diagnostic gives its message; anything else gives "name: value" pairs.
+    """
+
+    if value in (None, "", [], {}):
+        return ""
+    if isinstance(value, (list, tuple)):
+        return "; ".join(text for text in (_plain(item) for item in value) if text)
+    if not isinstance(value, Mapping):
+        return str(value)
+    field_ref = _field_reference(value)
+    if field_ref:
+        return field_ref
+    if value.get("message"):
+        position = value.get("position") if isinstance(value.get("position"), Mapping) else {}
+        where = value.get("line") or position.get("line")
+        return f"{value['message']} (line {where})" if where else str(value["message"])
+    parts = []
+    for key in sorted(value):
+        text = _plain(value[key])
+        if text:
+            parts.append(f"{str(key).replace('_', ' ')}: {text}")
+    return ", ".join(parts)
+
+
+def _field_reference(value: Mapping[str, Any]) -> str:
+    table = next((value[key] for key in _TABLE_KEYS if isinstance(value.get(key), str)), None)
+    field_name = next((value[key] for key in _FIELD_KEYS if isinstance(value.get(key), str)), None)
+    if table is None:
+        source = value.get("Expression") or value.get("expression")
+        if isinstance(source, Mapping):
+            source = source.get("SourceRef") or source.get("sourceRef") or source
+            if isinstance(source, Mapping):
+                table = next((source[key] for key in _TABLE_KEYS if isinstance(source.get(key), str)), None)
+    if table and field_name:
+        return f"{table}[{field_name}]"
+    for key in ("Column", "Measure", "Hierarchy", "HierarchyLevel", "Aggregation", "column", "measure"):
+        inner = value.get(key)
+        if isinstance(inner, Mapping):
+            found = _field_reference(inner)
+            if found:
+                return found
+    return f"'{table}'" if table and len(value) == 1 else ""
 
 
 def _list(value: Any) -> list[Any]:
@@ -189,40 +258,38 @@ def build_document(
 
     if "overview" in chosen_sections:
         add(Block("heading", "Overview and scope", 1))
-        add(Block("paragraph", "This document is a read-only view of the metadata PBIBrain recorded at the last scan. "
-                  "It is not a check of runtime data or business correctness. Descriptions and expressions are reproduced "
-                  "from the source files as evidence."))
+        add(Block("paragraph", "This document describes the semantic models and reports below as they were saved in their "
+                  "Power BI project files at the last scan: tables, relationships, measures with their DAX, report pages "
+                  "and the fields each visual uses. It describes the design, not the data in it."))
         add(Block("table", headers=("Field", "Value"), widths=(1, 3), rows=[
             ("Project", project_name),
             ("Generated", stamp),
-            ("Last scan", _last_scan(repository) or "Unknown"),
-            ("Content identity (whole project)", snapshot_content_identity(repository)),
-            ("Graph validation", getattr(repository, "validation_state", None) or "not_run"),
-            ("Models in this document", f"{len(models)} of {len(models_all)}"),
-            ("Reports in this document", f"{len(reports)} of {len(reports_all)}"),
+            ("Read from the files", _last_scan(repository) or "Unknown"),
+            ("Semantic models", f"{len(models)} of {len(models_all)}"),
+            ("Reports", f"{len(reports)} of {len(reports_all)}"),
             ("Sections", ", ".join(SECTIONS[item] for item in chosen_sections)),
         ]))
-        add(Block("heading", "How to read the markers", 2))
-        add(Block("table", headers=("Marker", "Meaning"), widths=(1, 4), rows=[
-            ("FACT", "Read from the model or report files: names, expressions, bindings, relationships."),
-            ("INFERRED", "An interpretation PBIBrain suggested, such as a business meaning. Not verified unless a reviewer approved it."),
-            ("OBSERVED", "Recorded usage, such as two fields used together in a visual."),
-            ("Not checked", "PBIBrain could not read the object (for example M code it does not understand). Its links may be incomplete."),
-        ]))
-        rows = []
-        for model in models:
-            counts = Counter(node.type for node in all_nodes if node.model_id == model.id and not node.report_id)
-            rows.append(("Model", model.name or model.id, counts["TABLE"], counts["MEASURE"], counts["RELATIONSHIP"],
-                         _props(model).get("check_status") or "read", _source_path(model) or ""))
-        for report in reports:
-            counts = Counter(node.type for node in all_nodes if node.report_id == report.id)
-            bound = nodes.get(report.model_id or "")
-            rows.append(("Report", report.name or report.id, counts["PAGE"], counts["VISUAL"],
-                         f"model: {bound.name if bound else report.model_id or 'not resolved'}",
-                         _props(report).get("check_status") or "read", _source_path(report) or ""))
-        add(Block("heading", "Contents of this export", 2))
-        add(Block("table", headers=("Kind", "Name", "Tables / pages", "Measures / visuals", "Relationships / model", "Read", "Source path"),
-                  widths=(0.8, 2, 0.9, 1, 1.5, 0.8, 2.4), rows=rows))
+        if models:
+            add(Block("heading", "Semantic models", 2))
+            rows = []
+            for model in models:
+                counts = Counter(node.type for node in all_nodes if node.model_id == model.id and not node.report_id)
+                rows.append((model.name or model.id, counts["TABLE"], counts["MEASURE"], counts["RELATIONSHIP"],
+                             "Could not be read" if _props(model).get("check_status") == "not_checked" else "Read",
+                             _source_path(model) or ""))
+            add(Block("table", headers=("Model", "Tables", "Measures", "Relationships", "Status", "Location"),
+                      widths=(2, 0.7, 0.8, 1, 0.9, 3), rows=rows))
+        if reports:
+            add(Block("heading", "Reports", 2))
+            rows = []
+            for report in reports:
+                counts = Counter(node.type for node in all_nodes if node.report_id == report.id)
+                bound = nodes.get(report.model_id or "")
+                rows.append((report.name or report.id, bound.name if bound else "Not found in this project", counts["PAGE"], counts["VISUAL"],
+                             "Could not be read" if _props(report).get("check_status") == "not_checked" else "Read",
+                             _source_path(report) or ""))
+            add(Block("table", headers=("Report", "Semantic model", "Pages", "Visuals", "Status", "Location"),
+                      widths=(2, 1.6, 0.6, 0.7, 0.9, 2.6), rows=rows))
 
     for model in models:
         if not {"models", "measures"} & set(chosen_sections):
@@ -234,56 +301,57 @@ def build_document(
         add(Block("heading", f"Model: {model.name or model.id}", 1))
         if model.description:
             add(Block("paragraph", f"Description (from source): {model.description}"))
-        add(Block("note", f"ID {model.id} · {_count(len(tables), 'table')} · {_count(len(measures), 'measure')} · {_count(len(relationships), 'relationship')}"))
+        add(Block("note", f"{_count(len(tables), 'table')} · {_count(len(measures), 'measure')} · {_count(len(relationships), 'relationship')}"))
         if "models" in chosen_sections:
             add(Block("heading", "Model diagram", 2))
             if tables:
-                add(_model_diagram(tables, relationships, nodes, children))
-                add(Block("note", "Boxes are tables; lines are relationships labelled with cardinality. Dashed lines are inactive relationships."))
+                diagram, unrelated = _model_diagram(tables, relationships, nodes, children)
+                if diagram.boxes:
+                    add(diagram)
+                    add(Block("note", "Each box is a table with its storage mode and the key columns of its relationships. "
+                              "Tables on the many side of relationships (fact tables) are in the middle row, the tables they "
+                              "look up (dimensions) around them. Lines show cardinality (many *, one 1) and filter direction; "
+                              "dashed lines are inactive relationships. Blue: Import, orange: DirectQuery, purple: Dual, green: Direct Lake."))
+                if unrelated:
+                    add(Block("paragraph", "Tables without relationships: " + ", ".join(table.name or table.id for table in unrelated) + "."))
             else:
                 add(Block("paragraph", "No tables recorded."))
             add(Block("heading", "Relationships", 2))
             if relationships:
-                add(Block("table", headers=("From", "To", "Cardinality", "Cross-filter", "Active", "Evidence"),
-                          widths=(2.2, 2.2, 0.9, 1, 0.6, 0.7), rows=[
-                    (qualified(_props(rel).get("from_column_id")) if _props(rel).get("from_column_id") else f"{_json(_props(rel).get('from_ref'))} (unresolved)",
-                     qualified(_props(rel).get("to_column_id")) if _props(rel).get("to_column_id") else f"{_json(_props(rel).get('to_ref'))} (unresolved)",
-                     _cardinality(_props(rel).get("cardinality")) or "Not recorded",
-                     _props(rel).get("cross_filter_direction") or "Not recorded",
-                     _flag(_props(rel).get("active")) or "Not recorded", _marker(rel))
+                add(Block("table", headers=("From (many side)", "To (one side)", "Cardinality", "Cross-filter direction", "Active"),
+                          widths=(2.2, 2.2, 0.9, 1.2, 0.6), rows=[
+                    (qualified(_props(rel).get("from_column_id")) if _props(rel).get("from_column_id") else f"{_plain(_props(rel).get('from_ref'))} (not found in the model)",
+                     qualified(_props(rel).get("to_column_id")) if _props(rel).get("to_column_id") else f"{_plain(_props(rel).get('to_ref'))} (not found in the model)",
+                     _cardinality(_props(rel).get("cardinality")) or "*:1",
+                     _cross_filter(_props(rel).get("cross_filter_direction")),
+                     _flag(_props(rel).get("active")) or "Yes")
                     for rel in relationships]))
             else:
                 add(Block("paragraph", "No relationships recorded."))
             add(Block("heading", "Tables", 2))
             if tables:
-                add(Block("table", headers=("Table", "Columns", "Measures", "Hidden", "Storage mode", "Description", "Evidence"),
-                          widths=(1.6, 0.7, 0.7, 0.6, 0.9, 2.6, 0.7), rows=[
-                    (table.name, sum(1 for child in children[table.id] if child.type == "COLUMN"),
+                add(Block("table", headers=("Table", "Storage mode", "Columns", "Measures", "Hidden", "Description"),
+                          widths=(1.6, 1, 0.7, 0.7, 0.6, 3), rows=[
+                    (table.name, _storage_mode(table, children[table.id]),
+                     sum(1 for child in children[table.id] if child.type == "COLUMN"),
                      sum(1 for child in children[table.id] if child.type == "MEASURE"),
-                     _flag(_props(table).get("hidden")), _props(table).get("storage_mode") or _props(table).get("mode") or "",
-                     table.description or "", _marker(table)) for table in tables]))
-            meanings = _meanings(all_edges, nodes, scoped, model.id, store)
-            if meanings:
-                add(Block("heading", "Inferred meanings", 2))
-                add(Block("paragraph", "Business meanings PBIBrain suggested for objects in this model. They are interpretations, not facts."))
-                add(Block("table", headers=("Object", "Meaning", "Marker", "Review status", "Confidence"),
-                          widths=(2, 2, 0.9, 1, 0.8), rows=[(qualified(item["from"]), item["meaning"], item["marker"], item["status"], item["confidence"])
-                                                            for item in meanings]))
+                     _flag(_props(table).get("hidden")) or "No", table.description or "") for table in tables]))
         if "measures" in chosen_sections:
             add(Block("heading", "Measure catalogue", 2))
             if not measures:
                 add(Block("paragraph", "No measures recorded."))
             for measure in measures:
                 add(Block("heading", qualified(measure.id), 3))
-                details = [f"Evidence: {_marker(measure)}"]
+                details = []
                 if _props(measure).get("format_string"):
                     details.append(f"Format: {_props(measure)['format_string']}")
                 if _props(measure).get("display_folder"):
                     details.append(f"Folder: {_props(measure)['display_folder']}")
                 if str(_props(measure).get("hidden", "")).casefold() == "true":
                     details.append("Hidden")
-                add(Block("note", " · ".join(details)))
-                add(Block("paragraph", f"Description: {measure.description}" if measure.description else "Description: none recorded in the source."))
+                if details:
+                    add(Block("note", " · ".join(details)))
+                add(Block("paragraph", f"Description: {measure.description}" if measure.description else "Description: none."))
                 items = _expression_items(measure)
                 if items:
                     for label, expression in items:
@@ -299,7 +367,7 @@ def build_document(
                            key=lambda n: (_order(n), (n.name or "").casefold(), n.id))
             bound = nodes.get(report.model_id or "")
             add(Block("heading", f"Report: {report.name or report.id}", 1))
-            add(Block("note", f"ID {report.id} · model: {bound.name if bound else (report.model_id or 'not resolved')} · {_count(len(pages), 'page')}"))
+            add(Block("note", f"Semantic model: {bound.name if bound else 'not found in this project'} · {_count(len(pages), 'page')}"))
             if not pages:
                 add(Block("paragraph", "No pages recorded."))
             for page in pages:
@@ -309,23 +377,22 @@ def build_document(
                 add(Block("heading", f"Page: {_props(page).get('display_name') or page.name or page.id}", 2))
                 add(Block("note", f"{_count(len(visuals), 'visual')} · {_count(len(filters), 'page filter')}"))
                 if visuals:
-                    add(Block("table", headers=("Visual", "Type", "Fields used", "Unresolved fields", "Evidence"),
-                              widths=(1.5, 1, 3.2, 1.3, 0.6), rows=[
-                        (_props(visual).get("title") or visual.name or visual.id, _props(visual).get("visual_type") or "",
+                    add(Block("table", headers=("Visual", "Type", "Fields used", "Fields not in the model"),
+                              widths=(1.5, 1, 3.4, 1.5), rows=[
+                        (_props(visual).get("title") or visual.name or visual.id, _visual_type(_props(visual).get("visual_type")),
                          "; ".join(qualified(item) for item in _list(_props(visual).get("field_ids"))) or "None",
-                         "; ".join(_json(item) if not isinstance(item, str) else item for item in _list(_props(visual).get("unresolved_field_refs"))) or "",
-                         _marker(visual)) for visual in visuals]))
+                         _plain(_list(_props(visual).get("unresolved_field_refs")))) for visual in visuals]))
                 if filters:
-                    add(Block("table", headers=("Filter", "Kind", "Target", "Evidence"), widths=(1.6, 1, 2.6, 0.6), rows=[
-                        (item.name or item.id, item.type.replace("_", " ").title(),
-                         qualified(_props(item).get("target_id")) if _props(item).get("target_id") else _json(_props(item).get("unresolved_target") or _props(item).get("target_ref")) or "",
-                         _marker(item)) for item in sorted(filters, key=_sort_key)]))
+                    add(Block("table", headers=("Filter", "Kind", "Field"), widths=(1.6, 1, 3.2), rows=[
+                        (item.name or item.id, item.type.replace("_", " ").capitalize(),
+                         qualified(_props(item).get("target_id")) if _props(item).get("target_id") else _plain(_props(item).get("unresolved_target") or _props(item).get("target_ref")))
+                        for item in sorted(filters, key=_sort_key)]))
             report_filters = sorted((child for child in children[report.id] if child.type in _REPORT_FILTERS), key=_sort_key)
             if report_filters:
                 add(Block("heading", "Report-level filters", 2))
-                add(Block("table", headers=("Filter", "Target", "Evidence"), widths=(1.6, 3, 0.6), rows=[
-                    (item.name or item.id, qualified(_props(item).get("target_id")) if _props(item).get("target_id") else _json(_props(item).get("target_ref")) or "",
-                     _marker(item)) for item in report_filters]))
+                add(Block("table", headers=("Filter", "Field"), widths=(1.6, 3.2), rows=[
+                    (item.name or item.id, qualified(_props(item).get("target_id")) if _props(item).get("target_id") else _plain(_props(item).get("target_ref")))
+                    for item in report_filters]))
 
     if "lineage" in chosen_sections:
         add(Block("heading", "Lineage summary", 1))
@@ -339,7 +406,7 @@ def build_document(
         add(Block("paragraph", "Where the data comes from and who uses it: data sources read by Power Query, the models that load them, "
                   "and the reports bound to those models."))
         add(_lineage_diagram(sources, models, reports, reads, scoped, nodes))
-        add(Block("note", "Green: data sources. Blue: models. Orange: reports. Grey boxes are not checked."))
+        add(Block("note", "Green: data sources. Blue: semantic models. Orange: reports. Grey boxes could not be read."))
         add(Block("heading", "Data sources", 2))
         if sources:
             readers: dict[str, list[str]] = defaultdict(list)
@@ -355,11 +422,12 @@ def build_document(
             add(Block("paragraph", "No data sources recorded for the models in this document."))
         add(Block("heading", "Power Query queries", 2))
         if queries:
-            add(Block("table", headers=("Query", "Model", "Kind", "Mode", "Reads", "Read status"), widths=(1.8, 1.1, 0.9, 0.7, 2, 1), rows=[
+            add(Block("table", headers=("Query", "Model", "Kind", "Storage mode", "Reads", "Status"), widths=(1.8, 1.1, 0.9, 0.8, 2, 1), rows=[
                 (_query_label(query, nodes), (nodes.get(query.model_id or "") or query).name,
-                 "Partition" if query.type == "PARTITION" else "Shared expression", _props(query).get("mode") or "",
+                 "Table partition" if query.type == "PARTITION" else "Shared query / parameter",
+                 _STORAGE_MODES.get(re.sub(r"[^a-z]", "", str(_props(query).get("mode") or "").casefold()), _props(query).get("mode") or "") if query.type == "PARTITION" else "",
                  "; ".join(sorted(nodes[item].name for item in reads[query.id])) or "",
-                 "Not checked" if _props(query).get("check_status") == "not_checked" else (_props(query).get("source_status") or "").replace("_", " "))
+                 "Could not be read" if _props(query).get("check_status") == "not_checked" else (_props(query).get("source_status") or "").replace("_", " ").capitalize())
                 for query in queries]))
         else:
             add(Block("paragraph", "No Power Query queries recorded."))
@@ -374,37 +442,33 @@ def build_document(
             add(Block("table", headers=("Report", "Model", "Visuals", "Distinct fields used"), widths=(2, 2, 0.8, 1.2), rows=usage_rows))
         else:
             add(Block("paragraph", "No reports in this document."))
-        counts = Counter((edge.type, edge.evidence_class) for edge in all_edges
-                         if edge.from_id in scoped and edge.to_id in scoped and edge.type != "CONTAINS")
-        add(Block("heading", "Links recorded in scope", 2))
-        add(Block("table", headers=("Link type", "Marker", "Count"), widths=(2, 1, 0.6),
-                  rows=[(kind, marker, count) for (kind, marker), count in sorted(counts.items())] or [("None", "", 0)]))
 
     if "not_checked" in chosen_sections:
         add(Block("heading", "Not checked and unresolved", 1))
-        add(Block("paragraph", "Objects PBIBrain could not read, and references it could not tie to an object. Lineage and impact for these may be incomplete."))
+        add(Block("paragraph", "Items PBIBrain could not read, and references to tables, columns or measures it could not find. "
+                  "The lineage of these items may be incomplete."))
         not_checked = sorted((node for node in scoped.values() if _props(node).get("check_status") == "not_checked"),
                              key=lambda n: (n.type, (n.name or "").casefold(), n.id))
-        add(Block("heading", "Not checked", 2))
+        add(Block("heading", "Not read", 2))
         if not_checked:
-            add(Block("table", headers=("Object", "Type", "Reason", "Detail"), widths=(1.8, 1, 1.2, 3), rows=[
-                (_query_label(node, nodes) if node.type in {"PARTITION", "SHARED_EXPRESSION"} else node.name or node.id, node.type,
-                 str(_props(node).get("not_checked_reason") or "").replace("_", " "), _props(node).get("not_checked_detail") or "")
+            add(Block("table", headers=("Item", "Type", "Reason", "Detail"), widths=(1.8, 1, 1.2, 3), rows=[
+                (_query_label(node, nodes) if node.type in {"PARTITION", "SHARED_EXPRESSION"} else node.name or node.id, _type_label(node.type),
+                 str(_props(node).get("not_checked_reason") or "").replace("_", " ").capitalize(), _plain(_props(node).get("not_checked_detail")))
                 for node in not_checked]))
         else:
-            add(Block("paragraph", "Nothing in this document is marked not checked."))
+            add(Block("paragraph", "Everything in this document was read."))
         unresolved = [item for item in _unresolved(repository) if item["object_id"] in scoped]
-        add(Block("heading", "Unresolved references", 2))
+        add(Block("heading", "References not found", 2))
         if unresolved:
-            add(Block("table", headers=("Object", "What is unresolved", "Evidence"), widths=(2, 1.4, 2.6), rows=[
-                (qualified(item["object_id"]), item["kind"], _json(item["evidence"])) for item in unresolved]))
+            add(Block("table", headers=("Item", "What", "Reference"), widths=(2, 1.4, 2.6), rows=[
+                (qualified(item["object_id"]), item["kind"].capitalize(), _plain(item["evidence"]) or "None") for item in unresolved]))
         else:
-            add(Block("paragraph", "No unresolved references in this document."))
+            add(Block("paragraph", "Every reference in this document was found."))
         diagnostics = [item for item in _diagnostics(repository) if item["object_id"] in scoped]
         if diagnostics:
-            add(Block("heading", "DAX diagnostics", 2))
-            add(Block("table", headers=("Object", "Code", "Evidence"), widths=(2, 1.2, 2.8), rows=[
-                (qualified(item["object_id"]), item["code"], _json(item["evidence"])) for item in diagnostics]))
+            add(Block("heading", "DAX problems", 2))
+            add(Block("table", headers=("Item", "Problem"), widths=(2, 4), rows=[
+                (qualified(item["object_id"]), _plain(item["evidence"]) or item["code"].replace("_", " ")) for item in diagnostics]))
 
     title = f"{project_name} documentation"
     scope = {"model_ids": [node.id for node in models], "report_ids": [node.id for node in reports], "sections": chosen_sections}
@@ -444,47 +508,141 @@ def _query_label(node: Node, nodes: Mapping[str, Node]) -> str:
     return node.name or node.id
 
 
-def _meanings(edges: Iterable[Edge], nodes: Mapping[str, Node], scoped: Mapping[str, Node], model_id: str, store: Any) -> list[dict[str, Any]]:
-    out = []
-    for edge in edges:
-        source = scoped.get(edge.from_id)
-        meaning = nodes.get(edge.to_id)
-        if source is None or meaning is None or meaning.type not in _SEMANTIC or source.model_id != model_id or source.report_id:
-            continue
-        values = edge.to_dict()
-        if store is not None:
-            from backend.api.review import apply_overrides_to_dict
-            values = apply_overrides_to_dict(values, store)
-        out.append({"from": edge.from_id, "meaning": meaning.name, "marker": values.get("evidence_class") or edge.evidence_class,
-                    "status": values.get("status") or edge.status, "confidence": f"{float(values.get('confidence') or 0):.2f}", "id": edge.id})
-    return sorted(out, key=lambda item: (item["from"], item["meaning"].casefold(), item["id"]))
+_MODE_KIND = {"Import": "fact", "DirectQuery": "directquery", "Dual": "dual", "Direct Lake": "source"}
+_ROW_LIMIT = 6
 
 
-def _model_diagram(tables: list[Node], relationships: list[Node], nodes: Mapping[str, Node], children: Mapping[str, list[Node]]) -> Block:
-    def table_of(column_id: Any) -> str | None:
-        column = nodes.get(str(column_id or ""))
+def _cross_filter(value: Any) -> str:
+    text = re.sub(r"[^a-z]", "", str(value or "").casefold())
+    if text in {"bothdirections", "both"}:
+        return "Both"
+    if text in {"", "onedirection", "single", "automatic", "default"}:
+        return "Single"
+    return str(value)
+
+
+_VISUAL_TYPES = {"tableex": "Table", "pivottable": "Matrix", "multirowcard": "Multi-row card", "cardvisual": "Card",
+                 "textbox": "Text box", "actionbutton": "Button", "kpi": "KPI", "shape": "Shape", "image": "Image",
+                 "map": "Map", "filledmap": "Filled map", "shapemap": "Shape map", "azuremap": "Azure map"}
+
+
+def _visual_type(value: Any) -> str:
+    """``clusteredColumnChart`` as "Clustered column chart", ``tableEx`` as "Table"."""
+
+    known = _VISUAL_TYPES.get(str(value or "").casefold())
+    if known:
+        return known
+    text = re.sub(r"(?<=[a-z0-9])(?=[A-Z])", " ", str(value or "")).strip()
+    return text[:1].upper() + text[1:].lower() if text else ""
+
+
+def _type_label(value: Any) -> str:
+    return {"SHARED_EXPRESSION": "Shared query", "PARTITION": "Table partition", "MODEL": "Semantic model",
+            "DATA_SOURCE": "Data source"}.get(str(value), str(value or "").replace("_", " ").capitalize())
+
+
+def _model_diagram(tables: list[Node], relationships: list[Node], nodes: Mapping[str, Node],
+                   children: Mapping[str, list[Node]]) -> tuple[Block, list[Node]]:
+    """A star layout: fact tables (the many side) in the middle row, the tables they look up above and below.
+
+    Gives the diagram and the tables that have no relationship (listed under it, not drawn).
+    """
+
+    def column_of(column_id: Any) -> Node | None:
+        return nodes.get(str(column_id or ""))
+
+    def table_of(column: Node | None) -> str | None:
         return str(_props(column).get("table_id")) if column is not None and _props(column).get("table_id") else None
 
-    links = []
-    degree: Counter[str] = Counter()
+    by_id = {table.id: table for table in tables}
+    links: list[DiagramLink] = []
+    neighbours: dict[str, set[str]] = defaultdict(set)
+    many: Counter[str] = Counter()
+    one: Counter[str] = Counter()
+    keys: dict[str, set[str]] = defaultdict(set)
     for rel in relationships:
-        source, target = table_of(_props(rel).get("from_column_id")), table_of(_props(rel).get("to_column_id"))
-        if source and target:
-            degree[source] += 1
-            degree[target] += 1
-            links.append(DiagramLink(source, target, _cardinality(_props(rel).get("cardinality")),
-                                     dashed=str(_props(rel).get("active", "true")).casefold() == "false"))
-    ordered = sorted(tables, key=lambda n: (-degree[n.id], (n.name or "").casefold(), n.id))
-    columns = max(1, min(5, math.ceil(math.sqrt(len(ordered) * 1.6))))
-    w, h, gap_x, gap_y = 130.0, 38.0, 42.0, 46.0
+        from_column, to_column = column_of(_props(rel).get("from_column_id")), column_of(_props(rel).get("to_column_id"))
+        source, target = table_of(from_column), table_of(to_column)
+        if not (source in by_id and target in by_id) or source == target:
+            continue
+        cardinality = _cardinality(_props(rel).get("cardinality")) or "*:1"
+        if cardinality == "1:*":
+            source, target, from_column, to_column = target, source, to_column, from_column
+            cardinality = "*:1"
+        many[source] += 1
+        one[target] += 1
+        neighbours[source].add(target)
+        neighbours[target].add(source)
+        keys[source].add(from_column.name)
+        keys[target].add(to_column.name)
+        label = cardinality + (" (both)" if _cross_filter(_props(rel).get("cross_filter_direction")) == "Both" else "")
+        links.append(DiagramLink(source, target, label, dashed=str(_props(rel).get("active", "true")).casefold() == "false"))
+    related = [table for table in tables if table.id in neighbours]
+    unrelated = [table for table in tables if table.id not in neighbours]
+    if not related:
+        return Block("diagram", "Model diagram"), unrelated
+
+    facts = [table for table in related if many[table.id] > one[table.id]]
+    if not facts:
+        facts = [max(related, key=lambda table: (len(neighbours[table.id]), (table.name or "").casefold()))]
+    level = {table.id: 0 for table in facts}
+    frontier = [table.id for table in facts]
+    while frontier:
+        following = []
+        for table_id in sorted(frontier):
+            for other in sorted(neighbours[table_id]):
+                if other not in level:
+                    level[other] = level[table_id] + 1
+                    following.append(other)
+        frontier = following
+    # Rows from the top: ... level 2 above, level 1 above, facts, level 1 below, level 2 below ...
+    rows: dict[int, list[Node]] = defaultdict(list)
+    rows[0] = sorted(facts, key=lambda table: (-len(neighbours[table.id]), (table.name or "").casefold(), table.id))
+    side: dict[str, int] = {}
+    outer = sorted((table for table in related if level.get(table.id, 0) > 0),
+                   key=lambda table: (level[table.id], -len(neighbours[table.id]), (table.name or "").casefold(), table.id))
+    counts = Counter()
+    for table in outer:
+        parents = [side[item] for item in neighbours[table.id] if item in side]
+        sign = parents[0] if parents else (-1 if counts[-level[table.id]] <= counts[level[table.id]] else 1)
+        side[table.id] = sign
+        rows[sign * level[table.id]].append(table)
+        counts[sign * level[table.id]] += 1
+    # Long rows wrap outward, so the diagram stays readable at page width.
+    stacked: list[list[Node]] = []
+    for key in sorted(rows):
+        items = rows[key]
+        chunks = [items[index:index + _ROW_LIMIT] for index in range(0, len(items), _ROW_LIMIT)] or [[]]
+        stacked.extend(reversed(chunks) if key < 0 else chunks)
+    w, gap_x, gap_y = 150.0, 34.0, 48.0
+    position: dict[str, float] = {}
     boxes = []
-    for index, table in enumerate(ordered):
-        row, column = divmod(index, columns)
-        counts = Counter(child.type for child in children.get(table.id, []))
-        detail = f"{_count(counts['COLUMN'], 'column')} · {_count(counts['MEASURE'], 'measure')}"
-        kind = "muted" if str(_props(table).get("hidden", "")).casefold() == "true" else "fact"
-        boxes.append(DiagramBox(table.id, (table.name or table.id, detail), column * (w + gap_x), row * (h + gap_y), w, h, kind))
-    return Block("diagram", "Model diagram", boxes=tuple(boxes), links=tuple(sorted(links, key=lambda item: (item.source, item.target, item.label))))
+    y = 0.0
+    widest = max(len(row) for row in stacked) * (w + gap_x)
+    for row in stacked:
+        # Order each row by where its neighbours already are, to keep lines short and uncrossed.
+        row = sorted(row, key=lambda table: (
+            sum(position[item] for item in neighbours[table.id] if item in position) / max(1, sum(1 for item in neighbours[table.id] if item in position))
+            if any(item in position for item in neighbours[table.id]) else 1e9,
+            (table.name or "").casefold(), table.id))
+        start = (widest - len(row) * (w + gap_x)) / 2
+        height = 0.0
+        for index, table in enumerate(row):
+            mode = _storage_mode(table, children.get(table.id, []))
+            hidden = str(_props(table).get("hidden", "")).casefold() == "true"
+            lines = [f"{table.name or table.id}{' (hidden)' if hidden else ''}", mode]
+            listed = sorted(keys[table.id], key=str.casefold)
+            lines.extend(f"Key: {name}" for name in listed[:3])
+            if len(listed) > 3:
+                lines.append(f"+{len(listed) - 3} more keys")
+            h = 14.0 + 10.5 * len(lines)
+            x = start + index * (w + gap_x)
+            position[table.id] = x
+            boxes.append(DiagramBox(table.id, tuple(lines), x, y, w, h, "muted" if hidden else _MODE_KIND.get(mode, "fact")))
+            height = max(height, h)
+        y += height + gap_y
+    return (Block("diagram", "Model diagram", boxes=tuple(boxes),
+                  links=tuple(sorted(links, key=lambda item: (item.source, item.target, item.label)))), unrelated)
 
 
 def _lineage_diagram(sources: list[Node], models: list[Node], reports: list[Node], reads: Mapping[str, list[str]],
@@ -515,7 +673,7 @@ def _lineage_diagram(sources: list[Node], models: list[Node], reports: list[Node
     for column, (kind, items) in enumerate(lanes):
         for row, node in items:
             muted = _props(node).get("check_status") == "not_checked"
-            label = {"source": "Data source", "fact": "Model", "report": "Report"}[kind]
+            label = {"source": "Data source", "fact": "Semantic model", "report": "Report"}[kind]
             boxes.append(DiagramBox(node.id, (node.name or node.id, label), column * (w + gap_x), row * (h + gap_y), w, h, "muted" if muted else kind))
     return Block("diagram", "Lineage", boxes=tuple(boxes),
                  links=tuple(DiagramLink(a, b) for a, b in sorted(links)))
@@ -546,8 +704,7 @@ def _md_table(headers: Sequence[str], rows: Iterable[Sequence[Any]]) -> list[str
 
 
 def render_document_markdown(document: Document) -> str:
-    lines = [f"# {document.title}", "", f"Generated {document.generated_at}. Read-only metadata from the last scan; "
-             "FACT is read from source files, INFERRED is an interpretation, OBSERVED is recorded usage.", ""]
+    lines = [f"# {document.title}", "", f"Generated {document.generated_at} from the Power BI project files.", ""]
     for block in document.blocks:
         if block.kind == "heading":
             lines.extend([f"{'#' * min(block.level + 1, 6)} {block.text}", ""])
