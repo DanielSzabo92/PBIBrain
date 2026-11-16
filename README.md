@@ -46,7 +46,7 @@ The same workbench runs in two ways. Both read the same project folder.
 
 ---
 
-## Getting started
+## Start
 
 ### 1. Install and open
 

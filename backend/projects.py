@@ -636,8 +636,11 @@ def _separate_versions(
     """
 
     marker = hashlib.sha256(str(path.resolve()).casefold().encode()).hexdigest()[:8]
+    # The folder that tells the copies apart ("Sales v2" for Sales v2/Sales.pbip), shown after a repeated name.
+    label = (path.parent if path.is_file() or path.suffix else path).name or path.name
     for kind, values, existing in (("model", source_models, models), ("report", source_reports, reports)):
         known = {str(source_id(item)).casefold(): _root_payload(item) for item in existing}
+        names = {str(item.get("name") or "").casefold() for item in existing}
         renamed: dict[str, str] = {}
         for item in values:
             identifier = source_id(item)
@@ -651,6 +654,9 @@ def _separate_versions(
             for key in ("source_id", "sourceId", "object_id", "objectId", "guid", "lineage_tag", "lineageTag"):
                 item.pop(key, None)
             item["id"] = new_id
+            name = str(item.get("name") or "")
+            if name and name.casefold() in names and label and label.casefold() != name.casefold():
+                item["name"] = f"{name} ({label})"
         if kind == "model" and renamed:
             for report in source_reports:
                 for key in ("model_id", "modelId", "dataset_id", "datasetId", "semanticModelId"):
@@ -672,10 +678,22 @@ def _deduplicate_roots(values: list[dict[str, Any]], kind: str) -> list[dict[str
             seen[key] = payload
             unique.append(value)
             continue
-        if previous != payload:
-            raise ProjectSourceCollisionError(
-                f"Conflicting {kind} definitions share canonical identity {kind}:{identifier}"
-            )
+        if previous == payload:
+            continue
+        # A second, different version under the same id (copies of one model inside a single source, which
+        # _separate_versions does not see): keep it as its own version instead of failing the whole scan.
+        marker_source = str(value.get("source_path") or payload)
+        suffix = hashlib.sha256(marker_source.casefold().encode()).hexdigest()[:8]
+        new_id = f"{identifier}@{suffix}"
+        while new_id.casefold() in seen:
+            suffix = hashlib.sha256((suffix + marker_source).encode()).hexdigest()[:8]
+            new_id = f"{identifier}@{suffix}"
+        LOGGER.info("Two different %s definitions share id %s; the later one is scanned as %s", kind, identifier, new_id)
+        for alias in ("source_id", "sourceId", "object_id", "objectId", "guid", "lineage_tag", "lineageTag"):
+            value.pop(alias, None)
+        value["id"] = new_id
+        seen[new_id.casefold()] = _root_payload(value)
+        unique.append(value)
     return unique
 
 

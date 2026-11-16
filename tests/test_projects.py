@@ -259,6 +259,39 @@ class ProjectTests(unittest.TestCase):
         second_report = next(node for node in repository.all_nodes() if node.type == "REPORT" and node.name.startswith("Shared Report") and node.id.endswith("second-report"))
         self.assertNotEqual("model:shared", second_report.properties.get("model_id") or second_report.model_id)
 
+    def test_two_versions_inside_one_source_scan_side_by_side(self):
+        path = self.root / "sources" / "both.json"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        first, second = _model("shared", "Shared"), _model("shared", "Shared")
+        second["name"] = "Shared v2"
+        second["tables"][0]["measures"][0]["expression"] = "SUM('Shared Facts'[Amount]) * 2"
+        path.write_text(json.dumps({"models": [first, second], "reports": []}), encoding="utf-8")
+        self._save([path])
+        repository = GraphRepository(use_sqlite=False)
+
+        ProjectService(self.config_path).scan(repository)
+
+        models = {node.id: node.name for node in repository.all_nodes() if node.type == "MODEL"}
+        self.assertEqual(["Shared", "Shared v2"], sorted(models.values()))
+        self.assertEqual("Shared", models["model:shared"])
+
+    def test_two_model_bim_files_with_the_same_id_scan_as_versions(self):
+        sources = []
+        for folder, expression in (("v1", "SUM(Sales[Amount])"), ("v2", "SUM(Sales[Amount]) * 1.1")):
+            path = self.root / "sources" / folder / "model.bim"
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(json.dumps({"name": "SemanticModel", "id": "SemanticModel", "compatibilityLevel": 1600, "model": {
+                "culture": "en-US", "tables": [{"name": "Sales", "columns": [{"name": "Amount", "dataType": "double"}],
+                                                 "measures": [{"name": "Total", "expression": expression}]}]}}), encoding="utf-8")
+            sources.append(path)
+        self._save(sources)
+        repository = GraphRepository(use_sqlite=False)
+
+        ProjectService(self.config_path).scan(repository)
+
+        self.assertEqual(2, sum(1 for node in repository.all_nodes() if node.type == "MODEL"))
+        self.assertEqual(2, sum(1 for node in repository.all_nodes() if node.type == "MEASURE"))
+
     def test_two_copies_of_one_pbip_project_scan_as_versions(self):
         first = write_pbip_project(self.root / "v1")
         second = write_pbip_project(self.root / "v2", include_extra=True)
