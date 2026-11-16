@@ -124,11 +124,11 @@ class ModelSummaryTests(unittest.TestCase):
             file = path / "model.json"
             file.write_text(json.dumps(source, ensure_ascii=False), encoding="utf-8")
             original = file.read_bytes()
-            with GraphRepository(path / "brain.lbug", use_native=True) as repository:
-                self.assertTrue(repository.is_native)
+            with GraphRepository(path / "brain.sqlite") as repository:
+                self.assertEqual(repository.storage, "trail")
                 Scanner(repository=repository).scan(file)
                 first = build_model_summary(repository, "model:native-summary")
-            with GraphRepository(path / "brain.lbug", use_native=True) as repository:
+            with GraphRepository(path / "brain.sqlite") as repository:
                 second = build_model_summary(repository, "model:native-summary")
                 self.assertEqual(first["snapshot_id"], second["snapshot_id"])
                 self.assertIn("from=many; to=one", second["markdown"])
@@ -144,7 +144,7 @@ class ModelSummaryTests(unittest.TestCase):
             folder = Path(directory)
             project = write_pbip_project(folder / "Finance")
             source_files = {path: path.read_bytes() for path in project.parent.rglob("*") if path.is_file()}
-            with GraphRepository(folder / "brain.lbug", use_native=True) as repository:
+            with GraphRepository(folder / "brain.sqlite") as repository:
                 Scanner(repository=repository).scan(project)
                 model = next(node for node in repository.all_nodes() if node.type == "MODEL")
                 summary = build_model_summary(repository, model.id)

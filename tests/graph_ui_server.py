@@ -49,11 +49,11 @@ def main():
             }],
         }), encoding="utf-8")
         project = ProjectService(folder / "brain.json")
-        project.save_config({"version": 1, "name": "Graph acceptance project", "sources": [str(source)], "database": "brain.lbug", "identity_map": "identity.json"})
+        project.save_config({"version": 1, "name": "Graph acceptance project", "sources": [str(source)], "database": "brain.sqlite", "identity_map": "identity.json"})
         # Native scan, close, and reopen exercise the same persisted data the app reads.
-        with GraphRepository(folder / "brain.lbug") as repository:
+        with GraphRepository(folder / "brain.sqlite") as repository:
             project.scan(repository)
-        app = create_app(database_path=folder / "brain.lbug", overrides_path=folder / "overrides.json")
+        app = create_app(database_path=folder / "brain.sqlite", overrides_path=folder / "overrides.json")
         app.project = project
         app.static_dir = root / "frontend" / "dist"
         if args.chat:

@@ -253,7 +253,7 @@ class ReferenceTests(unittest.TestCase):
         self.assertEqual(digest, contract.contract_hash)
 
     def test_readonly_api_impact_context_compare_registry(self):
-        with GraphRepository(use_native=False) as repository:
+        with GraphRepository(use_sqlite=False) as repository:
             graph = self.baseline.to_dict()["analysis"]["graph"]
             from backend.graph.schema import Node, Edge
             repository.replace([Node(**{key: value for key, value in item.items() if key in Node.__dataclass_fields__}) for item in graph["nodes"]], [Edge(**item) for item in graph["edges"]])

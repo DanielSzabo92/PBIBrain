@@ -12,7 +12,6 @@ from backend.adapters.tabular_metadata import TabularMetadataAdapter
 from backend.dax.analyzer import DaxAnalyzer
 from backend.dax.parser import DaxSyntaxError, parse_dax_function
 from backend.graph.loader import build_fact_graph
-from backend.graph.migrations import migrate_payload
 from backend.graph.repository import GraphRepository
 from backend.graph.schema import GRAPH_SCHEMA_VERSION, OBJECT_TYPES, Node
 from backend.impact.analyzer import analyze_impact
@@ -335,25 +334,24 @@ class FunctionParserTests(unittest.TestCase):
         self.assertIn(("x", "f"), edges)
 
 
-class SchemaMigrationTests(unittest.TestCase):
-    def test_version_1_payload_moves_forward(self):
-        payload = {"nodes": [{"id": "a", "type": "MEASURE", "name": "A"}], "edges": []}
-        self.assertEqual(GRAPH_SCHEMA_VERSION, migrate_payload(payload)["schema_version"])
+class GraphFileVersionTests(unittest.TestCase):
+    def test_current_version_round_trips(self):
         with tempfile.TemporaryDirectory() as temporary:
             path = Path(temporary) / "graph.json"
-            path.write_text(json.dumps(payload), encoding="utf-8")
-            repository = GraphRepository(path, use_native=False)
-            self.assertEqual("A", repository.get_object("a").name)
+            repository = GraphRepository(path, use_sqlite=False)
             repository.replace([Node(id="b", type="BOOKMARK", name="B", source="report_metadata")], [])
             stored = json.loads(path.read_text(encoding="utf-8"))
             self.assertEqual(GRAPH_SCHEMA_VERSION, stored["schema_version"])
-            self.assertEqual("BOOKMARK", GraphRepository(path, use_native=False).get_object("b").type)
+            self.assertEqual("BOOKMARK", GraphRepository(path, use_sqlite=False).get_object("b").type)
 
-    def test_newer_payload_stops_the_load(self):
-        with self.assertRaises(ValueError):
-            migrate_payload({"schema_version": GRAPH_SCHEMA_VERSION + 1, "nodes": [], "edges": []})
-        with self.assertRaises(ValueError):
-            migrate_payload({"schema_version": "2"})
+    def test_other_versions_stop_the_load(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "graph.json"
+            for payload in ({"nodes": [], "edges": []}, {"schema_version": GRAPH_SCHEMA_VERSION + 1, "nodes": [], "edges": []},
+                            {"schema_version": str(GRAPH_SCHEMA_VERSION), "nodes": [], "edges": []}):
+                path.write_text(json.dumps(payload), encoding="utf-8")
+                with self.subTest(payload=payload), self.assertRaises(ValueError):
+                    GraphRepository(path, use_sqlite=False)
 
 
 if __name__ == "__main__":

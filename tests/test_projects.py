@@ -103,7 +103,7 @@ class ProjectTests(unittest.TestCase):
                 "version": 1,
                 "name": "Portfolio",
                 "sources": [os.path.relpath(path, self.config_path.parent) for path in sources],
-                "database": "../data/portfolio.lbug",
+                "database": "../data/portfolio.sqlite",
                 "identity_map": "identity.json",
             }
         )
@@ -114,7 +114,7 @@ class ProjectTests(unittest.TestCase):
             json.dumps(
                 {
                     "version": 1,
-                    "database": "../data/brain.lbug",
+                    "database": "../data/brain.sqlite",
                     "identity_map": "identity.json",
                 }
             ),
@@ -126,7 +126,7 @@ class ProjectTests(unittest.TestCase):
 
         self.assertEqual(config["name"], "PBIBrain")
         self.assertEqual(config["sources"], [])
-        self.assertEqual(paths["database"], (self.root / "data" / "brain.lbug").resolve())
+        self.assertEqual(paths["database"], (self.root / "data" / "brain.sqlite").resolve())
         self.assertEqual(paths["identity_map"], (self.root / "config" / "identity.json").resolve())
         self.assertEqual(paths["overrides"], (self.root / "config" / "overrides.json").resolve())
 
@@ -162,7 +162,7 @@ class ProjectTests(unittest.TestCase):
         sales = self._write_source("sales.json", "sales", "sales-report")
         inventory = self._write_source("inventory.json", "inventory", "inventory-report")
         self._save([sales, inventory])
-        repository = GraphRepository(use_native=False)
+        repository = GraphRepository(use_sqlite=False)
 
         result = ProjectService(self.config_path).scan(repository)
 
@@ -187,7 +187,7 @@ class ProjectTests(unittest.TestCase):
             path.write_text(json.dumps(model), encoding="utf-8")
             sources.append(path)
         self._save(sources)
-        repository = GraphRepository(use_native=False)
+        repository = GraphRepository(use_sqlite=False)
         service = ProjectService(self.config_path)
         service.scan(repository)
         before = {node.name: node.id for node in repository.all_nodes() if node.type == "MODEL"}
@@ -216,7 +216,7 @@ class ProjectTests(unittest.TestCase):
             encoding="utf-8",
         )
         self._save([first, second])
-        repository = GraphRepository(use_native=False)
+        repository = GraphRepository(use_sqlite=False)
 
         result = ProjectService(self.config_path).scan(repository)
 
@@ -232,7 +232,7 @@ class ProjectTests(unittest.TestCase):
         sales = self._write_source("sales.json", "sales", "sales-report")
         inventory = self._write_source("inventory.json", "inventory", "inventory-report")
         self._save([sales, inventory])
-        repository = GraphRepository(use_native=False)
+        repository = GraphRepository(use_sqlite=False)
         service = ProjectService(self.config_path)
         service.scan(repository)
 
@@ -250,7 +250,7 @@ class ProjectTests(unittest.TestCase):
         second_payload["models"][0]["name"] = "Conflicting Shared Model"
         second.write_text(json.dumps(second_payload), encoding="utf-8")
         self._save([first])
-        repository = GraphRepository(use_native=False)
+        repository = GraphRepository(use_sqlite=False)
         service = ProjectService(self.config_path)
         service.scan(repository)
         before = ([node.to_dict() for node in repository.all_nodes()], [edge.to_dict() for edge in repository.all_edges()])
@@ -271,7 +271,7 @@ class ProjectTests(unittest.TestCase):
         identity = self.config_path.parent / "identity.json"
         identity.write_text('{"version":1,"mappings":{}}\n', encoding="utf-8")
         original = identity.read_bytes()
-        repository = GraphRepository(use_native=False)
+        repository = GraphRepository(use_sqlite=False)
 
         with patch.object(repository, "replace", side_effect=RuntimeError("write failed")):
             with self.assertRaisesRegex(RuntimeError, "write failed"):
@@ -291,7 +291,7 @@ class ProjectTests(unittest.TestCase):
         overrides = self.config_path.parent / "overrides.json"
         overrides.write_text('{"version":1,"overrides":[]}\n', encoding="utf-8")
         override_bytes = overrides.read_bytes()
-        repository = GraphRepository(use_native=False)
+        repository = GraphRepository(use_sqlite=False)
         service = ProjectService(self.config_path)
         service.scan(repository)
         candidate = next(node for node in repository.all_nodes() if node.status == "candidate")
@@ -310,7 +310,7 @@ class ProjectTests(unittest.TestCase):
             "version": 1,
             "name": "Project",
             "sources": [],
-            "database": "data/brain.lbug",
+            "database": "data/brain.sqlite",
             "identity_map": "state/identity.json",
         }
         ProjectConfigStore(first_path).save(payload)
@@ -325,7 +325,7 @@ class ProjectTests(unittest.TestCase):
     def test_project_scan_and_serve_reject_storage_overrides_before_open(self):
         self._save([])
         cases = (
-            ("project-scan", "--db", str(self.root / "wrong.lbug")),
+            ("project-scan", "--db", str(self.root / "wrong.sqlite")),
             ("serve", "--identity", str(self.root / "wrong-identity.json")),
         )
         for command, flag, value in cases:

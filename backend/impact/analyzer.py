@@ -1,6 +1,6 @@
 """Conservative analytical traversal of the existing canonical graph.
 
-Results are evidence records, never speculative edges in LadybugDB.
+Results are evidence records, never speculative edges in the graph store.
 Output limits are applied after closure, and cannot certify completeness.
 """
 from __future__ import annotations

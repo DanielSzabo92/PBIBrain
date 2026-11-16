@@ -8,7 +8,7 @@ from .schema import (
     Edge,
     Node,
 )
-from .repository import GraphRepository, LadybugRepository
+from .repository import GraphRepository
 
 __all__ = [
     "EDGE_TYPES",
@@ -18,5 +18,4 @@ __all__ = [
     "Edge",
     "Node",
     "GraphRepository",
-    "LadybugRepository",
 ]

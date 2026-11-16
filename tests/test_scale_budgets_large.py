@@ -25,7 +25,7 @@ class LargeProjectBudgetTests(unittest.TestCase):
         cls.temporary = tempfile.TemporaryDirectory()
         root = Path(cls.temporary.name)
         config = write_project(root)
-        cls.app = create_app(database_path=root / "brain.db", overrides_path=root / "overrides.json", use_native=False)
+        cls.app = create_app(database_path=root / "brain.db", overrides_path=root / "overrides.json", use_sqlite=False)
         cls.app.project = ProjectService(config)
         status, reply = cls.app.handle("POST", "/api/scan")
         assert status == 200, reply

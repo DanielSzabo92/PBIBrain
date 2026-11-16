@@ -316,7 +316,7 @@ class Phase3InferenceContractTests(unittest.TestCase):
     def test_scanner_persists_semantic_candidates(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            repository = GraphRepository(root / "brain.json", use_native=False)
+            repository = GraphRepository(root / "brain.json", use_sqlite=False)
             graph = Scanner(repository, identity_path=root / "identity.json").scan(
                 semantic_model_source(), semantic_report_source()
             )

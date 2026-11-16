@@ -37,16 +37,15 @@ class PublicationContractTests(unittest.TestCase):
 
     def test_readme_covers_the_publication_surface(self):
         required_sections = {
-            "architecture": ("Power BI metadata / PBIP files", "canonical nodes", "Brain is infrastructure"),
-            "trust model": ("## Trust model", "`FACT`", "`INFERRED`", "`OBSERVED`", "overrides"),
-            "setup": ("## Requirements", "python -m pip install -e .", "LBUG_C_API_LIB_PATH"),
-            "direct PBIP": (".pbip", "TMDL", "PBIR", "brain scan"),
-            "CLI": ("brain status", "brain search", "brain object"),
-            "API": ("BrainAPI", "search_objects(query)", "get_context(target, task=None)", "/api/brain"),
-            "GUI": ("## Brain Inspector", "React Flow", "npm run dev"),
-            "testing": ("## Verification", "unittest discover", "compileall", "npm run build"),
-            "security": ("## Security and limits", "read-only", "loopback", "Credentials"),
-            "license": ("## License", "MIT", "LICENSE"),
+            "start": ("## Start", "start.bat", "./start.sh", "Python 3.11+", "SQLite"),
+            "workbench": ("## Workbench", "Overview", "Inspector", "Review queue", "Merge models"),
+            "MCP": ("## MCP server", "brain_search", "agent-setup", "agent-snapshot.json"),
+            "project file": ("## Project file", '"database": "brain.sqlite"', '"identity_map"', "overrides.json"),
+            "CLI": ("## CLI", "project-scan", "`status`", "`search <q>`", "`object <id>`"),
+            "trust classes": ("## Trust classes", "`FACT`", "`INFERRED`", "`OBSERVED`"),
+            "security": ("## Security", "read-only", "loopback", "Credentials"),
+            "develop": ("## Develop", "python -m pip install -e", "unittest discover", "npm run build"),
+            "license": ("MIT", "LICENSE"),
         }
         for area, phrases in required_sections.items():
             with self.subTest(area=area):
@@ -66,7 +65,7 @@ class PublicationContractTests(unittest.TestCase):
 
     def test_gitignore_protects_local_runtime_and_private_artifacts(self):
         protected_patterns = {
-            "native database": "*.lbug",
+            "graph database": "*.sqlite",
             "identity state": "config/identity.json",
             "frontend dependencies": "frontend/node_modules/",
             "frontend build": "frontend/dist/",

@@ -579,7 +579,7 @@ class GitignoreTests(SessionTestCase):
         self.create()
         lines = user_file.read_text(encoding="utf-8").splitlines()
         self.assertEqual("my-notes.txt", lines[0])
-        for entry in ("connection.json", "*.lbug", "*.lock", "*.bak", "*.tmp", "backups/"):
+        for entry in ("connection.json", "*.sqlite", "*.lock", "*.bak", "*.tmp", "backups/"):
             self.assertIn(entry, lines)
         self.create("Second")
         self.assertEqual(lines, user_file.read_text(encoding="utf-8").splitlines())
@@ -590,7 +590,7 @@ class SessionListTests(SessionTestCase):
 
     def setUp(self) -> None:
         super().setUp()
-        self.app = create_app(use_native=False)
+        self.app = create_app(use_sqlite=False)
         self.app.devcenter = self.devcenter
 
     def tearDown(self) -> None:
@@ -712,8 +712,7 @@ class DesktopJSAPITests(unittest.TestCase):
         shutil.copytree(LAB / "SalesA", self.project / "SalesA")
         self.controller = DesktopController(
             static_dir=self.static,
-            repository_factory=lambda path: GraphRepository(path, use_native=False),
-            runtime_configurer=lambda: None,
+            repository_factory=lambda path: GraphRepository(path, use_sqlite=False),
             devcenter=DevCenterSessions(app_data_dir=None),
         )
         self.controller.attach_server("http://127.0.0.1:8123")

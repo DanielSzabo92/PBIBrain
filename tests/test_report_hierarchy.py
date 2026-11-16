@@ -25,7 +25,7 @@ class ReportHierarchyTests(unittest.TestCase):
     def setUp(self):
         self.model, self.report = hierarchy_sources()
         self.graph = build_fact_graph(self.model, self.report)
-        self.repository = GraphRepository(use_native=False)
+        self.repository = GraphRepository(use_sqlite=False)
         self.graph.load(self.repository)
         self.addCleanup(self.repository.close)
 
@@ -77,7 +77,7 @@ class ReportHierarchyTests(unittest.TestCase):
 
     def test_native_reopen_preserves_visual_calculations_and_bindings(self):
         with tempfile.TemporaryDirectory() as folder:
-            path = Path(folder) / "brain.lbug"
+            path = Path(folder) / "brain.sqlite"
             with GraphRepository(path) as repository:
                 self.graph.load(repository)
             with GraphRepository(path) as repository:

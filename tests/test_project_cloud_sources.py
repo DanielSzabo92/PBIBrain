@@ -90,12 +90,12 @@ class ProjectCloudSourceTests(unittest.TestCase):
     def save(self, sources: list[str], cloud_sources: list[dict]) -> ProjectService:
         service = ProjectService(self.config, cloud=lambda: self.cloud)
         service.save_config({"version": 1, "name": "Mixed", "sources": sources, "cloud_sources": cloud_sources,
-                             "database": "brain.lbug", "identity_map": "identity.json"})
+                             "database": "brain.sqlite", "identity_map": "identity.json"})
         return service
 
     def test_mixed_project_shows_cloud_model_and_report_with_impact_across_the_boundary(self):
         service = self.save([str(self.local)], [cloud_model(), cloud_report()])
-        repository = GraphRepository(use_native=False)
+        repository = GraphRepository(use_sqlite=False)
 
         result = service.scan(repository)
 
@@ -133,7 +133,7 @@ class ProjectCloudSourceTests(unittest.TestCase):
         thin = write_pbip_project(self.root / "thin" / "Thin", dataset_reference="byConnection")
         # The thin report fixture names the model with semanticmodelid=remote-finance-model.
         service = self.save([str(thin)], [cloud_model(item_id="remote-finance-model")])
-        repository = GraphRepository(use_native=False)
+        repository = GraphRepository(use_sqlite=False)
 
         service.scan(repository)
 
@@ -147,7 +147,7 @@ class ProjectCloudSourceTests(unittest.TestCase):
         shutil.rmtree(thin.parent / MODEL_NAME)
         thin.write_text(json.dumps({"version": "1.0", "artifacts": [{"report": {"path": REPORT_NAME}}]}), encoding="utf-8")
         service = self.save([str(thin)], [])
-        repository = GraphRepository(use_native=False)
+        repository = GraphRepository(use_sqlite=False)
 
         result = service.scan(repository)
 
@@ -162,10 +162,10 @@ class ProjectCloudSourceTests(unittest.TestCase):
 
     def test_cloud_read_falls_back_to_cache_then_to_not_checked(self):
         service = self.save([], [cloud_model(), cloud_report()])
-        service.scan(GraphRepository(use_native=False))
+        service.scan(GraphRepository(use_sqlite=False))
         self.cloud.fail = SignInRequired()
 
-        repository = GraphRepository(use_native=False)
+        repository = GraphRepository(use_sqlite=False)
         cached = service.scan(repository)
 
         self.assertEqual({(item["status"], item["reason"]) for item in cached.cloud}, {("cached", REASON_SIGN_IN_REQUIRED)})
@@ -174,7 +174,7 @@ class ProjectCloudSourceTests(unittest.TestCase):
 
         shutil.rmtree(self.config.parent / "tmp" / "cloud")
         self.cloud.fail = ReportNotReadable()
-        repository = GraphRepository(use_native=False)
+        repository = GraphRepository(use_sqlite=False)
         missing = service.scan(repository)
 
         self.assertEqual({item["reason"] for item in missing.not_checked}, {REASON_REPORT_NOT_READABLE})
@@ -185,7 +185,7 @@ class ProjectCloudSourceTests(unittest.TestCase):
 
     def test_without_cloud_service_the_scan_uses_the_cache_only(self):
         self.save([], [cloud_model()])
-        repository = GraphRepository(use_native=False)
+        repository = GraphRepository(use_sqlite=False)
 
         result = ProjectService(self.config).scan(repository)
 
@@ -217,7 +217,7 @@ class ProjectCloudSourceTests(unittest.TestCase):
     def test_report_bound_by_catalog_name_in_workspace(self):
         self.cloud.connection = "Data Source=powerbi://api.powerbi.com/v1.0/myorg/Sales Analytics;Initial Catalog=Cloud Finance"
         service = self.save([], [cloud_model(), cloud_report()])
-        repository = GraphRepository(use_native=False)
+        repository = GraphRepository(use_sqlite=False)
 
         result = service.scan(repository)
 

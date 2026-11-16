@@ -122,7 +122,7 @@ class DocumentationExportTests(unittest.TestCase):
             Edge("edge:uses", "USES", "visual:revenue", measure_a, source="report_metadata", evidence=["visual field binding"]),
             Edge("edge:model", "USES_MODEL", report, model_a, source="report_metadata", evidence=["report model reference"]),
         ]
-        repository = GraphRepository(use_native=False)
+        repository = GraphRepository(use_sqlite=False)
         repository.replace(nodes, edges)
         return repository
 
@@ -171,7 +171,7 @@ class DocumentationExportTests(unittest.TestCase):
             root = Path(temporary)
             source = root / "source.json"
             identity = root / "identity.json"
-            database = root / "brain.lbug"
+            database = root / "brain.sqlite"
             source.write_text('{"models": []}\n', encoding="utf-8")
             identity.write_text('{"version": 1}\n', encoding="utf-8")
             database.write_text("database sentinel\n", encoding="utf-8")
@@ -182,7 +182,7 @@ class DocumentationExportTests(unittest.TestCase):
                         "version": 1,
                         "name": "Portfolio",
                         "sources": ["source.json"],
-                        "database": "brain.lbug",
+                        "database": "brain.sqlite",
                         "identity_map": "identity.json",
                     }
                 ),
@@ -231,7 +231,7 @@ class DocumentationExportTests(unittest.TestCase):
                         "version": 1,
                         "name": "Finance",
                         "sources": ["Finance.pbip"],
-                        "database": "brain.lbug",
+                        "database": "brain.sqlite",
                         "identity_map": "identity.json",
                     }
                 ),
@@ -256,7 +256,7 @@ class DocumentationExportTests(unittest.TestCase):
                         "version": 1,
                         "name": "Árvíztűrő projekt",
                         "sources": [],
-                        "database": "brain.lbug",
+                        "database": "brain.sqlite",
                         "identity_map": "identity.json",
                     }
                 ),
@@ -268,7 +268,7 @@ class DocumentationExportTests(unittest.TestCase):
                     "from backend.cli.main import main",
                     "from backend.graph.repository import GraphRepository",
                     "from backend.graph.schema import Node",
-                    "repository = GraphRepository(use_native=False)",
+                    "repository = GraphRepository(use_sqlite=False)",
                     "repository.replace([Node('model:unicode', 'MODEL', 'Mérleg 🧠')], [])",
                     "with patch('backend.cli.main.GraphRepository', return_value=repository):",
                     f"    raise SystemExit(main(['--config', {str(config)!r}, 'export-markdown']))",

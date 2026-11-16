@@ -20,7 +20,7 @@ class ReviewPageTests(unittest.TestCase):
         root = Path(cls.temporary.name) / "project"
         root.mkdir()
         config = write_large_project(root)
-        cls.app = create_app(database_path=root / "brain.db", overrides_path=root / "overrides.json", use_native=False)
+        cls.app = create_app(database_path=root / "brain.db", overrides_path=root / "overrides.json", use_sqlite=False)
         cls.app.project = ProjectService(config)
         status, _ = cls.app.handle("POST", "/api/scan")
         assert status == 200

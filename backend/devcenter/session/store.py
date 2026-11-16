@@ -30,8 +30,8 @@ _CONFLICT_MARKER = re.compile(r"^(?:<{7}|={7}|>{7}|\|{7})(?:\s|$)", re.MULTILINE
 # Runtime files in ".pbibrain" that must not go into git (technical design section 11).
 GITIGNORE_ENTRIES = (
     "connection.json",
-    "*.lbug",
-    "*.lbug.*",
+    "*.sqlite",
+    "*.sqlite-*",
     "*.wal",
     "*.lock",
     "*.bak",

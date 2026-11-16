@@ -24,8 +24,8 @@ class FieldWellsOnPbirTests(unittest.TestCase):
         cls.temporary = tempfile.TemporaryDirectory()
         root = Path(cls.temporary.name)
         config = root / "brain.json"
-        config.write_text(json.dumps({"version": 1, "name": "T", "sources": [str(SOURCE)], "database": "brain.lbug", "identity_map": "identity.json"}), encoding="utf-8")
-        cls.app = create_app(database_path=root / "brain.db", overrides_path=root / "overrides.json", use_native=False)
+        config.write_text(json.dumps({"version": 1, "name": "T", "sources": [str(SOURCE)], "database": "brain.sqlite", "identity_map": "identity.json"}), encoding="utf-8")
+        cls.app = create_app(database_path=root / "brain.db", overrides_path=root / "overrides.json", use_sqlite=False)
         cls.app.project = ProjectService(config)
         status, reply = cls.app.handle("POST", "/api/scan")
         assert status == 200, reply

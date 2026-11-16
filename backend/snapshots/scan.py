@@ -107,7 +107,7 @@ def scan_snapshot(root: str | Path, *, identities: dict[str, Any] | None = None,
     with TemporaryDirectory(prefix="pbibrain-snapshot-") as temporary:
         identity = Path(temporary) / "identity.json"
         identity.write_text(json.dumps(identities or {"version": 1, "mappings": {}}), encoding="utf-8")
-        with GraphRepository(use_native=False) as repository:
+        with GraphRepository(use_sqlite=False) as repository:
             scanner = Scanner(repository, identity_path=identity)
             graph = scanner.scan(models, bundle["reports"])
             tabular_validation, topology_unknowns = validate_tabular_structure(metadata)

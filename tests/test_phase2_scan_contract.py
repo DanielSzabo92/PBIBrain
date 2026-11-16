@@ -32,7 +32,7 @@ class Phase2ScanContractTests(unittest.TestCase):
     def test_scanner_scan_automatically_analyzes_all_expression_object_types(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            repository = GraphRepository(root / "brain.json", use_native=False)
+            repository = GraphRepository(root / "brain.json", use_sqlite=False)
             graph = Scanner(
                 repository,
                 identity_path=root / "identity.json",
@@ -94,7 +94,7 @@ class Phase2ScanContractTests(unittest.TestCase):
                 {item.id for item in graph.edges},
             )
             repository.close()
-            reopened = GraphRepository(root / "brain.json", use_native=False)
+            reopened = GraphRepository(root / "brain.json", use_sqlite=False)
             self.assertTrue(reopened.get_edges(from_id=measure_net["id"], edge_types="DEPENDS_ON"))
             self.assertEqual(
                 reopened.get_edges(from_id=measure_net["id"], edge_types="DEPENDS_ON")[0].to_id,
@@ -105,16 +105,10 @@ class Phase2ScanContractTests(unittest.TestCase):
 
 class Phase2CliScanContractTests(unittest.TestCase):
     def test_cli_scan_automatically_persists_dax_edges(self):
-        try:
-            with tempfile.TemporaryDirectory() as probe_directory:
-                GraphRepository(Path(probe_directory) / "probe.lbug").close()
-        except Exception as exc:
-            self.skipTest(f"Ladybug C API shared library is unavailable: {exc}")
-
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             model_path = root / "model.json"
-            database_path = root / "brain.lbug"
+            database_path = root / "brain.sqlite"
             identity_path = root / "identity.json"
             model = dax_model_source()
             model_path.write_text(json.dumps(model), encoding="utf-8")

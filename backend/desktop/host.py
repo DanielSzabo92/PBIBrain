@@ -24,7 +24,6 @@ from backend.devcenter.http_routes import dispatch as devcenter_dispatch
 from backend.devcenter.jsapi import DevCenterJSAPI
 from backend.devcenter.session.manager import DevCenterSessions
 from backend.graph.repository import GraphRepository
-from backend.native_runtime import configure_native_runtime
 from backend.projects import PROJECT_VERSION, ProjectService
 
 
@@ -134,7 +133,6 @@ class DesktopController(DevCenterJSAPI):
         static_dir: str | Path,
         repository_factory: Callable[[Path], GraphRepository] | None = None,
         project_service_factory: Callable[[Path], ProjectService] = ProjectService,
-        runtime_configurer: Callable[[], Path | None] = configure_native_runtime,
         folder_picker: Callable[[], str | Path | None] | None = None,
         source_picker: Callable[[], list[str | Path] | tuple[str | Path, ...] | None] | None = None,
         devcenter: DevCenterSessions | None = None,
@@ -147,7 +145,6 @@ class DesktopController(DevCenterJSAPI):
         self._recent_memory: list[dict[str, str]] = []
         self._repository_factory = repository_factory or (lambda path: GraphRepository(path))
         self._project_service_factory = project_service_factory
-        self._runtime_configurer = runtime_configurer
         self._folder_picker = folder_picker
         self._source_picker = source_picker
         self._lock = threading.RLock()
@@ -375,12 +372,11 @@ class DesktopController(DevCenterJSAPI):
                     "version": PROJECT_VERSION,
                     "name": name,
                     "sources": [_relative_path(source, config_path.parent) for source in sources],
-                    "database": "brain.lbug",
+                    "database": "brain.sqlite",
                     "identity_map": "identity-map.json",
                 }
             )
 
-        self._runtime_configurer()
         paths = service.paths()
         new_repository = self._repository_factory(paths["database"])
         new_application: BrainApp | None = None
@@ -699,7 +695,6 @@ def run() -> int:
     controller: DesktopController | None = None
     server: DesktopServer | None = None
     try:
-        configure_native_runtime()
         static_dir = default_static_dir()
         if not (static_dir / "index.html").is_file():
             raise RuntimeError("The PBIBrain interface is missing. Reinstall PBIBrain.")

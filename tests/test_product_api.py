@@ -1,9 +1,9 @@
 """Local transport, graph scope, and failed-write acceptance checks."""
 import json
+import sqlite3
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import Mock
 
 from backend.api.app import BrainAPI, BrainApp
 from backend.graph.repository import GraphRepository
@@ -12,7 +12,7 @@ from backend.graph.schema import Node, Edge
 
 class ProductAPITests(unittest.TestCase):
     def setUp(self):
-        self.repo = GraphRepository(use_native=False)
+        self.repo = GraphRepository(use_sqlite=False)
         self.repo.replace([
             Node(id="m1", type="MODEL", name="First", model_id="m1"),
             Node(id="m2", type="MODEL", name="Second", model_id="m2"),
@@ -63,21 +63,22 @@ class ProductAPITests(unittest.TestCase):
             self.app.static_dir = Path(directory)
             self.assertEqual(self.request("/../secret")[0]["status"], 403)
 
-    def test_failed_native_replace_rolls_back_disk_and_memory(self):
-        connection = Mock()
-        def execute(statement, *args):
-            if statement.startswith("CREATE"):
+    def test_failed_replace_rolls_back_disk_and_memory(self):
+        with GraphRepository() as repo:
+            repo.replace(self.repo.all_nodes(), self.repo.all_edges())
+            before = repo._payload()
+            store = repo._store
+            original = store._write_records
+            def fail_after_delete(conn, *args, **kwargs):
+                conn.execute("DELETE FROM edges;")
+                conn.execute("DELETE FROM nodes;")
                 raise RuntimeError("injected insert failure")
-        connection.execute.side_effect = execute
-        self.repo._native = (object(), connection)
-        before = self.repo._payload()
-        with self.assertRaisesRegex(RuntimeError, "injected insert failure"):
-            self.repo.replace([Node(id="new", type="MODEL", name="New")], [])
-        self.assertEqual(self.repo._payload(), before)
-        statements = [call.args[0] for call in connection.execute.call_args_list]
-        self.assertEqual(statements[0], "BEGIN TRANSACTION")
-        self.assertEqual(statements[-1], "ROLLBACK")
-        self.assertNotIn("COMMIT", statements)
+            store._write_records = fail_after_delete
+            with self.assertRaisesRegex(RuntimeError, "injected insert failure"):
+                repo.replace([Node(id="new", type="MODEL", name="New")], [])
+            store._write_records = original
+            self.assertEqual(repo._payload(), before)
+            self.assertEqual({node.id for node in store.all_nodes()}, set(repo.nodes))
 
     def test_search_route_is_bounded_and_scoped(self):
         status, data = self.app.handle("GET", "/api/search?q=Sales&model_id=m1&limit=1")
@@ -85,41 +86,45 @@ class ProductAPITests(unittest.TestCase):
         self.assertEqual([n["id"] for n in data["items"]], ["z"])
         self.assertEqual(data["total"], 1)
 
-    def test_native_transaction_restores_deleted_graph_after_failure_and_reopen(self):
+    def test_transaction_restores_deleted_graph_after_failure_and_reopen(self):
         with tempfile.TemporaryDirectory() as directory:
-            path = Path(directory) / "rollback.lbug"
-            try:
-                repo = GraphRepository(path)
-            except RuntimeError as exc:
-                self.skipTest(str(exc))
-            with repo:
+            path = Path(directory) / "rollback.sqlite"
+            with GraphRepository(path) as repo:
                 repo.replace(self.repo.all_nodes(), self.repo.all_edges())
                 expected = repo._payload()
-                connection = repo._native[1]
-                def fail_after_delete(_connection):
-                    connection.execute("MATCH (n:BrainNode) DETACH DELETE n")
-                    raise RuntimeError("failure after actual native deletion")
-                repo._write_native_graph = fail_after_delete
-                with self.assertRaisesRegex(RuntimeError, "actual native deletion"):
+                def fail_after_delete(conn, *args, **kwargs):
+                    conn.execute("DELETE FROM edges;")
+                    conn.execute("DELETE FROM nodes;")
+                    raise RuntimeError("failure after actual deletion")
+                repo._store._write_records = fail_after_delete
+                with self.assertRaisesRegex(RuntimeError, "actual deletion"):
                     repo.replace([Node(id="replacement", type="MODEL", name="Replacement")], [])
                 self.assertEqual(repo._payload(), expected)
             with GraphRepository(path) as reopened:
                 self.assertEqual(reopened._payload(), expected)
 
-    def test_checkpoint_failure_does_not_undo_a_committed_index(self):
-        connection = Mock()
-        def execute(statement, *args):
-            if statement == "CHECKPOINT":
-                raise RuntimeError("checkpoint unavailable")
-        connection.execute.side_effect = execute
-        self.repo._native = (object(), connection)
-        with self.assertLogs("backend.graph.repository", level="WARNING"):
-            self.repo.replace([Node(id="new", type="MODEL", name="New")], [])
-        self.assertEqual(set(self.repo.nodes), {"new"})
-        statements = [call.args[0] for call in connection.execute.call_args_list]
-        self.assertEqual(statements[-2:], ["COMMIT", "CHECKPOINT"])
-        self.assertNotIn("ROLLBACK", statements)
+    def test_checkpoint_failure_does_not_undo_a_committed_replace(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "checkpoint.sqlite"
+            with GraphRepository(path) as repo:
+                connection = repo._store._get_connection()
 
+                class CheckpointFails:
+                    def execute(self, statement, *args):
+                        if "wal_checkpoint" in statement:
+                            raise sqlite3.OperationalError("checkpoint unavailable")
+                        return connection.execute(statement, *args)
+
+                    def __getattr__(self, name):
+                        return getattr(connection, name)
+
+                repo._store._conn = CheckpointFails()
+                with self.assertLogs("backend.graph.sqlite_store", level="WARNING"):
+                    repo.replace([Node(id="new", type="MODEL", name="New")], [])
+                repo._store._conn = connection
+                self.assertEqual(set(repo.nodes), {"new"})
+            with GraphRepository(path) as reopened:
+                self.assertEqual(set(reopened.nodes), {"new"})
 
 if __name__ == "__main__":
     unittest.main()

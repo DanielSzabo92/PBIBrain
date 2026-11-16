@@ -8,7 +8,7 @@ Use the installer, then open **PBIBrain** from Start. No Python, Node, DLL searc
 
 PBIBrain stores its graph, project config, and scan state inside that project folder in `.pbibrain`. Move or back up the project folder to keep the result.
 
-The installed app includes LadybugDB and its OpenSSL runtime. It requires Windows 10/11 x64 and Microsoft Edge WebView2. The installer checks for WebView2 and installs Microsoft's Evergreen runtime automatically when it is missing. That fallback needs an internet connection; installation works offline when WebView2 is already present.
+The graph is stored in SQLite through Python's built-in `sqlite3`; the app ships no native database runtime. It requires Windows 10/11 x64 and Microsoft Edge WebView2. The installer checks for WebView2 and installs Microsoft's Evergreen runtime automatically when it is missing. That fallback needs an internet connection; installation works offline when WebView2 is already present.
 
 ## Agent access
 
@@ -29,9 +29,9 @@ Set-ExecutionPolicy -Scope Process Bypass
 .\scripts\build-desktop.ps1
 ```
 
-The build downloads verified native dependencies, creates `dist\PBIBrain-Portable-x64.zip`, and creates `dist\installer\PBIBrain-Setup-x64.exe` when Inno Setup 6 is installed. It does not alter machine PATH or install runtime DLLs globally.
+The build downloads the WebView2 bootstrapper for the installer, creates `dist\PBIBrain-Portable-x64.zip`, and creates `dist\installer\PBIBrain-Setup-x64.exe` when Inno Setup 6 is installed. It does not alter machine PATH or install runtime DLLs globally.
 
-Before creating the ZIP, the build runs `scripts/check-frozen-desktop.py`: the packaged agent scans a temporary PBIP, exits, then reopens its native graph in a new process. Missing packaged Python modules or native libraries fail the build.
+Before creating the ZIP, the build runs `scripts/check-frozen-desktop.py`: the packaged agent scans a temporary PBIP, exits, then reopens its graph in a new process. Missing packaged Python modules fail the build.
 
 For desktop validation, enter the full project path directly when the Windows folder dialog is not reliably exposed to the tester. The folder field has the accessible label **Project folder** and ID `project-folder`. If testing the native picker, refresh the window list after opening it and inspect the returned dialog or owned window; never reuse element indexes from the main form.
 
@@ -43,4 +43,4 @@ For desktop validation, enter the full project path directly when the Windows fo
 - Desktop Python checks: 19 passed. Frontend checks: 9 passed; production build passed.
 - Portable ZIP rebuilt. Installer and clean-machine acceptance remain pending; Inno Setup is unavailable here. Native folder-dialog automation was bypassed using the direct path field.
 
-Native sources are pinned to LadybugDB `v0.20.0` and Git for Windows `v2.55.0.windows.5` (its bundled OpenSSL x64 runtime). SHA-256 checks happen before extraction. Third-party license texts ship in `_internal\licenses`.
+This validation predates the move from LadybugDB to SQLite; the build no longer bundles LadybugDB or its OpenSSL DLLs.

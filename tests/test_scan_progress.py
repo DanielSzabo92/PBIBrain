@@ -28,7 +28,7 @@ class ScanProgressTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as folder:
             sample = write_sample(Path(folder) / "sample")
             config = Path(folder) / "brain.json"
-            config.write_text(json.dumps({"version": 1, "name": "T", "sources": [str(sample)], "database": "brain.lbug", "identity_map": "identity.json"}), encoding="utf-8")
+            config.write_text(json.dumps({"version": 1, "name": "T", "sources": [str(sample)], "database": "brain.sqlite", "identity_map": "identity.json"}), encoding="utf-8")
             project = ProjectService(config)
             self.assertEqual(project.scan_progress, {"running": False})
             seen: list[dict] = []
@@ -39,14 +39,14 @@ class ScanProgressTests(unittest.TestCase):
                 return read(path)
 
             with mock.patch.object(projects, "_read_project_source", watched):
-                project.scan(GraphRepository(use_native=False))
+                project.scan(GraphRepository(use_sqlite=False))
             self.assertEqual(seen, [{"running": True, "phase": f"Reading {sample.name}", "done": 0, "total": 1}])
             self.assertEqual(project.scan_progress, {"running": False})
 
     def test_status_is_answered_while_the_request_lock_is_held(self) -> None:
         from backend.api.app import create_app
 
-        app = create_app(GraphRepository(use_native=False))
+        app = create_app(GraphRepository(use_sqlite=False))
         app.project = mock.Mock(scan_progress={"running": True, "phase": "Reading formulas and dependencies", "done": 2, "total": 2})
         answer: list = []
         with app.request_lock:
@@ -63,8 +63,8 @@ def _project(folder: str, *extra_sources: str):
 
     sample = write_sample(Path(folder) / "sample")
     config = Path(folder) / "brain.json"
-    config.write_text(json.dumps({"version": 1, "name": "T", "sources": [str(sample), *extra_sources], "database": "brain.lbug", "identity_map": "identity.json"}), encoding="utf-8")
-    app = create_app(GraphRepository(use_native=False), overrides_path=Path(folder) / "overrides.json")
+    config.write_text(json.dumps({"version": 1, "name": "T", "sources": [str(sample), *extra_sources], "database": "brain.sqlite", "identity_map": "identity.json"}), encoding="utf-8")
+    app = create_app(GraphRepository(use_sqlite=False), overrides_path=Path(folder) / "overrides.json")
     app.project = ProjectService(config)
     return app, sample
 
@@ -192,7 +192,7 @@ class BackgroundScanTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as folder:
             sample = write_sample(Path(folder) / "sample")
             config = Path(folder) / "brain.json"
-            config.write_text(json.dumps({"version": 1, "name": "T", "sources": [str(sample)], "database": "brain.lbug", "identity_map": "identity.json"}), encoding="utf-8")
+            config.write_text(json.dumps({"version": 1, "name": "T", "sources": [str(sample)], "database": "brain.sqlite", "identity_map": "identity.json"}), encoding="utf-8")
             project = ProjectService(config)
             cancel = threading.Event()
             analysed: list[str] = []
@@ -203,7 +203,7 @@ class BackgroundScanTests(unittest.TestCase):
                 cancel.set()  # the user presses Cancel while the first expression is analysed
                 return analyse(self, node, *args, **kwargs)
 
-            repository = GraphRepository(use_native=False)
+            repository = GraphRepository(use_sqlite=False)
             with mock.patch.object(DaxAnalyzer, "analyze_object", first_then_cancel):
                 with self.assertRaises(projects.ScanCancelled):
                     project.scan(repository, cancel=cancel)

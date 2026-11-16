@@ -20,7 +20,8 @@ Semantic graph of your Power BI / Fabric models and reports — a desktop workbe
 
 - Source start: creates `.venv`, installs, builds the UI, opens `http://127.0.0.1:8000/`
 - No project? Empty Overview → **Open sample project**
-- Requires: Python 3.11+, Node.js 20+ (source only)
+- Requires: Python 3.11+, Node.js 20+ (source only). The graph is SQLite via Python's built-in `sqlite3` — no database, DLL or environment variable to set up
+- Merge model verification also builds the TOM bridge: .NET 8 SDK, `dotnet build -c Release backend/adapters/tabular_metadata/dotnet/TabularMetadata.csproj`
 
 ---
 
@@ -131,9 +132,23 @@ Stored in `<project>/.pbibrain/` with the graph and scan state.
   "sources": ["C:\\Reports\\Finance\\Finance.pbip", "C:\\Reports\\Sales\\Sales.pbip"],
   "cloud_sources": [
     { "kind": "cloud_model", "workspace_id": "…", "item_id": "…", "name": "Corporate Model" }
-  ]
+  ],
+  "database": "brain.sqlite",
+  "identity_map": "identity-map.json"
 }
 ```
+
+Relative paths resolve from the folder of `brain.json`. What `.pbibrain/` holds:
+
+| File | Holds |
+|---|---|
+| `brain.sqlite` (+ `-wal`, `-shm`) | The graph — one SQLite database, one transaction per scan |
+| `identity-map.json` | Stable object IDs across renames and rescans |
+| `overrides.json` | Your review decisions, kept apart from scanned facts |
+| `agent-snapshot.json` | Graph copy MCP reads while the app is closed |
+| `INDEX.md`, `.graph/`, `.cache/` | Trail cards exported for coding agents |
+
+Older projects say `"database": "brain.lbug"`; that file is no longer read. Change it to `brain.sqlite` and rescan, or delete `.pbibrain` and reopen the folder.
 
 ---
 
@@ -207,4 +222,4 @@ UI dev server: `cd frontend && npm run dev`
 
 ---
 
-MIT — see [LICENSE](LICENSE).
+Source: [github.com/DanielSzabo92/PBIBrain](https://github.com/DanielSzabo92/PBIBrain) · MIT — see [LICENSE](LICENSE).

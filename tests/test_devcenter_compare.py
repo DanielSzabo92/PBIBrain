@@ -339,7 +339,7 @@ class MergeLabTestCase(unittest.TestCase):
     def setUp(self) -> None:
         self.devcenter = DevCenterSessions(app_data_dir=None)
         self.devcenter.attach_project(self.root)
-        self.app = create_app(use_native=False)
+        self.app = create_app(use_sqlite=False)
         self.app.devcenter = self.devcenter
         self.ok("session_create", {"display_name": "Compare"})
         for name in ("SalesA", "SalesB", "Finance", "Legacy"):

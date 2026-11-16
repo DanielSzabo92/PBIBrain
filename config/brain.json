@@ -2,6 +2,6 @@
   "version": 1,
   "name": "PBIBrain",
   "sources": [],
-  "database": "../data/brain.lbug",
+  "database": "../data/brain.sqlite",
   "identity_map": "identity.json"
 }

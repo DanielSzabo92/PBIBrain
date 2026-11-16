@@ -56,7 +56,7 @@ def _nodes() -> list[Node]:
 
 class RetrievalQualityTests(unittest.TestCase):
     def setUp(self) -> None:
-        self.repository = GraphRepository(use_native=False)
+        self.repository = GraphRepository(use_sqlite=False)
         self.repository.replace(
             _nodes(),
             [

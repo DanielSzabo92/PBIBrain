@@ -397,10 +397,10 @@ class BrainAPI:
         *,
         database_path: str | Path | None = None,
         overrides_path: str | Path | None = None,
-        use_native: bool | None = None,
+        use_sqlite: bool = True,
     ) -> None:
         self._owns_repository = repository is None
-        self.repository = repository or GraphRepository(database_path, use_native=use_native)
+        self.repository = repository or GraphRepository(database_path, use_sqlite=use_sqlite)
         self.overrides = OverrideStore(overrides_path or _default_overrides_path())
         marks_path = self.overrides.path.with_name("review-marks.json") if self.overrides.path is not None else None
         self.marks = DecisionMarks(marks_path)
@@ -1395,14 +1395,14 @@ def create_app(
     *,
     database_path: str | Path | None = None,
     overrides_path: str | Path | None = None,
-    use_native: bool | None = None,
+    use_sqlite: bool = True,
 ) -> BrainApp:
     return BrainApp(
         BrainAPI(
             repository,
             database_path=database_path,
             overrides_path=overrides_path,
-            use_native=use_native,
+            use_sqlite=use_sqlite,
         )
     )
 
@@ -1411,9 +1411,9 @@ def serve(
     host: str = "127.0.0.1",
     port: int = 8000,
     *,
-    database_path: str | Path = "data/brain.lbug",
+    database_path: str | Path = "data/brain.sqlite",
     overrides_path: str | Path | None = None,
-    use_native: bool | None = None,
+    use_sqlite: bool = True,
     config_path: str | Path | None = None,
     static_dir: str | Path | None = None,
 ) -> None:
@@ -1432,7 +1432,7 @@ def serve(
     application = create_app(
         database_path=database_path,
         overrides_path=overrides_path,
-        use_native=use_native,
+        use_sqlite=use_sqlite,
     )
     if config_path is not None:
         from backend.projects import ProjectService
@@ -1468,7 +1468,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="python -m backend.api", description="Power BI Brain Inspector API")
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8000)
-    parser.add_argument("--db", default="data/brain.lbug")
+    parser.add_argument("--db", default="data/brain.sqlite")
     parser.add_argument("--overrides", default=None)
     args = parser.parse_args(argv)
     serve(args.host, args.port, database_path=args.db, overrides_path=args.overrides)

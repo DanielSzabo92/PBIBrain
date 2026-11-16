@@ -205,7 +205,7 @@ class DaxResolverEdgeCaseTests(unittest.TestCase):
 
     def test_measure_format_string_expression_is_canonicalized_and_analyzed(self):
         with tempfile.TemporaryDirectory() as directory:
-            repository = GraphRepository(Path(directory) / "brain.json", use_native=False)
+            repository = GraphRepository(Path(directory) / "brain.json", use_sqlite=False)
             graph = Scanner(repository, identity_path=Path(directory) / "identity.json").scan(
                 dynamic_format_model_source()
             )

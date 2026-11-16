@@ -24,8 +24,7 @@ class DesktopTests(unittest.TestCase):
         (self.static / "index.html").write_text("<main>PBIBrain</main>", encoding="utf-8")
         self.controller = DesktopController(
             static_dir=self.static,
-            repository_factory=lambda path: GraphRepository(path, use_native=False),
-            runtime_configurer=lambda: None,
+            repository_factory=lambda path: GraphRepository(path, use_sqlite=False),
         )
 
     def tearDown(self) -> None:
@@ -93,7 +92,7 @@ class DesktopTests(unittest.TestCase):
         self.assertEqual(result["source_count"], 1)
         config_path = self.root / ".pbibrain" / "brain.json"
         config = json.loads(config_path.read_text(encoding="utf-8"))
-        self.assertEqual(config["database"], "brain.lbug")
+        self.assertEqual(config["database"], "brain.sqlite")
         self.assertEqual(config["identity_map"], "identity-map.json")
         self.assertFalse(Path(config["sources"][0]).is_absolute())
         marker_path = self.root / ".pbibrain" / "connection.json"
@@ -282,8 +281,7 @@ class DesktopTests(unittest.TestCase):
         first, second = self.root / "first", self.root / "second"
         first.mkdir()
         second.mkdir()
-        controller = DesktopController(static_dir=self.static, repository_factory=lambda path: GraphRepository(path, use_native=False),
-                                       runtime_configurer=lambda: None, recent_path=recent)
+        controller = DesktopController(static_dir=self.static, repository_factory=lambda path: GraphRepository(path, use_sqlite=False), recent_path=recent)
         controller.attach_server("http://127.0.0.1:8123")
         try:
             self.assertTrue(controller.open_project("First", str(first))["ok"])

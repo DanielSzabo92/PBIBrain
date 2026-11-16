@@ -182,7 +182,7 @@ def _fixture_repository() -> tuple[GraphRepository, dict[str, str]]:
             evidence=[{"source": "report_usage", "count": 3}],
         ),
     ]
-    repository = GraphRepository(use_native=False)
+    repository = GraphRepository(use_sqlite=False)
     repository.replace(nodes, edges)
     repository.last_scan = "2026-08-30T20:00:00Z"
     return repository, {
@@ -358,7 +358,7 @@ class Phase4TransportContractTests(unittest.TestCase):
         self.assertEqual(conflicts[0]["target_id"], self.ids["measure"])
 
     def test_in_memory_scan_records_last_scan_for_overview(self):
-        repository = GraphRepository(use_native=False)
+        repository = GraphRepository(use_sqlite=False)
         try:
             Scanner(repository).scan(model_source(include_measure=False))
             self.assertTrue(repository.last_scan, "an in-memory scan must publish its completion timestamp")
@@ -407,7 +407,7 @@ class Phase4TransportContractTests(unittest.TestCase):
             self.assertFalse(api.overrides.records())
 
     def test_review_queue_classifies_only_explicit_conflict_metadata(self):
-        repository = GraphRepository(use_native=False)
+        repository = GraphRepository(use_sqlite=False)
         model_id = "model:classification"
         measure_id = f"{model_id}/measure:metric"
         neutral_id = "semantic:assertion:measure-conflict-probe"

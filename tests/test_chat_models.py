@@ -96,7 +96,7 @@ class SelectionTests(unittest.TestCase):
     def setUp(self) -> None:
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
-        self.app = create_app(use_native=False)
+        self.app = create_app(use_sqlite=False)
         self.addCleanup(self.app.close)
         self.made: list[dict] = []
 

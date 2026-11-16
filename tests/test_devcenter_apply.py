@@ -217,7 +217,7 @@ class ApplyTestCase(unittest.TestCase):
         self.target = self.root / "SalesA"
         self.devcenter = DevCenterSessions(app_data_dir=None)
         self.devcenter.attach_project(self.root)
-        self.app = create_app(use_native=False)
+        self.app = create_app(use_sqlite=False)
         self.app.devcenter = self.devcenter
         self.addCleanup(self.app.close)
         self.addCleanup(self.devcenter.close)
@@ -710,7 +710,7 @@ class GuardPipelineEndToEndTests(unittest.TestCase):
             devcenter = DevCenterSessions(app_data_dir=None)
             devcenter.attach_project(root)
             devcenter.apply_service = ApplyService(devcenter, desktop=FakeDesktop())
-            app = create_app(use_native=False)
+            app = create_app(use_sqlite=False)
             app.devcenter = devcenter
             try:
                 def ok(method, request):

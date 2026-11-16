@@ -71,7 +71,7 @@ class RegistryContractTests(unittest.TestCase):
         from backend.mcp_server import create_server
 
         mcp_names = [tool.name for tool in create_server("http://127.0.0.1:8766")._tool_manager.list_tools()]
-        app = create_app(use_native=False)
+        app = create_app(use_sqlite=False)
         try:
             chat = ChatService(app, store=MemoryStore(), use_settings_file=False)
             chat_names = [schema["name"] for schema in chat.schemas]
@@ -94,7 +94,7 @@ class RegistryContractTests(unittest.TestCase):
         for method, path in TOOL_ROUTES.values():
             self.assertFalse(any(word in path for word in ("accept", "reject", "apply", "undo")), path)
             self.assertIn(method, {"GET", "POST"})
-        app = create_app(use_native=False)
+        app = create_app(use_sqlite=False)
         try:
             client = InProcessClient(app, threading.RLock())
             for method, path in (("POST", "proposals/accept"), ("POST", "apply"), ("POST", "proposal-accept")):
@@ -204,7 +204,7 @@ class SettingsTests(unittest.TestCase):
 class ChatRunTests(unittest.TestCase):
     def setUp(self) -> None:
         self.temporary = tempfile.TemporaryDirectory()
-        self.app = create_app(use_native=False)
+        self.app = create_app(use_sqlite=False)
         self.fake = install(self.app, ScriptedProvider(delay=0.001), settings_file=Path(self.temporary.name) / "settings.json")
 
     def tearDown(self) -> None:

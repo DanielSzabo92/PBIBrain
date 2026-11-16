@@ -24,12 +24,12 @@ def main():
         candidate = Path(operation["candidate_root"])
         modify_bim(candidate, lambda model: model["relationships"][0].update(fromColumn="ShipDateKey"))
         guard.validate_candidate(operation["operation_id"])
-        repository = GraphRepository(use_native=False); Scanner(repository).scan(project)
+        repository = GraphRepository(use_sqlite=False); Scanner(repository).scan(project)
         api = BrainAPI(repository, overrides_path=root / "overrides.json")
         brain = BrainApp(api, static_dir=Path(__file__).resolve().parents[1] / "frontend/dist")
         from backend.projects import ProjectService
         project_service = ProjectService(root / "brain.json")
-        project_service.save_config({"version": 1, "name": "Guard test project", "sources": [str(project)], "database": "brain.lbug", "identity_map": "identity.json"})
+        project_service.save_config({"version": 1, "name": "Guard test project", "sources": [str(project)], "database": "brain.sqlite", "identity_map": "identity.json"})
         brain.project = project_service
         service = GuardService(guard, "isolated-browser-test-session", f"http://127.0.0.1:{args.port}", static_dir=brain.static_dir)
         def application(environ, start_response):

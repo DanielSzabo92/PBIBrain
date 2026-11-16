@@ -118,7 +118,7 @@ class _SessionCase(unittest.TestCase):
         self.devcenter = DevCenterSessions(app_data_dir=None)
         self.devcenter.attach_project(self.root)
         self.addCleanup(self.devcenter.close)
-        self.app = create_app(use_native=False)
+        self.app = create_app(use_sqlite=False)
         self.app.devcenter = self.devcenter
         self.addCleanup(self.app.close)
         self.ok("session_create", {"display_name": "Edit target"})

@@ -27,14 +27,14 @@ if (-not $SkipFrontend) {
     Pop-Location
 }
 
-& (Join-Path $root "scripts\prepare-native-runtime.ps1")
+& (Join-Path $root "scripts\prepare-webview2.ps1")
 $venv = Join-Path $root ".venv-build"
 if (-not (Test-Path -LiteralPath $venv)) { py -3.11 -m venv $venv }
 $python = Join-Path $venv "Scripts\python.exe"
 Invoke-Checked { & $python -m pip install --disable-pip-version-check --upgrade pip } "pip upgrade"
 Invoke-Checked { & $python -m pip install --disable-pip-version-check -r (Join-Path $root "packaging\requirements-build.txt") } "build dependency install"
 Invoke-Checked { & $python -m PyInstaller --noconfirm --clean --workpath build\pyinstaller --distpath dist packaging\pbibrain.spec } "PyInstaller"
-Invoke-Checked { & $python scripts\check-frozen-desktop.py dist\PBIBrain\PBIBrain-Agent.exe } "Frozen native scan/reopen"
+Invoke-Checked { & $python scripts\check-frozen-desktop.py dist\PBIBrain\PBIBrain-Agent.exe } "Frozen scan/reopen"
 
 $portable = Join-Path $root "dist\PBIBrain-Portable-x64.zip"
 if (Test-Path -LiteralPath $portable) { Remove-Item -LiteralPath $portable -Force }

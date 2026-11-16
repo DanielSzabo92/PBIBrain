@@ -65,6 +65,6 @@ def write_large_project(root: Path) -> Path:
     config.parent.mkdir(parents=True, exist_ok=True)
     config.write_text(json.dumps({
         "version": 1, "name": "Large", "sources": [os.path.relpath(source, config.parent)],
-        "database": "brain.lbug", "identity_map": "identity.json",
+        "database": "brain.sqlite", "identity_map": "identity.json",
     }), encoding="utf-8")
     return config

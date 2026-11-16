@@ -30,7 +30,6 @@ jobs:
     env:
       CI: "1"
       PYTHONUTF8: "1"
-      LBUG_C_API_LIB_PATH: ${{ github.workspace }}\runtime\native\lbug_shared.dll
     steps:
       - uses: actions/checkout@v4
 
@@ -48,17 +47,6 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: "8.0.x"
-
-      - name: Cache the native runtime downloads
-        uses: actions/cache@v4
-        with:
-          path: .cache/native
-          key: native-${{ hashFiles('scripts/prepare-native-runtime.ps1') }}
-
-      - name: Prepare the native runtime (LadybugDB and OpenSSL DLLs, SHA-256 checked)
-        run: |
-          ./scripts/prepare-native-runtime.ps1
-          "$env:GITHUB_WORKSPACE\runtime\native" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
       - name: Install the Python package
         run: python -m pip install -e ".[mcp]"
