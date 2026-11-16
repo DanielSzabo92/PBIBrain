@@ -2,309 +2,224 @@
 
 *A DownDraughtLab product.*
 
-A semantic graph engine, interactive desktop workbench, and Model Context Protocol (MCP) server for Power BI and Microsoft Fabric.
+Semantic graph of your Power BI / Fabric models and reports — a desktop workbench and an MCP server for AI agents.
 
-PBIBrain turns Power BI metadata / PBIP files (`.pbip`, TMDL, PBIR) and cloud semantic models/reports into a unified, provenance-tracked semantic graph of canonical nodes and edges. Brain is infrastructure: it gives developers and AI coding agents a shared, authoritative understanding of data models, DAX dependencies, report bindings, and upstream data sources.
-
----
-
-## At a Glance: GUI + MCP
-
-PBIBrain provides two complementary ways to work with your Power BI ecosystem:
-
-1. **Interactive Workbench (GUI):** A desktop and web application for visual graph exploration, DAX inspection, semantic reviews, side-by-side model merging, in-app AI chat, and automated documentation.
-2. **Model Context Protocol (MCP) Server:** A stdio server (`brain mcp`) providing 20 specialized tools for AI coding assistants (Claude Desktop, Cursor, Gemini, Copilot) to query semantic metadata, trace dependencies, evaluate downstream impact, and guide model merges.
+- **Reads:** PBIP, TMDL, PBIR, cloud semantic models and reports
+- **Builds:** one graph of models, tables, columns, measures, calculation groups, DAX functions, M sources, report pages and visuals
+- **Serves:** a workbench (desktop or browser), a CLI, and an MCP server
 
 ---
 
-## Visual Showcase
+## Start
 
-### Interactive Knowledge Graph
-Explore relationships between data sources, tables, columns, measures, calculation groups, and report visuals with hardware-accelerated React Flow visualization.
-![Interactive Knowledge Graph](docs/screenshots/graph.png)
+| Option | How |
+|---|---|
+| Windows installer | Install, open **PBIBrain**, pick the folder with the `.pbip`, **Scan**. See [`docs/DESKTOP.md`](docs/DESKTOP.md). |
+| From source (Windows) | `start.bat` |
+| From source (Linux / macOS) | `./start.sh` |
 
-### In-App AI Chat & Agent Assistance
-Query your model directly using the docked AI chat (`Ctrl+J`) powered by local LLMs or cloud providers, using the same tools as the MCP server.
-![In-App AI Chat](docs/screenshots/chat.png)
-
-### Merge Models
-Compare models side by side, align drifted measures, resolve naming conflicts, run change-safety guards, and deploy changes to local PBIP or cloud workspaces.
-![Merge Models](docs/screenshots/devcenter.png)
-
-### Project Overview & Health
-View cross-model commonality, duplicated business logic, orphan objects, and unresolved bindings across all configured sources.
-![Project Overview](docs/screenshots/overview.png)
-
-### Deep Object & DAX Inspector
-Inspect exact ANTLR-parsed DAX abstract syntax trees (AST), filter modifications, relationship activations, and complete provenance evidence.
-![Object Inspector](docs/screenshots/inspector.png)
+- Source start: creates `.venv`, installs, builds the UI, opens `http://127.0.0.1:8000/`
+- No project? Empty Overview → **Open sample project**
+- Requires: Python 3.11+, Node.js 20+ (source only). The graph is SQLite via Python's built-in `sqlite3` — no database, DLL or environment variable to set up
+- Merge model verification also builds the TOM bridge: .NET 8 SDK, `dotnet build -c Release backend/adapters/tabular_metadata/dotnet/TabularMetadata.csproj`
 
 ---
 
-## Core Capabilities
+## Workbench
 
-### 1. Interactive Workbench (GUI)
-The web and desktop workbench features **7 dedicated views** designed for Power BI developers:
-- **Overview:** Project health, scan status, summary metrics, and cross-model commonality (identical, drifted, renamed, and unique objects).
-- **Search:** Global semantic and keyword search across models, tables, measures, and reports.
-- **Graph:** Interactive topological map with node clustering, edge filtering (`DEPENDS_ON`, `REFERENCES`, `USES`, `SOURCES_FROM`), and neighborhood focusing.
-- **Inspector:** Detailed view of any node—DAX formula with syntax highlighting, AST analysis, filter contexts, report visual bindings, and evidence trail.
-- **Review Queue:** Human-in-the-loop review workflow for inferred business concepts, selectors, and conflict resolution.
-- **Merge Models:** Structured model comparison and consolidation. Compare schemas, resolve differences, enforce removal policies, simulate impact, and apply guarded changes.
-- **Settings:** Customize project paths, graph color palettes, and configure local or cloud AI providers.
+| View | Key | What it does |
+|---|---|---|
+| Overview | `Ctrl+1` | Project health, scan status, identical / drifted / renamed / unique objects across models |
+| Search | `Ctrl+2` | Search all objects, preview beside results |
+| Graph | `Ctrl+3` | Containers, lineage, field usage; path list, trace on select |
+| Inspector | `Ctrl+4` | One object: DAX, dependencies, report bindings, evidence |
+| Review queue | `Ctrl+5` | Accept / reject inferred items, bulk select, undo |
+| Merge models | `Ctrl+6` | Compare models, pick changes, check guards, apply, undo |
+| Settings | `Ctrl+,` | Project, sources, theme, chat providers |
 
-**Built-in Productivity Features:**
-- **In-App AI Chat (`Ctrl+J`):** Docked conversational panel supporting Anthropic, OpenAI-compatible APIs, local LLMs (Ollama), or your existing Claude, GitHub Copilot (VS Code), ChatGPT (Codex) or Google Antigravity subscription through its signed-in CLI, with context chips for active selections. Answers come from the graph: object names in a question are resolved before the model starts, and the agent can read and propose, never apply, under fixed limits (see `docs/SECURITY_BOUNDARIES.md`).
-- **Command Palette (`Ctrl+K`):** Fast keyboard-first navigation and action launcher.
-- **Documentation Export:** Generate complete, styled PDF or Markdown project documentation with table of contents, diagrams, and measure catalogues.
+| Also | Key |
+|---|---|
+| Command palette | `Ctrl+K` |
+| AI chat | `Ctrl+J` |
+| Scan sources | `Ctrl+F5` |
+| Side bar | `Ctrl+B` |
+| Light / dark | `Ctrl+Shift+L` |
+| All shortcuts | `F1` |
+
+Other:
+- Scan runs in the background, with Cancel
+- Recent projects on the start screen and in the title bar
+- Drop source files on the window to add them
+- Export docs as PDF or Markdown
 
 ---
 
-### 2. Model Context Protocol (MCP) Server
-PBIBrain exposes a standard stdio MCP server for agentic workflows:
+## AI chat (`Ctrl+J`)
+
+| Provider | Needs |
+|---|---|
+| Anthropic | API key |
+| OpenAI-compatible | URL (+ key) |
+| Local (Ollama, LM Studio) | URL |
+| Claude Code, GitHub Copilot, Codex, Antigravity | That CLI, signed in |
+
+- Pick provider, model and effort in the chat; favourite models in Settings
+- Answers come from the graph; object names in answers are links
+- Agent reads and proposes — never applies. See [`docs/SECURITY_BOUNDARIES.md`](docs/SECURITY_BOUNDARIES.md)
+
+---
+
+## MCP server
 
 ```powershell
 brain --config C:\Reports\brain.json mcp
 ```
 
-* **20 Unified Tools:** Includes `brain_dependencies` (one-call dependencies, report usage and formula by object name), `brain_overview`, `brain_search`, `brain_object`, `brain_context`, `brain_impact`, `brain_graph`, `brain_commonality`, `brain_guide` (DAX, function, M and calculation group syntax, best practice and what a change breaks), `session_get`, `plan_validate`, `proposal_check` (dry run) and `proposal_submit`. Agents can propose edits to measures, columns, tables, DAX functions, calculation items and M queries; each proposal comes with its impact and change rules (result type changes, function signatures, dropped source columns), and nothing is applied until you accept it.
-* **Hybrid Operation:** Answers directly from the active live application when running, or falls back to the read-only `.pbibrain/agent-snapshot.json` snapshot when the app is closed.
-* **Token Budgeting:** Every tool response adheres to strict JSON character budgets to prevent LLM context-window exhaustion.
+20 tools:
 
-#### Connecting Claude Code, GitHub Copilot (VS Code), Codex and Antigravity
+| Group | Tools |
+|---|---|
+| Read (11) | `brain_dependencies`, `brain_overview`, `brain_search`, `brain_object`, `brain_context`, `brain_impact`, `brain_graph`, `brain_commonality`, `brain_compare`, `brain_guide`, `brain_pending_changes` |
+| Merge (9) | `session_get`, `compare_rows_list`, `impact_get`, `naming_rules_get`, `name_propose`, `question_ask`, `plan_validate`, `proposal_check`, `proposal_submit` |
 
-```powershell
-brain --config C:\Reports\Finance\.pbibrain\brain.json agent-setup
-```
+- App open → live answers; app closed → `.pbibrain/agent-snapshot.json`
+- Every reply fits a size budget
+- Proposals wait for you in the app
 
-writes each editor's MCP server config plus **hooks the editor enforces**: before every tool call the agent may use PBIBrain tools (approved without a prompt) and nothing else; files, terminal, web and other servers are denied with a pointer to the PBIBrain tool to use. Model changes go through `proposal_check` and `proposal_submit` and wait for you in PBIBrain. See `docs/AGENT_GUIDE.md`.
+### Connect an editor
 
-#### Connecting to Claude Desktop / Cursor
-Add the following to your `claude_desktop_config.json` or cursor MCP settings:
+| Editor | Setup |
+|---|---|
+| Claude Code, GitHub Copilot (VS Code), Codex, Antigravity | `brain --config <brain.json> agent-setup` |
+| Claude Desktop, Cursor | Add the JSON below |
+
+`agent-setup` writes the MCP config plus editor hooks: PBIBrain tools allowed, files / terminal / web / other servers denied. See [`docs/AGENT_GUIDE.md`](docs/AGENT_GUIDE.md).
 
 ```json
 {
   "mcpServers": {
-    "pbibrain": {
-      "command": "brain",
-      "args": ["--config", "C:\\path\\to\\brain.json", "mcp"]
-    }
+    "pbibrain": { "command": "brain", "args": ["--config", "C:\\path\\to\\brain.json", "mcp"] }
   }
 }
 ```
 
 ---
 
-### 3. Guarded Model Merging & Deployment
-Merge models lets teams consolidate diverging models safely:
-* **Alignment Engine:** Matches objects across models using stable native `lineageTag` identifiers, names, and normalized DAX logic.
-* **Change Guards:** Enforces strict safety rules (e.g. preventing unreferenced measure deletions or broken visual bindings) defined in `docs/CHANGE_GUARD_CONTRACT.md`.
-* **Multi-Target Deployment:** Deploy merged changes locally to PBIP TMDL files or directly to Microsoft Fabric / Power BI Service via XMLA delta deployment and Fabric REST report updates.
-* **Reversible Actions:** Automated pre-apply TMDL backups and one-click undo support.
+## Merge models
+
+- Matches objects by `lineageTag`, name, normalised DAX
+- Change guards block unsafe edits — [`docs/CHANGE_GUARD_CONTRACT.md`](docs/CHANGE_GUARD_CONTRACT.md)
+- Targets: local PBIP (TMDL) or Fabric / Power BI Service (XMLA, Fabric REST)
+- Backup before apply, one-click undo
 
 ---
 
-### 4. Static DAX & Data-Source Lineage
-* **Deterministic Parsing:** ANTLR4-powered DAX parser resolves variables, dependencies, filter propagation (`CALCULATE`, `KEEPFILTERS`), and relationship activations (`USERELATIONSHIP`).
-* **Power Query (M) Lineage:** Statically inspects partition M queries to trace upstream sources (`Sql.Database`, `Lakehouse.Contents`, `File.Contents`, `Dataflows`, SharePoint, etc.) without executing code or needing database credentials.
+## Lineage
+
+- DAX: ANTLR4 parser — variables, dependencies, `CALCULATE` / `KEEPFILTERS`, `USERELATIONSHIP`
+- M: static source tracing (`Sql.Database`, `Lakehouse.Contents`, `File.Contents`, dataflows, SharePoint…) — no code run, no credentials
 
 ---
 
-## Quickstart
+## Project file (`brain.json`)
 
-### Prerequisites
-* Windows, Linux, or macOS.
-* Python 3.11+.
-* Node.js 20+ (for building the web UI).
-
-### 1-Click Launch
-
-Clone and start immediately:
-
-```bash
-git clone https://github.com/DanielSzabo92/PBIBrain.git
-cd PBIBrain
-
-# On Windows:
-start.bat
-
-# On Linux or macOS:
-./start.sh
-```
-
-The script automatically sets up the Python virtual environment, builds the web interface (if not already built), starts the local server, and opens **`http://127.0.0.1:8000/`** in your browser.
-
-No Power BI project at hand? On the empty Overview choose **Open sample project**: a small retail model and its report are added and scanned, so every view has content to explore.
-
----
-
-## Project Configuration (`brain.json`)
-
-Each project uses a single configuration file defining local PBIP files and cloud items:
+Stored in `<project>/.pbibrain/` with the graph and scan state.
 
 ```json
 {
   "version": 1,
-  "name": "Finance & Sales Analytics",
-  "sources": [
-    "C:\\Reports\\Finance\\Finance.pbip",
-    "C:\\Reports\\Sales\\Sales.pbip"
-  ],
+  "name": "Finance & Sales",
+  "sources": ["C:\\Reports\\Finance\\Finance.pbip", "C:\\Reports\\Sales\\Sales.pbip"],
   "cloud_sources": [
-    {
-      "kind": "cloud_model",
-      "workspace_id": "9b1deb4d-3b7d-4b69-9c59-...",
-      "workspace_name": "Production Fabric Workspace",
-      "item_id": "e81d7f42-...",
-      "name": "Corporate Semantic Model",
-      "access_type": "Read/Write"
-    }
+    { "kind": "cloud_model", "workspace_id": "…", "item_id": "…", "name": "Corporate Model" }
   ],
   "database": "brain.sqlite",
-  "identity_map": "identity.json"
+  "identity_map": "identity-map.json"
 }
 ```
 
-Relative paths resolve from the folder that holds `brain.json`. The desktop app creates the file in `<project>\.pbibrain\` and keeps everything it writes there:
+Relative paths resolve from the folder of `brain.json`. What `.pbibrain/` holds:
 
-| File | Contents |
-| :--- | :--- |
-| `brain.sqlite` (+ `-wal`, `-shm`) | The graph: one SQLite database, written in a single transaction per scan. |
-| `identity-map.json` | Stable object IDs, so IDs survive renames and rescans. |
-| `overrides.json` | Your review decisions and edits, kept apart from scanned facts. |
-| `agent-snapshot.json` | Compact copy of the graph that MCP reads while the app is closed. |
-| `INDEX.md`, `.graph/`, `.cache/` | Trail cards exported from the graph for coding agents. |
+| File | Holds |
+|---|---|
+| `brain.sqlite` (+ `-wal`, `-shm`) | The graph — one SQLite database, one transaction per scan |
+| `identity-map.json` | Stable object IDs across renames and rescans |
+| `overrides.json` | Your review decisions, kept apart from scanned facts |
+| `agent-snapshot.json` | Graph copy MCP reads while the app is closed |
+| `INDEX.md`, `.graph/`, `.cache/` | Trail cards exported for coding agents |
 
-Projects created before the switch to SQLite have `"database": "brain.lbug"`. That file is no longer read: change the value to `brain.sqlite` and rescan, or delete `.pbibrain` and open the folder again.
-
-Scan all configured sources into the graph:
-```powershell
-brain --config C:\Reports\brain.json project-scan
-```
+Older projects say `"database": "brain.lbug"`; that file is no longer read. Change it to `brain.sqlite` and rescan, or delete `.pbibrain` and reopen the folder.
 
 ---
 
-## CLI Command Reference
+## CLI
 
-All commands support `--config <path/to/brain.json>`:
+All commands take `--config <brain.json>`.
 
-| Command | Description |
-| :--- | :--- |
-| `brain serve` | Starts the unified web workbench and local HTTP API. |
-| `brain mcp` | Runs the stdio Model Context Protocol (MCP) server for AI assistants. |
-| `brain project-scan` | Ingests and links all configured local PBIP and cloud sources. |
-| `brain scan <path>` | Scans a single `.pbip` project or standalone model JSON file. |
-| `brain status` | Displays summary counts of canonical nodes and edges in the graph. |
-| `brain search <query>` | Searches canonical objects by name, description, or property. |
-| `brain retrieve <query>`| Ranked, paginated semantic search designed for agent tool calls. |
-| `brain object <id>` | Dumps full metadata and properties for an exact object ID. |
-| `brain context <id>` | Retrieves scoped evidence subgraph (dependencies, usage, semantics). |
-| `brain impact <id>` | Evaluates conservative downstream blast radius of proposed changes. |
-| `brain compare <a> <b>`| Compares two snapshot documents or models. |
-| `brain export-docs` | Exports formatted project documentation as PDF or Markdown. |
-| `brain export-markdown`| Exports deterministic markdown dump of the canonical snapshot. |
-| `brain config` | Validates and displays resolved configuration paths. |
+| Command | Does |
+|---|---|
+| `serve` | Workbench + local API |
+| `mcp` | MCP server (stdio) |
+| `agent-setup` | Configure editor agents |
+| `project-scan` | Scan all sources |
+| `scan <path>` (alias `build`) | Scan one `.pbip` / model |
+| `status` | Node and edge counts |
+| `search <q>` | Find objects |
+| `retrieve <q>` | Ranked, paged search for agents |
+| `object <id>` | One object |
+| `context <id>` | Evidence subgraph |
+| `impact <id>` | Downstream impact |
+| `compare --before --after` | Compare two snapshots |
+| `export-docs` | PDF / Markdown docs |
+| `export-markdown` | Markdown dump of the graph |
+| `config` | Show resolved config |
+
+Also installed: `pbibrain` (desktop), `brain-agent`, `pbi-guard`.
 
 ---
 
-## Project Architecture
+## Trust classes
+
+| Class | Means |
+|---|---|
+| `FACT` | Extracted from files |
+| `INFERRED` | Interpreted from evidence |
+| `OBSERVED` | Seen together in reports — not proof |
+| Human decision | Your accept / reject / edit — never overwrites facts |
+
+---
+
+## Security
+
+- Power BI access: read-only (writes only through Merge apply)
+- Server: loopback only (`127.0.0.1`)
+- Credentials: never stored in the graph or logs
+
+---
+
+## Layout
 
 ```text
-PBIBrain/
-├── backend/
-│   ├── api/            # WSGI HTTP server and local API endpoints
-│   ├── chat/           # In-app AI chat engine and provider clients
-│   ├── cli/            # `brain` CLI commands and parsers
-│   ├── context/        # Task-scoped context compiler for LLM retrieval
-│   ├── dax/            # ANTLR4 DAX lexer, parser, and semantic analyzer
-│   ├── devcenter/      # Merge models engine, TOM bridge, and apply workflows
-│   ├── diff/           # Model and object diff comparison algorithms
-│   ├── graph/          # Canonical ontology and SQLite persistence layer
-│   ├── impact/         # Downstream dependency and usage impact analyzer
-│   ├── mcp_server.py   # Stdio Model Context Protocol (MCP) server implementation
-│   ├── scanner/        # PBIP, TMDL, PBIR, and cloud artifact ingestion
-│   └── tool_registry.py# Shared 17-tool definitions for MCP and Chat
-├── frontend/           # Vite + React + Tailwind + @xyflow/react workbench
-├── docs/               # Technical specs, architecture decision records (ADRs)
-└── tests/              # Comprehensive Python and Playwright test suites
+backend/        Python: scanner, graph (SQLite), DAX parser, API, chat, MCP, merge
+change_guard/   Change guard contracts and checks
+frontend/       Vite + React workbench
+packaging/      Windows installer
+docs/           Specs, ADRs, guides
+tests/          Python tests
 ```
 
 ---
 
-## Requirements
-
-Windows or Linux, Python 3.11+, and Node.js 20+ to build the UI (`npm run dev`).
-The graph is stored in SQLite through Python's built-in `sqlite3`: there is no database server, DLL or environment variable to set up.
-The Development Center's model verification also needs the .NET 8 SDK to build the TOM bridge
-(`dotnet build -c Release backend/adapters/tabular_metadata/dotnet/TabularMetadata.csproj`).
-Install dependencies with:
-```powershell
-python -m pip install -e .
-```
-
----
-
-## Trust model
-
-The graph keeps evidence classes distinct:
-
-| Class | Meaning |
-| --- | --- |
-| `FACT` | Mechanically extracted structure or DAX/report fact. |
-| `INFERRED` | Semantic interpretation proposed from evidence. |
-| `OBSERVED` | Report co-occurrence or other observed usage; not proof of compatibility. |
-| Human decision | Approval, rejection, edit, or override. Stored as lifecycle status or in the separate overrides file. |
-
-Generated facts are never replaced by human overrides.
-
----
-
-## Brain API
-
-`backend.api.app.BrainAPI` provides programmatic Python access:
-
-```text
-search_objects(query)
-get_context(target, task=None)
-```
-
-The HTTP transport exposes routes under `/api/brain`.
-
----
-
-## Brain Inspector
-
-The local UI uses React Flow (`@xyflow/react`) for interactive graph exploration:
+## Develop
 
 ```powershell
-cd frontend
-npm install
-npm run dev
-```
-
----
-
-## Verification
-
-Run the test suites and type/compilation verification:
-
-```powershell
+python -m pip install -e ".[mcp,chat,cloud,desktop]"
 python -m unittest discover -s tests
-python -m compileall -q backend tests
-cd frontend
-npm run build
+cd frontend; npm install; npm test; npm run build; npx playwright test
 ```
 
----
-
-## Security and limits
-
-- Power BI access is read-only.
-- The server runs on loopback (`127.0.0.1`).
-- Credentials are never stored or logged in graph persistence.
+UI dev server: `cd frontend && npm run dev`
 
 ---
 
-## License
-
-MIT License. See [LICENSE](LICENSE) for details.
+Source: [github.com/DanielSzabo92/PBIBrain](https://github.com/DanielSzabo92/PBIBrain) · MIT — see [LICENSE](LICENSE).
