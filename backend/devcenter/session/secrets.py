@@ -104,8 +104,9 @@ def find_secrets(value: Any) -> list[dict[str, str]]:
 def check_secrets(value: Any) -> None:
     findings = find_secrets(value)
     if findings:
+        summary = ", ".join(f"{item['pointer']} ({item['kind']})" for item in findings[:3])
         raise DevCenterError(
             "invalid_payload",
-            "The app did not save, because the data contains a secret, an e-mail address, or a full path.",
+            f"The app did not save, because the data contains a secret, an e-mail address, or a full path ({summary}).",
             {"reason": "secret_found", "findings": findings},
         )

@@ -137,13 +137,14 @@ STEP_CHOICE = "merge_choice"
 STEP_PREREQUISITE = "prerequisite"
 
 # Blocking item kinds and warning kinds. The text of each kind is in ``MESSAGES``.
-BLOCKING_KINDS = ("choice_source_removed", "choice_not_valid", "no_target_model", "name_clash", "renamed", "removed",
+BLOCKING_KINDS = ("choice_source_removed", "choice_not_valid", "no_sources", "no_target_model", "name_clash", "renamed", "removed",
                   "need_missing", "need_clash", "repoint_not_valid", "udf_compatibility", "dependency_cycle", "source_marks",
                   "dax_parse")
 WARNING_KINDS = ("need_added", "new_lineage_tag", "repoint_data_type", "not_checked")
 MESSAGES = {
     "choice_source_removed": "The source of this Merge Choice is not in the session.",
     "choice_not_valid": "This Merge Choice is not possible for this row.",
+    "no_sources": "The session has no sources.",
     "no_target_model": "The session has no target model.",
     "name_clash": "The name is in use in the target.",
     "renamed": "This object uses an object that the plan renames.",
@@ -1322,6 +1323,13 @@ class _Compiler:
         if marked:
             self.block("source_marks", None, count=len(marked), row_keys=marked)
 
+    def check_session_ready(self) -> None:
+        if not self.data.sources:
+            self.block("no_sources", None)
+        elif self.data.target_model is None and self.data.target_report is None:
+            if not any(item["kind"] == "no_target_model" for item in self.blocking):
+                self.block("no_target_model", None)
+
     # Run -------------------------------------------------------------------------------------
 
     def run(self) -> dict[str, Any]:
@@ -1353,6 +1361,7 @@ class _Compiler:
         self.check_names()
         self.check_functions()
         self.check_marks()
+        self.check_session_ready()
         return self.result()
 
     def result(self) -> dict[str, Any]:

@@ -32,8 +32,11 @@ def source_files(source: LocalSource) -> list[dict[str, object]]:
             prefix = _relative(item, base)
             for record in source_manifest(item):
                 records.append({**record, "path": f"{prefix}/{record['path']}"})
-    except (SourceIntegrityError, ValueError) as exc:
-        raise DevCenterError("invalid_payload", "The app cannot read the files of this source.", {"reason": "source_unreadable"}) from exc
+    except (SourceIntegrityError, ValueError, OSError) as exc:
+        detail = str(exc).strip()
+        message = f"The app cannot read the files of this source: {detail}" if detail else "The app cannot read the files of this source."
+        details = {"reason": "source_unreadable", **({"detail": detail} if detail else {})}
+        raise DevCenterError("invalid_payload", message, details) from exc
     return sorted(records, key=lambda record: str(record["path"]))
 
 

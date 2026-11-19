@@ -211,23 +211,26 @@ test.describe("create flow", () => {
     await expect(page.locator('[data-source="src-3"]')).toContainText("Target");
   });
 
-  test("a fault on source_add shows the partial failure and Open session", async ({ page, request }) => {
+  test("a fault on source_add discards the session and keeps the user on Create with the error", async ({ page, request }) => {
     await scenario(request, "no-sessions");
     await openDevCenter(page);
     await addTwoSources(page);
     await page.getByRole("button", { name: "Next" }).click();
     await page.getByRole("radio", { name: "Finance", exact: true }).click();
     await page.getByRole("button", { name: "Next" }).click();
-    await fault(request, "source_add", "action_not_allowed", { message: "The folder has no model." });
+    await fault(request, "source_add", "invalid_payload", { message: "The folder has no model." });
     await page.getByRole("button", { name: "Create session" }).click();
     const progress = page.getByRole("list", { name: "Create progress" });
-    await expect(progress).toContainText("Sales not added:");
+    await expect(progress).toContainText("Sales not added: The folder has no model.");
     await expect(progress).toContainText("Finance added");
-    await expect(page.getByText("The session exists, but 1 source was not added. Open the session to add it again.")).toBeVisible();
+    await expect(progress).toContainText("Set target: Not run");
+    await expect(progress).toContainText("Incomplete session discarded");
+    await expect(page.getByText("The session was not started because 1 source could not be loaded. Fix or remove that source, then try again.")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Open session" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Back" })).toBeEnabled();
     await checkPage(page);
-    await page.getByRole("button", { name: "Open session" }).click();
-    await expect(page.getByRole("heading", { level: 1, name: "Finance merge" })).toBeVisible();
-    await expect(tab(page, "Sources")).toHaveAttribute("aria-selected", "true");
+    await page.getByRole("button", { name: "Cancel" }).click();
+    await expect(page.getByRole("heading", { name: "No merge sessions yet" })).toBeVisible();
   });
 
   test("Cancel sends no JS API call", async ({ page, request }) => {

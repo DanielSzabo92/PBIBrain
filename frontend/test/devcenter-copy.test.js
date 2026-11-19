@@ -71,6 +71,10 @@ test("errorCopy gives the fixed text of a code and uses the backend message only
   assert.equal(copy("action_not_allowed", "the plan is not valid").body, "This action is not possible now: the plan is not valid");
   assert.equal(copy("action_not_allowed", "", { existing_rule_id: "rule-4" }).body, "A rule with this scope and check kind exists: rule-4. Edit that rule.");
   assert.equal(copy("not_found", "", { kind: "row" }).body, "PBIBrain cannot find this row. It was removed or renamed in another place. Load the view again.");
+  assert.equal(copy("not_found", "The source does not exist.").body, "The source does not exist.");
+  assert.equal(copy("invalid_payload", "The folder has no Power BI model.").body, "The folder has no Power BI model.");
+  assert.equal(copy("invalid_payload", "The request is not valid.", { errors: ["/path: '' is too short"] }).body, "The request is not valid. (/path: '' is too short)");
+  assert.equal(copy("invalid_payload", "").body, COPY["error.invalid_payload"]);
   assert.equal(copy("user_choice_exists", "backend text").body, COPY["error.user_choice_exists"]);
 });
 

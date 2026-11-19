@@ -9,6 +9,9 @@
         "integer",
         "null"
       ]
+    },
+    "discard": {
+      "type": "boolean"
     }
   },
   "required": [],

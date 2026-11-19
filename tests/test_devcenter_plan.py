@@ -764,6 +764,26 @@ class PlanEngineTests(unittest.TestCase):
             val_full = validate_plan(dc, {"mode": "full"})
             self.assertEqual(val_full["mode"], "full")
 
+    def test_empty_and_targetless_sessions_are_never_valid(self) -> None:
+        """Issue #74: a session with 0 sources or no target model must never report status='valid'."""
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td) / "project"
+            root.mkdir()
+            shutil.copytree(LAB / "SalesA", root / "SalesA")
+
+            dc = DevCenterSessions(app_data_dir=None)
+            dc.attach_project(root)
+            dc.create({"display_name": "Empty Session"})
+
+            empty_plan = get_plan(dc, {})
+            self.assertEqual(empty_plan["status"], STATUS_INVALID)
+            self.assertEqual(["no_sources"], [item["kind"] for item in empty_plan["blocking"]])
+
+            dc.source_add({"base_revision": 1, "path": str(root / "SalesA/SalesA.pbip")})
+            no_target_plan = get_plan(dc, {})
+            self.assertEqual(no_target_plan["status"], STATUS_INVALID)
+            self.assertEqual(["no_target_model"], [item["kind"] for item in no_target_plan["blocking"]])
+
 
 if __name__ == "__main__":
     unittest.main()

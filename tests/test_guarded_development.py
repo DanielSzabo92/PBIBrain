@@ -427,6 +427,43 @@ class PrimitiveTests(unittest.TestCase):
             (root / "b.json").hardlink_to(original)
             with self.assertRaises(SourceIntegrityError): source_manifest(root)
 
+    def test_windows_cloud_reparse_points_allowed_while_junctions_rejected(self):
+        from types import SimpleNamespace
+        from unittest.mock import patch
+
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary) / "OneDrive" / "Model.SemanticModel"
+            (root / "definition").mkdir(parents=True)
+            model_file = root / "definition" / "model.tmdl"
+            model_file.write_text("model Model\n", encoding="utf-8")
+            real_lstat = Path.lstat
+
+            # OneDrive Cloud Files tag (IO_REPARSE_TAG_CLOUD_6) on files inside root and ancestor OneDrive folder.
+            def cloud_lstat(path_self):
+                return SimpleNamespace(st_mode=real_lstat(path_self).st_mode, st_file_attributes=0x400, st_reparse_tag=0x9000601A)
+
+            with patch.object(Path, "lstat", cloud_lstat):
+                self.assertEqual(model_file, safe_path(root, "definition/model.tmdl", must_exist=True))
+
+            # An ancestor above root having a junction must not block safe_path inside root.
+            def ancestor_junction_lstat(path_self):
+                if path_self == root.parent:
+                    return SimpleNamespace(st_mode=real_lstat(path_self).st_mode, st_file_attributes=0x400, st_reparse_tag=0xA0000003)
+                return real_lstat(path_self)
+
+            with patch.object(Path, "lstat", ancestor_junction_lstat):
+                self.assertEqual(model_file, safe_path(root, "definition/model.tmdl", must_exist=True))
+
+            # A directory junction (IO_REPARSE_TAG_MOUNT_POINT) inside root MUST still be rejected.
+            def inner_junction_lstat(path_self):
+                if path_self == root / "definition":
+                    return SimpleNamespace(st_mode=real_lstat(path_self).st_mode, st_file_attributes=0x400, st_reparse_tag=0xA0000003)
+                return real_lstat(path_self)
+
+            with patch.object(Path, "lstat", inner_junction_lstat):
+                with self.assertRaises(SourceIntegrityError):
+                    safe_path(root, "definition/model.tmdl", must_exist=True)
+
     def test_invalid_cli_input_has_json_error(self):
         from contextlib import redirect_stdout
         from change_guard.cli import main

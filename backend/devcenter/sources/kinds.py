@@ -89,8 +89,20 @@ def _report_model_dir(report_dir: Path) -> Path | None:
     reference = _read_json(pbir).get("datasetReference") or {}
     by_path = reference.get("byPath") if isinstance(reference, dict) else None
     if isinstance(by_path, dict) and isinstance(by_path.get("path"), str):
-        candidate = (report_dir / by_path["path"]).resolve()
+        candidate = (report_dir / by_path["path"].replace("\\", "/")).resolve()
         return candidate if candidate.is_dir() else None
+    return None
+
+
+def _find_sibling_dir(parent: Path, stem: str, suffixes: tuple[str, ...]) -> Path | None:
+    wanted_suffixes = {suffix.casefold() for suffix in suffixes}
+    exact = sorted(
+        (item for item in parent.iterdir()
+         if item.is_dir() and item.suffix.casefold() in wanted_suffixes and item.stem.casefold() == stem.casefold()),
+        key=lambda item: item.name.casefold(),
+    )
+    if exact:
+        return exact[0].resolve()
     return None
 
 
@@ -105,16 +117,26 @@ def _pbip(path: Path) -> LocalSource:
             relative = value.get("path") if isinstance(value, dict) else None
             if not isinstance(relative, str):
                 continue
-            folder = (path.parent / relative).resolve()
-            if key == "report" and folder.is_dir():
+            folder = (path.parent / relative.replace("\\", "/")).resolve()
+            lowered = key.casefold()
+            if lowered == "report" and folder.is_dir():
                 report_dir = folder
-            elif key in {"dataset", "semanticModel"} and folder.is_dir():
+            elif lowered in {"dataset", "semanticmodel", "semantic_model", "model"} and folder.is_dir():
+                model_dir = folder
+        kind = str(artifact.get("type", "")).casefold()
+        relative = artifact.get("path")
+        if kind and isinstance(relative, str):
+            folder = (path.parent / relative.replace("\\", "/")).resolve()
+            if kind == "report" and folder.is_dir() and report_dir is None:
+                report_dir = folder
+            elif kind in {"dataset", "semanticmodel", "semantic_model", "model"} and folder.is_dir() and model_dir is None:
                 model_dir = folder
     if model_dir is None and report_dir is not None:
         model_dir = _report_model_dir(report_dir)
     if model_dir is None:
-        found = sorted(path.parent.glob(f"{path.stem}.SemanticModel"))
-        model_dir = found[0].resolve() if found and found[0].is_dir() else None
+        model_dir = _find_sibling_dir(path.parent, path.stem, (".SemanticModel", ".Dataset"))
+    if report_dir is None:
+        report_dir = _find_sibling_dir(path.parent, path.stem, (".Report",))
     if model_dir is None and report_dir is None:
         raise DevCenterError("invalid_payload", "The PBIP file has no model and no report.", {"reason": "empty_pbip"})
     return LocalSource(
@@ -155,7 +177,7 @@ def detect_local_source(raw_path: str | Path) -> LocalSource:
         if path.name.casefold() == "definition.pbir":
             path = path.parent
         else:
-            raise DevCenterError("invalid_payload", "The app cannot read this file kind.", {"reason": "unsupported_file"})
+            raise DevCenterError("invalid_payload", f"The app cannot read this file kind ({path.name}). Select a .pbip, model.bim, or definition.pbir file.", {"reason": "unsupported_file"})
     if (path / "model.tmdl").is_file() and path.name == "definition":
         path = path.parent
     if (path / "definition" / "model.tmdl").is_file():
@@ -166,7 +188,22 @@ def detect_local_source(raw_path: str | Path) -> LocalSource:
         return LocalSource(kind, path, _name(path), None, None, path, report_format)
     if (path / "model.bim").is_file():
         return LocalSource(MODEL_BIM, path / "model.bim", _name(path), path, MODEL_TMSL, None, None)
-    raise DevCenterError("invalid_payload", "The folder has no Power BI model and no Power BI report.", {"reason": "unsupported_folder"})
+    # A user who picked the parent folder of a single PBIP project or SemanticModel still gets the source.
+    pbip_files = sorted(item for item in path.iterdir() if item.is_file() and item.suffix.casefold() == ".pbip")
+    if len(pbip_files) == 1:
+        return _pbip(pbip_files[0])
+    model_dirs = sorted(
+        item for item in path.iterdir()
+        if item.is_dir() and (item / "definition" / "model.tmdl").is_file()
+    )
+    if len(model_dirs) == 1 and not pbip_files:
+        chosen = model_dirs[0]
+        return LocalSource(TMDL_FOLDER, chosen, _name(chosen), chosen, MODEL_TMDL, None, None)
+    raise DevCenterError(
+        "invalid_payload",
+        f"The folder {path.name} has no Power BI model (definition/model.tmdl or model.bim) and no Power BI report (definition.pbir).",
+        {"reason": "unsupported_folder"},
+    )
 
 
 def require_model_target(source: LocalSource) -> None:

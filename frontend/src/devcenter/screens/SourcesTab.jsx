@@ -213,7 +213,16 @@ function ChangeTarget({ session, disabled, reasonId, triggerRef }) {
   const [open, setOpen] = useState(false);
   const [choice, setChoice] = useState(() => ({ ...initialChoice(session), folder: null }));
   const [error, setError] = useState(null);
-  const sources = (session.sources ?? []).map((source) => ({ key: source.source_id, name: source.display_name, kind: source.kind }));
+  const sources = (session.sources ?? []).map((source) => ({
+    key: source.source_id,
+    name: source.display_name,
+    kind: source.kind,
+    hasModel: Boolean(source.model_path || source.model_format),
+    hasReport: Boolean(source.report_path || source.report_format),
+    modelFormat: source.model_format ?? null,
+    reportFormat: source.report_format ?? null,
+    access_type: source.access_type ?? null,
+  }));
 
   const start = (value) => {
     setOpen(value);

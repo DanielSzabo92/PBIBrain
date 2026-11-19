@@ -454,9 +454,12 @@ class FakeDevCenter:
         })
         return {"session_id": session_id, "read_only": False}
 
-    def _call_session_close(self, _payload: dict[str, Any]) -> dict[str, Any]:
+    def _call_session_close(self, payload: dict[str, Any]) -> dict[str, Any]:
         session_id = self.session["session_id"] if self.session else None
         self.session = None
+        if payload.get("discard") and session_id:
+            sessions = self.files.get("sessions", {}).get("sessions", [])
+            self.files["sessions"]["sessions"] = [entry for entry in sessions if entry.get("session_id") != session_id]
         return {"session_id": session_id}
 
     def _list_entry(self) -> dict[str, Any] | None:

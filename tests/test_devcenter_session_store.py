@@ -570,6 +570,46 @@ class TargetTests(SessionTestCase):
         self.assertIn("measure:Sales/Margin", current.document["merge_choices"])
         self.assertEqual([], current.document["sources"])
 
+    def test_source_add_accepts_pbip_with_dax_queries_and_os_junk_files(self):
+        dax_dir = self.root / "SalesA/SalesA.SemanticModel/DAXQueries"
+        dax_dir.mkdir(parents=True, exist_ok=True)
+        (dax_dir / "Query 1.dax").write_text("EVALUATE Sales\n", encoding="utf-8")
+        (self.root / "SalesA/SalesA.SemanticModel/desktop.ini").write_bytes(b"\xff\xfe[.ShellClassInfo]\r\n")
+        (self.root / "SalesA/SalesA.Report/Thumbs.db").write_bytes(b"\x00\x01\x02")
+        self.create()
+        added = self.add("SalesA/SalesA.pbip")
+        self.assertEqual("pbip", added["kind"])
+        self.assertEqual("pbir", added["report_format"])
+
+    def test_source_add_preserves_specific_unreadable_file_detail(self):
+        (self.root / "SalesA/SalesA.SemanticModel/bad.exe").write_bytes(b"MZ")
+        self.create()
+        error = self.failed("source_add", {"base_revision": self.devcenter.revision,
+                                           "path": str(self.root / "SalesA/SalesA.pbip")}, code="invalid_payload")
+        self.assertEqual("source_unreadable", error["details"]["reason"])
+        self.assertIn("bad.exe", error["message"])
+        self.assertIn("bad.exe", error["details"]["detail"])
+
+    def test_detect_local_source_accepts_parent_folder_of_single_pbip(self):
+        source = detect_local_source(self.root / "SalesA")
+        self.assertEqual("pbip", source.kind)
+        self.assertEqual("SalesA", source.display_name)
+        self.assertEqual("tmdl", source.model_format)
+        self.assertEqual("pbir", source.report_format)
+
+    def test_session_close_with_discard_deletes_the_session_folder(self):
+        created = self.create("Aborted merge")
+        folder = self.session_folder(created["session_id"])
+        self.assertTrue(folder.is_dir())
+        self.ok("session_close", {"discard": True})
+        self.assertFalse(folder.exists())
+        self.assertEqual([], self.devcenter.sessions_list()["sessions"])
+
+    def test_secret_check_message_includes_sanitized_pointer_and_kind(self):
+        error = self.failed("session_create", {"display_name": "merge for owner@example.com"}, code="invalid_payload")
+        self.assertIn("/display_name (email)", error["message"])
+        self.assertNotIn("owner@example.com", error["message"])
+
 
 class GitignoreTests(SessionTestCase):
     def test_pbibrain_gitignore_has_the_runtime_entries(self):
