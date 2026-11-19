@@ -12,12 +12,13 @@ from backend.api.app import create_app
 from backend.devcenter import contracts, jsapi
 from backend.devcenter.naming.detector import NamingSettings, detect
 from backend.devcenter.naming.jsapi_methods import S4_METHODS
-from backend.devcenter.naming.objects import MEASURE, NamedObject, model_objects
-from backend.devcenter.naming.proposer import propose
-from backend.devcenter.naming.rules import make_rule
+from backend.devcenter.naming.objects import DATA_COLUMN, MEASURE, NamedObject, model_objects
+from backend.devcenter.naming.proposer import breaks, propose
+from backend.devcenter.naming.rules import identity_key, is_case, make_rule, obeys
 from backend.devcenter.naming.tokens import tokenize
 from backend.devcenter.session.manager import DevCenterSessions
 from backend.devcenter.sources.kinds import detect_local_source
+from tests.helpers.mock_pbip import copy_mock_project, dir_sha256_manifest, has_mock_data, mock_data_root
 
 REPOSITORY = Path(__file__).resolve().parents[1]
 LAB = REPOSITORY / "tests" / "fixtures" / "merge_lab"
@@ -436,6 +437,129 @@ class NoTargetTests(unittest.TestCase):
             finally:
                 devcenter.close()
                 app.close()
+
+
+class AdversarialNamingFixesTests(unittest.TestCase):
+    def test_title_case_rejects_all_caps_and_pascal_case(self) -> None:
+        self.assertTrue(is_case("Total Sales", "title"))
+        self.assertTrue(is_case("KPI Total Sales", "title"))
+        self.assertTrue(is_case("Average Price", "title"))
+        self.assertFalse(is_case("TOTAL SALES", "title"))
+        self.assertFalse(is_case("UPPER", "title"))
+        self.assertFalse(is_case("TotalSales", "title"))
+        self.assertFalse(is_case("MyMeasure", "title"))
+        self.assertFalse(is_case("KPI REVENUE", "title"))
+
+    def test_decorated_names_from_propose_obey_their_rules(self) -> None:
+        rules = [
+            make_rule("nr-pref", MEASURE, None, {"kind": "prefix", "value": "m_"}, "user", "confirmed"),
+            make_rule("nr-case", MEASURE, None, {"kind": "letter_case", "value": "title"}, "user", "confirmed"),
+            make_rule("nr-sep", MEASURE, None, {"kind": "separator", "value": "space"}, "user", "confirmed"),
+        ]
+        proposed = propose("total_revenue", MEASURE, {"table": "Sales"}, rules, [])
+        self.assertEqual("m_Total Revenue", proposed["name"])
+        self.assertEqual([], breaks(proposed["name"], MEASURE, {"table": "Sales"}, rules))
+        item = NamedObject(MEASURE, proposed["name"], "Sales")
+        for r in rules:
+            self.assertTrue(obeys(r, item, context_rules=rules), f"{proposed['name']} failed {r['rule_id']}")
+        # Bad core inside decorated name must still fail case rule
+        bad = NamedObject(MEASURE, "m_TotalRevenue", "Sales")
+        self.assertFalse(obeys(rules[1], bad, context_rules=rules))
+
+    def test_identity_key_distinguishes_folder_kind_and_multiple_regex_patterns(self) -> None:
+        f_table = make_rule("nr-f1", MEASURE, None, {"kind": "folder_by_type", "value": "_Measures", "folder": "table"}, "user", "confirmed")
+        f_df = make_rule("nr-f2", MEASURE, None, {"kind": "folder_by_type", "value": "KPIs", "folder": "display_folder"}, "user", "confirmed")
+        self.assertNotEqual(identity_key(f_table), identity_key(f_df))
+
+        rx1 = make_rule("nr-r1", MEASURE, None, {"kind": "regex", "value": "^[A-Z].+$"}, "user", "confirmed")
+        rx2 = make_rule("nr-r2", MEASURE, None, {"kind": "regex", "value": "^(?!.*  ).*$"}, "user", "confirmed")
+        self.assertNotEqual(identity_key(rx1), identity_key(rx2))
+
+    def test_clash_obeys_underscore_and_regex_rules(self) -> None:
+        rules = [
+            make_rule("nr-sep", MEASURE, None, {"kind": "separator", "value": "underscore"}, "user", "confirmed"),
+            make_rule("nr-case", MEASURE, None, {"kind": "letter_case", "value": "lower"}, "user", "confirmed"),
+            make_rule("nr-rx", MEASURE, None, {"kind": "regex", "value": "^[a-z0-9_]+$"}, "user", "confirmed"),
+        ]
+        existing = [NamedObject(MEASURE, "total_sales", "Sales")]
+        result = propose("Total Sales", MEASURE, {"table": "Sales"}, rules, existing, "Sales B")
+        self.assertEqual("total_sales_sales_b", result["name"])
+        self.assertEqual([], breaks(result["name"], MEASURE, {"table": "Sales"}, rules))
+
+    def test_reject_copied_user_rule_marks_rejected_and_rule_view_exposes_breaking_objects(self) -> None:
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            write_model(root / "Target.SemanticModel")
+            write_model(root / "Donor.SemanticModel", measures=[(f"M {i}", "#,0", None) for i in range(6)])
+            user_rule = make_rule("nr-00000000000a", DATA_COLUMN, None, {"kind": "prefix", "value": "col_"}, "user", "confirmed")
+            donor_rule_file = root / ".pbibrain" / "naming-rules" / "Donor.SemanticModel.json"
+            donor_rule_file.parent.mkdir(parents=True, exist_ok=True)
+            donor_rule_file.write_text(json.dumps({"schema_version": 1, "rules": [user_rule]}), encoding="utf-8")
+
+            devcenter = DevCenterSessions(app_data_dir=None)
+            devcenter.attach_project(root)
+            app = create_app(use_native=False)
+            app.devcenter = devcenter
+            try:
+                jsapi.call(devcenter, "session_create", {"display_name": "N"})
+                t_id = jsapi.call(devcenter, "source_add", {"base_revision": devcenter.revision, "path": str(root / "Target.SemanticModel")})["source"]["source_id"]
+                d_id = jsapi.call(devcenter, "source_add", {"base_revision": devcenter.revision, "path": str(root / "Donor.SemanticModel")})["source"]["source_id"]
+                jsapi.call(devcenter, "target_set", {"base_revision": devcenter.revision, "model": {"mode": "existing", "source_id": t_id}})
+
+                # Check breaking_objects returned in GET naming-rules
+                _, payload = app.handle("GET", "/api/devcenter/naming-rules")
+                lc = next(r for r in payload["rules"] if r["object_type"] == "measure" and r["check"]["kind"] == "letter_case")
+                self.assertEqual(["gross_profit"], [b["name"] for b in lc["breaking_objects"]])
+
+                # Check two regex rules allowed in same scope + column format_kind unit_word allowed
+                r1 = jsapi.call(devcenter, "naming_rule_edit", {"base_revision": devcenter.revision, "object_type": "measure", "check": {"kind": "regex", "value": "^[A-Z].+"}})
+                self.assertNotIn("error", r1)
+                r2 = jsapi.call(devcenter, "naming_rule_edit", {"base_revision": devcenter.revision, "object_type": "measure", "check": {"kind": "regex", "value": "^.{1,40}$"}})
+                self.assertNotIn("error", r2)
+                c_unit = jsapi.call(devcenter, "naming_rule_edit", {"base_revision": devcenter.revision, "object_type": "data_column", "scope": {"format_kind": "percent"}, "check": {"kind": "unit_word", "value": "%"}})
+                self.assertNotIn("error", c_unit)
+                bad_scope = jsapi.call(devcenter, "naming_rule_edit", {"base_revision": devcenter.revision, "object_type": "table", "scope": {"table": "Sales"}, "check": {"kind": "prefix", "value": "dim"}})
+                self.assertEqual("invalid_payload", bad_scope["error"]["code"])
+
+                # Copy donor rules -> copied user rule arrives as proposed -> reject marks rejected instead of deleting
+                copied = jsapi.call(devcenter, "naming_rules_copy", {"base_revision": devcenter.revision, "source_id": d_id})
+                copied_user = next(r for r in copied["copied"] if r["check"]["kind"] == "prefix" and r["object_type"] == "data_column")
+                self.assertEqual(("user", "proposed"), (copied_user["origin"], copied_user["status"]))
+                rej = jsapi.call(devcenter, "naming_rule_reject", {"base_revision": devcenter.revision, "rule_id": copied_user["rule_id"]})
+                self.assertEqual((False, "rejected"), (rej["removed"], rej["rule"]["status"]))
+                # Re-copy skips rejected rule instead of duplicating it
+                copied2 = jsapi.call(devcenter, "naming_rules_copy", {"base_revision": devcenter.revision, "source_id": d_id})
+                self.assertIn("rejected_rule", {s["reason"] for s in copied2["skipped"]})
+            finally:
+                devcenter.close()
+                app.close()
+
+    @unittest.skipUnless(has_mock_data(), "Mock data PBIP folder not present")
+    def test_real_mock_pbip_naming_detection_and_proposal(self) -> None:
+        src_root = mock_data_root()
+        before = dir_sha256_manifest(src_root / "1_finance_Aevum")
+        with tempfile.TemporaryDirectory() as folder:
+            proj_dir, pbip = copy_mock_project("finance", Path(folder))
+            devcenter = DevCenterSessions(app_data_dir=None)
+            devcenter.attach_project(proj_dir)
+            app = create_app(use_native=False)
+            app.devcenter = devcenter
+            try:
+                jsapi.call(devcenter, "session_create", {"display_name": "Finance Naming"})
+                t_id = jsapi.call(devcenter, "source_add", {"base_revision": devcenter.revision, "path": str(pbip)})["source"]["source_id"]
+                jsapi.call(devcenter, "target_set", {"base_revision": devcenter.revision, "model": {"mode": "existing", "source_id": t_id}})
+                st, payload = app.handle("GET", "/api/devcenter/naming-rules")
+                self.assertEqual(200, st)
+                self.assertEqual([], contracts.errors("http/naming-rules.reply.json", payload))
+                for rule in payload["rules"]:
+                    self.assertEqual(rule["breaks"], len(rule["breaking_objects"]))
+                st_p, prop = app.handle("POST", "/api/devcenter/name-propose", json.dumps({"name": "net_margin", "object_type": "measure"}).encode("utf-8"))
+                self.assertEqual(200, st_p)
+                self.assertEqual([], contracts.errors("http/name-propose.reply.json", prop))
+            finally:
+                devcenter.close()
+                app.close()
+        self.assertEqual(dir_sha256_manifest(src_root / "1_finance_Aevum"), before)
 
 
 if __name__ == "__main__":

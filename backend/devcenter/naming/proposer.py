@@ -103,7 +103,7 @@ def breaks(name: str, object_type: str, context: Mapping[str, Any], rules: Itera
         check = rule["check"]
         if check["kind"] == FOLDER_BY_TYPE and context.get("table" if check.get("folder") == "table" else "display_folder") is None:
             continue
-        if not obeys(rule, item):
+        if not obeys(rule, item, context_rules=rules):
             found.append({"rule_id": rule["rule_id"], "text": rule_text(rule)})
     return found
 
@@ -162,18 +162,51 @@ def propose(name: str, object_type: str, context: Mapping[str, Any], rules: Iter
             placed.add(field)
             used.append(folder_rule["rule_id"])
     table, display_folder = location["table"], location["display_folder"]
+    rule_ctx = {**context, "table": table, "display_folder": display_folder}
     first_clash = clash_with(core, object_type, table, existing)
     proposed = core
     if first_clash is not None:
         label = (donor_name or "").strip()
+        tail_suffix = ""
+        if picked[UNIT_WORD] is not None:
+            tail_suffix = (" " if separator in (None, "space") else SEPARATOR_VALUES[separator]) + picked[UNIT_WORD]["check"]["value"]
+        elif picked[SUFFIX] is not None:
+            tail_suffix = picked[SUFFIX]["check"]["value"]
+        base_stem = core[:-len(tail_suffix)] if (tail_suffix and core.endswith(tail_suffix)) else core
+        sep_char = SEPARATOR_VALUES[separator] if separator is not None else " "
+        fallback_non_clash: str | None = None
+        # First try standard "Core (Donor)" / "Core (Donor 2)" when it obeys active rules
         for number in range(1, MAX_CLASH_TRIES + 1):
-            if label:
-                suffix = label if number == 1 else f"{label} {number}"
-            else:
-                suffix = str(number + 1)
-            proposed = f"{core} ({suffix})"
-            if clash_with(proposed, object_type, table, existing) is None:
+            paren_label = (f"{label} {number}" if number > 1 else label) if label else str(number + 1)
+            paren_cand = f"{core} ({paren_label})"
+            if clash_with(paren_cand, object_type, table, existing) is None:
+                if fallback_non_clash is None:
+                    fallback_non_clash = paren_cand
+                if not breaks(paren_cand, object_type, rule_ctx, rules):
+                    proposed = paren_cand
+                    break
+        else:
+            # Paren form clashed or violated active separator/case/regex rules: try rule-styled candidates
+            for number in range(1, MAX_CLASH_TRIES + 1):
+                suffix_parts = ([*words(label), str(number)] if (label and number > 1)
+                                else words(label) if label
+                                else [str(number + 1)])
+                styled_suffix = render(suffix_parts, style, separator, " ".join(suffix_parts)) if suffix_parts else str(number + 1)
+                styled_cand = f"{base_stem}{sep_char}{styled_suffix}{tail_suffix}" if sep_char else f"{base_stem}{styled_suffix}{tail_suffix}"
+                num_cand = f"{base_stem}{sep_char}{number + 1}{tail_suffix}" if sep_char else f"{base_stem}{number + 1}{tail_suffix}"
+                for cand in (styled_cand, num_cand):
+                    if clash_with(cand, object_type, table, existing) is None:
+                        if fallback_non_clash is None:
+                            fallback_non_clash = cand
+                        if not breaks(cand, object_type, rule_ctx, rules):
+                            proposed = cand
+                            break
+                else:
+                    continue
                 break
+            else:
+                if fallback_non_clash is not None:
+                    proposed = fallback_non_clash
     return {
         "name": proposed,
         "rule_ids": used,
