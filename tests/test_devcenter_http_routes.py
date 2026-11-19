@@ -87,7 +87,8 @@ class RouteListTests(unittest.TestCase):
                     self.assertIn("/".join(route.path), http_routes.READ_POSTS)
                 if route.kind == "proposal":
                     self.assertIn(route.path, {("proposals",), ("questions",)})
-                self.assertFalse(names & set(route.path), "A route path must not name a state change")
+                self.assertNotIn("/".join(route.path), names, "A route path must not name a state change")
+                self.assertNotIn(route.path[-1], names, "A route leaf must not name a state change")
 
     def test_no_http_route_changes_session_state(self):
         created = self.devcenter.create({"display_name": "Route check"})

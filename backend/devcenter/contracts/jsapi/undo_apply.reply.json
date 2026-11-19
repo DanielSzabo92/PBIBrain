@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pbibrain.local/devcenter/contracts/jsapi/undo_apply.reply.json",
+  "title": "JS API undo_apply: reply (an error reply uses error.json)",
+  "type": "object",
+  "properties": {
+    "revision": {
+      "$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/revision"
+    },
+    "apply_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "restored_files": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "removed_files": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "file_count": {
+      "type": "integer",
+      "minimum": 0
+    }
+  },
+  "required": ["apply_id", "file_count", "removed_files", "restored_files", "revision"],
+  "additionalProperties": false
+}

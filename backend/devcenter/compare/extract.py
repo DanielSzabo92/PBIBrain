@@ -402,7 +402,11 @@ _CACHE_SIZE = 32
 
 def _read_model(source: LocalSource, adapter: TabularMetadataAdapter) -> dict[str, Any]:
     assert source.model_dir is not None
-    path = source.model_dir / "model.bim" if source.model_format == MODEL_TMSL else source.model_dir
+    if source.model_format == MODEL_TMSL:
+        path = source.model_dir / "model.bim"
+    else:
+        definition = source.model_dir / "definition"
+        path = definition if definition.is_dir() else source.model_dir
     try:
         payload = adapter.read(path)
     except MetadataUnavailable as exc:

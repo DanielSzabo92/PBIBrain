@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pbibrain.local/devcenter/contracts/jsapi/apply.reply.json",
+  "title": "JS API apply: reply (an error reply uses error.json)",
+  "type": "object",
+  "properties": {
+    "revision": {
+      "$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/revision"
+    },
+    "apply_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "plan_hash": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "file_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "changed_files": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "backup_present": {
+      "type": "boolean"
+    },
+    "rescan_differences": {
+      "type": "array",
+      "items": { "type": "object" }
+    },
+    "desktop_warning": {
+      "type": ["string", "null"]
+    }
+  },
+  "required": [
+    "apply_id",
+    "backup_present",
+    "changed_files",
+    "desktop_warning",
+    "file_count",
+    "plan_hash",
+    "rescan_differences",
+    "revision"
+  ],
+  "additionalProperties": false
+}

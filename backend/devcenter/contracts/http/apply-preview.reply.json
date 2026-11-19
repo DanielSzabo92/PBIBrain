@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pbibrain.local/devcenter/contracts/http/apply-preview.reply.json",
+  "title": "GET /api/devcenter/apply/preview (section 14.1, UC6)",
+  "type": "object",
+  "properties": {
+    "revision": {
+      "$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/revision"
+    },
+    "ready": {
+      "type": "boolean"
+    },
+    "plan_hash": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "summary": {
+      "type": "object",
+      "properties": {
+        "add": { "type": "integer", "minimum": 0 },
+        "change": { "type": "integer", "minimum": 0 },
+        "remove": { "type": "integer", "minimum": 0 },
+        "rename": { "type": "integer", "minimum": 0 }
+      },
+      "required": ["add", "change", "remove", "rename"],
+      "additionalProperties": false
+    },
+    "unconfirmed_marks": {
+      "type": "object",
+      "properties": {
+        "count": { "type": "integer", "minimum": 0 },
+        "row_keys": {
+          "type": "array",
+          "items": {
+            "$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/row_key"
+          }
+        }
+      },
+      "required": ["count", "row_keys"],
+      "additionalProperties": false
+    },
+    "desktop_state": {
+      "enum": ["not_open", "open_saved", "open_unsaved", "not_reachable"]
+    },
+    "desktop_warning": {
+      "type": ["string", "null"]
+    },
+    "non_canonical_files": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "validation": {
+      "type": "object",
+      "properties": {
+        "status": { "enum": ["valid", "valid_with_warnings", "invalid"] },
+        "failed_checks": {
+          "type": "array",
+          "items": { "type": "object" }
+        }
+      },
+      "required": ["failed_checks", "status"],
+      "additionalProperties": false
+    },
+    "not_checked": {
+      "type": "array",
+      "items": { "type": "object" }
+    },
+    "approvals_needed": {
+      "type": "array",
+      "items": { "type": "object" }
+    }
+  },
+  "required": [
+    "approvals_needed",
+    "desktop_state",
+    "non_canonical_files",
+    "not_checked",
+    "plan_hash",
+    "ready",
+    "revision",
+    "summary",
+    "unconfirmed_marks",
+    "validation"
+  ],
+  "additionalProperties": false
+}

@@ -1700,8 +1700,33 @@ class PBIRWriter:
                 documents[f"{root_name}/{rel}"] = _read_json(file_path)
 
         result = validate_report_documents(documents)
+        base_pbir_path = self.baseline_dir / "definition.pbir"
+        cand_pbir_path = self.candidate_dir / "definition.pbir"
+        untouched_v4_pbir = False
+        if base_pbir_path.is_file() and cand_pbir_path.is_file():
+            try:
+                if base_pbir_path.read_bytes() == cand_pbir_path.read_bytes():
+                    cand_pbir_doc = _read_json(cand_pbir_path)
+                    untouched_v4_pbir = (
+                        isinstance(cand_pbir_doc, Mapping)
+                        and isinstance(cand_pbir_doc.get("version"), str)
+                        and "datasetReference" in cand_pbir_doc
+                    )
+            except Exception:
+                untouched_v4_pbir = False
         structural_errors = [
-            issue for issue in result.get("issues", []) if issue.get("code") in _STRUCTURAL_VALIDATION_CODES
+            issue
+            for issue in result.get("issues", [])
+            if issue.get("code") in _STRUCTURAL_VALIDATION_CODES
+            and not (
+                untouched_v4_pbir
+                and issue.get("code") == "PBIR_SCHEMA_UNSUPPORTED"
+                and issue.get("schema") is None
+                and (
+                    str(issue.get("source_file") or "") == "definition.pbir"
+                    or str(issue.get("source_file") or "").endswith("/definition.pbir")
+                )
+            )
         ]
         if structural_errors:
             raise PBIRWriteError(

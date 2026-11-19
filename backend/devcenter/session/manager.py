@@ -913,3 +913,28 @@ class DevCenterSessions:
             if missing:
                 items.append({"kind": "source_not_available", "source_ids": missing})
             return {"revision": document["revision"], "blocking": bool(items), "items": items}
+
+    def set_desktop_bridge(self, bridge: Any) -> None:
+        """Configure the Desktop-open bridge used by local apply preview and execution."""
+        with self._lock:
+            self._desktop_bridge = bridge
+
+    def format_only_apply(self, request: Mapping[str, Any]) -> dict[str, Any]:
+        from backend.devcenter.apply import service as apply_service
+
+        return apply_service.format_only_apply(self, request)
+
+    def apply(self, request: Mapping[str, Any]) -> dict[str, Any]:
+        from backend.devcenter.apply import service as apply_service
+
+        return apply_service.apply(self, request)
+
+    def undo_apply(self, request: Mapping[str, Any]) -> dict[str, Any]:
+        from backend.devcenter.apply import service as apply_service
+
+        return apply_service.undo_apply(self, request)
+
+    def change_report_write(self, request: Mapping[str, Any]) -> dict[str, Any]:
+        from backend.devcenter.apply import service as apply_service
+
+        return apply_service.change_report_write(self, request)

@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pbibrain.local/devcenter/contracts/jsapi/format_only_apply.reply.json",
+  "title": "JS API format_only_apply: reply (an error reply uses error.json)",
+  "type": "object",
+  "properties": {
+    "revision": {
+      "$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/revision"
+    },
+    "apply_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "file_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "changed_files": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "backup_present": {
+      "type": "boolean"
+    },
+    "desktop_warning": {
+      "type": ["string", "null"]
+    }
+  },
+  "required": ["apply_id", "backup_present", "changed_files", "desktop_warning", "file_count", "revision"],
+  "additionalProperties": false
+}
