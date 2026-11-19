@@ -40,8 +40,8 @@ export const COPY = Object.freeze({
   "error.session_not_open.action": "Open session",
   "error.not_found": "PBIBrain cannot find this {kind}. It was removed or renamed in another place. Load the view again.",
   "error.not_found.action": "Load again",
-  "error.invalid_payload": "PBIBrain cannot save this change. Load the row again and try again.",
-  "error.invalid_payload.action": "Load row again",
+  "error.invalid_payload": "PBIBrain could not accept this request. Check the input and try again.",
+  "error.invalid_payload.action": "Try again",
   "error.action_not_allowed": "This action is not possible now: {message}",
   "error.action_not_allowed.existing_rule": "A rule with this scope and check kind exists: {rule}. Edit that rule.",
   "error.action_not_allowed.existing_rule.action": "Edit that rule",
@@ -109,6 +109,10 @@ export const COPY = Object.freeze({
   "create.remove": "Remove",
   "create.remove.label": "Remove {source}",
   "create.sources.empty": "No sources yet. Add a model to start.",
+  "create.sources.inherited.one": "Loaded 1 source from this project. Remove it or add more sources below.",
+  "create.sources.inherited.other": "Loaded {n} sources from this project. Remove any you do not want, or add more sources below.",
+  "create.sources.skipped.one": "1 project source could not be loaded for merge: {detail}",
+  "create.sources.skipped.other": "{n} project sources could not be loaded for merge: {detail}",
   "create.sources.need_two_sources": "Add at least 2 sources to compare and merge.",
   "create.sources.need_model": "Add at least 1 model source to go to the next step.",
   "create.sources.duplicate": "{source} is already in the list.",
@@ -144,6 +148,7 @@ export const COPY = Object.freeze({
   "create.target.report": "Target report",
   "create.target.new_report": "New empty report",
   "create.target.new_report.help": "Bound to the target model",
+  "create.target.pbip_report": "{source} report",
   "create.name.label": "Session name",
   "create.name.default": "{model} merge",
   "create.summary.sources": "Sources",
@@ -155,6 +160,10 @@ export const COPY = Object.freeze({
   "create.progress.source_failed": "{source} not added: {reason}",
   "create.progress.target": "Set target",
   "create.progress.not_run": "Not run",
+  "create.progress.rolled_back": "Incomplete session discarded",
+  "create.rolled_back.one": "The session was not started because 1 source could not be loaded. Fix or remove that source, then try again.",
+  "create.rolled_back.other": "The session was not started because {n} sources could not be loaded. Fix or remove those sources, then try again.",
+  "create.rolled_back.target": "The session was not started because the target could not be set. Check the target settings and try again.",
   "create.partial.one": "The session exists, but 1 source was not added. Open the session to add it again.",
   "create.partial.other": "The session exists, but {n} sources were not added. Open the session to add them again.",
   "create.partial.action": "Open session",
@@ -177,6 +186,8 @@ export const COPY = Object.freeze({
   "work.plan.warnings.unknown": "Valid with warnings",
   "work.plan.invalid.unknown": "Plan not valid",
   "work.plan.none": "Plan not checked",
+  "work.plan.no_sources": "No sources loaded",
+  "work.plan.no_target": "No target model",
   "work.plan.stale": "Stale, re-check",
   "work.plan.missing.one": "1 source missing",
   "work.plan.missing.other": "{n} sources missing",
@@ -191,11 +202,15 @@ export const COPY = Object.freeze({
   "work.tab.count.agent": "open proposals and questions",
   "work.check_sources.marks.one": "1 row has a mark. Confirm it in Compare.",
   "work.check_sources.marks.other": "{n} rows have a mark. Confirm them in Compare.",
+  "work.check_sources.empty": "This session has no sources to check.",
+  "work.check_sources.missing.one": "1 source could not be read. Open Sources to fix it.",
+  "work.check_sources.missing.other": "{n} sources could not be read. Open Sources to fix them.",
   "work.loading": "Loading the session",
   "work.loading.slow": "This takes longer than usual. The app is busy with another task, for example a scan. The session opens when that task is complete.",
   "work.check_sources": "Check sources",
   "work.check_sources.loading": "Checking sources",
   "work.check_sources.same": "All sources are the same as at the last check.",
+  "work.banner.no_sources": "This session has no sources. Create a new merge session to compare models.",
   "work.more": "More actions",
   "work.more.sessions": "All merge sessions",
   "work.switch": "Switch session",
@@ -1123,6 +1138,14 @@ export function errorKey(code) {
   return "error.unknown.body";
 }
 
+function errorDetailText(error) {
+  const details = error?.details;
+  if (!details || typeof details !== "object") return "";
+  if (typeof details.detail === "string" && details.detail.trim()) return details.detail.trim();
+  if (Array.isArray(details.errors) && details.errors.length > 0) return String(details.errors[0]);
+  return "";
+}
+
 // The title and the text for a DevCenterError.
 export function errorCopy(error) {
   const code = error?.code ?? "unknown";
@@ -1132,6 +1155,21 @@ export function errorCopy(error) {
   }
   if (code === "action_not_allowed" && error?.details?.reason === "session_locked") {
     return { title: null, body: t("error.action_not_allowed.session_locked") };
+  }
+  if (code === "invalid_payload") {
+    const trimmed = String(message).trim();
+    const extra = errorDetailText(error);
+    if (trimmed) {
+      const body = extra && !trimmed.includes(extra) ? `${trimmed} (${extra})` : trimmed;
+      return { title: null, body };
+    }
+    if (extra) return { title: null, body: extra };
+    return { title: null, body: t("error.invalid_payload") };
+  }
+  if (code === "not_found") {
+    const trimmed = String(message).trim();
+    if (trimmed) return { title: null, body: trimmed };
+    return { title: null, body: t("error.not_found", { kind: error?.details?.kind ?? "object" }) };
   }
   if (code === "network") return { title: t("error.network.title"), body: t("error.network.body") };
   const key = errorKey(code);

@@ -176,7 +176,35 @@ export function buildBlockList({ plan, session, applyPreview, targetModelName, i
   const rawBlocking = Array.isArray(plan?.blocking) ? plan.blocking : [];
   const preview = applyPreview ?? plan?.apply_preview ?? null;
 
-  // (0) Missing or damaged sources.
+  // (0) Empty session or missing/damaged sources.
+  const sessionSources = Array.isArray(session?.sources) ? session.sources : null;
+  if (sessionSources && sessionSources.length === 0 && !rawBlocking.some((item) => item.kind === "no_sources")) {
+    blocks.push({
+      id: "block-no-sources",
+      category: "sources",
+      kind: "no_sources",
+      icon: "bad",
+      text: "This session has no sources loaded.",
+      fix: "Create a new merge session with at least 2 valid sources.",
+      files: [],
+      actionLabel: "View sources",
+      action: { type: "sources" },
+    });
+  } else if (sessionSources && sessionSources.length > 0 && session?.target && !session.target.model?.source_id
+      && !rawBlocking.some((item) => item.kind === "no_target_model")) {
+    blocks.push({
+      id: "block-no-target",
+      category: "plan",
+      kind: "no_target_model",
+      icon: "bad",
+      text: "The session has no target model.",
+      fix: "Select a target model before you apply.",
+      files: [],
+      actionLabel: t("work.change_target"),
+      action: { type: "change_target" },
+    });
+  }
+
   const missingSources = (session?.sources ?? []).filter((s) => s.status !== "ok");
   if (missingSources.length > 0) {
     blocks.push({

@@ -1032,11 +1032,35 @@ class BrainApp:
                 return 200, self.api.compare_prepared_snapshots(payload["before"], payload["after"])
             if method == "GET" and parts == ["config", "sources"] and self.project is not None:
                 # Whether each configured path is there, so a wrong path shows before any scan runs.
+                from backend.devcenter.errors import DevCenterError
+                from backend.devcenter.sources.kinds import detect_local_source
+
                 config = self.project.get_config()
                 found = []
                 states = getattr(self.project, "source_states", None) or {}
                 for value, resolved in zip(config.get("sources", []), self.project.source_paths()):
-                    entry = {"path": value, "exists": resolved.exists(), "kind": "folder" if resolved.is_dir() else "file" if resolved.is_file() else "missing"}
+                    exists = resolved.exists()
+                    entry: dict[str, Any] = {
+                        "path": value,
+                        "exists": exists,
+                        "kind": "folder" if resolved.is_dir() else "file" if resolved.is_file() else "missing",
+                    }
+                    if exists:
+                        entry["resolved_path"] = str(resolved)
+                        try:
+                            local = detect_local_source(resolved)
+                        except DevCenterError as exc:
+                            entry["merge_error"] = exc.message
+                        else:
+                            entry["merge_source"] = {
+                                "path": str(local.root),
+                                "kind": local.kind,
+                                "display_name": local.display_name,
+                                "model_format": local.model_format,
+                                "report_format": local.report_format,
+                                "has_model": local.model_dir is not None,
+                                "has_report": local.report_dir is not None,
+                            }
                     if isinstance(states.get(value), Mapping):
                         entry["scan"] = dict(states[value])  # what the last scan did with this source
                     found.append(entry)

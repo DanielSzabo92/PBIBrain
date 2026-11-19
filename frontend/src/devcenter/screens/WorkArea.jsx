@@ -120,7 +120,7 @@ export default function WorkArea({ session, tabState, onTabs, onRetryLock, onClo
   ];
 
   useEffect(() => {
-    if (readOnly || checkedOnOpen.has(session.session_id)) return;
+    if (readOnly || (session.sources ?? []).length === 0 || checkedOnOpen.has(session.session_id)) return;
     checkedOnOpen.add(session.session_id);
     check.run({});
     // Only a new session ID starts the check.
@@ -129,7 +129,21 @@ export default function WorkArea({ session, tabState, onTabs, onRetryLock, onClo
 
   const checkSources = async () => {
     const reply = await check.run({});
-    if (reply) toast.show({ tone: reply.mark_count > 0 ? "warn" : "ok", text: reply.mark_count > 0 ? tn("work.check_sources.marks", reply.mark_count) : t("work.check_sources.same") });
+    if (!reply) return;
+    const checked = Array.isArray(reply.sources) ? reply.sources : [];
+    if (checked.length === 0) {
+      toast.show({ tone: "warn", text: t("work.check_sources.empty") });
+      return;
+    }
+    const unavailable = checked.filter((item) => item.status !== "ok").length;
+    if (unavailable > 0) {
+      toast.show({ tone: "bad", text: tn("work.check_sources.missing", unavailable) });
+      return;
+    }
+    toast.show({
+      tone: reply.mark_count > 0 ? "warn" : "ok",
+      text: reply.mark_count > 0 ? tn("work.check_sources.marks", reply.mark_count) : t("work.check_sources.same"),
+    });
   };
 
   const sessionPath = session.path || (session.session_id ? `.pbibrain/sessions/${session.session_id}/session.json` : "");
@@ -157,6 +171,7 @@ export default function WorkArea({ session, tabState, onTabs, onRetryLock, onClo
         </Button>
       </div>
     ),
+    no_sources: onShowList ? <Button variant="outline" size="sm" onClick={onShowList}>{t("work.more.sessions")}</Button> : null,
     missing: <Button variant="outline" size="sm" onClick={() => onTabs({ tab: "sources" })}>{t("work.banner.missing.action")}</Button>,
     changed: <Button variant="outline" size="sm" onClick={() => onTabs({ tab: "compare", marks: true })}>{t("work.banner.changed.action")}</Button>,
   };

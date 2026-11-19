@@ -210,6 +210,23 @@ class BackgroundScanTests(unittest.TestCase):
             self.assertEqual(len(analysed), 1, "the analysis stops before the next expression")
             self.assertEqual(repository.all_nodes(), [], "nothing is published")
 
+    def test_config_sources_includes_merge_source_metadata(self) -> None:
+        pbip = (Path(__file__).resolve().parent / "fixtures" / "merge_lab" / "SalesA" / "SalesA.pbip").resolve()
+        with tempfile.TemporaryDirectory() as folder:
+            app, _sample = _project(folder, str(pbip))
+            try:
+                status, payload = app.handle("GET", "/api/config/sources")
+                self.assertEqual(status, 200)
+                sample_entry, pbip_entry = payload["sources"]
+                self.assertIsNone(sample_entry.get("merge_source"))
+                self.assertTrue(sample_entry.get("merge_error"))
+                self.assertEqual(pbip_entry["resolved_path"], str(pbip))
+                self.assertEqual(pbip_entry["merge_source"]["kind"], "pbip")
+                self.assertTrue(pbip_entry["merge_source"]["has_model"])
+                self.assertTrue(pbip_entry["merge_source"]["has_report"])
+            finally:
+                app.close()
+
 
 if __name__ == "__main__":
     unittest.main()

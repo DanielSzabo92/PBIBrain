@@ -5,7 +5,8 @@ import test from "node:test";
 import { DevCenterError } from "../src/devcenter/errors.js";
 import { setSlashSearchEnabled, slashGoesToSearch, slashSearchEnabled } from "../src/devcenter/preferences.js";
 import {
-  agentCount, banners, createStepError, defaultSessionName, deriveReadiness, draftHasModel, draftSource, listRowState, planStatus, runCreateFlow,
+  agentCount, banners, createStepError, defaultSessionName, deriveReadiness, draftHasModel, draftSource,
+  inheritedProjectSources, isReportSource, listRowState, planStatus, runCreateFlow,
   sortSessions, targetLine, targetModelItems, targetNames, targetPayload, targetReportItems,
 } from "../src/devcenter/screens/sessionModel.js";
 
@@ -30,7 +31,7 @@ test("the plan status button uses GET plan counts when it has them", () => {
   assert.equal(planStatus("valid", null, true).text, "Checking plan");
 });
 
-test("deriveReadiness ensures no screen can show Valid when blocking items, missing sources, unconfirmed marks, or stale plan exist", async () => {
+test("deriveReadiness ensures no screen can show Valid when blocking items, missing sources, unconfirmed marks, empty sources, no target, or stale plan exist", async () => {
   const missingSession = await fixture("source-missing/session.json");
   const missingReadiness = deriveReadiness({ session: missingSession, plan: { status: "valid" } });
   assert.equal(missingReadiness.tone, "bad");
@@ -49,6 +50,25 @@ test("deriveReadiness ensures no screen can show Valid when blocking items, miss
   assert.equal(invalidReadiness.text, "Plan not valid: 2 blocking");
   assert.equal(invalidReadiness.ready, false);
 
+  const emptySourcesReadiness = deriveReadiness({
+    session: { revision: 1, sources: [], target: { model: null, report: { mode: "new_empty" } }, counts: { marks: 0 } },
+    plan: { revision: 1, status: "valid", steps: [], blocking: [], warnings: [] },
+  });
+  assert.equal(emptySourcesReadiness.state, "no_sources");
+  assert.equal(emptySourcesReadiness.tone, "bad");
+  assert.equal(emptySourcesReadiness.text, "No sources loaded");
+  assert.equal(emptySourcesReadiness.ready, false);
+  assert.equal(emptySourcesReadiness.applyDisabled, true);
+
+  const noTargetReadiness = deriveReadiness({
+    session: { revision: 2, sources: [{ status: "ok" }], target: { model: null, report: { mode: "new_empty" } }, counts: { marks: 0 } },
+    plan: { revision: 2, status: "valid", steps: [], blocking: [], warnings: [] },
+  });
+  assert.equal(noTargetReadiness.state, "no_target");
+  assert.equal(noTargetReadiness.tone, "bad");
+  assert.equal(noTargetReadiness.text, "No target model");
+  assert.equal(noTargetReadiness.ready, false);
+
   const staleReadiness = deriveReadiness({ session: { revision: 15, sources: [] }, plan: { revision: 12, status: "valid" } });
   assert.equal(staleReadiness.tone, "warn");
   assert.equal(staleReadiness.text, "Stale, re-check");
@@ -60,10 +80,12 @@ test("deriveReadiness ensures no screen can show Valid when blocking items, miss
   assert.equal(cleanReadiness.ready, true);
 });
 
-test("the banner stack has the order locked, source missing, sources changed", async () => {
+test("the banner stack has the order locked, no_sources, source missing, sources changed", async () => {
   assert.deepEqual(banners(await fixture("default/session.json")), []);
   const locked = banners(await fixture("locked/session.json"));
   assert.deepEqual(locked.map((item) => item.id), ["locked"]);
+  const empty = banners({ sources: [], counts: { marks: 0 } });
+  assert.deepEqual(empty.map((item) => item.id), ["no_sources"]);
   const missing = banners(await fixture("source-missing/session.json"));
   assert.equal(missing[0].text, "1 source was not found: Sales model. Find it again or remove it.");
   const changed = banners(await fixture("sources-changed/session.json"));
@@ -96,7 +118,7 @@ test("a PBIX path gives the fixed refusal, and the kind comes from the path", ()
   assert.equal(draftHasModel([{ kind: "pbir_report" }, { kind: "model_bim" }]), true);
 });
 
-test("target choices show the fixed refusals, and the default name uses the target model", () => {
+test("target choices show the fixed refusals, include PBIP reports, and the default name uses the target model", () => {
   const sources = [
     { key: "1", name: "Sales", kind: "tmdl_folder" },
     { key: "2", name: "Old", kind: "model_bim" },
@@ -112,6 +134,66 @@ test("target choices show the fixed refusals, and the default name uses the targ
   assert.equal(reports[1].reason, "Convert to PBIR in Power BI Desktop first.");
   assert.equal(defaultSessionName({ sources, targetModel: "copy:1" }), "Sales merge");
   assert.equal(defaultSessionName({ sources, targetModel: null }), "");
+
+  const pbipSources = [
+    { key: "1", name: "SalesA", kind: "pbip", hasModel: true, hasReport: true, modelFormat: "tmdl", reportFormat: "pbir" },
+    { key: "2", name: "LegacyApp", kind: "pbip", hasModel: true, hasReport: true, modelFormat: "tmsl", reportFormat: "pbir_legacy" },
+    { key: "3", name: "ModelOnly", kind: "pbip", hasModel: true, hasReport: false, modelFormat: "tmdl", reportFormat: null },
+  ];
+  const pbipReports = targetReportItems(pbipSources);
+  assert.deepEqual(pbipReports.map((item) => [item.value, item.label, Boolean(item.disabled)]), [
+    ["new_empty", "New empty report", false],
+    ["existing:1", "SalesA report", false],
+    ["existing:2", "LegacyApp report", true],
+  ]);
+  assert.equal(pbipReports[2].reason, "Convert to PBIR in Power BI Desktop first.");
+  assert.equal(isReportSource(pbipSources[0]), true);
+  assert.equal(isReportSource(pbipSources[2]), false);
+});
+
+test("Issue #74: inheritedProjectSources loads valid project sources and skips unreadable entries", () => {
+  const { sources, skipped } = inheritedProjectSources([
+    {
+      path: "../SalesA/SalesA.pbip",
+      exists: true,
+      merge_source: {
+        path: "/proj/SalesA/SalesA.pbip",
+        kind: "pbip",
+        display_name: "SalesA",
+        model_format: "tmdl",
+        report_format: "pbir",
+        has_model: true,
+        has_report: true,
+      },
+    },
+    {
+      path: "../SalesB/SalesB.pbip",
+      exists: true,
+      merge_source: {
+        path: "/proj/SalesB/SalesB.pbip",
+        kind: "pbip",
+        display_name: "SalesB",
+        model_format: "tmdl",
+        report_format: "pbir",
+        has_model: true,
+        has_report: true,
+      },
+    },
+    {
+      path: "../Dump.json",
+      resolved_path: "/proj/Dump.json",
+      exists: true,
+      merge_error: "The app cannot read this file kind (Dump.json).",
+    },
+    { path: "../Missing.pbip", exists: false },
+  ]);
+  assert.equal(sources.length, 2);
+  assert.deepEqual(sources.map((s) => [s.name, s.kind, s.hasModel, s.hasReport]), [
+    ["SalesA", "pbip", true, true],
+    ["SalesB", "pbip", true, true],
+  ]);
+  assert.equal(skipped.length, 1);
+  assert.equal(skipped[0].name, "Dump.json");
 });
 
 test("Issue #50: targetModelItems orders safe copies first with recommended badge and in-place writes at bottom with warn styling", () => {
@@ -198,24 +280,41 @@ test("the create flow calls session_create, source_add in list order, then targe
   assert.deepEqual(calls.map(([method]) => method), ["session_create", "source_add", "source_add", "target_set"]);
   assert.deepEqual(calls[1][1], { path: "sources/Sales.SemanticModel" });
   assert.deepEqual(calls[3][1], { model: { mode: "existing", source_id: "src-1" }, report: { mode: "new_empty" } });
+  assert.equal(result.created, true);
+  assert.equal(result.rolledBack, false);
   assert.equal(result.targetSet, true);
   assert.deepEqual(steps.at(-1).map((line) => line.state), ["done", "done", "done", "done"]);
 });
 
-test("a source_add fault keeps the session, marks the failed item, and still sets the target", async () => {
+test("Issue #74: a source_add fault discards the incomplete session and does not run target_set", async () => {
   const { run, calls } = fakeRun({ source_add: (payload) => payload.path.includes("Finance") });
   const result = await runCreateFlow({ draft: DRAFT, run, describe: (error) => error.message });
-  assert.equal(result.created, true);
+  assert.equal(result.created, false);
+  assert.equal(result.rolledBack, true);
+  assert.equal(result.targetSet, false);
   assert.deepEqual(result.failed.map((source) => source.key), ["2"]);
   assert.equal(result.lines[2].state, "failed");
   assert.equal(result.lines[2].text, "Finance not added: Injected.");
-  assert.equal(calls.at(-1)[0], "target_set");
+  assert.equal(result.lines[3].text, "Set target: Not run");
+  assert.deepEqual(calls.map(([method]) => method), ["session_create", "source_add", "source_add", "session_close"]);
+  assert.deepEqual(calls.at(-1)[1], { discard: true });
+});
+
+test("Issue #74: a target_set fault discards the incomplete session", async () => {
+  const { run, calls } = fakeRun({ target_set: () => true });
+  const result = await runCreateFlow({ draft: DRAFT, run, describe: (error) => error.message });
+  assert.equal(result.created, false);
+  assert.equal(result.rolledBack, true);
+  assert.equal(result.targetSet, false);
+  assert.deepEqual(calls.map(([method]) => method), ["session_create", "source_add", "source_add", "target_set", "session_close"]);
+  assert.deepEqual(calls.at(-1)[1], { discard: true });
 });
 
 test("a failed session_create stops the flow with no other call", async () => {
   const { run, calls } = fakeRun({ session_create: () => true });
   const result = await runCreateFlow({ draft: DRAFT, run });
   assert.equal(result.created, false);
+  assert.equal(result.rolledBack, false);
   assert.equal(calls.length, 1);
 });
 

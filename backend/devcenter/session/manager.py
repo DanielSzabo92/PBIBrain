@@ -444,9 +444,13 @@ class DevCenterSessions:
     def close(self, request: Mapping[str, Any] | None = None) -> dict[str, Any]:
         with self._lock:
             current = self._open
+            discard = bool((request or {}).get("discard"))
             reply = {"revision": current.document["revision"] if current else None,
                      "session_id": current.files.session_id if current else None}
+            folder = current.files.folder if current is not None and not current.read_only else None
             self._close()
+            if discard and folder is not None:
+                shutil.rmtree(folder, ignore_errors=True)
             return reply
 
     def _close(self) -> None:

@@ -14,9 +14,29 @@ SCHEMA_VERSION = 1
 # guarded-3 (S1): new object types, links, and PBIR positions.
 SCANNER_VERSION = "guarded-3"
 # Each PBIP semantic model folder has a "definition.pbism" settings file (JSON).
-SOURCE_SUFFIXES = {".pbip", ".tmdl", ".pbir", ".pbism", ".json", ".bim"}
-OPAQUE_RESOURCE_SUFFIXES = {".png", ".jpg", ".jpeg", ".gif", ".svg", ".ico", ".woff", ".woff2"}
+SOURCE_SUFFIXES = {".pbip", ".tmdl", ".pbir", ".pbism", ".json", ".bim", ".dax"}
+OPAQUE_RESOURCE_SUFFIXES = {".png", ".jpg", ".jpeg", ".gif", ".svg", ".ico", ".webp", ".bmp", ".woff", ".woff2", ".ttf", ".otf"}
 EXCLUDED_DIRECTORIES = {".git", ".pbi", ".pbibrain", ".pbi-guard"}
+IGNORED_OS_FILES = {"desktop.ini", "thumbs.db", ".ds_store"}
+# Windows Cloud Files (OneDrive / SharePoint) and ProjFS use reparse points on normal synced files.
+_WINDOWS_ALLOWED_REPARSE_TAGS = frozenset({
+    0x80000021,  # IO_REPARSE_TAG_ONEDRIVE
+    0x9000001C,  # IO_REPARSE_TAG_PROJFS
+})
+
+
+def _is_forbidden_reparse(path: Path) -> bool:
+    """True for symlinks, junctions, and unknown reparse points; False for Windows cloud-synced files."""
+    if path.is_symlink():
+        return True
+    info = path.lstat()
+    attrs = getattr(info, "st_file_attributes", 0)
+    if not (attrs & 0x400):  # FILE_ATTRIBUTE_REPARSE_POINT
+        return False
+    tag = getattr(info, "st_reparse_tag", 0)
+    if tag in _WINDOWS_ALLOWED_REPARSE_TAGS or (tag & 0xFFFF0FFF) == 0x9000001A:
+        return False
+    return True
 
 
 class SourceIntegrityError(ValueError):
@@ -46,10 +66,15 @@ def safe_path(root: Path, relative: str, *, must_exist: bool = False) -> Path:
     ) or ":" in relative:
         raise SourceIntegrityError("Unsafe relative path")
     target = root / part
-    for current in [root, *target.parents, target]:
+    # Check root and each segment inside root only; ancestor folders above root (e.g. Windows OneDrive) are not links inside the source.
+    chain = [root]
+    cursor = root
+    for segment in part.parts:
+        cursor = cursor / segment
+        chain.append(cursor)
+    for current in chain:
         if current.exists() or current.is_symlink():
-            info = current.lstat()
-            if current.is_symlink() or getattr(info, "st_file_attributes", 0) & 0x400:
+            if _is_forbidden_reparse(current):
                 raise SourceIntegrityError("Links/reparse points are forbidden")
     if not target.resolve().is_relative_to(root.resolve()):
         raise SourceIntegrityError("Path escapes project")
@@ -70,6 +95,8 @@ def source_manifest(root: str | Path) -> list[dict[str, Any]]:
             if name in EXCLUDED_DIRECTORIES:
                 directories.remove(name)
         for name in sorted(files):
+            if name.casefold() in IGNORED_OS_FILES:
+                continue
             relative = (Path(directory) / name).relative_to(root).as_posix()
             path = safe_path(root, relative, must_exist=True)
             marker = relative.casefold()

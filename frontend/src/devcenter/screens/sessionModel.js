@@ -7,7 +7,15 @@ const MODEL_KINDS = new Set(["pbip", "tmdl_folder", "model_bim", "cloud_model"])
 const REPORT_KINDS = new Set(["pbir_report", "pbir_legacy_report", "cloud_report"]);
 
 export function isModelSource(source) {
+  if (source?.hasModel === false) return false;
   return MODEL_KINDS.has(source?.kind);
+}
+
+export function isReportSource(source) {
+  if (source?.hasReport === false) return false;
+  if (REPORT_KINDS.has(source?.kind)) return true;
+  if (source?.kind === "pbip") return source.reportFormat !== null;
+  return false;
 }
 
 // GET session has no name fields for the target: the names come from the source list (S2).
@@ -127,6 +135,40 @@ export function deriveReadiness({ session = null, plan = null, checking = false 
     };
   }
 
+  // 3b. No sources loaded: never report valid
+  if (Array.isArray(session?.sources) && session.sources.length === 0) {
+    return {
+      state: "no_sources",
+      tone: "bad",
+      text: t("work.plan.no_sources"),
+      ready: false,
+      applyDisabled: true,
+      reason: "This session has no sources loaded.",
+      missingSourcesCount: 0,
+      unconfirmedCount,
+      blockingImpactCount,
+      blockingCount: 1,
+      warnCount,
+    };
+  }
+
+  // 3c. No target model selected: never report valid
+  if (session?.target && !session.target.model?.source_id) {
+    return {
+      state: "no_target",
+      tone: "bad",
+      text: t("work.plan.no_target"),
+      ready: false,
+      applyDisabled: true,
+      reason: "Select a target model before you apply.",
+      missingSourcesCount: 0,
+      unconfirmedCount,
+      blockingImpactCount,
+      blockingCount: 1,
+      warnCount,
+    };
+  }
+
   // 4. Unconfirmed rows (source marks): commit blocked
   if (unconfirmedCount > 0) {
     return {
@@ -239,6 +281,9 @@ export function banners(session) {
     }
     list.push({ id: "locked", tone: "info", text: lockedText, owner, time });
   }
+  if (Array.isArray(session.sources) && session.sources.length === 0) {
+    list.push({ id: "no_sources", tone: "bad", text: t("work.banner.no_sources") });
+  }
   const missing = sources.filter((source) => source.status !== "ok");
   if (missing.length > 0) {
     list.push({
@@ -305,7 +350,40 @@ export function draftSource(path, menuKind) {
 }
 
 export function draftHasModel(sources = []) {
-  return sources.some((source) => MODEL_KINDS.has(source.kind));
+  return sources.some((source) => isModelSource(source));
+}
+
+// Convert GET /api/config/sources entries into preloaded draft sources for CreateSession.
+export function inheritedProjectSources(entries = []) {
+  const sources = [];
+  const skipped = [];
+  const seen = new Set();
+  for (const entry of entries ?? []) {
+    if (!entry?.exists) continue;
+    if (entry.merge_source?.path) {
+      const item = entry.merge_source;
+      const dedupeKey = String(item.path).toLowerCase();
+      if (seen.has(dedupeKey)) continue;
+      seen.add(dedupeKey);
+      sources.push({
+        path: item.path,
+        kind: item.kind,
+        name: item.display_name || pathName(item.path),
+        hasModel: item.has_model !== false,
+        hasReport: Boolean(item.has_report),
+        modelFormat: item.model_format ?? null,
+        reportFormat: item.report_format ?? null,
+        inherited: true,
+      });
+    } else if (entry.merge_error) {
+      skipped.push({
+        path: entry.path,
+        name: pathName(entry.resolved_path || entry.path),
+        reason: entry.merge_error,
+      });
+    }
+  }
+  return { sources, skipped };
 }
 
 // Validation helper for CreateSession wizard (Issue #50).
@@ -343,7 +421,7 @@ export function createStepError(step, draft) {
 // Safe copies are listed first with a "Recommended" badge on the first source, followed by Empty,
 // and risky in-place writes are placed at the bottom with warning tone and badge.
 export function targetModelItems(sources = []) {
-  const modelSources = sources.filter((source) => MODEL_KINDS.has(source.kind));
+  const modelSources = sources.filter((source) => isModelSource(source));
   const copyItems = [];
   const existingItems = [];
 
@@ -359,7 +437,7 @@ export function targetModelItems(sources = []) {
     });
 
     const cloud = source.kind === "cloud_model" && source.access_type !== "Read/Write";
-    const tmsl = source.kind === "model_bim";
+    const tmsl = source.kind === "model_bim" || source.modelFormat === "tmsl";
     const reason = cloud ? t("refuse.cloud_target") : tmsl ? t("refuse.tmsl_target") : null;
     const inplaceHelp = t("create.target.existing.help", { source: source.name });
     existingItems.push({
@@ -385,14 +463,17 @@ export function targetModelItems(sources = []) {
 export function targetReportItems(sources = []) {
   const items = [{ value: "new_empty", label: t("create.target.new_report"), help: t("create.target.new_report.help") }];
   for (const source of sources) {
-    if (!REPORT_KINDS.has(source.kind)) continue;
-    const legacy = source.kind === "pbir_legacy_report";
+    if (!isReportSource(source)) continue;
+    const legacy = source.kind === "pbir_legacy_report" || source.reportFormat === "pbir_legacy";
     const cloud = source.kind === "cloud_report" && source.access_type !== "Read/Write";
     const reason = legacy ? t("refuse.legacy_target") : cloud ? t("refuse.cloud_target") : null;
-    const inplaceHelp = t("create.target.existing_report.help", { report: source.name });
+    const label = source.kind === "pbip" && !/\breport$/i.test(source.name)
+      ? t("create.target.pbip_report", { source: source.name })
+      : source.name;
+    const inplaceHelp = t("create.target.existing_report.help", { report: label });
     items.push({
       value: `existing:${source.key}`,
-      label: source.name,
+      label,
       disabled: Boolean(reason),
       reason: reason ?? inplaceHelp,
       help: inplaceHelp,
@@ -435,6 +516,7 @@ export function targetPayload(draft, sourceIds) {
 }
 
 // Run the create calls of UI design 5.1: session_create, source_add for each source in list order, then target_set.
+// A session never starts unless every source and the target load cleanly; any failure discards the incomplete session.
 // run(method, payload) rejects with a DevCenterError. onStep(lines) gets the progress after each step.
 export async function runCreateFlow({ draft, run, onStep = () => {}, describe = (error) => error?.message ?? "" }) {
   const lines = [
@@ -442,22 +524,35 @@ export async function runCreateFlow({ draft, run, onStep = () => {}, describe = 
     ...draft.sources.map((source) => ({ id: source.key, text: t("create.progress.source_added", { source: source.name }), state: "pending" })),
     { id: "target", text: t("create.progress.target"), state: "pending" },
   ];
+  const emit = () => onStep(lines.map((item) => ({ ...item })));
   const update = (id, patch) => {
     const line = lines.find((item) => item.id === id);
     Object.assign(line, patch);
-    onStep(lines.map((item) => ({ ...item })));
+    emit();
   };
+  const rollback = async () => {
+    try {
+      await run("session_close", { discard: true });
+      lines.push({ id: "rollback", text: t("create.progress.rolled_back"), state: "done" });
+      emit();
+    } catch {
+      // Preserve the original source/target error if rollback fails.
+    }
+  };
+
   update("session", { state: "running" });
   let created;
   try {
     created = await run("session_create", { display_name: draft.name.trim() });
   } catch (error) {
     update("session", { state: "failed", fix: describe(error) });
-    return { created: false, failed: [], lines, error };
+    return { created: false, rolledBack: false, failed: [], lines, targetSet: false, error };
   }
   update("session", { state: "done" });
+
   const sourceIds = new Map();
   const failed = [];
+  let firstError = null;
   for (const source of draft.sources) {
     update(source.key, { state: "running" });
     try {
@@ -465,22 +560,33 @@ export async function runCreateFlow({ draft, run, onStep = () => {}, describe = 
       sourceIds.set(source.key, reply.source.source_id);
       update(source.key, { state: "done" });
     } catch (error) {
+      if (!firstError) firstError = error;
       failed.push(source);
       update(source.key, { state: "failed", text: t("create.progress.source_failed", { source: source.name, reason: describe(error) }) });
     }
   }
+
+  if (failed.length > 0) {
+    update("target", { state: "failed", text: `${t("create.progress.target")}: ${t("create.progress.not_run")}` });
+    await rollback();
+    return { created: false, rolledBack: true, sessionId: created.session_id, failed, lines, targetSet: false, error: firstError };
+  }
+
   const target = targetPayload(draft, sourceIds);
   if (!target) {
     update("target", { state: "failed", text: `${t("create.progress.target")}: ${t("create.progress.not_run")}` });
-    return { created: true, sessionId: created.session_id, failed, lines, targetSet: false };
+    await rollback();
+    return { created: false, rolledBack: true, sessionId: created.session_id, failed, lines, targetSet: false };
   }
+
   update("target", { state: "running" });
   try {
     await run("target_set", target);
     update("target", { state: "done" });
   } catch (error) {
     update("target", { state: "failed", fix: describe(error) });
-    return { created: true, sessionId: created.session_id, failed, lines, targetSet: false, error };
+    await rollback();
+    return { created: false, rolledBack: true, sessionId: created.session_id, failed, lines, targetSet: false, error };
   }
-  return { created: true, sessionId: created.session_id, failed, lines, targetSet: true };
+  return { created: true, rolledBack: false, sessionId: created.session_id, failed: [], lines, targetSet: true };
 }

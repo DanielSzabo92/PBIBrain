@@ -1,5 +1,5 @@
 // Create flow (UI design 4.1, 5.1): a draft in three steps. The UI calls the JS API only at "Create session".
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight, Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Menu } from "@/components/ui/menu";
@@ -11,7 +11,14 @@ import { desktopRequest } from "../../desktop.js";
 import { errorCopy, t, tn } from "../copy.js";
 import { useDevCenterState, useDevCenterStore } from "../useDevCenter.js";
 import TargetChoice from "./TargetChoice.jsx";
-import { createStepError, defaultSessionName, draftSource, isModelSource, runCreateFlow } from "./sessionModel.js";
+import {
+  createStepError,
+  defaultSessionName,
+  draftSource,
+  inheritedProjectSources,
+  isModelSource,
+  runCreateFlow,
+} from "./sessionModel.js";
 
 // Local source kinds of the "Add source" menu and the native picker of each one.
 // The cloud items are not in this version (user scope cut 2026-11-01: cloud UI is a future feature).
@@ -34,22 +41,71 @@ async function pick(picker) {
   return reply.sources ?? [];
 }
 
-export default function CreateSession({ onCancel, onDone, onOpenPartial }) {
+async function fetchProjectSources(transport) {
+  try {
+    if (typeof transport?.getSourceStatus === "function") {
+      const data = await transport.getSourceStatus();
+      return Array.isArray(data?.sources) ? data.sources : [];
+    }
+    if (typeof globalThis.fetch !== "function") return [];
+    const response = await globalThis.fetch("/api/config/sources", { headers: { Accept: "application/json" } });
+    if (!response.ok) return [];
+    const data = await response.json();
+    return Array.isArray(data?.sources) ? data.sources : [];
+  } catch {
+    return [];
+  }
+}
+
+export default function CreateSession({ onCancel, onDone, transport }) {
   const store = useDevCenterStore();
   const busy = useDevCenterState((state) => state.busy);
   const [step, setStep] = useState(0);
   const [draft, setDraft] = useState({ sources: [], targetModel: null, targetReport: "new_empty", copyFolder: null, name: "" });
   const [nameTouched, setNameTouched] = useState(false);
   const [message, setMessage] = useState(null);
+  const [inheritedInfo, setInheritedInfo] = useState(null);
   const [stepError, setStepError] = useState(null);
   const [running, setRunning] = useState(false);
   const [lines, setLines] = useState(null);
   const [result, setResult] = useState(null);
   const nextKey = useRef(1);
+  const userTouchedSources = useRef(false);
   const headingRef = useRef(null);
   const nameIds = useFieldIds("dc-create-name");
 
-  const update = (patch) => setDraft((current) => ({ ...current, ...patch }));
+  // Inherit loaded/scanned models and reports from the open project's configured sources.
+  useEffect(() => {
+    let active = true;
+    fetchProjectSources(transport).then((entries) => {
+      if (!active || userTouchedSources.current || entries.length === 0) return;
+      const { sources, skipped } = inheritedProjectSources(entries);
+      if (sources.length > 0) {
+        const keyed = sources.map((source) => ({ ...source, key: String(nextKey.current++) }));
+        const firstModel = keyed.find(isModelSource);
+        setDraft((current) => {
+          if (current.sources.length > 0) return current;
+          return {
+            ...current,
+            sources: keyed,
+            targetModel: firstModel ? `copy:${firstModel.key}` : current.targetModel,
+          };
+        });
+        setInheritedInfo({ count: keyed.length, skipped });
+      } else if (skipped.length > 0) {
+        setInheritedInfo({ count: 0, skipped });
+      }
+    });
+    return () => { active = false; };
+  }, [transport]);
+
+  const update = (patch) => {
+    if (result && !result.created) {
+      setResult(null);
+      setLines(null);
+    }
+    setDraft((current) => ({ ...current, ...patch }));
+  };
   const sessionName = nameTouched ? draft.name : draft.name || defaultSessionName(draft);
 
   const addSource = async (item) => {
@@ -68,13 +124,14 @@ export default function CreateSession({ onCancel, onDone, onOpenPartial }) {
         setMessage({ tone: "bad", text: value.refused });
         continue;
       }
-      if ([...draft.sources, ...added].some((source) => source.path === value.path)) {
+      if ([...draft.sources, ...added].some((source) => source.path.toLowerCase() === value.path.toLowerCase())) {
         setMessage({ tone: "warn", text: t("create.sources.duplicate", { source: value.name }) });
         continue;
       }
       added.push({ ...value, key: String(nextKey.current++) });
     }
     if (added.length > 0) {
+      userTouchedSources.current = true;
       const nextSources = [...draft.sources, ...added];
       const patch = { sources: nextSources };
       if (!draft.targetModel) {
@@ -86,6 +143,7 @@ export default function CreateSession({ onCancel, onDone, onOpenPartial }) {
   };
 
   const removeSource = (key) => {
+    userTouchedSources.current = true;
     const sources = draft.sources.filter((source) => source.key !== key);
     const patch = { sources };
     let targetModel = draft.targetModel;
@@ -107,6 +165,10 @@ export default function CreateSession({ onCancel, onDone, onOpenPartial }) {
 
   const goTo = (index) => {
     setStepError(null);
+    if (index < step && result && !result.created) {
+      setResult(null);
+      setLines(null);
+    }
     setStep(index);
     requestAnimationFrame(() => headingRef.current?.focus());
   };
@@ -129,6 +191,7 @@ export default function CreateSession({ onCancel, onDone, onOpenPartial }) {
       return;
     }
     setStepError(null);
+    setResult(null);
     setRunning(true);
     const outcome = await runCreateFlow({
       draft: { ...draft, name },
@@ -142,8 +205,14 @@ export default function CreateSession({ onCancel, onDone, onOpenPartial }) {
   };
 
   const steps = STEP_KEYS.map((key, index) => ({ label: t(key), state: index < step ? "done" : index === step ? "current" : "todo" }));
-  const partial = result?.created && (result.failed.length > 0 || !result.targetSet);
   const locked = running || busy === "long";
+  const failureNoticeText = result && !result.created
+    ? result.rolledBack
+      ? result.failed.length > 0
+        ? tn("create.rolled_back", result.failed.length)
+        : t("create.rolled_back.target")
+      : t("create.failed")
+    : null;
 
   return (
     <div className="dc-page dc-create">
@@ -196,6 +265,14 @@ export default function CreateSession({ onCancel, onDone, onOpenPartial }) {
                 groups={[{ items: ADD_ITEMS.map((item) => ({ label: t(item.label), onSelect: () => addSource(item) })) }]}
               />
             </div>
+            {inheritedInfo?.count > 0 ? <Notice tone="info">{tn("create.sources.inherited", inheritedInfo.count)}</Notice> : null}
+            {inheritedInfo?.skipped?.length > 0 ? (
+              <Notice tone="warn">
+                {tn("create.sources.skipped", inheritedInfo.skipped.length, {
+                  detail: inheritedInfo.skipped.map((item) => `${item.name} (${item.reason})`).join(", "),
+                })}
+              </Notice>
+            ) : null}
             {message ? <Notice tone={message.tone}>{message.text}</Notice> : null}
             {draft.sources.length === 0 ? <p className="dc-muted">{t("create.sources.empty")}</p> : (
               <ul className="dc-draft-list" aria-label={t("create.sources.caption")}>
@@ -238,12 +315,7 @@ export default function CreateSession({ onCancel, onDone, onOpenPartial }) {
               <div><dt>{t("create.summary.target_report")}</dt><dd>{summaryReport(draft)}</dd></div>
             </dl>
             {lines ? <ProgressList lines={lines} label={t("create.progress.label")} /> : null}
-            {result && !result.created ? <Notice tone="bad">{t("create.failed")}</Notice> : null}
-            {partial ? (
-              <Notice tone="warn" actions={<Button onClick={onOpenPartial}>{t("create.partial.action")}</Button>}>
-                {result.failed.length > 0 ? tn("create.partial", result.failed.length) : `${t("create.progress.target")}: ${t("create.progress.not_run")}`}
-              </Notice>
-            ) : null}
+            {failureNoticeText ? <Notice tone="bad">{failureNoticeText}</Notice> : null}
           </>
         ) : null}
 
@@ -292,5 +364,10 @@ function summaryModel(draft) {
 
 function summaryReport(draft) {
   const [mode, key] = String(draft.targetReport ?? "new_empty").split(":");
-  return mode === "existing" ? draftName(draft, key) : t("create.target.new_report");
+  if (mode !== "existing") return t("create.target.new_report");
+  const source = draft.sources.find((item) => item.key === key);
+  if (!source) return t("shared.not_known");
+  return source.kind === "pbip" && !/\breport$/i.test(source.name)
+    ? t("create.target.pbip_report", { source: source.name })
+    : source.name;
 }

@@ -36,18 +36,18 @@ function SessionLoading() {
   </div>;
 }
 
-export default function DevCenter({ onOpenProject }) {
+export default function DevCenter({ onOpenProject, transport }) {
   const [store] = useState(devCenterStore);
   return (
     <DevCenterProvider store={store}>
       <ToastProvider>
-        <DevCenterScreens onOpenProject={onOpenProject} />
+        <DevCenterScreens onOpenProject={onOpenProject} transport={transport} />
       </ToastProvider>
     </DevCenterProvider>
   );
 }
 
-function DevCenterScreens({ onOpenProject }) {
+function DevCenterScreens({ onOpenProject, transport }) {
   const store = useDevCenterStore();
   const session = useDevCenterState((state) => state.session);
   const notices = useDevCenterState((state) => state.notices);
@@ -148,11 +148,11 @@ function DevCenterScreens({ onOpenProject }) {
     };
   }, [store]);
 
-  // A session that closes (session_close, session_not_open) shows the list.
+  // A session that closes (session_close, session_not_open) shows the list, except when CreateSession rolls back a failed draft.
   useEffect(() => {
-    if (hadSession.current && !session && !reopening.current) setView("list");
+    if (view === "work" && hadSession.current && !session && !reopening.current) setView("list");
     hadSession.current = Boolean(session);
-  }, [session]);
+  }, [session, view]);
 
   useEffect(() => {
     setTabState(tabMemory.get(sessionId) ?? { tab: "compare", marks: false });
@@ -207,9 +207,9 @@ function DevCenterScreens({ onOpenProject }) {
       ) : null}
       {view === "create" ? (
         <CreateSession
+          transport={transport}
           onCancel={showList}
           onDone={() => { changeTabs({ tab: "compare", marks: false }); showWork(); }}
-          onOpenPartial={() => { changeTabs({ tab: "sources", marks: false }); showWork(); }}
         />
       ) : null}
       {view === "work" ? (

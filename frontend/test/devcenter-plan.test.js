@@ -147,6 +147,22 @@ test("buildBlockList orders marks, plan blocking items, Desktop, non-canonical f
   assert.equal(list[5].text, "The expression of Net Sales has a syntax error at line 3, column 12.");
 });
 
+test("buildBlockList blocks sessions with zero sources or no target model", () => {
+  const noSources = buildBlockList({
+    plan: { status: "valid", blocking: [], warnings: [], steps: [] },
+    session: { sources: [], target: { model: null, report: { mode: "new_empty" } }, counts: { marks: 0 } },
+  });
+  assert.equal(noSources.length, 1);
+  assert.equal(noSources[0].kind, "no_sources");
+
+  const noTarget = buildBlockList({
+    plan: { status: "valid", blocking: [], warnings: [], steps: [] },
+    session: { sources: [{ source_id: "src-1", status: "ok" }], target: { model: null, report: { mode: "new_empty" } }, counts: { marks: 0 } },
+  });
+  assert.equal(noTarget.length, 1);
+  assert.equal(noTarget[0].kind, "no_target_model");
+});
+
 test("planSummaryGroups and planPhaseGroups group steps and operations by domain and phase", async () => {
   const readyPlan = await fixture("apply-ready/plan.json");
   const summary = planSummaryGroups(readyPlan);
