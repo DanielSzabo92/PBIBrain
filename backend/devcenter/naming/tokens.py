@@ -119,7 +119,19 @@ def is_case(name: str, style: str) -> bool:
             return False
         return name[0].isupper() if style == "pascal" else name[0].islower()
     if style == "title":
-        return all(not chunk[0].isalpha() or chunk[0].isupper() for chunk in separator_chunks(name))
+        chunks = separator_chunks(name)
+        alpha_chunks = [chunk for chunk in chunks if chunk and chunk[0].isalpha()]
+        if not alpha_chunks or not any(any(ch.islower() for ch in chunk) for chunk in alpha_chunks):
+            return False
+        for chunk in alpha_chunks:
+            if not chunk[0].isupper():
+                return False
+            if any(a.islower() and b.isupper() for a, b in zip(chunk, chunk[1:])):
+                return False
+            letters = [ch for ch in chunk if ch.isalpha()]
+            if len(letters) > 4 and all(ch.isupper() for ch in letters):
+                return False
+        return True
     raise ValueError(f"Unknown letter case style: {style}")
 
 

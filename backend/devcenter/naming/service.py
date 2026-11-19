@@ -15,7 +15,7 @@ from __future__ import annotations
 import copy
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Callable, Mapping
+from typing import Any, Callable, Mapping, Sequence
 
 from backend.devcenter import contracts
 from backend.devcenter.errors import DevCenterError, not_allowed
@@ -29,7 +29,10 @@ from backend.devcenter.naming.rules import (
     PROPOSED,
     REJECTED,
     identity_key,
+    in_scope,
+    is_active,
     make_rule,
+    obeys,
     rule_id_for,
     rule_text,
     signature,
@@ -90,9 +93,21 @@ def _sort_key(rule: Mapping[str, Any]) -> tuple[int, int, str]:
     return (RULE_OBJECT_TYPES.index(rule["object_type"]), CHECK_KINDS.index(rule["check"]["kind"]), rule["rule_id"])
 
 
-def rule_view(rule: Mapping[str, Any], objects: list[NamedObject]) -> dict[str, Any]:
-    found = support(rule, objects)
-    return {**copy.deepcopy(dict(rule)), "text": rule_text(rule), "support": found, "breaks": found["total"] - found["count"]}
+def rule_view(rule: Mapping[str, Any], objects: list[NamedObject], all_rules: Sequence[Mapping[str, Any]] = ()) -> dict[str, Any]:
+    found = support(rule, objects, context_rules=all_rules)
+    in_scope_objs = [item for item in objects if in_scope(rule, item)]
+    breaking = [
+        item.view()
+        for item in sorted(in_scope_objs, key=lambda o: (o.table or "", o.name))
+        if not obeys(rule, item, context_rules=all_rules)
+    ]
+    return {
+        **copy.deepcopy(dict(rule)),
+        "text": rule_text(rule),
+        "support": found,
+        "breaks": found["total"] - found["count"],
+        "breaking_objects": breaking,
+    }
 
 
 def _model_source(devcenter: Any, record: Mapping[str, Any]) -> LocalSource | None:
@@ -172,7 +187,7 @@ def rules_view(devcenter: Any) -> dict[str, Any]:
             "target": {"source_id": target_id, "model_name": target.record["display_name"],
                        "rule_file": devcenter._relative(target.path)},
             "settings": target.settings.view(),
-            "rules": [rule_view(rule, target.objects) for rule in rules],
+            "rules": [rule_view(rule, target.objects, rules) for rule in rules],
             "source_rule_counts": counts,
         }
 
@@ -262,24 +277,24 @@ def confirm(devcenter: Any, request: Mapping[str, Any]) -> dict[str, Any]:
             raise not_allowed("The rule is already confirmed.", "already_confirmed", rule_id=rule["rule_id"])
         changed = {**copy.deepcopy(rule), "status": CONFIRMED}
         _replace(target, changed)
-        return rule, changed, {"rule": rule_view(changed, target.objects)}
+        return rule, changed, {"rule": rule_view(changed, target.objects, target.all_rules())}
 
     return _change(devcenter, request, "naming_rule_confirm", work)
 
 
 def reject(devcenter: Any, request: Mapping[str, Any]) -> dict[str, Any]:
-    """UC16: reject of a user rule removes it; reject of a detected rule keeps it as rejected."""
+    """UC16: reject of an uncopied confirmed user rule removes it; reject of a detected or copied/proposed rule keeps it as rejected."""
 
     def work(target: _Target) -> tuple[Any, Any, dict[str, Any]]:
         rule, _ = _find(target, request["rule_id"])
-        if rule["origin"] == ORIGIN_USER:
+        if rule["origin"] == ORIGIN_USER and rule["status"] != PROPOSED and not rule.get("copied_from"):
             target.rule_set["rules"] = [item for item in target.stored if item["rule_id"] != rule["rule_id"]]
             return rule, None, {"rule_id": rule["rule_id"], "removed": True, "rule": None}
         if rule["status"] == REJECTED:
             raise not_allowed("The rule is already rejected.", "already_rejected", rule_id=rule["rule_id"])
         changed = {**copy.deepcopy(rule), "status": REJECTED}
         _replace(target, changed)
-        return rule, changed, {"rule_id": rule["rule_id"], "removed": False, "rule": rule_view(changed, target.objects)}
+        return rule, changed, {"rule_id": rule["rule_id"], "removed": False, "rule": rule_view(changed, target.objects, target.all_rules())}
 
     return _change(devcenter, request, "naming_rule_reject", work)
 
@@ -310,7 +325,7 @@ def edit(devcenter: Any, request: Mapping[str, Any]) -> dict[str, Any]:
         validate_rule(changed)
         _duplicate(target, changed)
         _replace(target, changed)
-        return before, changed, {"rule": rule_view(changed, target.objects)}
+        return before, changed, {"rule": rule_view(changed, target.objects, target.all_rules())}
 
     return _change(devcenter, request, "naming_rule_edit", work)
 
@@ -344,6 +359,6 @@ def copy_rules(devcenter: Any, request: Mapping[str, Any]) -> dict[str, Any]:
             _replace(target, new)
             copied.append(new)
         after = {"source_id": record["source_id"], "copied": [rule["rule_id"] for rule in copied]}
-        return None, after, {"copied": [rule_view(rule, target.objects) for rule in copied], "skipped": skipped}
+        return None, after, {"copied": [rule_view(rule, target.objects, target.all_rules()) for rule in copied], "skipped": skipped}
 
     return _change(devcenter, request, "naming_rules_copy", work)

@@ -74,10 +74,13 @@ def make_rule(rule_id: str, object_type: str, scope: Mapping[str, Any] | None, c
 
 
 def identity_key(rule: Mapping[str, Any]) -> tuple[Any, ...]:
-    """Two rules with the same object type, scope, and check kind are the same rule (UC34)."""
+    """Two rules with the same object type, scope, and check kind (plus folder/regex pattern) are the same rule (UC34)."""
 
     scope = normal_scope(rule.get("scope"))
-    return (rule["object_type"], tuple(scope[key] for key in SCOPE_KEYS), rule["check"]["kind"])
+    check = rule["check"]
+    kind = check["kind"]
+    detail: Any = check.get("folder") if kind == "folder_by_type" else check.get("value") if kind == "regex" else None
+    return (rule["object_type"], tuple(scope[key] for key in SCOPE_KEYS), kind, detail)
 
 
 def signature(rule: Mapping[str, Any]) -> tuple[Any, ...]:
@@ -120,6 +123,12 @@ def validate_rule(rule: Mapping[str, Any]) -> None:
         raise DevCenterError("invalid_payload", "A unit word rule needs a format kind in its scope.", {"reason": "format_kind_required"})
     elif not str(check["value"]):
         raise DevCenterError("invalid_payload", "The rule needs a value.", {"reason": "value_required"})
+    scope = normal_scope(rule.get("scope"))
+    obj_type = rule["object_type"]
+    if obj_type in {"table", "calculated_table", "calculation_group"} and (scope["table"] is not None or scope["display_folder"] is not None):
+        raise DevCenterError("invalid_payload", "Table rules cannot scope by table or display folder.", {"reason": "invalid_scope"})
+    if obj_type not in {"measure", "report_measure", "data_column", "calculated_column"} and scope["format_kind"] is not None:
+        raise DevCenterError("invalid_payload", "Only measures and columns can scope by format kind.", {"reason": "invalid_scope"})
 
 
 def in_scope(rule: Mapping[str, Any], item: NamedObject) -> bool:
@@ -139,7 +148,26 @@ def in_scope(rule: Mapping[str, Any], item: NamedObject) -> bool:
     return True
 
 
-def obeys(rule: Mapping[str, Any], item: NamedObject) -> bool:
+def _strip_decorations(name: str, item: NamedObject, context_rules: Iterable[Mapping[str, Any]]) -> str:
+    """Strip active in-scope prefix, suffix, and unit word decorations before checking case/separator."""
+    core = name
+    active = [rule for rule in context_rules if is_active(rule) and in_scope(rule, item)]
+    for rule in active:
+        if rule["check"]["kind"] == PREFIX:
+            pref = str(rule["check"]["value"])
+            if pref and core.startswith(pref) and len(core) > len(pref):
+                core = core[len(pref):]
+                break
+    for rule in active:
+        if rule["check"]["kind"] in {SUFFIX, UNIT_WORD}:
+            suf = str(rule["check"]["value"])
+            if suf and core.endswith(suf) and len(core) > len(suf):
+                core = core[:-len(suf)].rstrip(" _-")
+                break
+    return core or name
+
+
+def obeys(rule: Mapping[str, Any], item: NamedObject, context_rules: Iterable[Mapping[str, Any]] = ()) -> bool:
     """Give True when the object obeys the check of the rule. Call ``in_scope`` first."""
 
     check = rule["check"]
@@ -149,10 +177,12 @@ def obeys(rule: Mapping[str, Any], item: NamedObject) -> bool:
     if kind in {SUFFIX, UNIT_WORD}:
         return name.endswith(value)
     if kind == LETTER_CASE:
-        return is_case(name, value)
+        target_name = _strip_decorations(name, item, context_rules) if context_rules else name
+        return is_case(target_name, value)
     if kind == SEPARATOR:
+        target_name = _strip_decorations(name, item, context_rules) if context_rules else name
         allowed = {SEPARATOR_VALUES[value]} - {""}
-        return used_separators(name) <= allowed
+        return used_separators(target_name) <= allowed
     if kind == FOLDER_BY_TYPE:
         found = item.table if check.get("folder") == "table" else item.display_folder
         return found == value
@@ -164,11 +194,11 @@ def obeys(rule: Mapping[str, Any], item: NamedObject) -> bool:
     raise ValueError(f"Unknown check kind: {kind}")
 
 
-def support(rule: Mapping[str, Any], objects: Iterable[NamedObject]) -> dict[str, int]:
+def support(rule: Mapping[str, Any], objects: Iterable[NamedObject], context_rules: Iterable[Mapping[str, Any]] = ()) -> dict[str, int]:
     """The objects in scope (total) and the objects that obey the rule (count)."""
 
     scoped = [item for item in objects if in_scope(rule, item)]
-    count = sum(1 for item in scoped if obeys(rule, item))
+    count = sum(1 for item in scoped if obeys(rule, item, context_rules=context_rules))
     return {"count": count, "total": len(scoped)}
 
 

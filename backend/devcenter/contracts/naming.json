@@ -262,6 +262,12 @@
         "breaks": {
           "type": "integer",
           "minimum": 0
+        },
+        "breaking_objects": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/named_object"
+          }
         }
       },
       "required": [
