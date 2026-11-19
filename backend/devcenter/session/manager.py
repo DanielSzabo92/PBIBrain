@@ -7,6 +7,7 @@ HTTP read routes call ``sessions_list`` and ``session_summary`` only.
 from __future__ import annotations
 
 import copy
+import json
 import os
 from pathlib import Path
 import shutil
@@ -117,6 +118,7 @@ class DevCenterSessions:
         self._project_root: Path | None = None
         self._open: _OpenSession | None = None
         self._cached_plan: dict[str, Any] | None = None
+        self._cached_impact: dict[str, Any] | None = None
         self._plan_state: str | None = None
 
     # Project and locations -------------------------------------------------
@@ -300,7 +302,71 @@ class DevCenterSessions:
                     "answered": [item for item in questions if item.get("status") == "answered"],
                 },
                 "proposals": {"open": [item for item in document["proposals"] if item.get("status") == "proposed"]},
+                "removal_policies": copy.deepcopy(document.get("removal_policies") or {}),
             }
+
+    def session_log(self, query: Mapping[str, Any]) -> dict[str, Any]:
+        """``GET log`` (UC8): filtered, paged session audit log entries (newest first)."""
+
+        def _qval(name: str) -> str | None:
+            raw = query.get(name)
+            if raw is None:
+                return None
+            if isinstance(raw, (list, tuple)):
+                return str(raw[-1]) if raw else None
+            return str(raw)
+
+        with self._lock:
+            current = self._require_open()
+            revision = current.document["revision"]
+            log_path = current.files.log_path
+            entries: list[dict[str, Any]] = []
+            if log_path.is_file():
+                for line in log_path.read_text(encoding="utf-8").splitlines():
+                    text = line.strip()
+                    if not text:
+                        continue
+                    try:
+                        parsed = json.loads(text)
+                    except ValueError:
+                        continue
+                    if isinstance(parsed, dict):
+                        entries.append(parsed)
+        entries.reverse()
+        author_f = _qval("author")
+        action_f = _qval("action")
+        target_f = _qval("target")
+        proposal_f = _qval("proposal_id")
+        filtered: list[dict[str, Any]] = []
+        for entry in entries:
+            if author_f and entry.get("author") != author_f:
+                continue
+            if action_f and entry.get("action") != action_f:
+                continue
+            if proposal_f and entry.get("proposal_id") != proposal_f:
+                continue
+            if target_f:
+                tgt = entry.get("target")
+                if isinstance(tgt, list):
+                    if target_f not in [str(item) for item in tgt]:
+                        continue
+                elif str(tgt or "") != target_f:
+                    continue
+            filtered.append(entry)
+        limit_raw = _qval("limit")
+        offset_raw = _qval("offset")
+        limit = max(1, min(500, int(limit_raw))) if limit_raw and limit_raw.isdigit() else 100
+        offset = max(0, int(offset_raw)) if offset_raw and offset_raw.isdigit() else 0
+        total = len(filtered)
+        paged = filtered[offset:offset + limit]
+        return {
+            "revision": revision,
+            "total": total,
+            "limit": limit,
+            "offset": offset,
+            "has_more": (offset + limit) < total,
+            "entries": paged,
+        }
 
     @staticmethod
     def _source_view(document: Mapping[str, Any], item: Mapping[str, Any]) -> dict[str, Any]:
@@ -336,6 +402,7 @@ class DevCenterSessions:
         draft["revision"] = current.document["revision"] + 1
         draft["updated_at"] = utc_now()
         self._cached_plan = None
+        self._cached_impact = None
         self._plan_state = "computing"
         entry = {
             "time": draft["updated_at"],
@@ -442,6 +509,7 @@ class DevCenterSessions:
     def _close(self) -> None:
         current, self._open = self._open, None
         self._cached_plan = None
+        self._cached_impact = None
         self._plan_state = None
         if current is not None and not current.read_only:
             current.lock.release()

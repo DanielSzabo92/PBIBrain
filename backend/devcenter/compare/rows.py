@@ -245,8 +245,12 @@ def filter_rows(rows: Sequence[Mapping[str, Any]], query: Mapping[str, Any]) -> 
             continue
         if folders and fold(row["display_folder"]) not in folders:
             continue
-        if states and row["row_state"] not in states:
-            continue
+        if states:
+            want_not_same = "not_same" in states or "notsame" in states
+            exact_states = states - {"not_same", "notsame"}
+            row_state = row["row_state"]
+            if not ((want_not_same and row_state != STATE_SAME) or row_state in exact_states):
+                continue
         if sources and not any(cell["source_id"] in sources and cell["present"] for cell in row["cells"]):
             continue
         if pages and fold(row["page"]) not in pages:

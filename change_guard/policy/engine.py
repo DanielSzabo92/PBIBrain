@@ -13,10 +13,22 @@ class Policy:
     risk_overrides: str = "{}"
     retry_limit: int = 3
     retain_results: bool = False
+    profile: str = "standard"
 
     @property
     def policy_hash(self) -> str:
-        return content_hash({"version": self.version, "risk_overrides": self.risk_overrides, "retry_limit": self.retry_limit, "retain_results": self.retain_results})
+        payload: dict[str, Any] = {
+            "version": self.version,
+            "risk_overrides": self.risk_overrides,
+            "retry_limit": self.retry_limit,
+            "retain_results": self.retain_results,
+        }
+        if self.profile != "standard":
+            payload["profile"] = self.profile
+        return content_hash(payload)
+
+
+MERGE_POLICY = Policy(version="guard-policy-merge-1", profile="merge")
 
 
 def classify_risk(contract: ChangeContract, policy: Policy) -> str:
@@ -24,25 +36,87 @@ def classify_risk(contract: ChangeContract, policy: Policy) -> str:
     ranks = {"LOW": 0, "MEDIUM": 1, "HIGH": 2, "CRITICAL": 3}
     overrides = json.loads(policy.risk_overrides)
     levels = []
-    targets = {item["object_id"]: item["object_type"] for item in contract.to_dict()["targets"]}
-    for mutation in contract.to_dict()["allowed_mutations"]:
-        kind, prop = targets[mutation["object_id"]], mutation["property"]
+    doc = contract.to_dict()
+    targets = {item["object_id"]: item["object_type"] for item in doc["targets"]}
+    mutations = doc["allowed_mutations"]
+    if not mutations and doc.get("mode") == "format_only":
+        return "LOW"
+    for mutation in mutations:
+        raw_kind, prop = targets[mutation["object_id"]], mutation["property"]
+        kind = raw_kind.upper()
+        prop_low = prop.casefold()
+        op = mutation.get("operation", "")
         level = "MEDIUM"
-        if prop in {"description", "display_folder"}:
+        if prop_low in {"description", "display_folder", "$canonical_format"}:
             level = "LOW"
-        if kind in {"RELATIONSHIP", "CALCULATION_GROUP", "CALCULATION_ITEM", "COLUMN", "TABLE"} and prop not in {"description", "display_folder"}:
+        elif kind in {"RELATIONSHIP", "CALCULATION_GROUP", "CALCULATION_ITEM", "COLUMN", "TABLE", "HIERARCHY", "USER_DEFINED_FUNCTION", "SHARED_EXPRESSION"} or (
+            policy.profile == "merge" and op in {"CREATE_OBJECT", "DELETE_OBJECT", "RENAME_OBJECT", "RENAME_PAIR", "CHANGE_BINDING"}
+        ):
             level = "HIGH"
-        if kind in {"ROLE", "TABLE_PERMISSION", "OBJECT_LEVEL_SECURITY", "ROW_LEVEL_SECURITY"} or any(item in prop.casefold() for item in ("roles", "permission", "partition", "source", "storage", "security")):
-            level = "CRITICAL"
-        override = overrides.get(kind + ":" + prop, level)
+        if kind in {"ROLE", "TABLE_PERMISSION", "OBJECT_LEVEL_SECURITY", "ROW_LEVEL_SECURITY", "PARTITION"} or any(item in prop_low for item in ("roles", "permission", "partition", "source", "storage", "security")):
+            if kind == "COLUMN" and prop_low == "source_column":
+                level = max(level, "HIGH", key=ranks.get)
+            elif kind == "COLUMN" and prop_low in {"description", "display_folder"}:
+                pass
+            else:
+                level = "CRITICAL"
+        override = overrides.get(raw_kind + ":" + prop, overrides.get(kind + ":" + prop, level))
         if override not in ranks:
             raise ValueError("Invalid risk policy")
         levels.append(override)
     return max(levels, key=ranks.get)
 
 
+def _evaluate_merge_candidate(contract: ChangeContract, evidence: Mapping[str, Any], policy: Policy) -> dict[str, Any]:
+    risk = classify_risk(contract, policy)
+    reasons, approval_reasons = [], []
+    gates = (
+        ("write_record", "WRITE_RECORD_INVALID"),
+        ("scope", "UNAUTHORIZED_MUTATION"),
+        ("baseline", "BASELINE_MISMATCH"),
+        ("source", "SOURCE_INTEGRITY_FAILURE"),
+        ("static", "STRUCTURAL_VALIDATION_FAILURE"),
+        ("canonical", "NON_CANONICAL_TMDL"),
+        ("tree_compare", "UNPLANNED_MODEL_CHANGE"),
+        ("pbir", "PBIR_VALIDATION_FAILURE"),
+        ("identity_map", "UNPLANNED_IDENTITY_CHANGE"),
+    )
+    for name, reason in gates:
+        status = evidence.get(name, {}).get("status", "NOT_RUN")
+        if status != "PASSED":
+            reasons.append({"code": reason, "gate": name, "status": status})
+
+    if risk in {"HIGH", "CRITICAL"}:
+        approval_reasons.append("HIGH_RISK_PROMOTION")
+    if evidence.get("not_checked_items"):
+        approval_reasons.append("NOT_CHECKED_ITEMS")
+    if evidence.get("unexplained_differences"):
+        approval_reasons.append("UNEXPECTED_BEHAVIOR")
+
+    approved = set(evidence.get("valid_approval_operations", []))
+    missing_approval = [item for item in approval_reasons if item not in approved]
+    hard_rejection = any(item["status"] in {"FAILED", "REJECTED_SCOPE"} for item in reasons)
+    decision = "REJECT" if hard_rejection else "INCONCLUSIVE" if reasons else "APPROVAL_REQUIRED" if missing_approval else "ALLOW"
+    return {
+        "decision": decision,
+        "scope_compliant": evidence.get("scope", {}).get("status") == "PASSED",
+        "static_valid": evidence.get("static", {}).get("status") == "PASSED",
+        "runtime_valid": True,
+        "regression_status": "NOT_REQUIRED",
+        "impact_coverage": evidence.get("impact", {}).get("completeness", {}).get("status", "MERGE_VERIFIED"),
+        "risk": risk,
+        "blocking_reasons": reasons,
+        "approval_reasons": missing_approval,
+        "eligible_for_promotion": decision == "ALLOW",
+        "policy_version": policy.version,
+        "policy_hash": policy.policy_hash,
+    }
+
+
 def evaluate_candidate(contract: ChangeContract, evidence: Mapping[str, Any], policy: Policy) -> dict[str, Any]:
     """Blocking precedence is independent of human/agent explanations."""
+    if policy.profile == "merge":
+        return _evaluate_merge_candidate(contract, evidence, policy)
     payload = contract.to_dict()
     risk = classify_risk(contract, policy)
     reasons, approval_reasons = [], []

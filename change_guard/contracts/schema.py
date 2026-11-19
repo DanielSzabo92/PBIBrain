@@ -7,7 +7,7 @@ from typing import Any, Mapping
 from backend.diff.snapshots import MISSING
 from backend.snapshots.manifest import canonical_json, content_hash, utc_now
 
-OPERATIONS = {"SET_PROPERTY", "CREATE_OBJECT", "DELETE_OBJECT", "RENAME_OBJECT", "REPLACE_EXPRESSION", "ADD_REFERENCE", "REMOVE_REFERENCE", "CHANGE_BINDING"}
+OPERATIONS = {"SET_PROPERTY", "CREATE_OBJECT", "DELETE_OBJECT", "RENAME_OBJECT", "RENAME_PAIR", "REPLACE_EXPRESSION", "ADD_REFERENCE", "REMOVE_REFERENCE", "CHANGE_BINDING"}
 
 
 class ContractError(ValueError):
@@ -27,9 +27,17 @@ def _text(value: Any) -> None:
 
 def validate_contract(payload: Mapping[str, Any], objects: Mapping[str, Any] | None = None) -> dict[str, Any]:
     value = json.loads(canonical_json(dict(payload)))
-    _object(value, {"contract_version", "task_id", "project_id", "baseline", "intent", "targets", "allowed_mutations", "forbidden", "behavior", "validation", "approval"})
+    _object(value, {"contract_version", "task_id", "project_id", "baseline", "intent", "targets", "allowed_mutations", "forbidden", "behavior", "validation", "approval"},
+            optional={"profile", "mode", "write_record_hash"})
     if type(value["contract_version"]) is not int or value["contract_version"] < 1:
         raise ContractError("Contract version must be a positive integer")
+    if value.get("profile") not in {None, "standard", "merge"}:
+        raise ContractError("Contract profile is invalid")
+    if value.get("mode") not in {None, "apply", "format_only"}:
+        raise ContractError("Contract mode is invalid")
+    if "write_record_hash" in value:
+        _text(value["write_record_hash"])
+    is_format_only = value.get("profile") == "merge" and value.get("mode") == "format_only"
     for key in ("task_id", "project_id"):
         _text(value[key])
     baseline = _object(value["baseline"], {"snapshot_id", "source_revision"})
@@ -52,7 +60,7 @@ def validate_contract(payload: Mapping[str, Any], objects: Mapping[str, Any] | N
             raise ContractError("Duplicate target")
         indexed[target["object_id"]] = target
     mutations = value["allowed_mutations"]
-    if not isinstance(mutations, list) or not mutations:
+    if not isinstance(mutations, list) or (not mutations and not is_format_only):
         raise ContractError("Exact mutations required")
     keys = set()
     for mutation in mutations:
@@ -68,6 +76,19 @@ def validate_contract(payload: Mapping[str, Any], objects: Mapping[str, Any] | N
             raise ContractError("Object operations require an exact $object definition")
         if mutation["operation"] == "RENAME_OBJECT" and mutation["property"] != "name":
             raise ContractError("Rename may only change name")
+        if mutation["operation"] == "RENAME_PAIR":
+            before_val, after_val = mutation["expected_before"], mutation["expected_after"]
+            if not isinstance(before_val, dict) or not isinstance(after_val, dict):
+                raise ContractError("Rename pair requires object dictionaries")
+            before_rest = {k: v for k, v in before_val.items() if k != "name"}
+            after_rest = {k: v for k, v in after_val.items() if k != "name"}
+            if isinstance(before_rest.get("properties"), dict) and isinstance(after_rest.get("properties"), dict):
+                b_props = {k: v for k, v in before_rest["properties"].items() if k != "name"}
+                a_props = {k: v for k, v in after_rest["properties"].items() if k != "name"}
+                before_rest["properties"] = b_props
+                after_rest["properties"] = a_props
+            if canonical_json(before_rest) != canonical_json(after_rest):
+                raise ContractError("Rename pair may only change object name")
         if mutation["operation"] == "REPLACE_EXPRESSION" and "expression" not in mutation["property"].casefold():
             raise ContractError("Expression operation requires an expression property")
         if objects is not None:
@@ -160,7 +181,7 @@ def enforce_scope(contract: ChangeContract, comparison: Mapping[str, Any]) -> di
         allowed = len(mutations) == 1 and target is not None and target["object_type"] == change["object_type"]
         if allowed:
             mutation = mutations[0]
-            expected_operation = {"OBJECT_CREATED": {"CREATE_OBJECT"}, "OBJECT_DELETED": {"DELETE_OBJECT"}, "OBJECT_RENAMED": {"RENAME_OBJECT", "SET_PROPERTY"},
+            expected_operation = {"OBJECT_CREATED": {"CREATE_OBJECT"}, "OBJECT_DELETED": {"DELETE_OBJECT"}, "OBJECT_RENAMED": {"RENAME_OBJECT", "RENAME_PAIR", "SET_PROPERTY"},
                                   "REFERENCE_CHANGED": {"SET_PROPERTY", "ADD_REFERENCE", "REMOVE_REFERENCE", "CHANGE_BINDING"},
                                   "PROPERTY_CHANGED": {"SET_PROPERTY", "REPLACE_EXPRESSION"}, "IDENTITY_CHANGED": {"SET_PROPERTY"}}.get(change["classification"], set())
             allowed = mutation["operation"] in expected_operation and canonical_json(mutation["expected_before"]) == canonical_json(change["previous_value"]) and canonical_json(mutation["expected_after"]) == canonical_json(change["new_value"])
