@@ -15,3 +15,13 @@
 .guard-review th, .guard-review td { border-bottom: 1px solid var(--border); padding: .65rem; max-width: 25rem; overflow-wrap: anywhere; vertical-align: top; }
 .guard-review td small { display: block; color: var(--muted-foreground); }
 @media (max-width: 640px) { .guard-review { padding: 1rem; } .guard-fields { display: grid; } .impact-flow { height: 20rem; } }
+/* Polish: hairline-only structure, aligned numerals, and stable scroll gutters. */
+.guard-warning { border: 1px solid var(--line-strong); border-radius: var(--radius); background: var(--surface-2); color: var(--text); }
+.guard-table-wrap { scrollbar-gutter: stable; border: 1px solid var(--line); border-radius: var(--radius); }
+.guard-review table { font-variant-numeric: tabular-nums; }
+.guard-review th { background: var(--surface-2); color: var(--text-2); font-size: 12px; font-weight: 600; }
+.guard-table-wrap tr:last-child > td { border-bottom: 0; }
+.guard-review tbody tr > * { transition: background-color var(--dur-fast) var(--ease-out); }
+.guard-review tbody tr:hover > * { background: var(--surface-hover); }
+.guard-records span { font-variant-numeric: tabular-nums; }
+@media (prefers-reduced-motion: reduce) { .guard-review tbody tr > * { transition: none; } }

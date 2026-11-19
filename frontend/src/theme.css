@@ -56,7 +56,8 @@
   --line: #1f2228;
   --line-strong: #2b2f37;
   --line-focus: #3a3f4a;
-  --control-border: #697185;
+  /* Form control boundary only (input, checkbox, select, combobox). Cards and panels use --line. */
+  --control-border: #6a707e;
 
   /* Text */
   --text: #ededf0;
@@ -123,6 +124,14 @@
   --input: var(--line-strong);
   --ring: var(--brand);
   --red: var(--bad);
+
+  /* Text and focus aliases used by components. */
+  --brand-text: var(--brand);
+  --warn-text: var(--warn);
+  --focus: var(--ring);
+  --focus-ring: 0 0 0 2px var(--bg), 0 0 0 4px var(--focus);
+  --ease-snap: cubic-bezier(0.22, 1, 0.36, 1);
+  --dur-pop: 160ms;
 
   /* Semantic aliases (UI design 7.2). They alias the tokens above, so each theme follows. */
   --cmp-conflict: var(--bad);

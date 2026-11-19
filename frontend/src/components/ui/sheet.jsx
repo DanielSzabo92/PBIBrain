@@ -32,16 +32,20 @@ function SheetContent({
   className,
   children,
   side = "right",
+  variant = "floating",
   showCloseButton = true,
   ...props
 }) {
-  // Non-modal: the sheet floats over the canvas without a scrim so the graph stays readable.
+  // variant "floating" (default): a rounded card that floats over the canvas, for example the graph details.
+  // variant "drawer": a full-height edge drawer (.ui-sheet-drawer in devcenter.css).
+  // Pass modal={false} on <Sheet> to keep the page usable behind a floating sheet.
   return (
     <SheetPortal>
       <SheetPrimitive.Content
         data-slot="sheet-content"
         data-side={side}
-        className={cn("ui-sheet fixed z-50 flex flex-col", className)}
+        data-variant={variant}
+        className={cn(variant === "drawer" ? "ui-sheet-drawer" : "ui-sheet", "fixed z-50 flex flex-col", className)}
         {...props}>
         {children}
         {showCloseButton && (

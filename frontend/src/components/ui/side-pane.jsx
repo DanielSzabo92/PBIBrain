@@ -92,7 +92,7 @@ function SidePane({ open, onClose, title, onPrevious, onNext, canPrevious = true
           aria-modal="true"
           aria-describedby={undefined}
           aria-busy={busy || undefined}
-          className={cn("ui-side-pane ui-sheet", className)}
+          className={cn("ui-side-pane ui-sheet-drawer", className)}
           onOpenAutoFocus={(event) => { event.preventDefault(); heading.current?.focus() }}
           onCloseAutoFocus={(event) => { event.preventDefault(); returnFocus() }}>
           {header(SheetTitle)}
