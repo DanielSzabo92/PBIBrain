@@ -83,16 +83,20 @@ def get_impact(devcenter: Any, query: Mapping[str, Sequence[str]]) -> dict[str, 
 
     target_param = _get_query_val(query, "target") or "plan"
     single_row = None if target_param == "plan" else target_param
+    include_proposals = _get_query_val(query, "include_proposals") or "false"
 
-    # Cache check
-    cache_key = (revision, target_param)
+    # Cache check (keyed by session, revision, target, and include_proposals to avoid cross-session/filter leaks)
+    cache_key = (document["session_id"], revision, target_param, include_proposals)
     cached = getattr(devcenter, "_cached_impact", None)
     if cached and cached.get("key") == cache_key:
         all_items = cached["items"]
         offers = cached["offers"]
         completeness = cached["completeness"]
     else:
-        plan = plan_service.build_plan(devcenter, document)
+        try:
+            plan = plan_service.build_plan(devcenter, document, include_proposals=include_proposals)
+        except TypeError:
+            plan = plan_service.build_plan(devcenter, document)
         engine, target_objs, donor_objs = _get_engine(devcenter, document, plan=plan)
 
         all_items = engine.evaluate_all(single_row_key=single_row)

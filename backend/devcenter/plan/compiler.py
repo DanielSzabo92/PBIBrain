@@ -356,8 +356,9 @@ class _Compiler:
         if self.exists(identity):
             return identity
         mapping = self.data.need_mappings.get(row["row_key"])
-        if isinstance(mapping, Mapping) and self.exists(str(mapping.get("row_key") or "")):
-            return str(mapping["row_key"])
+        mapped_key = str((mapping.get("row_key") or mapping.get("target_object") or "")) if isinstance(mapping, Mapping) else ""
+        if mapped_key and self.exists(mapped_key):
+            return mapped_key
         return self.need(row, source_id, step)
 
     def need(self, row: Mapping[str, Any], source_id: str, step: _Step) -> str | None:
@@ -834,7 +835,7 @@ class _Compiler:
         policy_kind = policy.get("policy") if isinstance(policy, Mapping) else None
         policy_kind = policy_kind if policy_kind in POLICIES else BLOCK
         if policy_kind == REPOINT:
-            replacement = str(policy.get("replacement_row_key") or "")
+            replacement = str(policy.get("replacement_row_key") or policy.get("repoint_target") or "")
             if not self.exists(replacement) or self.kind_of.get(replacement) != self.kind_of.get(key) or replacement == key:
                 self.block("repoint_not_valid", key, replacement_row_key=replacement or None)
                 policy_kind = BLOCK

@@ -16,7 +16,7 @@
       "required": ["object_id", "operation", "property", "expected_before", "expected_after"],
       "properties": {
         "object_id": {"$ref": "#/$defs/exact"},
-        "operation": {"enum": ["SET_PROPERTY", "CREATE_OBJECT", "DELETE_OBJECT", "RENAME_OBJECT", "REPLACE_EXPRESSION", "ADD_REFERENCE", "REMOVE_REFERENCE", "CHANGE_BINDING"]},
+        "operation": {"enum": ["SET_PROPERTY", "CREATE_OBJECT", "DELETE_OBJECT", "RENAME_OBJECT", "RENAME_PAIR", "REPLACE_EXPRESSION", "ADD_REFERENCE", "REMOVE_REFERENCE", "CHANGE_BINDING"]},
         "property": {"$ref": "#/$defs/exact"}, "expected_before": {}, "expected_after": {}
       }
     }
@@ -24,6 +24,9 @@
   "properties": {
     "contract_version": {"type": "integer", "minimum": 1},
     "task_id": {"$ref": "#/$defs/exact"}, "project_id": {"$ref": "#/$defs/exact"},
+    "profile": {"enum": ["standard", "merge"]},
+    "mode": {"enum": ["apply", "format_only"]},
+    "write_record_hash": {"$ref": "#/$defs/exact"},
     "baseline": {
       "type": "object", "additionalProperties": false, "required": ["snapshot_id", "source_revision"],
       "properties": {"snapshot_id": {"$ref": "#/$defs/exact"}, "source_revision": {"anyOf": [{"$ref": "#/$defs/exact"}, {"type": "null"}]}}
@@ -33,7 +36,7 @@
       "properties": {"description": {"type": "string", "minLength": 1}, "category": {"$ref": "#/$defs/exact"}}
     },
     "targets": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/target"}},
-    "allowed_mutations": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/mutation"}},
+    "allowed_mutations": {"type": "array", "minItems": 0, "items": {"$ref": "#/$defs/mutation"}},
     "forbidden": {
       "type": "object", "additionalProperties": false,
       "required": ["allow_unlisted_mutations", "allow_object_creation", "allow_object_deletion", "allow_identity_changes"],
