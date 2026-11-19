@@ -1,8 +1,10 @@
 import * as React from "react"
-import { CircleCheck, Info, TriangleAlert, X } from "lucide-react"
+import { Bell, CircleAlert, CircleCheck, Info, TriangleAlert, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 
-const ICONS = { ok: CircleCheck, info: Info, warn: TriangleAlert }
+// tone: "ok" (default), "warn", "bad", "info", or "neutral". Each tone has its own icon and color.
+const ICONS = { ok: CircleCheck, info: Info, warn: TriangleAlert, bad: CircleAlert, neutral: Bell }
+const TONES = new Set(Object.keys(ICONS))
 // A23: a toast stays at least 8 s, and it stays while the pointer is on it or it has focus.
 export const TOAST_MIN_MS = 8000
 
@@ -44,11 +46,12 @@ function ToastItem({ toast, duration, dismiss }) {
       remaining.current = Math.max(remaining.current - (Date.now() - started), 0)
     }
   }, [held, onDismiss])
-  const Icon = ICONS[toast.tone] || Info
+  const tone = TONES.has(toast.tone) ? toast.tone : "info"
+  const Icon = ICONS[tone]
   return (
     <div
       className={cn("ui-toast")}
-      data-tone={toast.tone}
+      data-tone={tone}
       onPointerEnter={() => setHeld(true)}
       onPointerLeave={() => setHeld(false)}
       onFocus={() => setHeld(true)}

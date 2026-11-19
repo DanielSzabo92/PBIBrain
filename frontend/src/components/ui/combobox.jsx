@@ -39,32 +39,58 @@ function Combobox({ id, label, value = "", onValueChange, groups = [], placehold
     onValueChange?.(item.value, item)
   }
 
+  const last = items.length - 1
+  const close = React.useCallback(() => { setOpen(false); setActive(-1) }, [])
+  const openAt = (position) => { setOpen(true); setActive(items.length ? position : -1) }
+
   const onKeyDown = (event) => {
     if (event.key === "ArrowDown") {
       event.preventDefault()
-      if (!open) { setOpen(true); setActive(items.length ? 0 : -1); return }
-      setActive((current) => Math.min(current + 1, items.length - 1))
+      if (!open) { openAt(0); return }
+      if (items.length) setActive((current) => (current < 0 ? 0 : Math.min(current + 1, last)))
     } else if (event.key === "ArrowUp") {
       event.preventDefault()
-      if (open) setActive((current) => Math.max(current - 1, 0))
+      if (!open) { openAt(last); return }
+      if (items.length) setActive((current) => (current < 0 ? last : Math.max(current - 1, 0)))
     } else if (event.key === "Enter") {
       if (open && items[active]) { event.preventDefault(); choose(items[active]) }
     } else if (event.key === "Escape") {
-      if (open) { event.preventDefault(); event.stopPropagation(); setOpen(false); setActive(-1) }
+      if (open) { event.preventDefault(); event.stopPropagation(); close() }
       else if (text) { event.preventDefault(); event.stopPropagation(); setText(""); onValueChange?.("", null) }
     } else if (event.key === "Home" && open) {
-      event.preventDefault(); setActive(0)
+      event.preventDefault(); setActive(items.length ? 0 : -1)
     } else if (event.key === "End" && open) {
-      event.preventDefault(); setActive(items.length - 1)
+      event.preventDefault(); setActive(last)
+    } else if (event.key === "Tab" && open) {
+      close()
     }
   }
 
+  // Keep the active index inside the filtered list.
+  React.useEffect(() => {
+    if (active > last) setActive(last)
+  }, [active, last])
+
+  // Keep the active option visible while the arrows move through a long list.
+  React.useEffect(() => {
+    if (!open || active < 0) return
+    document.getElementById(optionId(active))?.scrollIntoView?.({ block: "nearest" })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, active])
+
+  // An outside press closes the list. Options cancel their own pointerdown, so a click
+  // on an option never blurs the input before the click selects it.
   React.useEffect(() => {
     if (!open) return undefined
-    const close = (event) => { if (!wrapper.current?.contains(event.target)) setOpen(false) }
-    document.addEventListener("pointerdown", close)
-    return () => document.removeEventListener("pointerdown", close)
-  }, [open])
+    const onOutside = (event) => { if (!wrapper.current?.contains(event.target)) close() }
+    document.addEventListener("pointerdown", onOutside)
+    return () => document.removeEventListener("pointerdown", onOutside)
+  }, [open, close])
+
+  // Focus that leaves the field (Tab, a script) closes the list too.
+  const onBlur = (event) => {
+    if (!wrapper.current?.contains(event.relatedTarget)) close()
+  }
 
   let index = -1
   const renderOption = (item) => {
@@ -110,9 +136,11 @@ function Combobox({ id, label, value = "", onValueChange, groups = [], placehold
           disabled={disabled}
           value={text}
           onChange={(event) => { setText(event.target.value); setOpen(true); setActive(0) }}
+          onClick={() => { if (!open && !disabled) openAt(-1) }}
+          onBlur={onBlur}
           onKeyDown={onKeyDown} />
         <ChevronDown className="ui-combobox-chevron" aria-hidden="true" />
-        <div className="ui-listbox ui-combobox-popup" hidden={!open}>
+        <div className="ui-listbox ui-combobox-popup" hidden={!open} data-state={open ? "open" : "closed"} onPointerDown={(event) => event.preventDefault()}>
           <ul id={ids.list} role="listbox" aria-labelledby={label ? ids.label : undefined} aria-label={label ? undefined : placeholder} aria-busy={loading || undefined} className="ui-listbox-viewport">
             {loading ? null : items.filter((item) => item.create).map(renderOption)}
             {loading ? null : filtered.map((group, groupIndex) => (

@@ -50,4 +50,19 @@ function ProgressList({ lines = [], footer, label, className }) {
   )
 }
 
-export { StepIndicator, ProgressList }
+// Meter: a thin bar for a value from 0 to max. The fill moves with transform: scaleX (GPU
+// composited), never with width, so a value change does not trigger layout.
+// label: the accessible name. Without a label the bar is decorative (aria-hidden).
+function Meter({ value = 0, max = 100, label, tone, className }) {
+  const ratio = max > 0 ? Math.min(Math.max(Number(value) || 0, 0), max) / max : 0
+  const a11y = label
+    ? { role: "meter", "aria-label": label, "aria-valuemin": 0, "aria-valuemax": max, "aria-valuenow": Math.round(ratio * max) }
+    : { "aria-hidden": true }
+  return (
+    <span className={cn("ui-meter", className)} data-tone={tone || undefined} {...a11y}>
+      <i className="ui-meter-fill" style={{ "--meter-scale": ratio }} />
+    </span>
+  )
+}
+
+export { StepIndicator, ProgressList, Meter }

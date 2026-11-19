@@ -38,6 +38,25 @@ const buttonVariants = cva(
 
 // tone: ok, warn, or bad for the "status" variant (UI design 6.1).
 // loading: the button shows a spinner and loadingText, and it does not act (aria-busy, aria-disabled).
+// The idle label stays in the layout while loading, so the button keeps its width (no layout shift).
+// Without loadingText the label fades out and the spinner sits on top; the accessible name stays the label.
+function BusyContent({ children, loadingText }) {
+  if (loadingText) {
+    return (
+      <span className="ui-button-stack">
+        <span className="ui-button-label is-hidden" aria-hidden="true">{children}</span>
+        <span className="ui-button-busy"><LoaderCircle className="spin" aria-hidden="true" />{loadingText}</span>
+      </span>
+    )
+  }
+  return (
+    <span className="ui-button-stack">
+      <span className="ui-button-label is-faded">{children}</span>
+      <span className="ui-button-busy" aria-hidden="true"><LoaderCircle className="spin" /></span>
+    </span>
+  )
+}
+
 const Button = React.forwardRef(function Button({
   className,
   variant = "default",
@@ -65,7 +84,7 @@ const Button = React.forwardRef(function Button({
       aria-disabled={busy || props["aria-disabled"] || undefined}
       className={cn(buttonVariants({ variant, size, className }))}
       onClick={busy ? (event) => event.preventDefault() : onClick}>
-      {busy && !asChild ? <><LoaderCircle className="spin" aria-hidden="true" />{loadingText || children}</> : children}
+      {busy && !asChild ? <BusyContent loadingText={loadingText}>{children}</BusyContent> : children}
     </Comp>
   );
 });

@@ -61,9 +61,10 @@ TICKET_01_INK = {
     "light": (5.52, 7.26, 17.91),
 }
 # Rows: token, then one value for each surface of NON_TEXT_SURFACES.
+# w1-c: the dark control-border changed from #697185 to the calmer #6a707e. The values are measured again.
 TICKET_01_NON_TEXT = {
     "dark": {
-        "control-border": (4.01, 3.74, 3.57),
+        "control-border": (3.94, 3.68, 3.51),
         "brand": (7.47, 6.98, 6.65),
         "line": (1.23, 1.15, 1.09),
         "line-strong": (1.46, 1.36, 1.30),
@@ -99,15 +100,15 @@ SECTION_7_4_PAIRS = (
     ("bad-strong", "surface", NON_TEXT_MIN, 8.65, 7.56),
     ("ring", "row-active", NON_TEXT_MIN, 5.80, 4.87),
     ("ring", "row-selected", NON_TEXT_MIN, 6.15, 4.84),
-    ("control-border", "row-active", NON_TEXT_MIN, 3.11, 3.11),
-    ("control-border", "row-selected", NON_TEXT_MIN, 3.30, 3.08),
+    ("control-border", "row-active", NON_TEXT_MIN, 3.06, 3.11),
+    ("control-border", "row-selected", NON_TEXT_MIN, 3.24, 3.08),
 )
 TINT_TOKENS = ("ok", "warn", "bad", "info", "brand")
 # Lowest value of "text" on each -tint token.
 TEXT_ON_TINT_LOWEST = {"dark": 12.39, "light": 15.81}
 # Wireframe status borders on "surface" (UI design 7.3). Lowest value.
 WIREFRAME_BORDERS = ("impact-removed", "impact-breaks", "impact-changes", "impact-new", "impact-unchecked", "impact-unchanged")
-WIREFRAME_BORDER_LOWEST = {"dark": 3.74, "light": 3.52}
+WIREFRAME_BORDER_LOWEST = {"dark": 3.68, "light": 3.52}
 
 
 def _block(css: str, selector: str) -> dict[str, str]:
