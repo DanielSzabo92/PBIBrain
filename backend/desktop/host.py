@@ -215,7 +215,10 @@ class DesktopController(DevCenterJSAPI):
             selected = self._pick_folder()
             if selected is None or str(selected).strip() == "":
                 return {"ok": True, "folder": None}
-            return {"ok": True, "folder": str(Path(selected).expanduser().resolve())}
+            folder = Path(selected).expanduser().resolve()
+            # A new merge target needs an empty folder; the page says so before Create, not after.
+            empty = not folder.exists() or (folder.is_dir() and not any(folder.iterdir()))
+            return {"ok": True, "folder": str(folder), "empty": empty}
         except Exception as exc:
             return {"ok": False, "error": str(exc)}
 
@@ -696,6 +699,14 @@ def run() -> int:
     server: DesktopServer | None = None
     try:
         static_dir = default_static_dir()
+        if not getattr(sys, "frozen", False):
+            # A source checkout: rebuild the UI after git pull, so the window never shows an old UI.
+            from backend.ui_build import FRONTEND, ensure_current
+
+            if static_dir == (FRONTEND / "dist").resolve():
+                problem = ensure_current()
+                if problem:
+                    print(f"[PBIBrain] Warning: {problem}", file=sys.stderr, flush=True)
         if not (static_dir / "index.html").is_file():
             raise RuntimeError("The PBIBrain interface is missing. Reinstall PBIBrain.")
         import webview  # type: ignore[import-not-found]

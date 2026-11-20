@@ -137,6 +137,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 0
     if args.command == "serve":
         from backend.api.app import serve
+        from backend.ui_build import FRONTEND, stale_reason
+
+        if Path(args.ui).resolve() == (FRONTEND / "dist").resolve() and (problem := stale_reason()):
+            print(f"[PBIBrain] Warning: {problem}. Run: cd frontend && npm install && npm run build", flush=True)
         serve(port=args.port, database_path=args.db, overrides_path=Path(args.identity).with_name("overrides.json"), config_path=args.config, static_dir=args.ui)
         return 0
     export_output = None

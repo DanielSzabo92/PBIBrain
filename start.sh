@@ -40,14 +40,17 @@ if ! python -c "import antlr4, jsonschema; from backend.cli.main import _parser"
 fi
 
 # 4. Check / build frontend
-if [ ! -f "frontend/dist/index.html" ]; then
-    echo "[*] Web UI build not found. Checking Node.js..."
+# Rebuild when the build is missing or older than frontend/src (for example after git pull),
+# so the app never serves an old UI against new backend code.
+UI_STALE="$(python -m backend.ui_build)"
+if [ -n "$UI_STALE" ]; then
+    echo "[*] Web UI needs a build: $UI_STALE. Checking Node.js..."
     if command -v npm >/dev/null 2>&1; then
         echo "[*] Installing frontend packages and building UI..."
         (cd frontend && npm install && npm run build)
     else
-        echo "[WARNING] Node.js / npm not found. Starting server without built UI."
-        echo "          To use the UI, install Node.js 20+ and run:"
+        echo "[WARNING] Node.js / npm not found. The UI build is missing or out of date."
+        echo "          To use the current UI, install Node.js 20+ and run:"
         echo "          cd frontend && npm install && npm run build"
     fi
 fi

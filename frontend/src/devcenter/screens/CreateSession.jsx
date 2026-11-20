@@ -297,7 +297,7 @@ export default function CreateSession({ onCancel, onDone, transport }) {
             folder={draft.copyFolder}
             onModel={(value, folder) => update({ targetModel: value, copyFolder: folder })}
             onReport={(value) => update({ targetReport: value })}
-            pickFolder={async () => (await pick("choose_folder"))[0] ?? null}
+            pickFolder={() => desktopRequest(desktopApi(), "choose_folder")}
           />
         ) : null}
 

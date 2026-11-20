@@ -229,10 +229,27 @@ class DesktopTests(unittest.TestCase):
         selected = DesktopController(static_dir=self.static, folder_picker=lambda: self.root)
         try:
             self.assertEqual(cancelled.choose_folder(), {"ok": True, "folder": None})
-            self.assertEqual(selected.choose_folder(), {"ok": True, "folder": str(self.root.resolve())})
+            reply = selected.choose_folder()
+            self.assertEqual(reply["folder"], str(self.root.resolve()))
+            self.assertIs(reply["ok"], True)
+            self.assertIn("empty", reply)
         finally:
             cancelled.shutdown()
             selected.shutdown()
+
+    def test_folder_picker_says_whether_the_folder_is_empty(self):
+        # A new merge target needs an empty folder; the page refuses a full one at the Target step.
+        empty = self.root / "empty-target"
+        empty.mkdir()
+        full = self.root / "full-target"
+        full.mkdir()
+        (full / "leftover.pbip").write_text("{}", encoding="utf-8")
+        for folder, expected in ((empty, True), (full, False), (self.root / "not-made-yet", True)):
+            controller = DesktopController(static_dir=self.static, folder_picker=lambda folder=folder: folder)
+            try:
+                self.assertIs(controller.choose_folder()["empty"], expected, folder.name)
+            finally:
+                controller.shutdown()
 
     def test_explicit_source_picker_appends_supported_files_atomically(self):
         source = self.root / "Project.pbip"

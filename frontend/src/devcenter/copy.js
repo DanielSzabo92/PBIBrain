@@ -131,6 +131,7 @@ export const COPY = Object.freeze({
   "create.target.recommended_badge": "Recommended",
   "create.target.need_model": "Select a target model to go to the next step.",
   "create.target.folder_needed": "Select a folder for the new target model.",
+  "create.target.folder_not_empty": "{path} is not empty. Select an empty folder, or make a new one in the picker.",
   "create.name.required": "Type a session name.",
   "create.progress.label": "Create progress",
   "create.failed": "PBIBrain did not create the session. Nothing changed on disk.",

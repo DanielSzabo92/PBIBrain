@@ -7,6 +7,7 @@ import { targetModelItems, targetReportItems } from "./sessionModel.js";
 
 export default function TargetChoice({ sources, model, report, folder, onModel, onReport, pickFolder, disabled = false }) {
   const [picking, setPicking] = React.useState(false);
+  const [notEmpty, setNotEmpty] = React.useState(null);
 
   const chooseModel = async (value, force = false) => {
     if (value.startsWith("existing:")) {
@@ -19,8 +20,14 @@ export default function TargetChoice({ sources, model, report, folder, onModel, 
     }
     setPicking(true);
     try {
-      const picked = await pickFolder();
-      if (picked) {
+      // pickFolder gives the choose_folder reply, or a plain path from older callers.
+      const reply = await pickFolder();
+      const picked = typeof reply === "string" ? reply : reply?.folder ?? null;
+      if (picked && reply?.empty === false) {
+        setNotEmpty(picked);
+        if (value !== model) onModel(value, null);
+      } else if (picked) {
+        setNotEmpty(null);
         onModel(value, picked);
       } else if (value !== model) {
         onModel(value, null);
@@ -43,6 +50,7 @@ export default function TargetChoice({ sources, model, report, folder, onModel, 
           <Button variant="outline" size="sm" disabled={disabled || picking} onClick={() => chooseModel(model, true)}>{t("create.target.copy.choose")}</Button>
         </>
       )}
+      {notEmpty ? <p className="dc-step-error" role="alert">{t("create.target.folder_not_empty", { path: notEmpty })}</p> : null}
     </div>
   );
 

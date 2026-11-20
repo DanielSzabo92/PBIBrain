@@ -57,8 +57,12 @@ if !errorlevel! neq 0 (
 )
 
 :: 4. Check / build frontend
-if not exist "frontend\dist\index.html" (
-    echo [*] Web UI build not found. Checking Node.js...
+:: Rebuild when the build is missing or older than frontend\src (for example after git pull),
+:: so the app never serves an old UI against new backend code.
+set "UI_STALE="
+for /f "delims=" %%L in ('python -m backend.ui_build') do set "UI_STALE=%%L"
+if defined UI_STALE (
+    echo [*] Web UI needs a build: !UI_STALE!. Checking Node.js...
     where npm >nul 2>nul
     if !errorlevel! equ 0 (
         echo [*] Installing frontend packages and building UI...
@@ -67,8 +71,8 @@ if not exist "frontend\dist\index.html" (
         call npm run build
         popd
     ) else (
-        echo [WARNING] Node.js not found. Starting server without built UI.
-        echo           To use the UI, install Node.js 20+ and run:
+        echo [WARNING] Node.js not found. The UI build is missing or out of date.
+        echo           To use the current UI, install Node.js 20+ and run:
         echo           cd frontend ^&^& npm install ^&^& npm run build
     )
 )

@@ -262,7 +262,7 @@ function ChangeTarget({ session, disabled, reasonId, triggerRef }) {
             folder={choice.folder}
             onModel={(model, folder) => setChoice((current) => ({ ...current, model, folder }))}
             onReport={(report) => setChoice((current) => ({ ...current, report }))}
-            pickFolder={async () => (await desktopRequest(globalThis.pywebview?.api, "choose_folder")).folder ?? null}
+            pickFolder={() => desktopRequest(globalThis.pywebview?.api, "choose_folder")}
             disabled={setTarget.pending}
           />
           {error || setTarget.error ? <p className="dc-step-error" role="alert">{error ?? errorCopy(setTarget.error).body}</p> : null}
