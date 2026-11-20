@@ -886,7 +886,8 @@ class _Compiler:
             if visual is None or visual.kind != "visual" or visual.table != page_folder:
                 continue
             choice = self.choices.get(visual_row["row_key"]) or {}
-            if choice.get("kind") in {SKIP, REMOVE}:
+            kind = choice.get("kind")
+            if kind in {SKIP, REMOVE} or (kind == TAKE and choice.get("source_id") != source_id):
                 excluded.append(str(visual.extra.get("visual_id") or visual.name))
         return sorted(set(excluded))
 
@@ -948,10 +949,12 @@ class _Compiler:
         self.op(step, name, identity, needs=needs, source_id=source_id, source_key=donor.source_key,
                 lineage_tag=self.lineage_tag(row, source_id, donor, new=new_tag), properties=props, **op_extra)
 
-    def copy_visual(self, step: _Step, row: Mapping[str, Any], source_id: str, donor: CompareObject, *, page_identity: str) -> None:
+    def copy_visual(self, step: _Step, row: Mapping[str, Any], source_id: str, donor: CompareObject, *, page_identity: str,
+                    replace: bool = False) -> None:
         key = row["row_key"]
+        extra_kwargs: dict[str, Any] = {"replace": True} if replace else {}
         self.op(step, "COPY_VISUAL", key, needs={page_identity}, source_id=source_id, source_key=donor.source_key,
-                page_id=self.by_key[page_identity]["page"], visual_id=donor.extra.get("visual_id"))
+                page_id=self.by_key[page_identity]["page"], visual_id=donor.extra.get("visual_id"), **extra_kwargs)
         self._rebind_copied_visual(step, row, source_id, donor)
 
     def build_take_existing(self, step: _Step, row: Mapping[str, Any], source_id: str, donor: CompareObject,
@@ -972,8 +975,10 @@ class _Compiler:
                 self._rebind_copied_visual(step, row, source_id, donor)
                 return
             target_page_row = self.row_of.get((self.data.target_report, f"page:{target.table}"))
-            self.op(step, "DELETE_VISUAL", key)
-            self.copy_visual(step, row, source_id, donor, page_identity=target_page_row["row_key"] if target_page_row else key)
+            target_page_key = target_page_row["row_key"] if target_page_row else None
+            if target_page_key is None or target_page_key not in self.copied_pages:
+                self.op(step, "DELETE_VISUAL", key)
+            self.copy_visual(step, row, source_id, donor, page_identity=target_page_key or key, replace=True)
             return
         self.rename_op(step, key, target)
         cell = self.cell(row, source_id) or {}

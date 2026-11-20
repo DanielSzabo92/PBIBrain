@@ -48,8 +48,6 @@ def phase_of(operation: Mapping[str, Any]) -> tuple[int, str]:
 
     table = MODEL_PHASE if operation["domain"] == "model" else REPORT_PHASE
     phase = table[operation["op"]]
-    if operation["op"] == "COPY_PAGE" and operation.get("replace"):
-        phase = "changes"
     offset = 0 if operation["domain"] == "model" else len(PHASES)
     return offset + PHASES.index(phase), phase
 

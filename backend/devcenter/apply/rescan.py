@@ -91,8 +91,6 @@ def differences(operations: Sequence[Mapping[str, Any]], before: Mapping[str, st
         object_type = str(operation.get("object_type") or "")
         key = _row_key(operation)
         table = operation.get("table")
-        if object_type == "model":
-            continue
         if op in _RENAMES and operation.get("old_name") and operation.get("new_name"):
             old_table = table
             new_table = tables.get(str(table), table) if table else None
@@ -118,7 +116,7 @@ def differences(operations: Sequence[Mapping[str, Any]], before: Mapping[str, st
                         if after_key.startswith(prefix) and after_key not in before:
                             touched.add(after_key)
         elif op in _COPIES:
-            if op == "COPY_PAGE" and operation.get("replace"):
+            if operation.get("replace"):
                 if key:
                     expect(_moved(key, tables, objects), PRESENT)
             else:
