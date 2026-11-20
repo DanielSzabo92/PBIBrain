@@ -45,6 +45,7 @@
     "possible_rename": {"group": "note", "text": "Possible rename. Confirm the match."},
     "name_clash": {"group": "note", "text": "Name clash with a target object"},
     "duplicate_lineage_tag": {"group": "warning", "text": "Duplicate lineageTag in this source. The app ignored it."},
+    "source_unreadable": {"group": "warning", "text": "The app could not read the model of this source."},
     "deleted_object": {"group": "reason", "text": "Uses a deleted object"},
     "renamed_object": {"group": "reason", "text": "Uses a renamed object"},
     "modified_object": {"group": "reason", "text": "Uses a modified object"},

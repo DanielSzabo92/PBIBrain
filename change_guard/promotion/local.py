@@ -126,6 +126,7 @@ class LocalPromotion:
                     if replacement["before_hash"] is None:
                         if destination.exists():
                             destination.unlink()
+                        _prune_empty_parents(destination, source)
                     else:
                         staging = safe_path(self.store.root, operation_id + "/staging/" + replacement["path"])
                         durable_write(destination, safe_path(self.store.root, replacement["backup"], must_exist=True).read_bytes(), temporary_path=staging)
@@ -176,6 +177,7 @@ class LocalPromotion:
                     if replacement["before_hash"] is None:
                         if destination.exists():
                             destination.unlink()
+                        _prune_empty_parents(destination, source)
                     else:
                         staging = safe_path(self.store.root, operation_id + "/staging/" + replacement["path"])
                         durable_write(destination, safe_path(self.store.root, replacement["backup"], must_exist=True).read_bytes(), temporary_path=staging)
@@ -190,3 +192,21 @@ class LocalPromotion:
                 journal["status"] = "PROMOTION_RECOVERY_REQUIRED"
                 self.store.save(journal_path, journal)
                 raise PromotionError("Recovery incomplete") from error
+
+
+def _prune_empty_parents(path: Path, stop_at: Path) -> None:
+    """Remove empty parent directories created by newly promoted files, stopping before ``stop_at``."""
+    root = stop_at.resolve()
+    current = path.parent
+    while True:
+        try:
+            resolved = current.resolve()
+        except OSError:
+            break
+        if resolved == root or root not in resolved.parents:
+            break
+        try:
+            current.rmdir()
+        except OSError:
+            break
+        current = current.parent

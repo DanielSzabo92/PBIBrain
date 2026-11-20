@@ -90,6 +90,16 @@ FUNCTION_SIGNATURE = re.compile(r"\s*\([^()]*\)\s*=>")
 # Object types whose ``expression`` is M, not DAX: written as given, never resolved as DAX.
 M_KINDS = ("expression", "partition")
 COMPARE_NAMES = {"is_hidden": "hidden", "is_key": "key"}
+WRITER_PROPERTY_NAMES: dict[str, str] = {
+    "hidden": "is_hidden",
+    "key": "is_key",
+    "active": "is_active",
+    "cross_filter_direction": "cross_filtering_behavior",
+    "security_filter_direction": "security_filtering_behavior",
+    "referential_integrity": "rely_on_referential_integrity",
+    "order": "ordinal",
+    "m_text": "expression",
+}
 RENAMABLE_KINDS = ("measure", "column", "table", "hierarchy", "calculation_item", "role", "expression", "function")
 
 
@@ -140,7 +150,7 @@ STEP_PREREQUISITE = "prerequisite"
 BLOCKING_KINDS = ("choice_source_removed", "choice_not_valid", "no_sources", "no_target_model", "name_clash", "renamed", "removed",
                   "need_missing", "need_clash", "repoint_not_valid", "udf_compatibility", "dependency_cycle", "source_marks",
                   "dax_parse")
-WARNING_KINDS = ("need_added", "new_lineage_tag", "repoint_data_type", "not_checked")
+WARNING_KINDS = ("need_added", "new_lineage_tag", "repoint_data_type", "not_checked", "shared_expression_conflict")
 MESSAGES = {
     "choice_source_removed": "The source of this Merge Choice is not in the session.",
     "choice_not_valid": "This Merge Choice is not possible for this row.",
@@ -160,6 +170,7 @@ MESSAGES = {
     "new_lineage_tag": "The target has the donor lineageTag already. The plan gives a new lineageTag.",
     "repoint_data_type": "The replacement object has a different data type.",
     "not_checked": "The app did not examine this area.",
+    "shared_expression_conflict": "Taken tables from different donors rely on a shared M expression whose values differ across those donors.",
 }
 
 GUARD_OPERATIONS = {
@@ -559,6 +570,10 @@ class _Compiler:
                     needs.add(found)
                 ends.append(list(self.final_name(found)) if found else [table, column])
             props["ends"] = ends
+            if donor.extra.get("from_cardinality"):
+                props["from_cardinality"] = donor.extra["from_cardinality"]
+            if donor.extra.get("to_cardinality"):
+                props["to_cardinality"] = donor.extra["to_cardinality"]
         if donor.kind == "role" and "role_filters" in props:
             filters = {}
             for key, text in sorted(props["role_filters"].items()):
@@ -570,6 +585,22 @@ class _Compiler:
                 needs |= found
                 filters[self.final_name(table_identity)[1] if table_identity else table] = new_text
             props["role_filters"] = filters
+        if donor.domain == MODEL:
+            props = {WRITER_PROPERTY_NAMES.get(k, k): v for k, v in props.items()}
+            if selected is None:
+                annotations = donor.strict_props.get("annotations")
+                if annotations:
+                    props["annotations"] = dict(annotations)
+                if donor.kind == "table":
+                    if donor.extra.get("is_private"):
+                        props["is_private"] = True
+                    if donor.extra.get("show_as_variations_only"):
+                        props["show_as_variations_only"] = True
+                elif donor.kind == "column":
+                    if donor.extra.get("column_type"):
+                        props["column_type"] = donor.extra["column_type"]
+                    if donor.extra.get("is_name_inferred") is not None:
+                        props["is_name_inferred"] = donor.extra["is_name_inferred"]
         needs.discard(identity)
         return props, needs
 
@@ -842,42 +873,20 @@ class _Compiler:
             name = "CREATE_REPORT_MEASURE" if target is None else "REPLACE_REPORT_MEASURE"
             self.op(step, name, key, needs=needs, source_id=source_id, source_key=donor.source_key, properties=props)
 
-    def build_create(self, step: _Step, row: Mapping[str, Any], source_id: str, donor: CompareObject, new_tag: bool,
-                     folder: str | None) -> None:
-        key = row["row_key"]
-        identity = key if key in self.created else f"{key}#new"
-        if donor.kind == "page":
-            self.op(step, "COPY_PAGE", identity, source_id=source_id, source_key=donor.source_key,
-                    page_id=donor.extra.get("page_id"), replace=False)
-            for visual_row in self.rows:
-                visual = self.source_object(visual_row, source_id)
-                if visual is None or visual.kind != "visual" or visual.table != donor.source_key.split(":", 1)[1]:
-                    continue
-                if visual_row["row_key"] in self.choices or self.target_object(visual_row) is not None:
-                    continue
-                self.register(visual_row["row_key"], "visual", visual.subtype, REPORT, visual.name, None)
-                self.copy_visual(step, visual_row, source_id, visual, page_identity=identity)
-            return
-        if donor.kind == "visual":
-            page_row = self.row_of.get((source_id, f"page:{donor.table}"))
-            page_identity = page_row["row_key"] if page_row else None
-            if page_identity is None or not self.exists(page_identity):
-                self._item(self.blocking, "need_missing", key, step=step, item_id=f"need_missing:{key}:page",
-                           needed={"object_type": "page", "table": None, "name": donor.table})
-                return
-            self.copy_visual(step, row, source_id, donor, page_identity=page_identity)
-            return
-        props, needs = self.carried_properties(step, identity, source_id, donor)
-        if folder is not None:
-            props["display_folder"] = folder
-        name = "CREATE_REPORT_MEASURE" if donor.kind == "report_measure" else "CREATE"
-        self.op(step, name, identity, needs=needs, source_id=source_id, source_key=donor.source_key,
-                lineage_tag=self.lineage_tag(row, source_id, donor, new=new_tag), properties=props)
+    def _excluded_page_visuals(self, source_id: str, donor_page: CompareObject) -> list[str]:
+        page_folder = donor_page.source_key.split(":", 1)[1]
+        excluded: list[str] = []
+        for visual_row in self.rows:
+            visual = self.source_object(visual_row, source_id)
+            if visual is None or visual.kind != "visual" or visual.table != page_folder:
+                continue
+            choice = self.choices.get(visual_row["row_key"]) or {}
+            if choice.get("kind") in {SKIP, REMOVE}:
+                excluded.append(str(visual.extra.get("visual_id") or visual.name))
+        return sorted(set(excluded))
 
-    def copy_visual(self, step: _Step, row: Mapping[str, Any], source_id: str, donor: CompareObject, *, page_identity: str) -> None:
+    def _rebind_copied_visual(self, step: _Step, row: Mapping[str, Any], source_id: str, donor: CompareObject) -> None:
         key = row["row_key"]
-        self.op(step, "COPY_VISUAL", key, needs={page_identity}, source_id=source_id, source_key=donor.source_key,
-                page_id=self.by_key[page_identity]["page"], visual_id=donor.extra.get("visual_id"))
         for location in field_locations(donor):
             identity = self.field_identity(step, source_id, location, donor=True)
             if identity is None:
@@ -886,12 +895,71 @@ class _Compiler:
             if fold(table) != fold(location.entity) or fold(name) != fold(location.property):
                 self.rebind(step, key, location, table or location.entity, name, needs={identity})
 
+    def build_create(self, step: _Step, row: Mapping[str, Any], source_id: str, donor: CompareObject, new_tag: bool,
+                     folder: str | None) -> None:
+        key = row["row_key"]
+        identity = key if key in self.created else f"{key}#new"
+        if donor.kind == "page":
+            excluded = self._excluded_page_visuals(source_id, donor)
+            extra_kwargs: dict[str, Any] = {}
+            if excluded:
+                extra_kwargs["exclude_visuals"] = excluded
+            self.op(step, "COPY_PAGE", identity, source_id=source_id, source_key=donor.source_key,
+                    page_id=donor.extra.get("page_id"), replace=False, **extra_kwargs)
+            page_folder = donor.source_key.split(":", 1)[1]
+            for visual_row in self.rows:
+                visual = self.source_object(visual_row, source_id)
+                if visual is None or visual.kind != "visual" or visual.table != page_folder:
+                    continue
+                if visual_row["row_key"] in self.choices or self.target_object(visual_row) is not None:
+                    continue
+                # COPY_PAGE already copies non-skipped visuals; register and rebind only (avoid double-copy).
+                self.register(visual_row["row_key"], "visual", visual.subtype, REPORT, visual.name, None)
+                self._rebind_copied_visual(step, visual_row, source_id, visual)
+            return
+        if donor.kind == "visual":
+            page_row = self.row_of.get((source_id, f"page:{donor.table}"))
+            page_identity = page_row["row_key"] if page_row else None
+            if page_identity is None or not self.exists(page_identity):
+                self._item(self.blocking, "need_missing", key, step=step, item_id=f"need_missing:{key}:page",
+                           needed={"object_type": "page", "table": None, "name": donor.table})
+                return
+            # If the parent page is already being copied from the same donor, COPY_PAGE already includes this visual.
+            parent_created = self.created.get(page_identity)
+            if parent_created is not None and parent_created[0] == source_id:
+                self._rebind_copied_visual(step, row, source_id, donor)
+                return
+            self.copy_visual(step, row, source_id, donor, page_identity=page_identity)
+            return
+        props, needs = self.carried_properties(step, identity, source_id, donor)
+        if folder is not None:
+            props["display_folder"] = folder
+        name = "CREATE_REPORT_MEASURE" if donor.kind == "report_measure" else "CREATE"
+        op_extra: dict[str, Any] = {}
+        if donor.kind == "column" and donor.table:
+            donor_table = self.objects.get((source_id, f"table:{donor.table}"))
+            col_order = (donor_table.extra.get("column_order") or []) if donor_table is not None else []
+            if donor.name in col_order:
+                op_extra["column_ordinal"] = col_order.index(donor.name)
+        self.op(step, name, identity, needs=needs, source_id=source_id, source_key=donor.source_key,
+                lineage_tag=self.lineage_tag(row, source_id, donor, new=new_tag), properties=props, **op_extra)
+
+    def copy_visual(self, step: _Step, row: Mapping[str, Any], source_id: str, donor: CompareObject, *, page_identity: str) -> None:
+        key = row["row_key"]
+        self.op(step, "COPY_VISUAL", key, needs={page_identity}, source_id=source_id, source_key=donor.source_key,
+                page_id=self.by_key[page_identity]["page"], visual_id=donor.extra.get("visual_id"))
+        self._rebind_copied_visual(step, row, source_id, donor)
+
     def build_take_existing(self, step: _Step, row: Mapping[str, Any], source_id: str, donor: CompareObject,
                             target: CompareObject, folder: str | None) -> None:
         key = row["row_key"]
         if donor.kind == "page":
+            excluded = self._excluded_page_visuals(source_id, donor)
+            extra_kwargs: dict[str, Any] = {}
+            if excluded:
+                extra_kwargs["exclude_visuals"] = excluded
             self.op(step, "COPY_PAGE", key, source_id=source_id, source_key=donor.source_key, page_id=target.extra.get("page_id"),
-                    replace=True)
+                    replace=True, **extra_kwargs)
             return
         if donor.kind == "visual":
             self.op(step, "DELETE_VISUAL", key)
@@ -1332,6 +1400,107 @@ class _Compiler:
 
     # Run -------------------------------------------------------------------------------------
 
+    def ensure_model_header(self) -> None:
+        """Preserve or copy model-level header properties (culture, defaultPowerBIDataSourceVersion, etc.) when creating tables."""
+        headers = getattr(self.data.result, "model_headers", None) or {}
+        if not headers or self.data.target_model is None:
+            return
+        table_step = next(
+            (step for step in self.steps for op in step.operations
+             if op.get("domain") == MODEL and op.get("object_type") == "table" and op.get("op") == "CREATE"),
+            None,
+        )
+        if table_step is None:
+            return
+        target_header = headers.get(self.data.target_model) or {}
+        required_keys = ("culture", "default_power_bi_data_source_version", "source_query_culture", "data_access_options")
+        missing = [k for k in required_keys if not target_header.get(k)]
+        if not missing:
+            return
+        # Prefer the first donor that contributes a created table, else any donor with model header info.
+        donor_order: list[str] = []
+        for step in self.steps:
+            for op in step.operations:
+                sid = op.get("source_id")
+                if sid and sid != self.data.target_model and sid not in donor_order:
+                    donor_order.append(sid)
+        for sid in headers:
+            if sid != self.data.target_model and sid not in donor_order:
+                donor_order.append(sid)
+        donor_header: Mapping[str, Any] = next((headers[sid] for sid in donor_order if headers.get(sid)), {})
+        header_props: dict[str, Any] = {}
+        for k in missing:
+            if donor_header.get(k) is not None:
+                header_props[k] = donor_header[k]
+        if not header_props:
+            return
+        op_id = "op-" + _digest(table_step.step_id, "SET_PROPERTIES", "model:Model", "header")[:12]
+        table_step.operations.append({
+            "op_id": op_id,
+            "step_id": table_step.step_id,
+            "op": "SET_PROPERTIES",
+            "guard_op": GUARD_OPERATIONS["SET_PROPERTIES"],
+            "domain": MODEL,
+            "object_type": "model",
+            "subtype": "model",
+            "row_key": "model:Model",
+            "table": None,
+            "name": "Model",
+            "properties": header_props,
+        })
+
+    def check_shared_expressions(self) -> None:
+        """Warn when taken tables/partitions from different donors reference a shared M expression whose values differ."""
+        conflicting: dict[str, tuple[dict[str, Any], dict[str, str]]] = {}
+        for row in self.rows:
+            if row["object_type"] != "expression":
+                continue
+            values_by_source: dict[str, str] = {}
+            for cell in row["cells"]:
+                if not cell["present"]:
+                    continue
+                obj = self.objects.get((cell["source_id"], cell["source_key"]))
+                if obj is not None:
+                    values_by_source[cell["source_id"]] = str(obj.props.get("m_text") or "").strip()
+            if len(set(values_by_source.values())) > 1:
+                conflicting[row["name"]] = (row, values_by_source)
+        if not conflicting:
+            return
+        # Collect partition M expressions brought in by the plan, grouped by donor source_id.
+        taken_partitions: list[tuple[str, str, str]] = []  # (source_id, table_name, m_text)
+        for step in self.steps:
+            for op in step.operations:
+                if op.get("domain") != MODEL or op.get("object_type") != "partition":
+                    continue
+                if op.get("op") not in {"CREATE", "REPLACE", "SET_PROPERTIES"}:
+                    continue
+                sid = op.get("source_id")
+                props = op.get("properties") or {}
+                m_text = str(props.get("expression") or props.get("m_text") or "")
+                if sid and m_text:
+                    taken_partitions.append((sid, str(op.get("table") or op.get("name") or ""), m_text))
+        if not taken_partitions:
+            return
+        for expr_name, (expr_row, values_by_source) in sorted(conflicting.items()):
+            pattern = re.compile(r"(?<![A-Za-z0-9_])" + re.escape(expr_name) + r"(?![A-Za-z0-9_])")
+            donors_using: dict[str, list[str]] = {}
+            for sid, tbl, m_text in taken_partitions:
+                if sid in values_by_source and pattern.search(m_text):
+                    donors_using.setdefault(sid, []).append(tbl)
+            distinct_vals = {values_by_source[sid] for sid in donors_using}
+            if len(distinct_vals) > 1:
+                affected_tables = sorted({tbl for tbls in donors_using.values() for tbl in tbls})
+                donor_names = sorted(self.data.sources.get(sid, sid) for sid in donors_using)
+                self._item(
+                    self.warnings,
+                    "shared_expression_conflict",
+                    expr_row["row_key"],
+                    item_id=f"shared_expression_conflict:{expr_row['row_key']}",
+                    expression=expr_name,
+                    donors=donor_names,
+                    tables=affected_tables,
+                )
+
     def run(self) -> dict[str, Any]:
         self.pending: list[tuple[_Step, Mapping[str, Any], str, CompareObject, bool, str | None]] = []
         self.children: dict[str, list[tuple[Mapping[str, Any], CompareObject]]] = {}
@@ -1355,11 +1524,13 @@ class _Compiler:
                 self.build_create(pending_step, pending_row, source_id, donor, new_tag, folder)
         for step, row, entry in authored:
             self.build_authored(step, row, entry)
+        self.ensure_model_header()
         self.finish_fields()
         self.rewrite_dependents()
         self.rebind_fields()
         self.check_names()
         self.check_functions()
+        self.check_shared_expressions()
         self.check_marks()
         self.check_session_ready()
         return self.result()

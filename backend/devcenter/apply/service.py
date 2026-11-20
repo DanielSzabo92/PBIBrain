@@ -466,6 +466,12 @@ class ApplyService:
         self._save_last(record)
 
         self._step(kind, FINGERPRINT)
+        from backend.devcenter.compare.extract import invalidate_cache
+
+        invalidate_cache()
+        self.devcenter._cached_plan = None
+        if hasattr(self.devcenter, "_cached_impact"):
+            self.devcenter._cached_impact = None
         revision = self._commit("format_only_apply" if kind == "format_only" else "apply", target.source_id, None,
                                 {"apply_id": record["apply_id"], "plan_hash": record["plan_hash"], "file_count": len(record["files"])},
                                 also=self._also(target))
@@ -584,6 +590,12 @@ class ApplyService:
                        for key in sorted(set(before) | set(after)) if before.get(key) != after.get(key)]
 
         self._step(kind, FINGERPRINT)
+        from backend.devcenter.compare.extract import invalidate_cache
+
+        invalidate_cache()
+        self.devcenter._cached_plan = None
+        if hasattr(self.devcenter, "_cached_impact"):
+            self.devcenter._cached_impact = None
         revision = self._commit("undo_apply", target.source_id, {"apply_id": record["apply_id"]}, {"undo_id": apply_id},
                                 also=self._also(target))
         record.update(undone=True, undo_id=apply_id, undo_finished_utc=utc_now(), undo_differences=differences)

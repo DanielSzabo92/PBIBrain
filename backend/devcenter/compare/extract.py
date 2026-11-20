@@ -107,17 +107,28 @@ def _column(table: str, item: Mapping[str, Any]) -> CompareObject | None:
     if column_type == "rowNumber":
         return None
     calculated = column_type == "calculated"
+    calculated_table_col = column_type == "calculatedTableColumn"
     props = {"data_type": item.get("dataType"), "source_column": item.get("sourceColumn"), "format_string": item.get("formatString"),
              "display_folder": item.get("displayFolder"), "description": _text(item.get("description")),
              "hidden": bool(item.get("isHidden", False)), "summarize_by": item.get("summarizeBy") or "default",
              "sort_by_column": item.get("sortByColumn"), "data_category": item.get("dataCategory"), "key": bool(item.get("isKey", False))}
     if calculated:
         props["expression"] = _text(item.get("expression"))
+    subtype = "calculated_column" if calculated else "data_column"
+    extra: dict[str, Any] = {
+        "signature": ("expression", props.get("expression")) if calculated else ("source", item.get("dataType"), item.get("sourceColumn")),
+    }
+    if calculated_table_col:
+        extra["column_type"] = "calculatedTableColumn"
+        if item.get("isNameInferred") is not None:
+            extra["is_name_inferred"] = bool(item.get("isNameInferred"))
+    if item.get("variations"):
+        extra["variations"] = item.get("variations")
     return CompareObject(
-        kind="column", subtype="calculated_column" if calculated else "data_column", domain=MODEL,
+        kind="column", subtype=subtype, domain=MODEL,
         source_key=f"column:{table}/{item['name']}", name=item["name"], table=table, lineage_tag=item.get("lineageTag"),
         display_folder=item.get("displayFolder"), props=props, strict_props=_strict(item),
-        extra={"signature": ("expression", props.get("expression")) if calculated else ("source", item.get("dataType"), item.get("sourceColumn"))},
+        extra=extra,
         code=_text(item.get("expression")) if calculated else _json_code(item), language=DAX if calculated else JSON)
 
 
@@ -166,6 +177,14 @@ def _table(item: Mapping[str, Any]) -> Iterator[CompareObject]:
                              "data_category": item.get("dataCategory")}
     subtype = "table"
     extra: dict[str, Any] = {}
+    if item.get("isPrivate"):
+        extra["is_private"] = True
+    if item.get("showAsVariationsOnly"):
+        extra["show_as_variations_only"] = True
+    raw_columns = list(_named(item.get("columns")))
+    col_order = [col["name"] for col in raw_columns if (col.get("type") or "data") != "rowNumber"]
+    if col_order:
+        extra["column_order"] = col_order
     if calculated is not None:
         subtype = "calculated_table"
         props["expression"] = _text(calculated.get("expression"))
@@ -178,7 +197,7 @@ def _table(item: Mapping[str, Any]) -> Iterator[CompareObject]:
                         code=props.get("expression") or _json_code(own), language=DAX if calculated is not None else JSON)
     for measure in _named(item.get("measures")):
         yield _measure(name, measure)
-    for column in _named(item.get("columns")):
+    for column in raw_columns:
         value = _column(name, column)
         if value is not None:
             yield value
@@ -197,18 +216,16 @@ _CARDINALITY = {"one": "one", "many": "many"}
 
 
 def _relationship(item: Mapping[str, Any]) -> CompareObject:
+    # Preserve true from -> to direction and cardinalities; alignment sorts a copy of ends.
     ends = [(str(item.get("fromTable", "")), str(item.get("fromColumn", ""))), (str(item.get("toTable", "")), str(item.get("toColumn", "")))]
-    cardinality = [item.get("fromCardinality") or "many", item.get("toCardinality") or "one"]
-    if [part.casefold() for part in ends[1]] < [part.casefold() for part in ends[0]]:
-        # The ends align in any order. Keep one order, so the cardinality reads the same way.
-        ends.reverse()
-        cardinality.reverse()
+    from_card = item.get("fromCardinality") or "many"
+    to_card = item.get("toCardinality") or "one"
     return CompareObject(
         kind="relationship", subtype="relationship", domain=MODEL, source_key=f"relationship:{item['name']}", name=item["name"],
-        props={"cardinality": ":".join(cardinality), "cross_filter_direction": item.get("crossFilteringBehavior") or "oneDirection",
+        props={"cardinality": f"{from_card}:{to_card}", "cross_filter_direction": item.get("crossFilteringBehavior") or "oneDirection",
                "active": bool(item.get("isActive", True)), "security_filter_direction": item.get("securityFilteringBehavior") or "oneDirection",
                "referential_integrity": bool(item.get("relyOnReferentialIntegrity", False))},
-        strict_props=_strict(item), extra={"ends": ends}, code=_json_code(item))
+        strict_props=_strict(item), extra={"ends": ends, "from_cardinality": from_card, "to_cardinality": to_card}, code=_json_code(item))
 
 
 def _role(item: Mapping[str, Any]) -> CompareObject:
@@ -391,6 +408,7 @@ class SourceObjects:
 
     model: list[CompareObject]
     report: list[CompareObject]
+    model_header: dict[str, Any] = field(default_factory=dict)
 
     def all(self) -> list[CompareObject]:
         return self.model + self.report
@@ -401,9 +419,41 @@ _CACHE_LOCK = threading.Lock()
 _CACHE_SIZE = 32
 
 
+def invalidate_cache(root: str | Path | None = None) -> None:
+    """Drop cached compare objects for one source root, or all sources when root is None."""
+
+    with _CACHE_LOCK:
+        if root is None:
+            _CACHE.clear()
+        else:
+            target = str(root)
+            for key in [k for k in _CACHE if k[0] == target]:
+                _CACHE.pop(key, None)
+
+
+def _model_header(model: Mapping[str, Any]) -> dict[str, Any]:
+    header: dict[str, Any] = {}
+    if model.get("culture"):
+        header["culture"] = str(model["culture"])
+    if model.get("defaultPowerBIDataSourceVersion"):
+        header["default_power_bi_data_source_version"] = str(model["defaultPowerBIDataSourceVersion"])
+    if model.get("sourceQueryCulture"):
+        header["source_query_culture"] = str(model["sourceQueryCulture"])
+    if isinstance(model.get("dataAccessOptions"), Mapping) and model["dataAccessOptions"]:
+        header["data_access_options"] = dict(model["dataAccessOptions"])
+    annotations = _annotations(model)
+    if annotations:
+        header["annotations"] = annotations
+    return header
+
+
 def _read_model(source: LocalSource, adapter: TabularMetadataAdapter) -> dict[str, Any]:
     assert source.model_dir is not None
-    path = source.model_dir / "model.bim" if source.model_format == MODEL_TMSL else source.model_dir
+    if source.model_format == MODEL_TMSL:
+        path = source.model_dir / "model.bim"
+    else:
+        definition = source.model_dir / "definition"
+        path = definition if definition.is_dir() else source.model_dir
     try:
         payload = adapter.read(path)
     except MetadataUnavailable as exc:
@@ -422,14 +472,18 @@ def load_objects(source: LocalSource, *, adapter: TabularMetadataAdapter | None 
     if cached is not None:
         return cached
     model: list[CompareObject] = []
+    model_header: dict[str, Any] = {}
     report: list[CompareObject] = []
     if source.model_dir is not None and source.model_format in {MODEL_TMDL, MODEL_TMSL}:
-        model = model_objects(_read_model(source, adapter or TabularMetadataAdapter()))
+        raw_model = _read_model(source, adapter or TabularMetadataAdapter())
+        model = model_objects(raw_model)
+        model_header = _model_header(raw_model)
     if source.report_dir is not None and source.report_format == REPORT_PBIR:
         report = _pbir_objects(source.report_dir)
     elif source.report_dir is not None and source.report_format == REPORT_PBIR_LEGACY:
         report = _pbir_legacy_objects(source.report_dir)
-    value = SourceObjects(sorted(model, key=lambda item: item.source_key), sorted(report, key=lambda item: item.source_key))
+    value = SourceObjects(sorted(model, key=lambda item: item.source_key), sorted(report, key=lambda item: item.source_key),
+                          model_header=model_header)
     with _CACHE_LOCK:
         if len(_CACHE) >= _CACHE_SIZE:
             _CACHE.pop(next(iter(_CACHE)))

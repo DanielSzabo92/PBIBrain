@@ -60,7 +60,9 @@ def _type_rank(operation: Mapping[str, Any]) -> int:
 
 
 def tie_key(operation: Mapping[str, Any]) -> tuple[Any, ...]:
-    return (_type_rank(operation), fold(operation.get("table") or ""), fold(operation.get("name") or ""),
+    col_ord = operation.get("column_ordinal")
+    ord_key = col_ord if isinstance(col_ord, int) else 10 ** 9
+    return (_type_rank(operation), fold(operation.get("table") or ""), ord_key, fold(operation.get("name") or ""),
             operation.get("pointer") or "", operation["op_id"])
 
 

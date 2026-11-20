@@ -51,26 +51,45 @@ def targets(document: Mapping[str, Any]) -> tuple[str | None, str | None]:
     return model, report.get("source_id") if report.get("mode") == "existing" else None
 
 
-def _sources(devcenter: Any, document: Mapping[str, Any]) -> list[SessionSource]:
+def _sources(devcenter: Any, document: Mapping[str, Any]) -> tuple[list[SessionSource], list[dict[str, Any]]]:
     found = []
+    read_errors: list[dict[str, Any]] = []
     for record in document["sources"]:
+        source_id = record["source_id"]
         objects = None
-        if document["source_status"].get(record["source_id"], "ok") == "ok":
+        if document["source_status"].get(source_id, "ok") == "ok":
             try:
                 objects = load_objects(devcenter._load(record))
-            except DevCenterError:
+            except DevCenterError as exc:
                 objects = None
-        found.append(SessionSource(record["source_id"], objects))
-    return found
+                read_errors.append({
+                    "warning_id": "source_unreadable",
+                    "source_id": source_id,
+                    "display_name": str(record.get("display_name") or source_id),
+                    "code": str(exc.code or "model_unreadable"),
+                    "message": str(exc.message or "The app could not read the model of this source."),
+                })
+        found.append(SessionSource(source_id, objects))
+    return found, read_errors
 
 
 def compute(devcenter: Any, document: Mapping[str, Any], mode: str | None = None) -> CompareResult:
     """Give the full compare row set of a session document."""
 
     model, report = targets(document)
-    return build_rows(_sources(devcenter, document), target_model=model, target_report=report,
-                      overrides=document.get("alignment_overrides") or {}, mode=mode or document.get("compare_mode") or MODE_DEFAULT,
-                      merge_choices=document.get("merge_choices") or {}, marks=document.get("source_marks") or [])
+    sources, read_errors = _sources(devcenter, document)
+    result = build_rows(sources, target_model=model, target_report=report,
+                        overrides=document.get("alignment_overrides") or {}, mode=mode or document.get("compare_mode") or MODE_DEFAULT,
+                        merge_choices=document.get("merge_choices") or {}, marks=document.get("source_marks") or [])
+    if read_errors:
+        result.warnings.extend(read_errors)
+        result.source_errors = read_errors
+    result.model_headers = {
+        src.source_id: dict(src.objects.model_header)
+        for src in sources
+        if src.objects is not None and src.objects.model_header
+    }
+    return result
 
 
 def _integer(query: Mapping[str, Sequence[str]], name: str, default: int, maximum: int) -> int:

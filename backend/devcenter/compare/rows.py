@@ -17,7 +17,7 @@ target object, else (target = Missing) the first donor object of the row.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import hashlib
 from typing import Any
 from collections.abc import Mapping, Sequence
@@ -40,7 +40,7 @@ PRECEDENCE = {state: index for index, state in enumerate(STATES)}
 
 NOTE_SAME_AFTER_RENAME = "same_after_rename"
 NOTE_IDS = ("same_after_rename", "possible_rename", "name_clash", "duplicate_lineage_tag")
-WARNING_IDS = ("duplicate_lineage_tag",)
+WARNING_IDS = ("duplicate_lineage_tag", "source_unreadable")
 
 MODE_DEFAULT = "default"
 MODE_STRICT = "strict"
@@ -64,6 +64,8 @@ class CompareResult:
     orphan_marks: list[dict[str, Any]]
     # The compare object of each cell, by (source ID, source key), for the code diff.
     objects: dict[tuple[str, str], CompareObject]
+    source_errors: list[dict[str, Any]] = field(default_factory=list)
+    model_headers: dict[str, dict[str, Any]] = field(default_factory=dict)
 
 
 def row_id(row_key: str) -> str:
