@@ -199,7 +199,11 @@ The frontend tests run against `tests/devcenter_ui_server.py`. This mock server 
 
 The user supplied an independent review of the Merge tab: "Merge Tab (Development Center): Technical Defect & Collateral Damage Report", items M-01 to M-19, on the same base (`origin/main` at `2b56733`). That review reads code. This report comes from a live run. I examined each claim in the code of this worktree. Where the cost was low, I ran the code.
 
-The P0/P1/P2 levels of the independent review are its own. They are not proven by this run.
+The P0/P1/P2 levels of the independent review are predictions from the code. This run did not trigger those failures, unless the evidence label is "Live". The two methods give different information:
+- A run also shows the behavior of code that is not in this repo: TOM, Power BI Desktop and the real PBIP files. A code read cannot show this.
+- A code read is a prediction by the reader and can be wrong. Both reviews had such errors (M-01 "all"; the first Finance cause in 3.1).
+- Severity also depends on whether and how often a normal user reaches the path. A code read does not show this.
+- A run covers only the paths that were clicked. A code read also covers other paths. Thus the code review found real defects that this run did not reach.
 
 Evidence labels:
 - **Live**: seen in the live run of this report.
