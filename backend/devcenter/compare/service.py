@@ -78,9 +78,16 @@ def compute(devcenter: Any, document: Mapping[str, Any], mode: str | None = None
 
     model, report = targets(document)
     sources, read_errors = _sources(devcenter, document)
+    open_proposals = {
+        str(item["target_id"]): str(item.get("status") or "proposed")
+        for item in (document.get("proposals") or [])
+        if isinstance(item, Mapping) and item.get("status") == "proposed" and item.get("target_id")
+    }
     result = build_rows(sources, target_model=model, target_report=report,
                         overrides=document.get("alignment_overrides") or {}, mode=mode or document.get("compare_mode") or MODE_DEFAULT,
-                        merge_choices=document.get("merge_choices") or {}, marks=document.get("source_marks") or [])
+                        merge_choices=document.get("merge_choices") or {}, marks=document.get("source_marks") or [],
+                        removal_policies=document.get("removal_policies") or {},
+                        open_proposal_targets=open_proposals)
     if read_errors:
         result.warnings.extend(read_errors)
         result.source_errors = read_errors

@@ -121,6 +121,7 @@ class DevCenterSessions:
         self._project_root: Path | None = None
         self._open: _OpenSession | None = None
         self._cached_plan: dict[str, Any] | None = None
+        self._cached_impact: dict[str, Any] | None = None
         self._plan_state: str | None = None
 
     # Project and locations -------------------------------------------------
@@ -277,6 +278,15 @@ class DevCenterSessions:
             sources = [self._source_view(document, item) for item in document["sources"]]
             plan_status = self._cached_plan["status"] if self._cached_plan is not None else None
             plan_state = "ready" if self._cached_plan is not None else self._plan_state
+            raw_policies = document.get("removal_policies") or {}
+            removal_policies = {
+                key: {
+                    "policy": val["policy"],
+                    "repoint_target": val.get("repoint_target") if "repoint_target" in val else val.get("replacement_row_key"),
+                }
+                for key, val in raw_policies.items()
+                if isinstance(val, Mapping) and val.get("policy")
+            }
             return {
                 "revision": document["revision"],
                 "session_id": document["session_id"],
@@ -291,6 +301,7 @@ class DevCenterSessions:
                 "compare_mode": document["compare_mode"],
                 "plan_status": plan_status,
                 "plan_state": plan_state,
+                "removal_policies": removal_policies,
                 "counts": {
                     "sources": len(sources),
                     "donors": sum(1 for item in sources if item["role"] == ROLE_DONOR),
@@ -415,6 +426,7 @@ class DevCenterSessions:
                 current = self._open
                 return {"revision": current.document["revision"], "session_id": session_id, "read_only": current.read_only,
                         "migrated": False, "mark_count": len(current.document["source_marks"])}
+            self._cached_impact = None
             location, folder = self._find(session_id)
             files = SessionFiles(folder)
             raw = files.read()
@@ -456,9 +468,147 @@ class DevCenterSessions:
     def _close(self) -> None:
         current, self._open = self._open, None
         self._cached_plan = None
+        self._cached_impact = None
         self._plan_state = None
         if current is not None and not current.read_only:
             current.lock.release()
+
+    def rename(self, request: Mapping[str, Any]) -> dict[str, Any]:
+        with self._lock:
+            session_id = valid_session_id(request.get("session_id"))
+            name = str(request.get("display_name") or "").strip()
+            if not name:
+                raise DevCenterError("invalid_payload", "Type a session name.", {"reason": "name_required"})
+            if self._open is not None and self._open.files.session_id == session_id:
+                current = self._open
+                require_writable(current.read_only)
+                draft = copy.deepcopy(current.document)
+                before_name = draft["display_name"]
+                draft["display_name"] = name
+                check_secrets(draft)
+                saved = self._commit(current, draft, "session_rename", session_id, {"display_name": before_name}, {"display_name": name})
+                return {"session_id": session_id, "display_name": saved["display_name"], "revision": saved["revision"]}
+            _, folder = self._find(session_id)
+            files = SessionFiles(folder)
+            lock = SessionLock(folder, self.owner)
+            if not lock.acquire():
+                require_writable(True)
+            try:
+                raw = files.read()
+                document, _ = migrate(raw)
+                before_name = document["display_name"]
+                document["display_name"] = name
+                document["revision"] = int(document.get("revision") or 0) + 1
+                document["updated_at"] = utc_now()
+                check_secrets(document)
+                files.save(document)
+                try:
+                    files.append_log({
+                        "time": document["updated_at"],
+                        "author": "user",
+                        "mcp_client": None,
+                        "action": "session_rename",
+                        "target": session_id,
+                        "before": {"display_name": before_name},
+                        "after": {"display_name": name},
+                        "reason": None,
+                        "proposal_id": None,
+                        "revision": document["revision"],
+                    })
+                except OSError:
+                    pass
+                return {"session_id": session_id, "display_name": document["display_name"], "revision": document["revision"]}
+            finally:
+                lock.release()
+
+    def delete(self, request: Mapping[str, Any]) -> dict[str, Any]:
+        with self._lock:
+            session_id = valid_session_id(request.get("session_id"))
+            if self._open is not None and self._open.files.session_id == session_id:
+                current = self._open
+                require_writable(current.read_only)
+                folder = current.files.folder
+                self._close()
+                shutil.rmtree(folder, ignore_errors=True)
+                return {"session_id": session_id, "deleted": True, "revision": None}
+            _, folder = self._find(session_id)
+            lock = SessionLock(folder, self.owner)
+            if lock.state() == "locked":
+                require_writable(True)
+            shutil.rmtree(folder, ignore_errors=True)
+            return {"session_id": session_id, "deleted": True, "revision": self.revision}
+
+    def duplicate(self, request: Mapping[str, Any]) -> dict[str, Any]:
+        with self._lock:
+            source_session_id = valid_session_id(request.get("session_id"))
+            is_open = self._open is not None and self._open.files.session_id == source_session_id
+            if is_open:
+                assert self._open is not None
+                source_doc = copy.deepcopy(self._open.document)
+                source_location = self._open.location
+            else:
+                source_location, source_folder = self._find(source_session_id)
+                source_doc, _ = migrate(SessionFiles(source_folder).read())
+            name = str(request.get("display_name") or "").strip() or f"{source_doc.get('display_name') or 'Session'} (copy)"
+            location = request.get("location") or source_location or LOCATION_PROJECT
+            bases = dict(self._bases())
+            if location not in bases:
+                raise DevCenterError("invalid_payload", "The session location is not available.", {"reason": "location_unavailable"})
+            new_id = uuid.uuid4().hex
+            now = utc_now()
+            document = new_document(new_id, name, location)
+            for key in (
+                "next_source_number",
+                "sources",
+                "target",
+                "compare_mode",
+                "alignment_overrides",
+                "merge_choices",
+                "created_objects",
+                "removal_policies",
+                "prerequisite_mappings",
+                "need_mappings",
+                "item_actions",
+                "selected_offers",
+                "naming_rules",
+                "source_fingerprints",
+                "row_hashes",
+                "source_marks",
+                "source_status",
+                "checked_at",
+            ):
+                if key in source_doc:
+                    document[key] = copy.deepcopy(source_doc[key])
+            document["created_at"] = now
+            document["updated_at"] = now
+            document["revision"] = 1
+            check_secrets(document)
+            folder = sessions_dir(bases[location]) / new_id
+            folder.mkdir(parents=True)
+            try:
+                ensure_gitignore(self.project_root / ".pbibrain")
+                files = SessionFiles(folder)
+                files.save(document)
+                lock = SessionLock(folder, self.owner)
+                lock.acquire()
+                files.append_log({
+                    "time": document["created_at"],
+                    "author": "user",
+                    "mcp_client": None,
+                    "action": "session_duplicate",
+                    "target": new_id,
+                    "before": {"source_session_id": source_session_id},
+                    "after": {"display_name": name},
+                    "reason": None,
+                    "proposal_id": None,
+                    "revision": 1,
+                })
+            except BaseException:
+                shutil.rmtree(folder, ignore_errors=True)
+                raise
+            self._close()
+            self._open = _OpenSession(files, document, lock, False, location)
+            return {"revision": 1, "session_id": new_id, "display_name": name, "read_only": False}
 
     # Sources -----------------------------------------------------------------
 
@@ -703,9 +853,12 @@ class DevCenterSessions:
                         assignments.append((k, c))
 
             updated_keys: list[str] = []
+            previous_choices: dict[str, Any] = {}
 
             def mutate(document: dict[str, Any]) -> tuple[Any, Any]:
                 before = {key: copy.deepcopy(document["merge_choices"].get(key)) for key, _ in assignments}
+                previous_choices.clear()
+                previous_choices.update(before)
                 after = {}
                 for key, ch in assignments:
                     updated_keys.append(key)
@@ -718,7 +871,12 @@ class DevCenterSessions:
                 return before, after
 
             document = self._change(request, "merge_choice_bulk_set", None, mutate)
-            return {"revision": document["revision"], "count": len(updated_keys), "row_keys": updated_keys}
+            return {
+                "revision": document["revision"],
+                "count": len(updated_keys),
+                "row_keys": updated_keys,
+                "previous_choices": previous_choices,
+            }
 
 
     # Source check and marks --------------------------------------------------
@@ -760,13 +918,15 @@ class DevCenterSessions:
         marks = self._diff(source_id, document["row_hashes"].get(source_id, {}), object_index(source))
         document["source_marks"] = sorted(others + marks, key=lambda mark: (mark["source_id"], mark["row_key"]))
         if not marks:
-            # The files changed outside the indexed objects. No row needs a confirm.
+            # The files changed outside the indexed compare rows. No row needs a confirm.
             document["source_fingerprints"][source_id] = fingerprint
 
     @staticmethod
     def _diff(source_id: str, baseline: Mapping[str, str], current: Mapping[str, str]) -> list[dict[str, Any]]:
         marks = []
         for key in sorted(set(baseline) | set(current)):
+            if key.startswith("model:"):
+                continue
             if key not in current:
                 marks.append({"source_id": source_id, "row_key": key, "mark": MARK_OBJECT_MISSING})
             elif key not in baseline:

@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pbibrain.local/devcenter/contracts/jsapi/session_rename.reply.json",
+  "title": "JS API session_rename: reply (an error reply uses error.json)",
+  "type": "object",
+  "properties": {
+    "session_id": {
+      "$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/session_id"
+    },
+    "display_name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "revision": {
+      "$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/revision"
+    }
+  },
+  "required": [
+    "display_name",
+    "revision",
+    "session_id"
+  ],
+  "additionalProperties": false
+}

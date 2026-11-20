@@ -49,11 +49,12 @@ JSAPI_METHODS = (
     "proposal_accept", "proposal_reject", "proposal_accept_all", "question_answer", "format_only_apply",
     "apply", "undo_apply", "change_report_write", "cloud_sign_in", "cloud_connect", "pull_to_local",
     "cloud_items_list", "target_edit_apply", "target_convert_tmdl", "merge_template_save", "merge_template_list", "merge_template_apply",
+    "session_rename", "session_delete", "session_duplicate",
 )
 # Calls that read only: they do not change the revision.
 JSAPI_READS = frozenset({"cloud_items_list", "merge_template_list", "merge_template_save"})
 # Calls that work with no open session.
-NO_SESSION_METHODS = frozenset({"session_create", "session_open", "cloud_sign_in", "cloud_items_list"})
+NO_SESSION_METHODS = frozenset({"session_create", "session_open", "session_rename", "session_delete", "session_duplicate", "cloud_sign_in", "cloud_items_list"})
 # Calls that a read-only (locked) session still permits.
 LOCKED_METHODS = frozenset({"session_close", "session_open", "cloud_items_list", "cloud_sign_in", "merge_template_list"})
 # The existing desktop host methods that frontend/src/desktop.js and App.jsx use (old reply shape).

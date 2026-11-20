@@ -93,10 +93,12 @@ def approvals_needed(plan: Mapping[str, Any], *, cloud: bool = False) -> list[di
 
     operations = list(plan.get("operations") or [])
     needed = []
-    risk = _risk(operations)
-    if risk in {"HIGH", "CRITICAL"}:
-        keys = sorted({str(item.get("row_key")) for item in operations if _risk([item]) in {"HIGH", "CRITICAL"}})
-        needed.append({"purpose": HIGH_RISK, "risk": risk, "row_keys": keys})
+    critical_keys = sorted({str(item.get("row_key")) for item in operations if _risk([item]) == "CRITICAL"})
+    high_keys = sorted({str(item.get("row_key")) for item in operations if _risk([item]) == "HIGH"})
+    if critical_keys:
+        needed.append({"purpose": HIGH_RISK, "risk": "CRITICAL", "row_keys": critical_keys})
+    if high_keys:
+        needed.append({"purpose": HIGH_RISK, "risk": "HIGH", "row_keys": high_keys})
     unchecked = not_checked(plan)
     if unchecked:
         needed.append({"purpose": UNCHECKED, "risk": None, "row_keys": sorted({str(item["object_id"]) for item in unchecked})})
@@ -433,7 +435,7 @@ class ApplyService:
             raise ApplyFailure(VALIDATION, "validation_failed", "The full validation found blocking items.", failed_checks=_failed_checks(plan))
 
         self._step(kind, APPROVAL)
-        needed = sorted(item["purpose"] for item in approvals_needed(plan, cloud=target.cloud is not None))
+        needed = sorted({item["purpose"] for item in approvals_needed(plan, cloud=target.cloud is not None)})
         if approvals != needed:
             raise ApplyFailure(APPROVAL, "approval_missing", "Give the approvals of the Apply dialog.", check="approval", purposes=needed)
 

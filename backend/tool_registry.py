@@ -141,11 +141,11 @@ def merge_tools(client: Any, client_label: Callable[[], str]) -> list[Tool]:
         return tools.session_get()
 
     def compare_rows_list(type: str | None = None, table: str | None = None, state: str | None = None, source: str | None = None,
-                          changed: bool | None = None, marks: bool | None = None, q: str | None = None,
+                          changed: bool | None = None, marks: bool | None = None, proposal: bool | None = None, q: str | None = None,
                           limit: int = 50, offset: int = 0) -> dict[str, Any]:
         """List compare rows with filters. Read has_more and page all rows before you claim completeness."""
-        return tools.compare_rows_list(type=type, table=table, state=state, source=source, changed=changed, marks=marks, q=q,
-                                       limit=limit, offset=offset)
+        return tools.compare_rows_list(type=type, table=table, state=state, source=source, changed=changed, marks=marks,
+                                       proposal=proposal, q=q, limit=limit, offset=offset)
 
     def impact_get(target: str = "plan", include_proposals: bool = True, direction: str | None = None,
                    blocking: bool | None = None, severity: str | None = None, limit: int = 50, offset: int = 0) -> dict[str, Any]:

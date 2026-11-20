@@ -86,7 +86,7 @@ def get_impact(devcenter: Any, query: Mapping[str, Sequence[str]]) -> dict[str, 
     single_row = None if target_param == "plan" else target_param
 
     # Cache check
-    cache_key = (revision, target_param, mode)
+    cache_key = (document.get("session_id"), revision, target_param, mode)
     cached = getattr(devcenter, "_cached_impact", None)
     if cached and cached.get("key") == cache_key:
         all_items = cached["items"]
@@ -345,22 +345,37 @@ def impact_action_apply(devcenter: Any, request: Mapping[str, Any]) -> dict[str,
                     continue
 
                 if action == "include_in_rewrite":
-                    item_actions[iid] = {"action": "include_in_rewrite"}
+                    dep_id = (item.get("impacted_object") or {}).get("object_id")
+                    cause = item.get("cause")
+                    canon_key = f"renamed:{dep_id}:{cause}" if dep_id and cause else iid
+                    entry = {"action": "include_in_rewrite", "item_id": iid}
+                    if dep_id and cause:
+                        entry["dependent"] = dep_id
+                        entry["cause"] = cause
+                    item_actions[canon_key] = entry
                     applied.append(iid)
                 elif action in {"set_policy_block", "set_policy_cascade", "set_policy_repoint"}:
                     pol = action.replace("set_policy_", "")
-                    row_key = payload.get("row_key") or item.get("cause") or iid
-                    repoint_t = payload.get("repoint_target")
+                    row_key = payload.get("row_key") or item.get("cause")
+                    if not row_key or (isinstance(row_key, str) and row_key.startswith("imp-")):
+                        row_key = item.get("cause") or iid
+                    repoint_t = payload.get("repoint_target") if "repoint_target" in payload else payload.get("replacement_row_key")
                     removal_policies[row_key] = {"policy": pol, "repoint_target": repoint_t}
                     applied.append(iid)
                 elif action in {"add_from_donor", "map_to_target", "drop_added_object"}:
-                    need_mappings[iid] = {
+                    obj_key = (item.get("impacted_object") or {}).get("object_id") or iid
+                    target_obj = payload.get("target_object") if "target_object" in payload else payload.get("row_key")
+                    need_mappings[obj_key] = {
                         "action": action,
-                        "target_object": payload.get("target_object"),
+                        "target_object": target_obj,
+                        "item_id": iid,
                     }
                     applied.append(iid)
                 elif action == "remove_field":
-                    item_actions[iid] = {"action": "remove_field"}
+                    dep_id = (item.get("impacted_object") or {}).get("object_id")
+                    cause = item.get("cause")
+                    canon_key = f"removed:{dep_id}:{cause}" if dep_id and cause else iid
+                    item_actions[canon_key] = {"action": "remove_field", "item_id": iid}
                     applied.append(iid)
                 else:
                     failed.append({"item_id": iid, "reason": "unsupported_action"})
@@ -388,6 +403,12 @@ def removal_policy_set(devcenter: Any, request: Mapping[str, Any]) -> dict[str, 
     repoint_target = request.get("repoint_target")
 
     with devcenter._lock:
+        if isinstance(row_key, str) and row_key.startswith("imp-"):
+            eng, _, _ = _get_engine(devcenter, devcenter._require_open().document)
+            found = next((it for it in eng.evaluate_all() if it["id"] == row_key), None)
+            if found and found.get("cause"):
+                row_key = found["cause"]
+
         def mutate(document: dict[str, Any]) -> tuple[Any, Any]:
             policies = document.setdefault("removal_policies", {})
             before = copy.deepcopy(policies.get(row_key))
@@ -414,16 +435,26 @@ def need_mapping_set(devcenter: Any, request: Mapping[str, Any]) -> dict[str, An
     target_object = request.get("target_object")
 
     with devcenter._lock:
+        store_key = need_id
+        if isinstance(need_id, str) and need_id.startswith("imp-"):
+            eng, _, _ = _get_engine(devcenter, devcenter._require_open().document)
+            found = next((it for it in eng.evaluate_all() if it["id"] == need_id), None)
+            if found:
+                store_key = (found.get("impacted_object") or {}).get("object_id") or need_id
+
         def mutate(document: dict[str, Any]) -> tuple[Any, Any]:
             mappings = document.setdefault("need_mappings", {})
-            before = copy.deepcopy(mappings.get(need_id))
-            mappings[need_id] = {
+            before = copy.deepcopy(mappings.get(store_key))
+            entry: dict[str, Any] = {
                 "action": action,
                 "target_object": target_object,
             }
-            return before, mappings[need_id]
+            if store_key != need_id:
+                entry["item_id"] = need_id
+            mappings[store_key] = entry
+            return before, mappings[store_key]
 
-        document = devcenter._change(request, "need_mapping_set", need_id, mutate)
+        document = devcenter._change(request, "need_mapping_set", store_key, mutate)
         devcenter._cached_impact = None
         return {
             "revision": document["revision"],

@@ -153,6 +153,31 @@
         "open"
       ],
       "additionalProperties": false
+    },
+    "removal_policies": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "policy": {
+            "enum": [
+              "block",
+              "cascade",
+              "repoint"
+            ]
+          },
+          "repoint_target": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "policy"
+        ],
+        "additionalProperties": false
+      }
     }
   },
   "required": [

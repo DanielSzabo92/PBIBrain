@@ -57,9 +57,9 @@ class AgentTools:
 
     def compare_rows_list(self, *, type: str | None = None, table: str | None = None, state: str | None = None,
                           source: str | None = None, changed: bool | None = None, marks: bool | None = None,
-                          q: str | None = None, limit: int = 50, offset: int = 0) -> dict[str, Any]:
+                          proposal: bool | None = None, q: str | None = None, limit: int = 50, offset: int = 0) -> dict[str, Any]:
         return self._call("compare_rows_list", _query(type=type, table=table, state=state, source=source, changed=changed,
-                                                      marks=marks, q=q, limit=limit, offset=offset))
+                                                      marks=marks, proposal=proposal, q=q, limit=limit, offset=offset))
 
     def impact_get(self, *, target: str = "plan", include_proposals: bool | str = True, direction: str | None = None,
                    blocking: bool | None = None, severity: str | None = None, limit: int = 50, offset: int = 0) -> dict[str, Any]:

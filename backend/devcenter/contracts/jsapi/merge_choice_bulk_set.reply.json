@@ -16,10 +16,24 @@
       "items": {
         "$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/row_key"
       }
+    },
+    "previous_choices": {
+      "type": "object",
+      "additionalProperties": {
+        "anyOf": [
+          {
+            "type": "object"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      }
     }
   },
   "required": [
     "count",
+    "previous_choices",
     "revision",
     "row_keys"
   ],

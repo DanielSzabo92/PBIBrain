@@ -76,8 +76,23 @@
         "display_folder": {"type": ["string", "null"]},
         "row_state": {"$ref": "#/$defs/state"},
         "changed": {"type": "boolean"},
+        "donor_conflict": {"type": "boolean"},
         "cells": {"type": "array", "items": {"$ref": "#/$defs/cell"}},
         "merge_choice": {"type": ["object", "null"]},
+        "removal_policy": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "policy": {"enum": ["block", "cascade", "repoint"]},
+                "repoint_target": {"type": ["string", "null"]}
+              },
+              "required": ["policy"],
+              "additionalProperties": false
+            },
+            {"type": "null"}
+          ]
+        },
         "proposal_status": {"type": ["string", "null"]},
         "marks": {"type": "array", "items": {"$ref": "#/$defs/mark"}}
       },

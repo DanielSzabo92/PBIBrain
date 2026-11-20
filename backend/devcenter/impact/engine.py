@@ -576,8 +576,15 @@ class ImpactEngine:
                             reason_id = "need_missing"
                             blocking = True
 
-                        # Check if user already set a need mapping
-                        mapping = self.need_mappings.get(ref_key)
+                        item_id = deterministic_item_id("needs", ref_key, row_key, "upstream_need", ref_name)
+
+                        # Check if user already set a need mapping (keyed by ref_key, item_id, or legacy entry)
+                        mapping = self.need_mappings.get(ref_key) or self.need_mappings.get(item_id)
+                        if not isinstance(mapping, Mapping):
+                            mapping = next(
+                                (v for v in self.need_mappings.values() if isinstance(v, Mapping) and v.get("item_id") == item_id),
+                                None,
+                            )
                         if mapping:
                             if mapping.get("action") == "map_to_target":
                                 severity = "mapped"
@@ -591,7 +598,15 @@ class ImpactEngine:
                                 blocking = False
 
                         _, reason_text = _get_phrase(reason_id)
-                        item_id = deterministic_item_id("needs", ref_key, row_key, "upstream_need", ref_name)
+                        cause_name = row_key.split("/", 1)[-1] if "/" in row_key else row_key.split(":", 1)[-1]
+                        if reason_id == "need_missing":
+                            reason_text = f"'{cause_name}' needs '{ref_name}', which is missing from target."
+                        elif reason_id == "need_clash":
+                            reason_text = f"'{cause_name}' needs '{ref_name}', which clashes with an existing target object."
+                        elif reason_id == "need_will_be_added":
+                            reason_text = f"'{cause_name}' needs '{ref_name}', which will be added from donor."
+                        elif reason_id == "need_mapped":
+                            reason_text = f"'{cause_name}' needs '{ref_name}', which is mapped to target."
 
                         edge_phrase_id, edge_phrase = _get_phrase("depends_on", "depends on")
                         needs.append({

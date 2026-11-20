@@ -118,11 +118,15 @@ def _sort_key(row: Mapping[str, Any]) -> tuple[Any, ...]:
 
 def build_rows(sources: Sequence[SessionSource], *, target_model: str | None, target_report: str | None,
                overrides: Mapping[str, Any] | None = None, mode: str = MODE_DEFAULT,
-               merge_choices: Mapping[str, Any] | None = None, marks: Sequence[Mapping[str, Any]] = ()) -> CompareResult:
+               merge_choices: Mapping[str, Any] | None = None, marks: Sequence[Mapping[str, Any]] = (),
+               removal_policies: Mapping[str, Any] | None = None,
+               open_proposal_targets: Mapping[str, str] | None = None) -> CompareResult:
     """Align the sources and give the full compare row list in the default order."""
 
     strict = mode == MODE_STRICT
     merge_choices = merge_choices or {}
+    removal_policies = removal_policies or {}
+    open_proposal_targets = open_proposal_targets or {}
     rows: list[dict[str, Any]] = []
     warnings: list[dict[str, Any]] = []
     placed: dict[tuple[str, str], dict[str, Any]] = {}
@@ -165,11 +169,21 @@ def build_rows(sources: Sequence[SessionSource], *, target_model: str | None, ta
                 for note in aligned.notes.get(source_id, []):
                     cell["notes"].append({"note_id": note["note_id"], **({"other_row_key": note["row"].row_key} if "row" in note else {})})
                 cells.append(cell)
+            target_present = target_id is not None and target_id in aligned.members
+            donor_cells = [c for c in cells if c["role"] == "donor" and c["present"]]
+            donor_conflict = (not target_present) and len(donor_cells) > 1 and any(c["state"] != STATE_SAME for c in donor_cells)
             states = [cell["state"] for cell in cells]
-            if target_id is None or target_id not in aligned.members:
+            if not target_present:
                 # The target object is Missing (also when the session has no target yet).
                 states.append(STATE_MISSING)
             row_state = min(states, key=PRECEDENCE.__getitem__)
+            policy_raw = removal_policies.get(aligned.row_key)
+            removal_policy = None
+            if isinstance(policy_raw, Mapping) and policy_raw.get("policy"):
+                removal_policy = {
+                    "policy": policy_raw["policy"],
+                    "repoint_target": policy_raw.get("repoint_target") if "repoint_target" in policy_raw else policy_raw.get("replacement_row_key"),
+                }
             row = {
                 "row_key": aligned.row_key,
                 "row_id": row_id(aligned.row_key),
@@ -182,9 +196,11 @@ def build_rows(sources: Sequence[SessionSource], *, target_model: str | None, ta
                 "display_folder": reference.display_folder,
                 "row_state": row_state,
                 "changed": any(cell["changed"] for cell in cells),
+                **({"donor_conflict": True} if donor_conflict else {}),
                 "cells": cells,
                 "merge_choice": merge_choices.get(aligned.row_key),
-                "proposal_status": None,
+                **({"removal_policy": removal_policy} if removal_policy is not None else {}),
+                "proposal_status": open_proposal_targets.get(aligned.row_key),
                 "marks": [],
             }
             for cell in cells:
@@ -229,16 +245,23 @@ def _truth(value: Any) -> bool | None:
 
 
 def filter_rows(rows: Sequence[Mapping[str, Any]], query: Mapping[str, Any]) -> list[Mapping[str, Any]]:
-    """Filter by type, table, display folder (``folder`` or ``display_folder``), state, source, page, changed, marks, and ``q``."""
+    """Filter by type, table, display folder (``folder`` or ``display_folder``), state, source, page, changed, marks, proposal, and ``q``."""
 
     types = {fold(item) for item in _values(query.get("type"))}
     tables = {fold(item) for item in _values(query.get("table"))}
     folders = {fold(item) for item in _values(query.get("display_folder")) + _values(query.get("folder"))}
-    states = {fold(item) for item in _values(query.get("state"))}
+    raw_states = {fold(item) for item in _values(query.get("state"))}
+    exclude_same = "not_same" in raw_states or "notsame" in raw_states
+    if "all" in raw_states:
+        states: set[str] = set()
+        exclude_same = False
+    else:
+        states = {STATE_TYPE_CONFLICT if item == "conflict" else item for item in raw_states if item not in {"not_same", "notsame"}}
     sources = set(_values(query.get("source")))
     pages = {fold(item) for item in _values(query.get("page"))}
     changed = _truth(query.get("changed"))
     marks = {fold(item) for item in _values(query.get("marks"))}
+    proposal = _truth(query.get("proposal"))
     text = fold(" ".join(_values(query.get("q")))).strip()
     selected = []
     for row in rows:
@@ -247,6 +270,8 @@ def filter_rows(rows: Sequence[Mapping[str, Any]], query: Mapping[str, Any]) -> 
         if tables and fold(row["table"]) not in tables:
             continue
         if folders and fold(row["display_folder"]) not in folders:
+            continue
+        if exclude_same and row["row_state"] == STATE_SAME:
             continue
         if states and row["row_state"] not in states:
             continue
@@ -259,6 +284,10 @@ def filter_rows(rows: Sequence[Mapping[str, Any]], query: Mapping[str, Any]) -> 
         if marks:
             kinds = {mark["mark"] for mark in row["marks"]}
             if not kinds or not ("any" in marks or "true" in marks or kinds & marks):
+                continue
+        if proposal is not None:
+            has_prop = bool(row.get("proposal_status") or row.get("proposal") or row.get("has_proposal"))
+            if has_prop != proposal:
                 continue
         if text and not any(text in fold(name) for name in [row["name"], *(cell["name"] for cell in row["cells"] if cell["name"])]):
             continue

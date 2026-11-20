@@ -224,8 +224,14 @@ def _edit_summary(document: Mapping[str, Any], payload: Mapping[str, Any]) -> st
     return "Edit " + ", ".join(name.replace("_", " ") for name in names)
 
 
-_removal_user, _removal_apply = _keyed("removal_policies", lambda p: {"policy": p["policy"], "repoint_target": p.get("repoint_target")})
-_need_user, _need_apply = _keyed("need_mappings", lambda p: {"action": p["action"], "target_object": p.get("target_object")})
+_removal_user, _removal_apply = _keyed("removal_policies", lambda p: {
+    "policy": p["policy"],
+    "repoint_target": p.get("repoint_target") if "repoint_target" in p else p.get("replacement_row_key"),
+})
+_need_user, _need_apply = _keyed("need_mappings", lambda p: {
+    "action": p["action"],
+    "target_object": p.get("target_object") if "target_object" in p else p.get("row_key"),
+})
 _item_user, _item_apply = _keyed("item_actions", lambda p: {"action": p["action"]})
 
 KINDS: dict[str, _Kind] = {

@@ -330,6 +330,72 @@ class _Compiler:
 
     # Items ---------------------------------------------------------------------------
 
+    def _object_label(self, obj: Mapping[str, Any] | None, fallback: str | None = None) -> str:
+        if isinstance(obj, Mapping):
+            name = obj.get("name")
+            table = obj.get("table")
+            if name:
+                return f"{table}[{name}]" if table else str(name)
+        return fallback or "this object"
+
+    def _format_item_message(self, kind: str, row_key: str | None, params: Mapping[str, Any]) -> str:
+        obj = self.object_view(row_key) if row_key else None
+        subject = self._object_label(obj, row_key)
+        if kind == "name_clash":
+            name = str(params.get("name") or (obj.get("name") if obj else "") or subject)
+            table = params.get("table") or (obj.get("table") if obj else None)
+            label = f"{table}[{name}]" if table else name
+            clash = params.get("clash")
+            clash_label = self._object_label(clash) if isinstance(clash, Mapping) else label
+            if self.data.target_model is None:
+                return f"'{label}' clashes with '{clash_label}' in the planned model."
+            if isinstance(clash, Mapping) and clash.get("row_key"):
+                clash_row = self.by_key.get(str(clash["row_key"]))
+                if clash_row is not None and self.target_object(clash_row) is None:
+                    return f"'{label}' clashes with planned '{clash_label}'."
+            return f"'{label}' is already in use in the target model (clashes with '{clash_label}')."
+        if kind == "need_missing":
+            needed = params.get("needed")
+            needed_label = self._object_label(needed if isinstance(needed, Mapping) else None)
+            return f"'{subject}' needs '{needed_label}', which is not available."
+        if kind == "need_clash":
+            needed = params.get("needed")
+            needed_label = self._object_label(needed if isinstance(needed, Mapping) else None)
+            if self.data.target_model is None:
+                return f"'{subject}' needs '{needed_label}', whose name clashes in the planned model."
+            return f"'{subject}' needs '{needed_label}', whose name is already in use in the target."
+        if kind == "need_added":
+            needed_by = params.get("needed_by")
+            by_label = self._object_label(self.object_view(str(needed_by))) if needed_by else "an added object"
+            return f"Adds '{subject}' from donor because '{by_label}' needs it."
+        if kind == "renamed":
+            renamed = params.get("renamed")
+            renamed_label = self._object_label(renamed if isinstance(renamed, Mapping) else None)
+            new_name = params.get("new_name")
+            if new_name:
+                return f"'{subject}' uses '{renamed_label}', which the plan renames to '{new_name}'."
+            return f"'{subject}' uses '{renamed_label}', which the plan renames."
+        if kind == "removed":
+            removed = params.get("removed")
+            removed_label = self._object_label(removed if isinstance(removed, Mapping) else None)
+            return f"'{subject}' uses '{removed_label}', which the plan deletes."
+        if kind == "repoint_not_valid":
+            rep = params.get("replacement_row_key")
+            return f"Replacement '{rep or '(none)'}' for removed '{subject}' is not valid."
+        if kind == "repoint_data_type":
+            rep = params.get("replacement_row_key")
+            return f"Replacement '{rep}' for '{subject}' has a different data type ({params.get('old')} -> {params.get('new')})."
+        if kind == "dax_parse":
+            prop = params.get("property") or "expression"
+            return f"The {prop} DAX of '{subject}' has a syntax error."
+        if kind == "new_lineage_tag":
+            return f"The target already uses the lineageTag of '{subject}'. The plan gives a new lineageTag."
+        if kind == "choice_source_removed":
+            return f"The source '{params.get('source_id') or ''}' for '{subject}' is not in the session."
+        if kind == "choice_not_valid":
+            return f"The Merge Choice on '{subject}' is not valid ({params.get('reason') or 'invalid'})."
+        return MESSAGES[kind]
+
     def _item(self, target: list[dict[str, Any]], kind: str, row_key: str | None, *, step: _Step | None = None,
               item_id: str | None = None, **params: Any) -> None:
         item_id = item_id or f"{kind}:{row_key or ''}"
@@ -344,7 +410,7 @@ class _Compiler:
             "row_id": row["row_id"] if row else None,
             "step_id": step.step_id if step else None,
             "object": self.object_view(row_key) if row_key else None,
-            "message": MESSAGES[kind],
+            "message": self._format_item_message(kind, row_key, params),
             "params": params,
             "actions": [INCLUDE_IN_REWRITE] if kind == "renamed" else [],
         })
@@ -443,6 +509,26 @@ class _Compiler:
 
     # Translation of donor DAX through the alignment (section 6.5) ----------------------------
 
+    def _need_mapping_for(self, row: Mapping[str, Any], source_id: str, step: _Step) -> Mapping[str, Any] | None:
+        mappings = self.data.need_mappings
+        if not mappings:
+            return None
+        row_key = row["row_key"]
+        cell = self.cell(row, source_id)
+        source_key = cell["source_key"] if cell else None
+        for candidate in (row_key, source_key):
+            if candidate and isinstance(mappings.get(candidate), Mapping):
+                return mappings[candidate]
+        # Fallback for imp- ID keys stored directly in need_mappings
+        imp_seed = f"needs:{source_key or row_key}:{step.row_key}:upstream_need:{row['name']}"
+        imp_id = "imp-" + hashlib.sha256(imp_seed.encode("utf-8")).hexdigest()[:16]
+        if isinstance(mappings.get(imp_id), Mapping):
+            return mappings[imp_id]
+        for value in mappings.values():
+            if isinstance(value, Mapping) and value.get("item_id") == imp_id:
+                return value
+        return None
+
     def resolve_identity(self, source_id: str, resolved: refs.Resolved, step: _Step) -> str | None:
         """Give the target identity of a donor reference. Add a Need when the target has no object for it."""
 
@@ -458,9 +544,16 @@ class _Compiler:
             return identity
         if self.exists(identity):
             return identity
-        mapping = self.data.need_mappings.get(row["row_key"])
-        if isinstance(mapping, Mapping) and self.exists(str(mapping.get("row_key") or "")):
-            return str(mapping["row_key"])
+        mapping = self._need_mapping_for(row, source_id, step)
+        if isinstance(mapping, Mapping):
+            action = mapping.get("action")
+            target_obj = str(mapping.get("target_object") or mapping.get("row_key") or "")
+            if action == "drop_added_object":
+                # User chose to drop the added object that created this need; drop its step and omit blocking.
+                self.dropped_steps.add(step.step_id)
+                return None
+            if action in {None, "map_to_target"} and self.exists(target_obj):
+                return target_obj
         return self.need(row, source_id, step)
 
     def need(self, row: Mapping[str, Any], source_id: str, step: _Step) -> str | None:
@@ -1110,7 +1203,7 @@ class _Compiler:
         policy_kind = policy.get("policy") if isinstance(policy, Mapping) else None
         policy_kind = policy_kind if policy_kind in POLICIES else BLOCK
         if policy_kind == REPOINT:
-            replacement = str(policy.get("replacement_row_key") or "")
+            replacement = str((policy.get("repoint_target") if "repoint_target" in policy else policy.get("replacement_row_key")) or "")
             if not self.exists(replacement) or self.kind_of.get(replacement) != self.kind_of.get(key) or replacement == key:
                 self.block("repoint_not_valid", key, replacement_row_key=replacement or None)
                 policy_kind = BLOCK
@@ -1317,7 +1410,22 @@ class _Compiler:
     def included(self, dependent: str, cause: str) -> bool:
         if (self.choices.get(cause) or {}).get("kind") == EDIT:
             return True
-        action = self.data.item_actions.get(f"renamed:{dependent}:{cause}")
+        actions = self.data.item_actions
+        canon_key = f"renamed:{dependent}:{cause}"
+        action = actions.get(canon_key)
+        if not isinstance(action, Mapping):
+            # Also match deterministic impact item IDs (from ImpactEngine) or entries carrying dependent/cause.
+            for rule_id in ("rename", "break"):
+                imp_seed = f"breaks:{dependent}:{cause}:{rule_id}:"
+                imp_id = "imp-" + hashlib.sha256(imp_seed.encode("utf-8")).hexdigest()[:16]
+                if isinstance(actions.get(imp_id), Mapping):
+                    action = actions[imp_id]
+                    break
+        if not isinstance(action, Mapping):
+            for value in actions.values():
+                if isinstance(value, Mapping) and value.get("dependent") == dependent and value.get("cause") == cause:
+                    action = value
+                    break
         return isinstance(action, Mapping) and action.get("action") == INCLUDE_IN_REWRITE
 
     def rebind_fields(self) -> None:
@@ -1366,10 +1474,14 @@ class _Compiler:
     def check_names(self) -> None:
         for row in self.rows:
             key = row["row_key"]
-            clash_note = any(note.get("note_id") == "name_clash" for cell in row["cells"] for note in cell["notes"])
+            clash_cell = next((cell for cell in row["cells"]
+                               if any(note.get("note_id") == "name_clash" for note in cell["notes"])), None)
             choice = self.choices.get(key) or {}
-            if clash_note and choice.get("kind") in {None, SKIP}:
-                self.block("name_clash", key, name=row["name"], proposed_name=self.proposal(key, row["name"], None))
+            if clash_cell is not None and choice.get("kind") in {None, SKIP}:
+                other_key = next((note.get("other_row_key") for note in clash_cell["notes"] if note.get("other_row_key")), None)
+                clash_obj = self.object_view(other_key) if other_key else {"object_type": row["object_type"], "table": row.get("table"), "name": row["name"]}
+                self.block("name_clash", key, name=row["name"], table=row.get("table"), clash=clash_obj,
+                           proposed_name=self.proposal(key, row["name"], clash_cell["source_id"], extra_clash=clash_obj))
         changed = sorted(identity for identity in self.own_name
                          if self.exists(identity) and (identity in self.created or identity in self.authored or fold(self.own_name[identity]) != fold(self.original_name(identity)[1])))
         for identity in changed:
@@ -1382,11 +1494,18 @@ class _Compiler:
             self._item(self.blocking, "name_clash", row_key, step=self.step_of_row.get(row_key), item_id=f"name_clash:{identity}",
                        name=name, table=table, clash=clash.view(), proposed_name=self.proposal(identity, name, source_id))
 
-    def proposal(self, identity: str, name: str, source_id: str | None) -> str | None:
+    def proposal(self, identity: str, name: str, source_id: str | None, *, extra_clash: Mapping[str, Any] | None = None) -> str | None:
         if identity not in self.kind_of or self.kind_of[identity] not in _NAMING_TYPES:
             return None
         item = self.named(identity)
         live = [self.named(key) for key in self.own_name if key != identity and self.exists(key) and self.kind_of.get(key) in _NAMING_TYPES]
+        if isinstance(extra_clash, Mapping) and extra_clash.get("name"):
+            live.append(NamedObject(str(extra_clash.get("object_type") or item.object_type), str(extra_clash["name"]), extra_clash.get("table")))
+        if item not in live and clash_with(name, item.object_type, item.table, live) is None:
+            # Ensure a clash detected against another identity (e.g. a row-level clash note) still gets disambiguated.
+            clash = self._clashes(identity)
+            if clash is not None:
+                live.append(clash)
         donor = self.data.sources.get(source_id or "")
         return propose(name, item.object_type, {"table": item.table}, self.data.naming_rules, live, donor)["name"]
 
@@ -1522,6 +1641,7 @@ class _Compiler:
         self.removed_fields: dict[str, list[tuple[_Step, FieldLocation]]] = {}
         self.rebound: set[tuple[str, str]] = set()
         self.field_users: dict[str, list[tuple[str, FieldLocation]]] = {}
+        self.dropped_steps: set[str] = set()
         self._init_target()
         self.index_target()
         work = self.intents()
@@ -1550,6 +1670,9 @@ class _Compiler:
         return self.result()
 
     def result(self) -> dict[str, Any]:
+        if self.dropped_steps:
+            self.steps = [step for step in self.steps if step.step_id not in self.dropped_steps]
+            self.blocking = [item for item in self.blocking if item.get("step_id") not in self.dropped_steps]
         operations = [operation for step in self.steps for operation in step.operations]
         targets: dict[str, list[str]] = {}
         for operation in operations:

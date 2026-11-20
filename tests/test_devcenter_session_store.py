@@ -708,6 +708,9 @@ class ContractTests(SessionTestCase):
         requests = {
             "session_create": {"display_name": ""},
             "session_open": {"session_id": "0" * 32},
+            "session_rename": {"session_id": "0" * 32, "display_name": "Renamed"},
+            "session_delete": {"session_id": "0" * 32},
+            "session_duplicate": {"session_id": "0" * 32, "display_name": "Copy"},
             "session_close": {"base_revision": "x"},
             "source_add": {"base_revision": 1, "path": str(self.root / "missing.pbip")},
             "source_remove": {"base_revision": 1, "source_id": "src-9"},
