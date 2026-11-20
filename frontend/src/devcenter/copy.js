@@ -219,6 +219,7 @@ export const COPY = Object.freeze({
   "work.more.duplicate": "Duplicate session",
   "work.more.delete": "Delete session",
   "work.more.close": "Close session",
+  "work.change_target": "Change target",
   "work.rename.title": "Rename merge session",
   "work.rename.label": "Session name",
   "work.rename.save": "Save name",
@@ -255,6 +256,10 @@ export const COPY = Object.freeze({
   "work.long.merge_choice_bulk_set": "Setting Merge Choices",
   "work.long.target_edit_apply": "Adding the edits to the plan",
   "work.long.proposal_accept_all": "Accepting proposals",
+  "work.long.session_duplicate": "Duplicating the session",
+  "log.action.session_rename": "Renamed merge session",
+  "log.action.session_delete": "Deleted merge session",
+  "log.action.session_duplicate": "Duplicated merge session",
 
   // Sources tab (ticket 09 section 3.5)
   "sources.status.missing": "Not found",

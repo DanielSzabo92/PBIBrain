@@ -13,7 +13,10 @@ export default function TargetChoice({ sources, model, report, folder, onModel, 
       onModel(value, null);
       return;
     }
-    if (!force && value === model && folder) return;
+    if (!force) {
+      onModel(value, folder || null);
+      return;
+    }
     setPicking(true);
     try {
       const picked = await pickFolder();

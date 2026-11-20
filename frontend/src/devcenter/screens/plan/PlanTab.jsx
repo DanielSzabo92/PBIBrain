@@ -32,7 +32,7 @@ const DOMAIN_OPTIONS = [
   { value: "report", label: "Report" },
 ];
 
-export default function PlanTab({ session, changeDisabled, reasonId, onTabs, onChangeTarget, onDesktopBanner }) {
+export default function PlanTab({ session, changeDisabled, reasonId, onTabs, onChangeTarget, onDesktopBanner, onProjectChanged }) {
   const store = useDevCenterStore();
   const toast = useToast();
   const http = useMemo(() => createDevCenterHttp(), []);
@@ -117,7 +117,7 @@ export default function PlanTab({ session, changeDisabled, reasonId, onTabs, onC
     [effectivePlan, session, preview, targetModelName, isStale],
   );
 
-  const isChecking = checking || session?.plan_state === "checking";
+  const isChecking = checking || session?.plan_state === "computing";
 
   const lastApply = lastResource.data?.apply_id && lastResource.data?.kind === "apply" && !lastResource.data?.undone ? lastResource.data : null;
   const isApplied = Boolean(
@@ -166,11 +166,12 @@ export default function PlanTab({ session, changeDisabled, reasonId, onTabs, onC
   };
 
   // Re-check automatically when plan is stale.
+  const planLoading = planResource.status === "loading";
   useEffect(() => {
-    if (isStale && !checking && !planResource.loading) {
+    if (isStale && !checking && !planLoading) {
       handleCheckPlan();
     }
-  }, [isStale, checking, planResource.loading]);
+  }, [isStale, checking, planLoading]);
 
   const handleCheckPlan = async () => {
     if (checking) return;
@@ -180,7 +181,7 @@ export default function PlanTab({ session, changeDisabled, reasonId, onTabs, onC
     try {
       const reply = await http.validatePlan("full");
       await store.load("plan");
-      const nowTime = "14:22";
+      const nowTime = formatCheckTime(reply?.checked_at || new Date());
       setCheckTime(nowTime);
       setValidationOverride({
         status: reply.status,
@@ -256,9 +257,12 @@ export default function PlanTab({ session, changeDisabled, reasonId, onTabs, onC
     setValidationOverride(null);
     if (needsDesktopBanner(reply)) onDesktopBanner?.();
     store.load("applyLast");
-    if (kind === "apply") {
+    if (kind === "apply" || kind === "undo") {
       store.load("session");
       store.load("plan");
+    }
+    if (kind === "apply" || kind === "undo" || kind === "format") {
+      onProjectChanged?.();
     }
     // After a format only apply, the app runs "Check plan" (full) automatically (UI design 5.6).
     if (kind === "format") handleCheckPlan();
@@ -280,7 +284,7 @@ export default function PlanTab({ session, changeDisabled, reasonId, onTabs, onC
     );
   }
 
-  if (!effectivePlan && planResource.loading) {
+  if (!effectivePlan && planLoading) {
     return (
       <div className="dc-plan-view">
         <Skeleton lines={4} label={t("plan.check.loading")} />

@@ -60,11 +60,26 @@ static class CanonicalCheck
             return 2;
         }
 
+        if (!Path.GetFileName(fullPath).Equals("definition", StringComparison.OrdinalIgnoreCase) &&
+            Directory.Exists(Path.Combine(fullPath, "definition")))
+        {
+            fullPath = Path.Combine(fullPath, "definition");
+        }
+
         var tempDir = Path.Combine(Path.GetTempPath(), "pbibrain-canonical-" + Guid.NewGuid().ToString("N"));
         try
         {
             Database database = TmdlSerializer.DeserializeDatabaseFromFolder(fullPath);
             CanonicalTmdl.SerializeToFolder(database, tempDir);
+
+            bool isEmptyModel = database.Model == null
+                || (database.Model.Tables.Count == 0
+                    && database.Model.Relationships.Count == 0
+                    && database.Model.Roles.Count == 0
+                    && database.Model.Expressions.Count == 0
+                    && database.Model.Functions.Count == 0
+                    && database.Model.Perspectives.Count == 0
+                    && database.Model.Cultures.Count == 0);
 
             var sourceFiles = Directory.GetFiles(fullPath, "*.tmdl", SearchOption.AllDirectories)
                 .OrderBy(f => f, StringComparer.Ordinal)
@@ -79,6 +94,10 @@ static class CanonicalCheck
 
                 if (!File.Exists(canonicalFile))
                 {
+                    if (isEmptyModel && relativePath.Equals("model.tmdl", StringComparison.OrdinalIgnoreCase))
+                    {
+                        continue;
+                    }
                     nonCanonicalFiles.Add(new
                     {
                         file = relativePath,

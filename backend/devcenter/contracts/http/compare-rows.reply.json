@@ -76,8 +76,23 @@
         "display_folder": {"type": ["string", "null"]},
         "row_state": {"$ref": "#/$defs/state"},
         "changed": {"type": "boolean"},
+        "donor_conflict": {"type": "boolean"},
         "cells": {"type": "array", "items": {"$ref": "#/$defs/cell"}},
         "merge_choice": {"type": ["object", "null"]},
+        "removal_policy": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "policy": {"enum": ["block", "cascade", "repoint"]},
+                "repoint_target": {"type": ["string", "null"]}
+              },
+              "required": ["policy"],
+              "additionalProperties": false
+            },
+            {"type": "null"}
+          ]
+        },
         "proposal_status": {"type": ["string", "null"]},
         "marks": {"type": "array", "items": {"$ref": "#/$defs/mark"}}
       },
@@ -119,15 +134,31 @@
     "warnings": {
       "type": "array",
       "items": {
-        "type": "object",
-        "properties": {
-          "warning_id": {"$ref": "#/$defs/phrase_id"},
-          "source_id": {"$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/source_id"},
-          "lineage_tag": {"type": "string"},
-          "source_keys": {"type": "array", "items": {"$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/row_key"}}
-        },
-        "required": ["warning_id", "source_id", "lineage_tag", "source_keys"],
-        "additionalProperties": false
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "warning_id": {"$ref": "#/$defs/phrase_id"},
+              "source_id": {"$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/source_id"},
+              "lineage_tag": {"type": "string"},
+              "source_keys": {"type": "array", "items": {"$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/row_key"}}
+            },
+            "required": ["warning_id", "source_id", "lineage_tag", "source_keys"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "warning_id": {"const": "source_unreadable"},
+              "source_id": {"$ref": "https://pbibrain.local/devcenter/contracts/defs.json#/$defs/source_id"},
+              "display_name": {"type": "string"},
+              "code": {"type": "string"},
+              "message": {"type": "string"}
+            },
+            "required": ["warning_id", "source_id", "code", "message"],
+            "additionalProperties": false
+          }
+        ]
       }
     },
     "orphan_marks": {"type": "array", "items": {"$ref": "#/$defs/mark"}}

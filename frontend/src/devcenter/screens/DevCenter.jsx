@@ -36,18 +36,18 @@ function SessionLoading() {
   </div>;
 }
 
-export default function DevCenter({ onOpenProject, transport }) {
+export default function DevCenter({ onOpenProject, onProjectChanged, transport }) {
   const [store] = useState(devCenterStore);
   return (
     <DevCenterProvider store={store}>
       <ToastProvider>
-        <DevCenterScreens onOpenProject={onOpenProject} transport={transport} />
+        <DevCenterScreens onOpenProject={onOpenProject} onProjectChanged={onProjectChanged} transport={transport} />
       </ToastProvider>
     </DevCenterProvider>
   );
 }
 
-function DevCenterScreens({ onOpenProject, transport }) {
+function DevCenterScreens({ onOpenProject, onProjectChanged, transport }) {
   const store = useDevCenterStore();
   const session = useDevCenterState((state) => state.session);
   const notices = useDevCenterState((state) => state.notices);
@@ -59,64 +59,52 @@ function DevCenterScreens({ onOpenProject, transport }) {
   const sessionId = session?.session_id ?? null;
   const closeAction = useAction("session_close");
   const openAction = useAction("session_open");
+  const renameAction = useAction("session_rename");
+  const deleteAction = useAction("session_delete");
+  const duplicateAction = useAction("session_duplicate");
 
-  const [sessionOverrides, setSessionOverrides] = useState(() => {
-    try {
-      const saved = localStorage.getItem("pbibrain_session_overrides");
-      return saved ? JSON.parse(saved) : {};
-    } catch {
-      return {};
-    }
-  });
-
-  const [deletedSessions, setDeletedSessions] = useState(() => {
-    try {
-      const saved = localStorage.getItem("pbibrain_deleted_sessions");
-      return saved ? new Set(JSON.parse(saved)) : new Set();
-    } catch {
-      return new Set();
-    }
-  });
-
-  const handleRename = (id, newName) => {
-    setSessionOverrides((prev) => {
-      const next = { ...prev, [id]: { ...(prev[id] || {}), display_name: newName } };
-      try { localStorage.setItem("pbibrain_session_overrides", JSON.stringify(next)); } catch {}
-      return next;
-    });
-    if (session && session.session_id === id) {
-      session.display_name = newName;
+  const handleRename = async (id, newName) => {
+    const trimmed = String(newName || "").trim();
+    if (!trimmed) return;
+    const reply = await renameAction.run({ session_id: id, display_name: trimmed });
+    if (reply) {
+      await store.load("sessions");
+      if (session && session.session_id === id) {
+        await store.load("session");
+      }
+    } else {
+      toast.show({ tone: "err", text: "Could not rename session" });
     }
   };
 
   const handleDuplicate = async (id) => {
     const all = store.getState().resources?.sessions?.data?.sessions || [];
     const target = all.find((s) => s.session_id === id) || session;
-    const baseName = sessionOverrides[id]?.display_name || target?.display_name || "Session";
+    const baseName = target?.display_name || "Session";
     const duplicateName = `${baseName} (copy)`;
-    try {
-      const created = await store.run("session_create", { display_name: duplicateName });
-      if (created) {
-        await store.load("sessions");
+    const created = await duplicateAction.run({ session_id: id, display_name: duplicateName });
+    if (created) {
+      await store.load("sessions");
+      if (created.session_id) {
+        await openAction.run({ session_id: created.session_id });
         await store.load("session");
         setView("work");
       }
-    } catch (err) {
-      toast.show({ tone: "warn", text: err.message || "Could not duplicate session" });
+    } else {
+      toast.show({ tone: "err", text: "Could not duplicate session" });
     }
   };
 
   const handleDelete = async (id) => {
-    setDeletedSessions((prev) => {
-      const next = new Set([...prev, id]);
-      try { localStorage.setItem("pbibrain_deleted_sessions", JSON.stringify([...next])); } catch {}
-      return next;
-    });
-    if (session && session.session_id === id) {
-      await closeAction.run({});
+    const reply = await deleteAction.run({ session_id: id });
+    if (reply) {
+      await store.load("sessions");
+      if (session && session.session_id === id) {
+        setView("list");
+      }
+    } else {
+      toast.show({ tone: "err", text: "Could not delete session" });
     }
-    await store.load("sessions");
-    setView("list");
   };
 
   const closeSession = () => closeAction.run({});
@@ -187,8 +175,6 @@ function DevCenterScreens({ onOpenProject, transport }) {
 
   if (view === null) return <SessionLoading />;
 
-  const activeSession = session ? (sessionOverrides[sessionId] ? { ...session, ...sessionOverrides[sessionId] } : session) : null;
-
   return (
     <div className="dc-root">
       {view === "list" ? (
@@ -198,8 +184,6 @@ function DevCenterScreens({ onOpenProject, transport }) {
           onNew={() => setView("create")}
           onOpened={() => { if (listBanner) store.dismissNotice(listBanner.id); showWork(); }}
           onOpenProject={onOpenProject}
-          sessionOverrides={sessionOverrides}
-          deletedSessions={deletedSessions}
           onRenameSession={handleRename}
           onDuplicateSession={handleDuplicate}
           onDeleteSession={handleDelete}
@@ -213,9 +197,9 @@ function DevCenterScreens({ onOpenProject, transport }) {
         />
       ) : null}
       {view === "work" ? (
-        activeSession ? (
+        session ? (
           <WorkArea
-            session={activeSession}
+            session={session}
             tabState={tabState}
             onTabs={changeTabs}
             onRetryLock={retryLock}
@@ -224,6 +208,7 @@ function DevCenterScreens({ onOpenProject, transport }) {
             onRenameSession={handleRename}
             onDuplicateSession={handleDuplicate}
             onDeleteSession={handleDelete}
+            onProjectChanged={onProjectChanged}
           />
         ) : (
           <SessionLoading />

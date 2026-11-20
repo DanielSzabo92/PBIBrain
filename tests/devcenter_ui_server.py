@@ -29,11 +29,71 @@ from urllib.parse import parse_qs, unquote, urlsplit
 
 ROOT = Path(__file__).resolve().parents[1]
 FIXTURES = ROOT / "tests" / "fixtures" / "devcenter_ui"
+CONTRACTS_JSAPI = ROOT / "backend" / "devcenter" / "contracts" / "jsapi"
 DIST = ROOT / "frontend" / "dist"
 SHIM = ROOT / "frontend" / "src" / "devcenter" / "mock" / "pywebviewShim.js"
 DEFAULT_PORT = 8766
 SHIM_PATH = "/__test__/pywebview-shim.js"
 SHIM_TAG = f'<script src="{SHIM_PATH}"></script>'
+
+_SCHEMA_CACHE: dict[str, Any] = {}
+_VALIDATOR_REGISTRY: Any = None
+
+
+def _get_validator_registry() -> Any:
+    global _VALIDATOR_REGISTRY
+    if _VALIDATOR_REGISTRY is not None:
+        return _VALIDATOR_REGISTRY
+    from referencing import Registry, Resource
+
+    contracts_root = ROOT / "backend" / "devcenter" / "contracts"
+    resources = []
+    for path in sorted(contracts_root.rglob("*.json")):
+        doc = json.loads(path.read_text(encoding="utf-8"))
+        if isinstance(doc, dict) and "$id" in doc:
+            resources.append((doc["$id"], Resource.from_contents(doc)))
+    _VALIDATOR_REGISTRY = Registry().with_resources(resources)
+    return _VALIDATOR_REGISTRY
+
+
+def _normalize_fixture_row_keys(obj: Any) -> Any:
+    if isinstance(obj, dict):
+        out = {}
+        for k, v in obj.items():
+            if k in {"row_key", "other_row_key", "repoint_target", "target_object", "target_id"} and isinstance(v, str) and v.startswith("row-"):
+                out[k] = f"measure:{v}"
+            elif k == "row_keys" and isinstance(v, list):
+                out[k] = [f"measure:{x}" if isinstance(x, str) and x.startswith("row-") else x for x in v]
+            else:
+                out[k] = _normalize_fixture_row_keys(v)
+        return out
+    if isinstance(obj, list):
+        return [_normalize_fixture_row_keys(x) for x in obj]
+    return obj
+
+
+def _validate_jsapi_request(method: str, payload: dict[str, Any]) -> str | None:
+    """Validate a JS API request payload against backend/devcenter/contracts/jsapi/<method>.request.json."""
+    try:
+        import jsonschema
+    except ImportError:
+        return None
+    if method not in _SCHEMA_CACHE:
+        schema_path = CONTRACTS_JSAPI / f"{method}.request.json"
+        if schema_path.is_file():
+            schema = json.loads(schema_path.read_text(encoding="utf-8"))
+            validator_cls = jsonschema.validators.validator_for(schema)
+            _SCHEMA_CACHE[method] = validator_cls(schema, registry=_get_validator_registry())
+        else:
+            _SCHEMA_CACHE[method] = None
+    validator = _SCHEMA_CACHE[method]
+    if validator is None:
+        return None
+    normalized = _normalize_fixture_row_keys(payload)
+    errors = sorted(validator.iter_errors(normalized), key=lambda e: list(e.path))
+    if errors:
+        return errors[0].message
+    return None
 
 SCENARIOS = (
     "default", "no-project", "no-sessions", "locked", "newer-schema", "damaged",
@@ -49,11 +109,12 @@ JSAPI_METHODS = (
     "proposal_accept", "proposal_reject", "proposal_accept_all", "question_answer", "format_only_apply",
     "apply", "undo_apply", "change_report_write", "cloud_sign_in", "cloud_connect", "pull_to_local",
     "cloud_items_list", "target_edit_apply", "target_convert_tmdl", "merge_template_save", "merge_template_list", "merge_template_apply",
+    "session_rename", "session_delete", "session_duplicate",
 )
 # Calls that read only: they do not change the revision.
 JSAPI_READS = frozenset({"cloud_items_list", "merge_template_list", "merge_template_save"})
 # Calls that work with no open session.
-NO_SESSION_METHODS = frozenset({"session_create", "session_open", "cloud_sign_in", "cloud_items_list"})
+NO_SESSION_METHODS = frozenset({"session_create", "session_open", "session_rename", "session_delete", "session_duplicate", "cloud_sign_in", "cloud_items_list"})
 # Calls that a read-only (locked) session still permits.
 LOCKED_METHODS = frozenset({"session_close", "session_open", "cloud_items_list", "cloud_sign_in", "merge_template_list"})
 # The existing desktop host methods that frontend/src/desktop.js and App.jsx use (old reply shape).
@@ -394,6 +455,9 @@ class FakeDevCenter:
                     raise FakeError("stale_revision", "The session changed after the base revision.", {"base_revision": base, "revision": self.revision})
                 if self.session.get("read_only") and method not in LOCKED_METHODS:
                     raise FakeError("action_not_allowed", "The session is read-only, because another window has it open.", {"reason": "session_locked"})
+            schema_error = _validate_jsapi_request(method, payload)
+            if schema_error is not None:
+                raise FakeError("invalid_payload", schema_error, {"method": method})
             handler = getattr(self, f"_call_{method}", None)
             extra = handler(payload) if handler else {}
             if method not in JSAPI_READS:
@@ -750,13 +814,22 @@ class FakeDevCenter:
         return {"action": action, "row_keys": [row["row_key"]], "removed_choices": removed_choices}
 
     def _call_merge_choice_bulk_set(self, payload: dict[str, Any]) -> dict[str, Any]:
+        items = payload.get("items")
+        previous_choices: dict[str, Any] = {}
+        if isinstance(items, list) and items:
+            for item in items:
+                row = self._row(item.get("row_key"))
+                previous_choices[row["row_key"]] = copy.deepcopy(row.get("merge_choice"))
+                row["merge_choice"] = item.get("choice")
+            return {"changed": len(items), "previous_choices": previous_choices}
         keys = payload.get("row_keys")
         if not isinstance(keys, list) or not keys:
             raise FakeError("invalid_payload", "The bulk call needs a list of row keys.", {"field": "row_keys"})
         rows = [self._row(key) for key in keys]
         for row in rows:
+            previous_choices[row["row_key"]] = copy.deepcopy(row.get("merge_choice"))
             row["merge_choice"] = payload.get("choice")
-        return {"changed": len(rows)}
+        return {"changed": len(rows), "previous_choices": previous_choices}
 
     def _call_target_edit_apply(self, payload: dict[str, Any]) -> dict[str, Any]:
         scope = payload.get("scope") or {}

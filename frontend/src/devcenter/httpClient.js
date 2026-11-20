@@ -82,12 +82,12 @@ export function createDevCenterHttp({ baseUrl = "/api/devcenter", fetcher = glob
     getSessions: ({ signal } = {}) => get("/sessions", signal),
     getSession: ({ signal } = {}) => get("/session", signal),
     getCompareRows: (
-      { type, table, folder, state, source, page: reportPage, changed, marks, q, sort, direction, limit, offset } = {},
+      { type, table, folder, state, source, page: reportPage, changed, marks, proposal, q, sort, direction, limit, offset } = {},
       { signal } = {},
     ) =>
       get(
         `/compare-rows${buildQuery({
-          type, table, folder, state, source, page: reportPage, changed, marks, q,
+          type, table, folder, state, source, page: reportPage, changed, marks, proposal, q,
           sort: sortParam(sort, direction), ...page({ limit, offset }, DEFAULT_PAGE_SIZE),
         })}`,
         signal,

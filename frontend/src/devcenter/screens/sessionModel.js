@@ -44,7 +44,7 @@ const IMPACT_BLOCK_KINDS = new Set(["removed", "renamed", "need_missing", "need_
 // It feeds the pill, the tab badges, the strip and the apply confirmation.
 export function deriveReadiness({ session = null, plan = null, checking = false } = {}) {
   const rawPlan = plan?.data ?? plan;
-  const isChecking = checking || session?.plan_state === "checking" || (plan?.status === "loading" && !rawPlan);
+  const isChecking = checking || session?.plan_state === "computing" || (plan?.status === "loading" && !rawPlan);
   if (isChecking) {
     return {
       state: "checking",

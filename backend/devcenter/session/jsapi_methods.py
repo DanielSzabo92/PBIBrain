@@ -12,6 +12,9 @@ S2_METHODS = (
     "session_create",
     "session_open",
     "session_close",
+    "session_rename",
+    "session_delete",
+    "session_duplicate",
     "source_add",
     "source_remove",
     "source_relink",
@@ -34,6 +37,21 @@ def session_open(devcenter: DevCenterSessions, request: Mapping[str, Any]) -> Ma
 @register("session_close")
 def session_close(devcenter: DevCenterSessions, request: Mapping[str, Any]) -> Mapping[str, Any]:
     return devcenter.close(request)
+
+
+@register("session_rename")
+def session_rename(devcenter: DevCenterSessions, request: Mapping[str, Any]) -> Mapping[str, Any]:
+    return devcenter.rename(request)
+
+
+@register("session_delete")
+def session_delete(devcenter: DevCenterSessions, request: Mapping[str, Any]) -> Mapping[str, Any]:
+    return devcenter.delete(request)
+
+
+@register("session_duplicate", long=True)
+def session_duplicate(devcenter: DevCenterSessions, request: Mapping[str, Any]) -> Mapping[str, Any]:
+    return devcenter.duplicate(request)
 
 
 @register("source_add")

@@ -48,8 +48,6 @@ def phase_of(operation: Mapping[str, Any]) -> tuple[int, str]:
 
     table = MODEL_PHASE if operation["domain"] == "model" else REPORT_PHASE
     phase = table[operation["op"]]
-    if operation["op"] == "COPY_PAGE" and operation.get("replace"):
-        phase = "changes"
     offset = 0 if operation["domain"] == "model" else len(PHASES)
     return offset + PHASES.index(phase), phase
 
@@ -60,7 +58,9 @@ def _type_rank(operation: Mapping[str, Any]) -> int:
 
 
 def tie_key(operation: Mapping[str, Any]) -> tuple[Any, ...]:
-    return (_type_rank(operation), fold(operation.get("table") or ""), fold(operation.get("name") or ""),
+    col_ord = operation.get("column_ordinal")
+    ord_key = col_ord if isinstance(col_ord, int) else 10 ** 9
+    return (_type_rank(operation), fold(operation.get("table") or ""), ord_key, fold(operation.get("name") or ""),
             operation.get("pointer") or "", operation["op_id"])
 
 

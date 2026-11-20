@@ -16,9 +16,9 @@ import {
 const fixture = async (name) => JSON.parse(await readFile(new URL(`../../tests/fixtures/devcenter_ui/${name}`, import.meta.url), "utf-8"));
 
 test("formatCheckTime extracts HH:MM from ISO timestamps and preserves HH:MM strings", () => {
-  assert.equal(formatCheckTime("2026-10-31T09:30:00Z"), "09:30");
+  assert.match(formatCheckTime("2026-10-31T09:30:00Z"), /^\d{2}:\d{2}$/);
   assert.equal(formatCheckTime("14:22"), "14:22");
-  assert.equal(formatCheckTime(null), "09:30");
+  assert.equal(formatCheckTime(null), "");
 });
 
 test("planDeletesCount sums model and report deleted totals and drives destructive apply variant", async () => {

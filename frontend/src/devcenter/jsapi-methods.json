@@ -36,5 +36,8 @@
   { "name": "target_convert_tmdl", "kind": "long" },
   { "name": "merge_template_save", "kind": "short" },
   { "name": "merge_template_list", "kind": "short" },
-  { "name": "merge_template_apply", "kind": "short" }
+  { "name": "merge_template_apply", "kind": "short" },
+  { "name": "session_rename", "kind": "short" },
+  { "name": "session_delete", "kind": "short" },
+  { "name": "session_duplicate", "kind": "long" }
 ]

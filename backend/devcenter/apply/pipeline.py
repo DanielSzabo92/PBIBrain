@@ -9,9 +9,12 @@ a backup. Undo restores the backup of the promotion journal.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+import logging
 from pathlib import Path
 from typing import Any
 from collections.abc import Mapping, Sequence
+
+logger = logging.getLogger(__name__)
 
 from backend.devcenter.apply.steps import CANONICAL_CHECK, GUARD, PROMOTION, WRITE, ApplyFailure, guard_failure
 from backend.snapshots.manifest import source_manifest
@@ -154,8 +157,15 @@ class GuardPipeline(PromotionJournal):
             guard.authorize(operation, "CONTRACT")
             guard.write_merge_candidate(operation)
         except Exception as exc:
-            raise ApplyFailure(WRITE, "write_failed", "The app could not write the changed files.", check="write",
-                               guard_codes=[str(getattr(exc, "code", None) or "APP_WRITE_FAILED")]) from exc
+            logger.exception("Merge candidate write failed for apply_id=%s", job.apply_id)
+            code = str(getattr(exc, "code", None) or "APP_WRITE_FAILED")
+            detail = str(exc).strip()
+            message = f"The app could not write the changed files: {detail}" if detail else "The app could not write the changed files."
+            details: dict[str, Any] = {"guard_codes": [code]}
+            if detail:
+                details["error_detail"] = detail
+                details["error_code"] = code
+            raise ApplyFailure(WRITE, "write_failed", message, check="write", **details) from exc
         job.context["guard"] = guard
         job.operation_id = operation
 

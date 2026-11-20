@@ -36,6 +36,13 @@ class ConvertFailed(MetadataUnavailable):
         self.code = code
 
 
+def _resolve_tmdl_source(path: str | Path) -> Path:
+    resolved = Path(path).resolve()
+    if resolved.is_dir() and resolved.name.lower() != "definition" and (resolved / "definition").is_dir():
+        return (resolved / "definition").resolve()
+    return resolved
+
+
 class TabularMetadataAdapter:
     def __init__(self, bridge: str | Path | None = None, *, timeout: int = 60) -> None:
         self.bridge = Path(bridge) if bridge else Path(__file__).parent / "dotnet" / "bin" / "Release" / "net8.0" / "TabularMetadata.dll"
@@ -44,8 +51,9 @@ class TabularMetadataAdapter:
     def read(self, source: str | Path, *, include_documents: bool = False) -> dict[str, Any]:
         if not self.bridge.is_file():
             raise MetadataUnavailable("Build the trusted TOM bridge before model verification")
+        source_resolved = _resolve_tmdl_source(source)
         try:
-            command = ["dotnet", str(self.bridge.resolve()), str(Path(source).resolve())]
+            command = ["dotnet", str(self.bridge.resolve()), str(source_resolved)]
             if include_documents:
                 command.append("--documents")
             result = subprocess.run(command,
@@ -100,7 +108,7 @@ class TabularMetadataAdapter:
         if not self.bridge.is_file():
             raise CanonicalCheckFailed("bridge_missing", "Build the trusted TOM bridge before canonical check")
 
-        model_resolved = Path(model_path).resolve()
+        model_resolved = _resolve_tmdl_source(model_path)
         try:
             command = ["dotnet", str(self.bridge.resolve()), "canonical-check", str(model_resolved)]
             result = subprocess.run(command, input="", capture_output=True, text=True,
@@ -121,8 +129,8 @@ class TabularMetadataAdapter:
         if not self.bridge.is_file():
             raise TreeCompareFailed("bridge_missing", "Build the trusted TOM bridge before tree compare")
 
-        baseline_resolved = Path(baseline_path).resolve()
-        candidate_resolved = Path(candidate_path).resolve()
+        baseline_resolved = _resolve_tmdl_source(baseline_path)
+        candidate_resolved = _resolve_tmdl_source(candidate_path)
         try:
             command = ["dotnet", str(self.bridge.resolve()), "tree-compare",
                        str(baseline_resolved), str(candidate_resolved)]

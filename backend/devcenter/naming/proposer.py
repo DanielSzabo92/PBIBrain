@@ -72,23 +72,25 @@ def clash_with(name: str, object_type: str, table: str | None, existing: Iterabl
     """The object that has the same name (case-insensitive) in the same name space, or None."""
 
     folded = name.casefold()
+    table_folded = table.casefold() if table is not None else None
     for item in existing:
         if item.name.casefold() != folded:
             continue
+        item_table = item.table.casefold() if item.table is not None else None
         if object_type in TABLE_TYPES:
             if item.object_type in TABLE_TYPES:
                 return item
         elif object_type in (MEASURE, REPORT_MEASURE):
             if item.object_type in (MEASURE, REPORT_MEASURE):
                 return item
-            if table is not None and item.object_type in COLUMN_TYPES and item.table == table:
+            if table_folded is not None and item.object_type in COLUMN_TYPES and item_table == table_folded:
                 return item
         elif object_type in COLUMN_TYPES:
-            same_table = table is None or item.table == table
-            if same_table and (item.object_type in COLUMN_TYPES or (table is not None and item.object_type == MEASURE)):
+            same_table = table_folded is None or item_table == table_folded
+            if same_table and (item.object_type in COLUMN_TYPES or (table_folded is not None and item.object_type == MEASURE)):
                 return item
         elif object_type == HIERARCHY:
-            if item.object_type == HIERARCHY and (table is None or item.table == table):
+            if item.object_type == HIERARCHY and (table_folded is None or item_table == table_folded):
                 return item
     return None
 
@@ -172,9 +174,12 @@ def propose(name: str, object_type: str, context: Mapping[str, Any], rules: Iter
                 suffix = label if number == 1 else f"{label} {number}"
             else:
                 suffix = str(number + 1)
-            proposed = f"{core} ({suffix})"
-            if clash_with(proposed, object_type, table, existing) is None:
+            candidate = f"{core} ({suffix})"
+            if clash_with(candidate, object_type, table, existing) is None:
+                proposed = candidate
                 break
+        else:
+            proposed = f"{core} ({label + ' ' if label else ''}{MAX_CLASH_TRIES + 1})"
     return {
         "name": proposed,
         "rule_ids": used,

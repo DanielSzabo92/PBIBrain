@@ -113,7 +113,10 @@ def is_case(name: str, style: str) -> bool:
     if style in {"pascal", "camel"}:
         if separators or not name[0].isalpha():
             return False
-        return name[0].isupper() if style == "pascal" else name[0].islower()
+        if not (name[0].isupper() if style == "pascal" else name[0].islower()):
+            return False
+        tokens = _split_case(name)
+        return all(not tok[0].isalpha() or tok[0].isupper() for tok in tokens[1:])
     if style == "title":
         return all(not chunk[0].isalpha() or chunk[0].isupper() for chunk in separator_chunks(name))
     raise ValueError(f"Unknown letter case style: {style}")

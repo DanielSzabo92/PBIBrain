@@ -90,6 +90,16 @@ FUNCTION_SIGNATURE = re.compile(r"\s*\([^()]*\)\s*=>")
 # Object types whose ``expression`` is M, not DAX: written as given, never resolved as DAX.
 M_KINDS = ("expression", "partition")
 COMPARE_NAMES = {"is_hidden": "hidden", "is_key": "key"}
+WRITER_PROPERTY_NAMES: dict[str, str] = {
+    "hidden": "is_hidden",
+    "key": "is_key",
+    "active": "is_active",
+    "cross_filter_direction": "cross_filtering_behavior",
+    "security_filter_direction": "security_filtering_behavior",
+    "referential_integrity": "rely_on_referential_integrity",
+    "order": "ordinal",
+    "m_text": "expression",
+}
 RENAMABLE_KINDS = ("measure", "column", "table", "hierarchy", "calculation_item", "role", "expression", "function")
 
 
@@ -140,7 +150,7 @@ STEP_PREREQUISITE = "prerequisite"
 BLOCKING_KINDS = ("choice_source_removed", "choice_not_valid", "no_sources", "no_target_model", "name_clash", "renamed", "removed",
                   "need_missing", "need_clash", "repoint_not_valid", "udf_compatibility", "dependency_cycle", "source_marks",
                   "dax_parse")
-WARNING_KINDS = ("need_added", "new_lineage_tag", "repoint_data_type", "not_checked")
+WARNING_KINDS = ("need_added", "new_lineage_tag", "repoint_data_type", "not_checked", "shared_expression_conflict")
 MESSAGES = {
     "choice_source_removed": "The source of this Merge Choice is not in the session.",
     "choice_not_valid": "This Merge Choice is not possible for this row.",
@@ -160,6 +170,7 @@ MESSAGES = {
     "new_lineage_tag": "The target has the donor lineageTag already. The plan gives a new lineageTag.",
     "repoint_data_type": "The replacement object has a different data type.",
     "not_checked": "The app did not examine this area.",
+    "shared_expression_conflict": "Taken tables from different donors rely on a shared M expression whose values differ across those donors.",
 }
 
 GUARD_OPERATIONS = {
@@ -272,6 +283,7 @@ class _Compiler:
         self.subtype_of: dict[str, str] = {}
         self.domain_of: dict[str, str] = {}
         self.created: dict[str, tuple[str, CompareObject]] = {}  # identity to (source ID, donor object)
+        self.copied_pages: dict[str, str] = {}  # page identity to donor source ID when COPY_PAGE copies it
         self.deleted: set[str] = set()
         self.resourced: dict[str, set[str] | None] = {}  # row key to its re-sourced DAX properties (None: all)
         self.promoted: dict[str, str] = {}  # report measure row key to its model identity
@@ -318,6 +330,72 @@ class _Compiler:
 
     # Items ---------------------------------------------------------------------------
 
+    def _object_label(self, obj: Mapping[str, Any] | None, fallback: str | None = None) -> str:
+        if isinstance(obj, Mapping):
+            name = obj.get("name")
+            table = obj.get("table")
+            if name:
+                return f"{table}[{name}]" if table else str(name)
+        return fallback or "this object"
+
+    def _format_item_message(self, kind: str, row_key: str | None, params: Mapping[str, Any]) -> str:
+        obj = self.object_view(row_key) if row_key else None
+        subject = self._object_label(obj, row_key)
+        if kind == "name_clash":
+            name = str(params.get("name") or (obj.get("name") if obj else "") or subject)
+            table = params.get("table") or (obj.get("table") if obj else None)
+            label = f"{table}[{name}]" if table else name
+            clash = params.get("clash")
+            clash_label = self._object_label(clash) if isinstance(clash, Mapping) else label
+            if self.data.target_model is None:
+                return f"'{label}' clashes with '{clash_label}' in the planned model."
+            if isinstance(clash, Mapping) and clash.get("row_key"):
+                clash_row = self.by_key.get(str(clash["row_key"]))
+                if clash_row is not None and self.target_object(clash_row) is None:
+                    return f"'{label}' clashes with planned '{clash_label}'."
+            return f"'{label}' is already in use in the target model (clashes with '{clash_label}')."
+        if kind == "need_missing":
+            needed = params.get("needed")
+            needed_label = self._object_label(needed if isinstance(needed, Mapping) else None)
+            return f"'{subject}' needs '{needed_label}', which is not available."
+        if kind == "need_clash":
+            needed = params.get("needed")
+            needed_label = self._object_label(needed if isinstance(needed, Mapping) else None)
+            if self.data.target_model is None:
+                return f"'{subject}' needs '{needed_label}', whose name clashes in the planned model."
+            return f"'{subject}' needs '{needed_label}', whose name is already in use in the target."
+        if kind == "need_added":
+            needed_by = params.get("needed_by")
+            by_label = self._object_label(self.object_view(str(needed_by))) if needed_by else "an added object"
+            return f"Adds '{subject}' from donor because '{by_label}' needs it."
+        if kind == "renamed":
+            renamed = params.get("renamed")
+            renamed_label = self._object_label(renamed if isinstance(renamed, Mapping) else None)
+            new_name = params.get("new_name")
+            if new_name:
+                return f"'{subject}' uses '{renamed_label}', which the plan renames to '{new_name}'."
+            return f"'{subject}' uses '{renamed_label}', which the plan renames."
+        if kind == "removed":
+            removed = params.get("removed")
+            removed_label = self._object_label(removed if isinstance(removed, Mapping) else None)
+            return f"'{subject}' uses '{removed_label}', which the plan deletes."
+        if kind == "repoint_not_valid":
+            rep = params.get("replacement_row_key")
+            return f"Replacement '{rep or '(none)'}' for removed '{subject}' is not valid."
+        if kind == "repoint_data_type":
+            rep = params.get("replacement_row_key")
+            return f"Replacement '{rep}' for '{subject}' has a different data type ({params.get('old')} -> {params.get('new')})."
+        if kind == "dax_parse":
+            prop = params.get("property") or "expression"
+            return f"The {prop} DAX of '{subject}' has a syntax error."
+        if kind == "new_lineage_tag":
+            return f"The target already uses the lineageTag of '{subject}'. The plan gives a new lineageTag."
+        if kind == "choice_source_removed":
+            return f"The source '{params.get('source_id') or ''}' for '{subject}' is not in the session."
+        if kind == "choice_not_valid":
+            return f"The Merge Choice on '{subject}' is not valid ({params.get('reason') or 'invalid'})."
+        return MESSAGES[kind]
+
     def _item(self, target: list[dict[str, Any]], kind: str, row_key: str | None, *, step: _Step | None = None,
               item_id: str | None = None, **params: Any) -> None:
         item_id = item_id or f"{kind}:{row_key or ''}"
@@ -332,7 +410,7 @@ class _Compiler:
             "row_id": row["row_id"] if row else None,
             "step_id": step.step_id if step else None,
             "object": self.object_view(row_key) if row_key else None,
-            "message": MESSAGES[kind],
+            "message": self._format_item_message(kind, row_key, params),
             "params": params,
             "actions": [INCLUDE_IN_REWRITE] if kind == "renamed" else [],
         })
@@ -431,6 +509,26 @@ class _Compiler:
 
     # Translation of donor DAX through the alignment (section 6.5) ----------------------------
 
+    def _need_mapping_for(self, row: Mapping[str, Any], source_id: str, step: _Step) -> Mapping[str, Any] | None:
+        mappings = self.data.need_mappings
+        if not mappings:
+            return None
+        row_key = row["row_key"]
+        cell = self.cell(row, source_id)
+        source_key = cell["source_key"] if cell else None
+        for candidate in (row_key, source_key):
+            if candidate and isinstance(mappings.get(candidate), Mapping):
+                return mappings[candidate]
+        # Fallback for imp- ID keys stored directly in need_mappings
+        imp_seed = f"needs:{source_key or row_key}:{step.row_key}:upstream_need:{row['name']}"
+        imp_id = "imp-" + hashlib.sha256(imp_seed.encode("utf-8")).hexdigest()[:16]
+        if isinstance(mappings.get(imp_id), Mapping):
+            return mappings[imp_id]
+        for value in mappings.values():
+            if isinstance(value, Mapping) and value.get("item_id") == imp_id:
+                return value
+        return None
+
     def resolve_identity(self, source_id: str, resolved: refs.Resolved, step: _Step) -> str | None:
         """Give the target identity of a donor reference. Add a Need when the target has no object for it."""
 
@@ -446,9 +544,16 @@ class _Compiler:
             return identity
         if self.exists(identity):
             return identity
-        mapping = self.data.need_mappings.get(row["row_key"])
-        if isinstance(mapping, Mapping) and self.exists(str(mapping.get("row_key") or "")):
-            return str(mapping["row_key"])
+        mapping = self._need_mapping_for(row, source_id, step)
+        if isinstance(mapping, Mapping):
+            action = mapping.get("action")
+            target_obj = str(mapping.get("target_object") or mapping.get("row_key") or "")
+            if action == "drop_added_object":
+                # User chose to drop the added object that created this need; drop its step and omit blocking.
+                self.dropped_steps.add(step.step_id)
+                return None
+            if action in {None, "map_to_target"} and self.exists(target_obj):
+                return target_obj
         return self.need(row, source_id, step)
 
     def need(self, row: Mapping[str, Any], source_id: str, step: _Step) -> str | None:
@@ -559,6 +664,10 @@ class _Compiler:
                     needs.add(found)
                 ends.append(list(self.final_name(found)) if found else [table, column])
             props["ends"] = ends
+            if donor.extra.get("from_cardinality"):
+                props["from_cardinality"] = donor.extra["from_cardinality"]
+            if donor.extra.get("to_cardinality"):
+                props["to_cardinality"] = donor.extra["to_cardinality"]
         if donor.kind == "role" and "role_filters" in props:
             filters = {}
             for key, text in sorted(props["role_filters"].items()):
@@ -570,6 +679,22 @@ class _Compiler:
                 needs |= found
                 filters[self.final_name(table_identity)[1] if table_identity else table] = new_text
             props["role_filters"] = filters
+        if donor.domain == MODEL:
+            props = {WRITER_PROPERTY_NAMES.get(k, k): v for k, v in props.items()}
+            if selected is None:
+                annotations = donor.strict_props.get("annotations")
+                if annotations:
+                    props["annotations"] = dict(annotations)
+                if donor.kind == "table":
+                    if donor.extra.get("is_private"):
+                        props["is_private"] = True
+                    if donor.extra.get("show_as_variations_only"):
+                        props["show_as_variations_only"] = True
+                elif donor.kind == "column":
+                    if donor.extra.get("column_type"):
+                        props["column_type"] = donor.extra["column_type"]
+                    if donor.extra.get("is_name_inferred") is not None:
+                        props["is_name_inferred"] = donor.extra["is_name_inferred"]
         needs.discard(identity)
         return props, needs
 
@@ -707,6 +832,8 @@ class _Compiler:
             assert donor is not None
             self.own_name[key] = new_name or donor.name
             self.resourced[key] = None
+            if donor.kind == "page":
+                self.copied_pages[key] = source_id
             return
         if kind == TAKE_PROPERTIES:
             self.resourced[key] = set(choice.get("properties") or [])
@@ -717,6 +844,8 @@ class _Compiler:
             home = self.table_row(source_id, donor.table) if donor.kind in _CHILD_KINDS or donor.kind == "report_measure" else None
             self.register(identity, donor.kind, donor.subtype, row["domain"], new_name or donor.name, home)
             self.created[identity] = (source_id, donor)
+            if donor.kind == "page":
+                self.copied_pages[identity] = source_id
             if kind == TAKE and donor.kind == "table":
                 self.register_children(step, row, source_id, donor)
             return
@@ -842,42 +971,21 @@ class _Compiler:
             name = "CREATE_REPORT_MEASURE" if target is None else "REPLACE_REPORT_MEASURE"
             self.op(step, name, key, needs=needs, source_id=source_id, source_key=donor.source_key, properties=props)
 
-    def build_create(self, step: _Step, row: Mapping[str, Any], source_id: str, donor: CompareObject, new_tag: bool,
-                     folder: str | None) -> None:
-        key = row["row_key"]
-        identity = key if key in self.created else f"{key}#new"
-        if donor.kind == "page":
-            self.op(step, "COPY_PAGE", identity, source_id=source_id, source_key=donor.source_key,
-                    page_id=donor.extra.get("page_id"), replace=False)
-            for visual_row in self.rows:
-                visual = self.source_object(visual_row, source_id)
-                if visual is None or visual.kind != "visual" or visual.table != donor.source_key.split(":", 1)[1]:
-                    continue
-                if visual_row["row_key"] in self.choices or self.target_object(visual_row) is not None:
-                    continue
-                self.register(visual_row["row_key"], "visual", visual.subtype, REPORT, visual.name, None)
-                self.copy_visual(step, visual_row, source_id, visual, page_identity=identity)
-            return
-        if donor.kind == "visual":
-            page_row = self.row_of.get((source_id, f"page:{donor.table}"))
-            page_identity = page_row["row_key"] if page_row else None
-            if page_identity is None or not self.exists(page_identity):
-                self._item(self.blocking, "need_missing", key, step=step, item_id=f"need_missing:{key}:page",
-                           needed={"object_type": "page", "table": None, "name": donor.table})
-                return
-            self.copy_visual(step, row, source_id, donor, page_identity=page_identity)
-            return
-        props, needs = self.carried_properties(step, identity, source_id, donor)
-        if folder is not None:
-            props["display_folder"] = folder
-        name = "CREATE_REPORT_MEASURE" if donor.kind == "report_measure" else "CREATE"
-        self.op(step, name, identity, needs=needs, source_id=source_id, source_key=donor.source_key,
-                lineage_tag=self.lineage_tag(row, source_id, donor, new=new_tag), properties=props)
+    def _excluded_page_visuals(self, source_id: str, donor_page: CompareObject) -> list[str]:
+        page_folder = donor_page.source_key.split(":", 1)[1]
+        excluded: list[str] = []
+        for visual_row in self.rows:
+            visual = self.source_object(visual_row, source_id)
+            if visual is None or visual.kind != "visual" or visual.table != page_folder:
+                continue
+            choice = self.choices.get(visual_row["row_key"]) or {}
+            kind = choice.get("kind")
+            if kind in {SKIP, REMOVE} or (kind == TAKE and choice.get("source_id") != source_id):
+                excluded.append(str(visual.extra.get("visual_id") or visual.name))
+        return sorted(set(excluded))
 
-    def copy_visual(self, step: _Step, row: Mapping[str, Any], source_id: str, donor: CompareObject, *, page_identity: str) -> None:
+    def _rebind_copied_visual(self, step: _Step, row: Mapping[str, Any], source_id: str, donor: CompareObject) -> None:
         key = row["row_key"]
-        self.op(step, "COPY_VISUAL", key, needs={page_identity}, source_id=source_id, source_key=donor.source_key,
-                page_id=self.by_key[page_identity]["page"], visual_id=donor.extra.get("visual_id"))
         for location in field_locations(donor):
             identity = self.field_identity(step, source_id, location, donor=True)
             if identity is None:
@@ -886,17 +994,84 @@ class _Compiler:
             if fold(table) != fold(location.entity) or fold(name) != fold(location.property):
                 self.rebind(step, key, location, table or location.entity, name, needs={identity})
 
+    def build_create(self, step: _Step, row: Mapping[str, Any], source_id: str, donor: CompareObject, new_tag: bool,
+                     folder: str | None) -> None:
+        key = row["row_key"]
+        identity = key if key in self.created else f"{key}#new"
+        if donor.kind == "page":
+            excluded = self._excluded_page_visuals(source_id, donor)
+            extra_kwargs: dict[str, Any] = {}
+            if excluded:
+                extra_kwargs["exclude_visuals"] = excluded
+            self.op(step, "COPY_PAGE", identity, source_id=source_id, source_key=donor.source_key,
+                    page_id=donor.extra.get("page_id"), replace=False, **extra_kwargs)
+            page_folder = donor.source_key.split(":", 1)[1]
+            for visual_row in self.rows:
+                visual = self.source_object(visual_row, source_id)
+                if visual is None or visual.kind != "visual" or visual.table != page_folder:
+                    continue
+                if visual_row["row_key"] in self.choices or self.target_object(visual_row) is not None:
+                    continue
+                # COPY_PAGE already copies non-skipped visuals; register and rebind only (avoid double-copy).
+                self.register(visual_row["row_key"], "visual", visual.subtype, REPORT, visual.name, None)
+                self._rebind_copied_visual(step, visual_row, source_id, visual)
+            return
+        if donor.kind == "visual":
+            page_row = self.row_of.get((source_id, f"page:{donor.table}"))
+            page_identity = page_row["row_key"] if page_row else None
+            if page_identity is None or not self.exists(page_identity):
+                self._item(self.blocking, "need_missing", key, step=step, item_id=f"need_missing:{key}:page",
+                           needed={"object_type": "page", "table": None, "name": donor.table})
+                return
+            # If the parent page is already being copied from the same donor, COPY_PAGE already includes this visual.
+            if self.copied_pages.get(page_identity) == source_id:
+                self._rebind_copied_visual(step, row, source_id, donor)
+                return
+            self.copy_visual(step, row, source_id, donor, page_identity=page_identity)
+            return
+        props, needs = self.carried_properties(step, identity, source_id, donor)
+        if folder is not None:
+            props["display_folder"] = folder
+        name = "CREATE_REPORT_MEASURE" if donor.kind == "report_measure" else "CREATE"
+        op_extra: dict[str, Any] = {}
+        if donor.kind == "column" and donor.table:
+            donor_table = self.objects.get((source_id, f"table:{donor.table}"))
+            col_order = (donor_table.extra.get("column_order") or []) if donor_table is not None else []
+            if donor.name in col_order:
+                op_extra["column_ordinal"] = col_order.index(donor.name)
+        self.op(step, name, identity, needs=needs, source_id=source_id, source_key=donor.source_key,
+                lineage_tag=self.lineage_tag(row, source_id, donor, new=new_tag), properties=props, **op_extra)
+
+    def copy_visual(self, step: _Step, row: Mapping[str, Any], source_id: str, donor: CompareObject, *, page_identity: str,
+                    replace: bool = False) -> None:
+        key = row["row_key"]
+        extra_kwargs: dict[str, Any] = {"replace": True} if replace else {}
+        self.op(step, "COPY_VISUAL", key, needs={page_identity}, source_id=source_id, source_key=donor.source_key,
+                page_id=self.by_key[page_identity]["page"], visual_id=donor.extra.get("visual_id"), **extra_kwargs)
+        self._rebind_copied_visual(step, row, source_id, donor)
+
     def build_take_existing(self, step: _Step, row: Mapping[str, Any], source_id: str, donor: CompareObject,
                             target: CompareObject, folder: str | None) -> None:
         key = row["row_key"]
         if donor.kind == "page":
+            excluded = self._excluded_page_visuals(source_id, donor)
+            extra_kwargs: dict[str, Any] = {}
+            if excluded:
+                extra_kwargs["exclude_visuals"] = excluded
             self.op(step, "COPY_PAGE", key, source_id=source_id, source_key=donor.source_key, page_id=target.extra.get("page_id"),
-                    replace=True)
+                    replace=True, **extra_kwargs)
             return
         if donor.kind == "visual":
-            self.op(step, "DELETE_VISUAL", key)
-            self.copy_visual(step, row, source_id, donor, page_identity=self.by_key[key]["row_key"] if False else
-                             (self.row_of.get((self.data.target_report, f"page:{target.table}")) or {}).get("row_key", key))
+            donor_page_row = self.row_of.get((source_id, f"page:{donor.table}"))
+            donor_page_key = donor_page_row["row_key"] if donor_page_row else None
+            if donor_page_key is not None and self.copied_pages.get(donor_page_key) == source_id:
+                self._rebind_copied_visual(step, row, source_id, donor)
+                return
+            target_page_row = self.row_of.get((self.data.target_report, f"page:{target.table}"))
+            target_page_key = target_page_row["row_key"] if target_page_row else None
+            if target_page_key is None or target_page_key not in self.copied_pages:
+                self.op(step, "DELETE_VISUAL", key)
+            self.copy_visual(step, row, source_id, donor, page_identity=target_page_key or key, replace=True)
             return
         self.rename_op(step, key, target)
         cell = self.cell(row, source_id) or {}
@@ -1028,7 +1203,7 @@ class _Compiler:
         policy_kind = policy.get("policy") if isinstance(policy, Mapping) else None
         policy_kind = policy_kind if policy_kind in POLICIES else BLOCK
         if policy_kind == REPOINT:
-            replacement = str(policy.get("replacement_row_key") or "")
+            replacement = str((policy.get("repoint_target") if "repoint_target" in policy else policy.get("replacement_row_key")) or "")
             if not self.exists(replacement) or self.kind_of.get(replacement) != self.kind_of.get(key) or replacement == key:
                 self.block("repoint_not_valid", key, replacement_row_key=replacement or None)
                 policy_kind = BLOCK
@@ -1235,7 +1410,22 @@ class _Compiler:
     def included(self, dependent: str, cause: str) -> bool:
         if (self.choices.get(cause) or {}).get("kind") == EDIT:
             return True
-        action = self.data.item_actions.get(f"renamed:{dependent}:{cause}")
+        actions = self.data.item_actions
+        canon_key = f"renamed:{dependent}:{cause}"
+        action = actions.get(canon_key)
+        if not isinstance(action, Mapping):
+            # Also match deterministic impact item IDs (from ImpactEngine) or entries carrying dependent/cause.
+            for rule_id in ("rename", "break"):
+                imp_seed = f"breaks:{dependent}:{cause}:{rule_id}:"
+                imp_id = "imp-" + hashlib.sha256(imp_seed.encode("utf-8")).hexdigest()[:16]
+                if isinstance(actions.get(imp_id), Mapping):
+                    action = actions[imp_id]
+                    break
+        if not isinstance(action, Mapping):
+            for value in actions.values():
+                if isinstance(value, Mapping) and value.get("dependent") == dependent and value.get("cause") == cause:
+                    action = value
+                    break
         return isinstance(action, Mapping) and action.get("action") == INCLUDE_IN_REWRITE
 
     def rebind_fields(self) -> None:
@@ -1284,10 +1474,14 @@ class _Compiler:
     def check_names(self) -> None:
         for row in self.rows:
             key = row["row_key"]
-            clash_note = any(note.get("note_id") == "name_clash" for cell in row["cells"] for note in cell["notes"])
+            clash_cell = next((cell for cell in row["cells"]
+                               if any(note.get("note_id") == "name_clash" for note in cell["notes"])), None)
             choice = self.choices.get(key) or {}
-            if clash_note and choice.get("kind") in {None, SKIP}:
-                self.block("name_clash", key, name=row["name"], proposed_name=self.proposal(key, row["name"], None))
+            if clash_cell is not None and choice.get("kind") in {None, SKIP}:
+                other_key = next((note.get("other_row_key") for note in clash_cell["notes"] if note.get("other_row_key")), None)
+                clash_obj = self.object_view(other_key) if other_key else {"object_type": row["object_type"], "table": row.get("table"), "name": row["name"]}
+                self.block("name_clash", key, name=row["name"], table=row.get("table"), clash=clash_obj,
+                           proposed_name=self.proposal(key, row["name"], clash_cell["source_id"], extra_clash=clash_obj))
         changed = sorted(identity for identity in self.own_name
                          if self.exists(identity) and (identity in self.created or identity in self.authored or fold(self.own_name[identity]) != fold(self.original_name(identity)[1])))
         for identity in changed:
@@ -1300,11 +1494,18 @@ class _Compiler:
             self._item(self.blocking, "name_clash", row_key, step=self.step_of_row.get(row_key), item_id=f"name_clash:{identity}",
                        name=name, table=table, clash=clash.view(), proposed_name=self.proposal(identity, name, source_id))
 
-    def proposal(self, identity: str, name: str, source_id: str | None) -> str | None:
+    def proposal(self, identity: str, name: str, source_id: str | None, *, extra_clash: Mapping[str, Any] | None = None) -> str | None:
         if identity not in self.kind_of or self.kind_of[identity] not in _NAMING_TYPES:
             return None
         item = self.named(identity)
         live = [self.named(key) for key in self.own_name if key != identity and self.exists(key) and self.kind_of.get(key) in _NAMING_TYPES]
+        if isinstance(extra_clash, Mapping) and extra_clash.get("name"):
+            live.append(NamedObject(str(extra_clash.get("object_type") or item.object_type), str(extra_clash["name"]), extra_clash.get("table")))
+        if item not in live and clash_with(name, item.object_type, item.table, live) is None:
+            # Ensure a clash detected against another identity (e.g. a row-level clash note) still gets disambiguated.
+            clash = self._clashes(identity)
+            if clash is not None:
+                live.append(clash)
         donor = self.data.sources.get(source_id or "")
         return propose(name, item.object_type, {"table": item.table}, self.data.naming_rules, live, donor)["name"]
 
@@ -1332,6 +1533,107 @@ class _Compiler:
 
     # Run -------------------------------------------------------------------------------------
 
+    def ensure_model_header(self) -> None:
+        """Preserve or copy model-level header properties (culture, defaultPowerBIDataSourceVersion, etc.) when creating tables."""
+        headers = getattr(self.data.result, "model_headers", None) or {}
+        if not headers or self.data.target_model is None:
+            return
+        table_step = next(
+            (step for step in self.steps for op in step.operations
+             if op.get("domain") == MODEL and op.get("object_type") == "table" and op.get("op") == "CREATE"),
+            None,
+        )
+        if table_step is None:
+            return
+        target_header = headers.get(self.data.target_model) or {}
+        required_keys = ("culture", "default_power_bi_data_source_version", "source_query_culture", "data_access_options")
+        missing = [k for k in required_keys if not target_header.get(k)]
+        if not missing:
+            return
+        # Prefer the first donor that contributes a created table, else any donor with model header info.
+        donor_order: list[str] = []
+        for step in self.steps:
+            for op in step.operations:
+                sid = op.get("source_id")
+                if sid and sid != self.data.target_model and sid not in donor_order:
+                    donor_order.append(sid)
+        for sid in headers:
+            if sid != self.data.target_model and sid not in donor_order:
+                donor_order.append(sid)
+        donor_header: Mapping[str, Any] = next((headers[sid] for sid in donor_order if headers.get(sid)), {})
+        header_props: dict[str, Any] = {}
+        for k in missing:
+            if donor_header.get(k) is not None:
+                header_props[k] = donor_header[k]
+        if not header_props:
+            return
+        op_id = "op-" + _digest(table_step.step_id, "SET_PROPERTIES", "model:Model", "header")[:12]
+        table_step.operations.append({
+            "op_id": op_id,
+            "step_id": table_step.step_id,
+            "op": "SET_PROPERTIES",
+            "guard_op": GUARD_OPERATIONS["SET_PROPERTIES"],
+            "domain": MODEL,
+            "object_type": "model",
+            "subtype": "model",
+            "row_key": "model:Model",
+            "table": None,
+            "name": "Model",
+            "properties": header_props,
+        })
+
+    def check_shared_expressions(self) -> None:
+        """Warn when taken tables/partitions from different donors reference a shared M expression whose values differ."""
+        conflicting: dict[str, tuple[dict[str, Any], dict[str, str]]] = {}
+        for row in self.rows:
+            if row["object_type"] != "expression":
+                continue
+            values_by_source: dict[str, str] = {}
+            for cell in row["cells"]:
+                if not cell["present"]:
+                    continue
+                obj = self.objects.get((cell["source_id"], cell["source_key"]))
+                if obj is not None:
+                    values_by_source[cell["source_id"]] = str(obj.props.get("m_text") or "").strip()
+            if len(set(values_by_source.values())) > 1:
+                conflicting[row["name"]] = (row, values_by_source)
+        if not conflicting:
+            return
+        # Collect partition M expressions brought in by the plan, grouped by donor source_id.
+        taken_partitions: list[tuple[str, str, str]] = []  # (source_id, table_name, m_text)
+        for step in self.steps:
+            for op in step.operations:
+                if op.get("domain") != MODEL or op.get("object_type") != "partition":
+                    continue
+                if op.get("op") not in {"CREATE", "REPLACE", "SET_PROPERTIES"}:
+                    continue
+                sid = op.get("source_id")
+                props = op.get("properties") or {}
+                m_text = str(props.get("expression") or props.get("m_text") or "")
+                if sid and m_text:
+                    taken_partitions.append((sid, str(op.get("table") or op.get("name") or ""), m_text))
+        if not taken_partitions:
+            return
+        for expr_name, (expr_row, values_by_source) in sorted(conflicting.items()):
+            pattern = re.compile(r"(?<![A-Za-z0-9_])" + re.escape(expr_name) + r"(?![A-Za-z0-9_])")
+            donors_using: dict[str, list[str]] = {}
+            for sid, tbl, m_text in taken_partitions:
+                if sid in values_by_source and pattern.search(m_text):
+                    donors_using.setdefault(sid, []).append(tbl)
+            distinct_vals = {values_by_source[sid] for sid in donors_using}
+            if len(distinct_vals) > 1:
+                affected_tables = sorted({tbl for tbls in donors_using.values() for tbl in tbls})
+                donor_names = sorted(self.data.sources.get(sid, sid) for sid in donors_using)
+                self._item(
+                    self.warnings,
+                    "shared_expression_conflict",
+                    expr_row["row_key"],
+                    item_id=f"shared_expression_conflict:{expr_row['row_key']}",
+                    expression=expr_name,
+                    donors=donor_names,
+                    tables=affected_tables,
+                )
+
     def run(self) -> dict[str, Any]:
         self.pending: list[tuple[_Step, Mapping[str, Any], str, CompareObject, bool, str | None]] = []
         self.children: dict[str, list[tuple[Mapping[str, Any], CompareObject]]] = {}
@@ -1339,6 +1641,7 @@ class _Compiler:
         self.removed_fields: dict[str, list[tuple[_Step, FieldLocation]]] = {}
         self.rebound: set[tuple[str, str]] = set()
         self.field_users: dict[str, list[tuple[str, FieldLocation]]] = {}
+        self.dropped_steps: set[str] = set()
         self._init_target()
         self.index_target()
         work = self.intents()
@@ -1355,16 +1658,21 @@ class _Compiler:
                 self.build_create(pending_step, pending_row, source_id, donor, new_tag, folder)
         for step, row, entry in authored:
             self.build_authored(step, row, entry)
+        self.ensure_model_header()
         self.finish_fields()
         self.rewrite_dependents()
         self.rebind_fields()
         self.check_names()
         self.check_functions()
+        self.check_shared_expressions()
         self.check_marks()
         self.check_session_ready()
         return self.result()
 
     def result(self) -> dict[str, Any]:
+        if self.dropped_steps:
+            self.steps = [step for step in self.steps if step.step_id not in self.dropped_steps]
+            self.blocking = [item for item in self.blocking if item.get("step_id") not in self.dropped_steps]
         operations = [operation for step in self.steps for operation in step.operations]
         targets: dict[str, list[str]] = {}
         for operation in operations:

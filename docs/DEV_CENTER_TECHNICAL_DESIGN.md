@@ -501,6 +501,9 @@ The UI design ([DEV_CENTER_UI_DESIGN.md](DEV_CENTER_UI_DESIGN.md)) needs these a
 | UC37 | #16 | JS API `merge_template_save` (new, no revision change) | Save the Merge Choices of the session as `.pbibrain/templates/<name>.json`, each source by display name. `replace: true` overwrites a template with the same name. | Merge templates (spec section 13): the same decisions for new donor versions or another target. | 16 |
 | UC38 | #16 | JS API `merge_template_list` (new, read) | The templates of the project: name, time, choice count, source names. | The template picker. | 16 |
 | UC39 | #16 | JS API `merge_template_apply` (new) | Replay a template in one revision. Each source name maps to the session source with the same name; a choice whose source is missing is skipped with a reason. | Replay of saved decisions. | 16 |
+| UC40 | #91 | JS API `session_rename` (new) | Rename a persisted session file's `display_name` on disk. | Session Rename in the UI must persist across restarts. | 91 |
+| UC41 | #91 | JS API `session_delete` (new) | Close (if open) and remove a session file from disk. | Session Delete in the UI must delete the persisted session. | 91 |
+| UC42 | #91 | JS API `session_duplicate` (new) | Create a copy of a persisted session including its sources, target, merge choices, removal policies, and need mappings. | Session Duplicate in the UI must copy session state rather than create an empty session. | 91 |
 
 ## 15. First-version scope
 

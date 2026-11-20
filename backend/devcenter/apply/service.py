@@ -93,10 +93,12 @@ def approvals_needed(plan: Mapping[str, Any], *, cloud: bool = False) -> list[di
 
     operations = list(plan.get("operations") or [])
     needed = []
-    risk = _risk(operations)
-    if risk in {"HIGH", "CRITICAL"}:
-        keys = sorted({str(item.get("row_key")) for item in operations if _risk([item]) in {"HIGH", "CRITICAL"}})
-        needed.append({"purpose": HIGH_RISK, "risk": risk, "row_keys": keys})
+    critical_keys = sorted({str(item.get("row_key")) for item in operations if _risk([item]) == "CRITICAL"})
+    high_keys = sorted({str(item.get("row_key")) for item in operations if _risk([item]) == "HIGH"})
+    if critical_keys:
+        needed.append({"purpose": HIGH_RISK, "risk": "CRITICAL", "row_keys": critical_keys})
+    if high_keys:
+        needed.append({"purpose": HIGH_RISK, "risk": "HIGH", "row_keys": high_keys})
     unchecked = not_checked(plan)
     if unchecked:
         needed.append({"purpose": UNCHECKED, "risk": None, "row_keys": sorted({str(item["object_id"]) for item in unchecked})})
@@ -433,7 +435,7 @@ class ApplyService:
             raise ApplyFailure(VALIDATION, "validation_failed", "The full validation found blocking items.", failed_checks=_failed_checks(plan))
 
         self._step(kind, APPROVAL)
-        needed = sorted(item["purpose"] for item in approvals_needed(plan, cloud=target.cloud is not None))
+        needed = sorted({item["purpose"] for item in approvals_needed(plan, cloud=target.cloud is not None)})
         if approvals != needed:
             raise ApplyFailure(APPROVAL, "approval_missing", "Give the approvals of the Apply dialog.", check="approval", purposes=needed)
 
@@ -466,6 +468,12 @@ class ApplyService:
         self._save_last(record)
 
         self._step(kind, FINGERPRINT)
+        from backend.devcenter.compare.extract import invalidate_cache
+
+        invalidate_cache()
+        self.devcenter._cached_plan = None
+        if hasattr(self.devcenter, "_cached_impact"):
+            self.devcenter._cached_impact = None
         revision = self._commit("format_only_apply" if kind == "format_only" else "apply", target.source_id, None,
                                 {"apply_id": record["apply_id"], "plan_hash": record["plan_hash"], "file_count": len(record["files"])},
                                 also=self._also(target))
@@ -584,6 +592,12 @@ class ApplyService:
                        for key in sorted(set(before) | set(after)) if before.get(key) != after.get(key)]
 
         self._step(kind, FINGERPRINT)
+        from backend.devcenter.compare.extract import invalidate_cache
+
+        invalidate_cache()
+        self.devcenter._cached_plan = None
+        if hasattr(self.devcenter, "_cached_impact"):
+            self.devcenter._cached_impact = None
         revision = self._commit("undo_apply", target.source_id, {"apply_id": record["apply_id"]}, {"undo_id": apply_id},
                                 also=self._also(target))
         record.update(undone=True, undo_id=apply_id, undo_finished_utc=utc_now(), undo_differences=differences)

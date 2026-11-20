@@ -526,11 +526,14 @@ class PBIRWriter:
         page_doc = copy.deepcopy(_read_json(donor_page_file))
         _check_refused_page(page_doc)
 
+        exclude_visuals = {str(v) for v in (operation.get("exclude_visuals") or []) if v}
         donor_visuals: list[tuple[str, dict[str, Any]]] = []
         for visual_file in sorted(donor_page_dir.glob("visuals/*/visual.json")):
             v_doc = copy.deepcopy(_read_json(visual_file))
-            _check_refused_visual(v_doc, donor_dir, custom_visuals)
             old_v_id = str(v_doc.get("name") or visual_file.parent.name)
+            if old_v_id in exclude_visuals or visual_file.parent.name in exclude_visuals:
+                continue
+            _check_refused_visual(v_doc, donor_dir, custom_visuals)
             donor_visuals.append((old_v_id, v_doc))
 
         replace = bool(operation.get("replace"))
@@ -1701,8 +1704,30 @@ class PBIRWriter:
                 documents[f"{root_name}/{rel}"] = _read_json(file_path)
 
         result = validate_report_documents(documents)
+        root_pbir_key = f"{root_name}/definition.pbir"
+        allow_untouched_root_pbir = False
+        base_pbir = self.baseline_dir / "definition.pbir"
+        cand_pbir = self.candidate_dir / "definition.pbir"
+        if base_pbir.is_file() and cand_pbir.is_file() and base_pbir.read_bytes() == cand_pbir.read_bytes():
+            pbir_doc = documents.get(root_pbir_key)
+            if (
+                isinstance(pbir_doc, dict)
+                and pbir_doc.get("$schema") is None
+                and pbir_doc.get("version") == "4.0"
+                and isinstance(pbir_doc.get("datasetReference"), dict)
+            ):
+                allow_untouched_root_pbir = True
+
         structural_errors = [
-            issue for issue in result.get("issues", []) if issue.get("code") in _STRUCTURAL_VALIDATION_CODES
+            issue
+            for issue in result.get("issues", [])
+            if issue.get("code") in _STRUCTURAL_VALIDATION_CODES
+            and not (
+                allow_untouched_root_pbir
+                and issue.get("code") == "PBIR_SCHEMA_UNSUPPORTED"
+                and issue.get("source_file") == root_pbir_key
+                and issue.get("schema") is None
+            )
         ]
         if structural_errors:
             raise PBIRWriteError(

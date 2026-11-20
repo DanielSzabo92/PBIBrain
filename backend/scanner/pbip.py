@@ -320,6 +320,53 @@ def _parse_hierarchy(name: str, block: list[str]) -> dict[str, Any]:
     return hierarchy
 
 
+_TMDL_TOP_DECL_RE = re.compile(
+    r"^(expression|table|role|relationship|function|perspective|cultureInfo|culture)\s+('(?:''|[^'])*'|[^\s=]+)"
+)
+
+
+def _find_duplicate_tmdl_declarations(definition_dir: Path) -> list[dict[str, Any]]:
+    """Scan all .tmdl files under definition/ (excluding TMDLScripts/) for duplicate top-level declarations."""
+    if not definition_dir.is_dir():
+        return []
+    seen: dict[tuple[str, str], list[tuple[str, str]]] = {}
+    for tmdl_file in sorted(definition_dir.rglob("*.tmdl"), key=lambda item: str(item).casefold()):
+        rel = tmdl_file.relative_to(definition_dir)
+        if any(part.casefold() == "tmdlscripts" for part in rel.parts):
+            continue
+        rel_posix = rel.as_posix()
+        try:
+            text = tmdl_file.read_text(encoding="utf-8-sig")
+        except OSError:
+            continue
+        for line in text.splitlines():
+            if not line or line[0] in (" ", "\t") or line.startswith("///"):
+                continue
+            match = _TMDL_TOP_DECL_RE.match(line)
+            if not match:
+                continue
+            raw_kind = match.group(1)
+            kind = "culture" if raw_kind in {"cultureInfo", "culture"} else raw_kind
+            name = _unquote(match.group(2))
+            if not name:
+                continue
+            seen.setdefault((kind, name.casefold()), []).append((name, rel_posix))
+    duplicates: list[dict[str, Any]] = []
+    for (kind, _folded), entries in sorted(seen.items()):
+        if len(entries) <= 1:
+            continue
+        display = entries[0][0]
+        files = sorted({file for _, file in entries})
+        duplicates.append({
+            "kind": kind,
+            "name": display,
+            "files": files,
+            "count": len(entries),
+            "message": f"Duplicate TMDL {kind} declaration '{display}' found in: {', '.join(files)}",
+        })
+    return duplicates
+
+
 def _parse_model_meta(path: Path) -> dict[str, Any]:
     model_file = path / "definition" / "model.tmdl"
     lines = model_file.read_text(encoding="utf-8").splitlines() if model_file.is_file() else []
@@ -336,6 +383,7 @@ def _parse_model_meta(path: Path) -> dict[str, Any]:
     source = _attribute(lines, "lineageTag") or _platform_id(path)
     source = source or "pbip-model-" + hashlib.sha256(str(path.resolve()).encode("utf-8")).hexdigest()[:24]
     compatibility = _attribute(db_lines, "compatibilityLevel")
+    tmdl_duplicates = _find_duplicate_tmdl_declarations(path / "definition")
     model: dict[str, Any] = {
         "id": source,
         "name": name,
@@ -345,6 +393,7 @@ def _parse_model_meta(path: Path) -> dict[str, Any]:
         "tables": [],
         "relationships": _parse_relationships(path / "definition" / "relationships.tmdl"),
         "shared_expressions": _parse_expressions(path / "definition" / "expressions.tmdl"),
+        "tmdl_duplicates": tmdl_duplicates,
     }
     for table_path in sorted((path / "definition" / "tables").rglob("*.tmdl"), key=lambda item: str(item).casefold()):
         table = _parse_table(table_path)

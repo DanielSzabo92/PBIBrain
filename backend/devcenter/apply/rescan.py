@@ -104,9 +104,23 @@ def differences(operations: Sequence[Mapping[str, Any]], before: Mapping[str, st
             expect(key, ABSENT)
         elif op in _CREATES and operation.get("name"):
             new_type = "measure" if operation.get("domain") == "model" and object_type == "report_measure" else object_type
-            expect(_moved(_key(new_type, str(operation["name"]), table), tables), PRESENT)
+            created_key = _moved(_key(new_type, str(operation["name"]), table), tables)
+            expect(created_key, PRESENT)
+            if new_type == "table":
+                props = operation.get("properties") if isinstance(operation.get("properties"), Mapping) else {}
+                subtype = str(operation.get("subtype") or "")
+                if subtype in {"calculated_table", "calculation_group"} or "expression" in props or "calculation_group" in props:
+                    final_table = created_key.split(":", 1)[1]
+                    prefix = f"partition:{final_table}/"
+                    for after_key in after:
+                        if after_key.startswith(prefix) and after_key not in before:
+                            touched.add(after_key)
         elif op in _COPIES:
-            copies[object_type] = copies.get(object_type, 0) + 1
+            if operation.get("replace"):
+                if key:
+                    expect(_moved(key, tables, objects), PRESENT)
+            else:
+                copies[object_type] = copies.get(object_type, 0) + 1
         elif op == "REWRITE_EXPRESSION" and operation.get("domain") == "model" and key and object_type != "table":
             expect(_moved(key, tables, objects), CHANGED)
         elif key:

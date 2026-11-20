@@ -67,6 +67,9 @@ export const INVALIDATES = Object.freeze({
   cloud_connect: ALL,
   pull_to_local: ALL,
   cloud_items_list: Object.freeze([]),
+  session_rename: change(),
+  session_delete: change(),
+  session_duplicate: ALL,
 });
 
 // The reads that the method makes stale. An unknown method is a programming error.

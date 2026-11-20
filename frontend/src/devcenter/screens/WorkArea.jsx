@@ -64,7 +64,7 @@ function SessionSwitcher({ session, onShowList, disabled }) {
 // sources_check runs automatically once on each open of a session (UI design 4.2).
 const checkedOnOpen = new Set();
 
-export default function WorkArea({ session, tabState, onTabs, onRetryLock, onClose, onShowList, onRenameSession, onDuplicateSession, onDeleteSession }) {
+export default function WorkArea({ session, tabState, onTabs, onRetryLock, onClose, onShowList, onRenameSession, onDuplicateSession, onDeleteSession, onProjectChanged }) {
   const toast = useToast();
   const busy = useDevCenterState((state) => state.busy);
   const running = useDevCenterState((state) => state.running);
@@ -77,7 +77,7 @@ export default function WorkArea({ session, tabState, onTabs, onRetryLock, onClo
   const status = deriveReadiness({
     session,
     plan,
-    checking: (plan.status === "loading" && !plan.data) || session.plan_state === "checking",
+    checking: (plan.status === "loading" && !plan.data) || session.plan_state === "computing",
   });
   const agent = agentCount(session);
   const blocking = status.blockingCount ?? status.blocking ?? 0;
@@ -283,6 +283,7 @@ export default function WorkArea({ session, tabState, onTabs, onRetryLock, onClo
                 reasonId={reasonId}
                 onTabs={onTabs}
                 onDesktopBanner={() => setDesktopBanner(true)}
+                onProjectChanged={onProjectChanged}
               />
             ) : tab === "agent" ? (
               <AgentTab session={session} changeDisabled={changeDisabled} reasonId={reasonId} onTabs={onTabs} />

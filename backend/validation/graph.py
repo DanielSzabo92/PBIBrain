@@ -151,6 +151,28 @@ def validate_graph_integrity(value: Any, edges: Any = None) -> ValidationResult:
         status = _text(node.get("status", "factual")).lower()
         if status not in STATUS_VALUES:
             _add(result, "invalid_node_status", "ERROR", f"Unsupported node status {status!r}", object_id=node_id)
+        if type_name == "MODEL":
+            props = properties(node)
+            raw_source = props.get("raw_source") if isinstance(props.get("raw_source"), Mapping) else {}
+            duplicates = props.get("tmdl_duplicates") or raw_source.get("tmdl_duplicates")
+            if isinstance(duplicates, Sequence) and not isinstance(duplicates, (str, bytes)):
+                for dup in duplicates:
+                    if not isinstance(dup, Mapping):
+                        continue
+                    kind = _text(dup.get("kind") or "object")
+                    name = _text(dup.get("name") or "")
+                    files = list(dup.get("files") or [])
+                    message = _text(dup.get("message")) or f"Duplicate TMDL {kind} declaration '{name}' found in: {', '.join(files)}"
+                    _add(
+                        result,
+                        "duplicate_tmdl_declaration",
+                        "ERROR",
+                        message,
+                        object_id=node_id,
+                        kind=kind,
+                        name=name,
+                        files=files,
+                    )
 
     for index, edge in enumerate(edge_records):
         edge_id = _id(edge.get("id"))

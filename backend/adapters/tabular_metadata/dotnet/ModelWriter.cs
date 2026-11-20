@@ -104,18 +104,28 @@ static class ModelWriter
                 }
             }
 
-            // 2. Deserialize model to memory TOM
-            var database = TmdlSerializer.DeserializeDatabaseFromFolder(modelFull);
+            // 2. Deserialize model to memory TOM (from definition/ when present so TMDLScripts/ is ignored)
+            var database = TmdlSerializer.DeserializeDatabaseFromFolder(defFolder);
 
-            // 3. Apply ordered operations
+            // 3. Apply ordered operations, deferring cross-column references (sort_by_column) until all columns exist
+            var deferredSortBy = new List<(string Table, string Column, string? SortBy)>();
             if (operations != null)
             {
                 foreach (var node in operations)
                 {
                     if (node is JsonObject opObj)
                     {
-                        ApplyOperation(database, opObj);
+                        ApplyOperation(database, opObj, deferredSortBy);
                     }
+                }
+            }
+            foreach (var (sTable, sCol, sTarget) in deferredSortBy)
+            {
+                var tbl = database.Model.Tables.Find(sTable);
+                var colObj = tbl?.Columns.Find(sCol);
+                if (colObj != null)
+                {
+                    colObj.SortByColumn = !string.IsNullOrEmpty(sTarget) ? tbl?.Columns.Find(sTarget) : null;
                 }
             }
 
@@ -185,7 +195,7 @@ static class ModelWriter
         }
     }
 
-    private static void ApplyOperation(Database database, JsonObject op)
+    private static void ApplyOperation(Database database, JsonObject op, List<(string Table, string Column, string? SortBy)> deferredSortBy)
     {
         var opType = op["op"]?.GetValue<string>();
         var objType = op["object_type"]?.GetValue<string>();
@@ -197,7 +207,7 @@ static class ModelWriter
         switch (opType)
         {
             case "CREATE":
-                ApplyCreate(database, objType, name, tableName, properties, lineageTag, op);
+                ApplyCreate(database, objType, name, tableName, properties, lineageTag, op, deferredSortBy);
                 break;
             case "DELETE":
                 ApplyDelete(database, objType, name, tableName);
@@ -209,7 +219,7 @@ static class ModelWriter
                 break;
             case "SET_PROPERTIES":
             case "REPLACE":
-                ApplySetProperties(database, objType, name, tableName, properties, lineageTag);
+                ApplySetProperties(database, objType, name, tableName, properties, lineageTag, deferredSortBy);
                 break;
             case "REWRITE_EXPRESSION":
                 var propName = op["property"]?.GetValue<string>() ?? "expression";
@@ -219,7 +229,58 @@ static class ModelWriter
         }
     }
 
-    private static void ApplyCreate(Database db, string? objType, string name, string? tableName, JsonObject? props, string? lineageTag, JsonObject op)
+    private static JsonNode? FirstProp(JsonObject? props, params string[] keys)
+    {
+        if (props == null) return null;
+        foreach (var key in keys)
+        {
+            if (props.TryGetPropertyValue(key, out var val) && val != null)
+                return val;
+        }
+        return null;
+    }
+
+    private static bool HasAnyProp(JsonObject? props, params string[] keys)
+    {
+        if (props == null) return false;
+        foreach (var key in keys)
+        {
+            if (props.ContainsKey(key)) return true;
+        }
+        return false;
+    }
+
+    private static void ApplyAnnotations(ICollection<Annotation> target, JsonNode? node)
+    {
+        if (node is JsonObject obj)
+        {
+            foreach (var kvp in obj)
+            {
+                if (string.IsNullOrEmpty(kvp.Key)) continue;
+                var val = kvp.Value?.GetValue<string>();
+                var existing = target.FirstOrDefault(a => a.Name == kvp.Key);
+                if (existing != null) existing.Value = val;
+                else target.Add(new Annotation { Name = kvp.Key, Value = val });
+            }
+        }
+        else if (node is JsonArray arr)
+        {
+            foreach (var item in arr)
+            {
+                if (item is JsonObject entry)
+                {
+                    var aName = entry["name"]?.GetValue<string>();
+                    if (string.IsNullOrEmpty(aName)) continue;
+                    var aVal = entry["value"]?.GetValue<string>();
+                    var existing = target.FirstOrDefault(a => a.Name == aName);
+                    if (existing != null) existing.Value = aVal;
+                    else target.Add(new Annotation { Name = aName, Value = aVal });
+                }
+            }
+        }
+    }
+
+    private static void ApplyCreate(Database db, string? objType, string name, string? tableName, JsonObject? props, string? lineageTag, JsonObject op, List<(string Table, string Column, string? SortBy)> deferredSortBy)
     {
         var model = db.Model;
         var subtype = op["subtype"]?.GetValue<string>();
@@ -231,8 +292,15 @@ static class ModelWriter
                 if (props != null)
                 {
                     if (props["description"] != null) table.Description = props["description"]?.GetValue<string>();
-                    if (props["is_hidden"] != null) table.IsHidden = props["is_hidden"]!.GetValue<bool>();
-                    if (props["data_category"] != null) table.DataCategory = props["data_category"]?.GetValue<string>();
+                    var hiddenNode = FirstProp(props, "is_hidden", "hidden", "isHidden");
+                    if (hiddenNode != null) table.IsHidden = hiddenNode.GetValue<bool>();
+                    var catNode = FirstProp(props, "data_category", "dataCategory");
+                    if (catNode != null) table.DataCategory = catNode.GetValue<string>();
+                    var privNode = FirstProp(props, "is_private", "isPrivate");
+                    if (privNode != null) table.IsPrivate = privNode.GetValue<bool>();
+                    var varOnlyNode = FirstProp(props, "show_as_variations_only", "showAsVariationsOnly");
+                    if (varOnlyNode != null) table.ShowAsVariationsOnly = varOnlyNode.GetValue<bool>();
+                    ApplyAnnotations(table.Annotations, props["annotations"]);
                 }
                 if (!string.IsNullOrEmpty(lineageTag)) table.LineageTag = lineageTag;
 
@@ -256,12 +324,13 @@ static class ModelWriter
                 }
                 else
                 {
-                    var mExpr = props?["partition_expression"]?.GetValue<string>() ??
+                    var mExpr = FirstProp(props, "partition_expression", "m_text")?.GetValue<string>() ??
                                 $"let\n    Source = #table({{\"{name}\"}}, {{}})\nin\n    Source";
+                    var partMode = ParseModeType(props?["mode"]?.GetValue<string>());
                     table.Partitions.Add(new Partition
                     {
                         Name = name,
-                        Mode = ModeType.Import,
+                        Mode = partMode,
                         Source = new MPartitionSource { Expression = mExpr }
                     });
                 }
@@ -272,7 +341,9 @@ static class ModelWriter
                 var colTable = model.Tables.Find(tableName)
                     ?? throw new ModelWriterException("table_not_found", $"Table not found: {tableName}");
                 Column col;
-                var isCalculated = subtype == "calculated" || props?["expression"] != null || props?["type"]?.GetValue<string>() == "calculated";
+                var colTypeProp = FirstProp(props, "column_type", "type")?.GetValue<string>();
+                var isCalculated = subtype == "calculated" || subtype == "calculated_column" || props?["expression"] != null || colTypeProp == "calculated";
+                var isCalcTableCol = !isCalculated && (subtype == "calculated_table_column" || colTypeProp == "calculatedTableColumn");
                 if (isCalculated)
                 {
                     col = new CalculatedColumn
@@ -281,9 +352,18 @@ static class ModelWriter
                         Expression = props?["expression"]?.GetValue<string>() ?? ""
                     };
                 }
+                else if (isCalcTableCol)
+                {
+                    var srcCol = FirstProp(props, "source_column", "sourceColumn")?.GetValue<string>();
+                    var calcTblCol = new CalculatedTableColumn { Name = name };
+                    if (!string.IsNullOrEmpty(srcCol)) calcTblCol.SourceColumn = srcCol;
+                    var inferredNode = FirstProp(props, "is_name_inferred", "isNameInferred");
+                    if (inferredNode != null) calcTblCol.IsNameInferred = inferredNode.GetValue<bool>();
+                    col = calcTblCol;
+                }
                 else
                 {
-                    var srcCol = props?["source_column"]?.GetValue<string>() ?? props?["sourceColumn"]?.GetValue<string>() ?? name;
+                    var srcCol = FirstProp(props, "source_column", "sourceColumn")?.GetValue<string>() ?? name;
                     col = new DataColumn
                     {
                         Name = name,
@@ -293,22 +373,28 @@ static class ModelWriter
 
                 if (props != null)
                 {
-                    if (props["data_type"] != null || props["dataType"] != null)
-                        col.DataType = ParseDataType(props["data_type"]?.GetValue<string>() ?? props["dataType"]?.GetValue<string>());
-                    if (props["format_string"] != null || props["formatString"] != null)
-                        col.FormatString = props["format_string"]?.GetValue<string>() ?? props["formatString"]?.GetValue<string>();
-                    if (props["is_hidden"] != null || props["isHidden"] != null)
-                        col.IsHidden = (props["is_hidden"] ?? props["isHidden"])!.GetValue<bool>();
-                    if (props["display_folder"] != null || props["displayFolder"] != null)
-                        col.DisplayFolder = props["display_folder"]?.GetValue<string>() ?? props["displayFolder"]?.GetValue<string>();
-                    if (props["summarize_by"] != null || props["summarizeBy"] != null)
-                        col.SummarizeBy = ParseSummarizeBy(props["summarize_by"]?.GetValue<string>() ?? props["summarizeBy"]?.GetValue<string>());
+                    var dtNode = FirstProp(props, "data_type", "dataType");
+                    if (dtNode != null) col.DataType = ParseDataType(dtNode.GetValue<string>());
+                    var fmtNode = FirstProp(props, "format_string", "formatString");
+                    if (fmtNode != null) col.FormatString = fmtNode.GetValue<string>();
+                    var hiddenNode = FirstProp(props, "is_hidden", "hidden", "isHidden");
+                    if (hiddenNode != null) col.IsHidden = hiddenNode.GetValue<bool>();
+                    var dfNode = FirstProp(props, "display_folder", "displayFolder");
+                    if (dfNode != null) col.DisplayFolder = dfNode.GetValue<string>();
+                    var sumNode = FirstProp(props, "summarize_by", "summarizeBy");
+                    if (sumNode != null) col.SummarizeBy = ParseSummarizeBy(sumNode.GetValue<string>());
+                    if (props["description"] != null) col.Description = props["description"]?.GetValue<string>();
+                    var catNode = FirstProp(props, "data_category", "dataCategory");
+                    if (catNode != null) col.DataCategory = catNode.GetValue<string>();
+                    var keyNode = FirstProp(props, "is_key", "key", "isKey");
+                    if (keyNode != null) col.IsKey = keyNode.GetValue<bool>();
                     if (props["sort_by_column"] != null)
                     {
                         var sColName = props["sort_by_column"]?.GetValue<string>();
-                        if (!string.IsNullOrEmpty(sColName))
-                            col.SortByColumn = colTable.Columns.Find(sColName);
+                        if (!string.IsNullOrEmpty(sColName) && !string.IsNullOrEmpty(tableName))
+                            deferredSortBy.Add((tableName, name, sColName));
                     }
+                    ApplyAnnotations(col.Annotations, props["annotations"]);
                 }
                 if (!string.IsNullOrEmpty(lineageTag)) col.LineageTag = lineageTag;
                 colTable.Columns.Add(col);
@@ -321,13 +407,23 @@ static class ModelWriter
                 var measure = new Measure { Name = name, Expression = expr };
                 if (props != null)
                 {
-                    if (props["format_string"] != null || props["formatString"] != null)
-                        measure.FormatString = props["format_string"]?.GetValue<string>() ?? props["formatString"]?.GetValue<string>();
+                    var fmtNode = FirstProp(props, "format_string", "formatString");
+                    if (fmtNode != null) measure.FormatString = fmtNode.GetValue<string>();
+                    var fmtExprNode = FirstProp(props, "format_string_expression", "formatStringExpression");
+                    if (fmtExprNode != null)
+                    {
+                        var fmtExprStr = fmtExprNode.GetValue<string>();
+                        if (!string.IsNullOrEmpty(fmtExprStr))
+                            measure.FormatStringDefinition = new FormatStringDefinition { Expression = fmtExprStr };
+                    }
                     if (props["description"] != null) measure.Description = props["description"]?.GetValue<string>();
-                    if (props["is_hidden"] != null || props["isHidden"] != null)
-                        measure.IsHidden = (props["is_hidden"] ?? props["isHidden"])!.GetValue<bool>();
-                    if (props["display_folder"] != null || props["displayFolder"] != null)
-                        measure.DisplayFolder = props["display_folder"]?.GetValue<string>() ?? props["displayFolder"]?.GetValue<string>();
+                    var hiddenNode = FirstProp(props, "is_hidden", "hidden", "isHidden");
+                    if (hiddenNode != null) measure.IsHidden = hiddenNode.GetValue<bool>();
+                    var dfNode = FirstProp(props, "display_folder", "displayFolder");
+                    if (dfNode != null) measure.DisplayFolder = dfNode.GetValue<string>();
+                    var catNode = FirstProp(props, "data_category", "dataCategory");
+                    if (catNode != null) measure.DataCategory = catNode.GetValue<string>();
+                    ApplyAnnotations(measure.Annotations, props["annotations"]);
                 }
                 if (!string.IsNullOrEmpty(lineageTag)) measure.LineageTag = lineageTag;
                 mTable.Measures.Add(measure);
@@ -335,7 +431,7 @@ static class ModelWriter
 
             case "relationship":
                 var rel = new SingleColumnRelationship();
-                rel.Name = name ?? Guid.NewGuid().ToString("N");
+                rel.Name = string.IsNullOrEmpty(name) ? Guid.NewGuid().ToString("N") : name;
                 if (props != null)
                 {
                     if (props["ends"] is JsonArray endsArr && endsArr.Count >= 2)
@@ -355,19 +451,16 @@ static class ModelWriter
                     }
                     else
                     {
-                        var fromTable = props["from_table"]?.GetValue<string>() ?? props["fromTable"]?.GetValue<string>();
-                        var fromCol = props["from_column"]?.GetValue<string>() ?? props["fromColumn"]?.GetValue<string>();
-                        var toTable = props["to_table"]?.GetValue<string>() ?? props["toTable"]?.GetValue<string>();
-                        var toCol = props["to_column"]?.GetValue<string>() ?? props["toColumn"]?.GetValue<string>();
+                        var fromTable = FirstProp(props, "from_table", "fromTable")?.GetValue<string>();
+                        var fromCol = FirstProp(props, "from_column", "fromColumn")?.GetValue<string>();
+                        var toTable = FirstProp(props, "to_table", "toTable")?.GetValue<string>();
+                        var toCol = FirstProp(props, "to_column", "toColumn")?.GetValue<string>();
 
                         rel.FromColumn = model.Tables.Find(fromTable)?.Columns.Find(fromCol);
                         rel.ToColumn = model.Tables.Find(toTable)?.Columns.Find(toCol);
                     }
 
-                    if (props["is_active"] != null || props["isActive"] != null)
-                        rel.IsActive = (props["is_active"] ?? props["isActive"])!.GetValue<bool>();
-                    if (props["cross_filtering_behavior"] != null || props["crossFilteringBehavior"] != null)
-                        rel.CrossFilteringBehavior = ParseCrossFilter(props["cross_filtering_behavior"]?.GetValue<string>() ?? props["crossFilteringBehavior"]?.GetValue<string>());
+                    ApplyRelationshipProperties(rel, props);
                 }
                 model.Relationships.Add(rel);
                 break;
@@ -379,8 +472,10 @@ static class ModelWriter
                 if (props != null)
                 {
                     if (props["description"] != null) hierarchy.Description = props["description"]?.GetValue<string>();
-                    if (props["display_folder"] != null || props["displayFolder"] != null)
-                        hierarchy.DisplayFolder = props["display_folder"]?.GetValue<string>() ?? props["displayFolder"]?.GetValue<string>();
+                    var hiddenNode = FirstProp(props, "is_hidden", "hidden", "isHidden");
+                    if (hiddenNode != null) hierarchy.IsHidden = hiddenNode.GetValue<bool>();
+                    var dfNode = FirstProp(props, "display_folder", "displayFolder");
+                    if (dfNode != null) hierarchy.DisplayFolder = dfNode.GetValue<string>();
                     if (props["levels"] is JsonArray levelsArr)
                     {
                         int ord = 0;
@@ -391,6 +486,7 @@ static class ModelWriter
                             hierarchy.Levels.Add(new Level { Name = lvlName, Ordinal = ord++, Column = colObj });
                         }
                     }
+                    ApplyAnnotations(hierarchy.Annotations, props["annotations"]);
                 }
                 if (!string.IsNullOrEmpty(lineageTag)) hierarchy.LineageTag = lineageTag;
                 hTable.Hierarchies.Add(hierarchy);
@@ -400,13 +496,14 @@ static class ModelWriter
                 var ciTable = model.Tables.Find(tableName)
                     ?? throw new ModelWriterException("table_not_found", $"Table not found: {tableName}");
                 if (ciTable.CalculationGroup == null) ciTable.CalculationGroup = new CalculationGroup();
+                var ordNode = FirstProp(props, "ordinal", "order");
                 var ci = new CalculationItem
                 {
                     Name = name,
                     Expression = props?["expression"]?.GetValue<string>() ?? "",
-                    Ordinal = props?["ordinal"]?.GetValue<int>() ?? 0
+                    Ordinal = ordNode?.GetValue<int>() ?? 0
                 };
-                var fmtExpr = props?["format_string_expression"]?.GetValue<string>();
+                var fmtExpr = FirstProp(props, "format_string_expression", "formatStringExpression")?.GetValue<string>();
                 if (!string.IsNullOrEmpty(fmtExpr))
                 {
                     ci.FormatStringDefinition = new FormatStringDefinition { Expression = fmtExpr };
@@ -436,29 +533,46 @@ static class ModelWriter
                         }
                     }
                 }
+                ApplyAnnotations(role.Annotations, props?["annotations"]);
                 model.Roles.Add(role);
                 break;
 
             case "partition":
                 var pTable = model.Tables.Find(tableName)
                     ?? throw new ModelWriterException("table_not_found", $"Table not found: {tableName}");
-                var part = new Partition
+                var partExpr = FirstProp(props, "expression", "m_text", "partition_expression")?.GetValue<string>() ?? "";
+                var modeVal = ParseModeType(props?["mode"]?.GetValue<string>());
+                // Fold into an existing same-name partition (e.g. default placeholder created with the table)
+                var existingPart = pTable.Partitions.Find(name);
+                if (existingPart != null)
                 {
-                    Name = name,
-                    Mode = ModeType.Import,
-                    Source = new MPartitionSource { Expression = props?["expression"]?.GetValue<string>() ?? "" }
-                };
-                pTable.Partitions.Add(part);
+                    existingPart.Mode = modeVal;
+                    existingPart.Source = new MPartitionSource { Expression = partExpr };
+                    ApplyAnnotations(existingPart.Annotations, props?["annotations"]);
+                }
+                else
+                {
+                    var part = new Partition
+                    {
+                        Name = name,
+                        Mode = modeVal,
+                        Source = new MPartitionSource { Expression = partExpr }
+                    };
+                    ApplyAnnotations(part.Annotations, props?["annotations"]);
+                    pTable.Partitions.Add(part);
+                }
                 break;
 
             case "expression":
                 var nExpr = new NamedExpression
                 {
                     Name = name,
-                    Expression = props?["expression"]?.GetValue<string>() ?? "",
+                    Expression = FirstProp(props, "expression", "m_text")?.GetValue<string>() ?? "",
                     Kind = ExpressionKind.M
                 };
+                if (props?["description"] != null) nExpr.Description = props["description"]?.GetValue<string>();
                 if (!string.IsNullOrEmpty(lineageTag)) nExpr.LineageTag = lineageTag;
+                ApplyAnnotations(nExpr.Annotations, props?["annotations"]);
                 model.Expressions.Add(nExpr);
                 break;
 
@@ -474,10 +588,43 @@ static class ModelWriter
                     Name = name,
                     Expression = props?["expression"]?.GetValue<string>() ?? ""
                 };
+                if (props?["description"] != null) func.Description = props["description"]?.GetValue<string>();
+                var fHidden = FirstProp(props, "is_hidden", "hidden", "isHidden");
+                if (fHidden != null) func.IsHidden = fHidden.GetValue<bool>();
                 if (!string.IsNullOrEmpty(lineageTag)) func.LineageTag = lineageTag;
+                ApplyAnnotations(func.Annotations, props?["annotations"]);
                 model.Functions.Add(func);
                 break;
         }
+    }
+
+    private static void ApplyRelationshipProperties(SingleColumnRelationship rel, JsonObject props)
+    {
+        var activeNode = FirstProp(props, "is_active", "active", "isActive");
+        if (activeNode != null) rel.IsActive = activeNode.GetValue<bool>();
+
+        var cfNode = FirstProp(props, "cross_filtering_behavior", "cross_filter_direction", "crossFilteringBehavior");
+        if (cfNode != null) rel.CrossFilteringBehavior = ParseCrossFilter(cfNode.GetValue<string>());
+
+        var sfNode = FirstProp(props, "security_filtering_behavior", "security_filter_direction", "securityFilteringBehavior");
+        if (sfNode != null) rel.SecurityFilteringBehavior = ParseSecurityFilter(sfNode.GetValue<string>());
+
+        var riNode = FirstProp(props, "rely_on_referential_integrity", "referential_integrity", "relyOnReferentialIntegrity");
+        if (riNode != null) rel.RelyOnReferentialIntegrity = riNode.GetValue<bool>();
+
+        var fromCard = FirstProp(props, "from_cardinality", "fromCardinality")?.GetValue<string>();
+        var toCard = FirstProp(props, "to_cardinality", "toCardinality")?.GetValue<string>();
+        var cardStr = props["cardinality"]?.GetValue<string>();
+        if (!string.IsNullOrEmpty(cardStr) && cardStr.Contains(':'))
+        {
+            var parts = cardStr.Split(':', 2);
+            fromCard ??= parts[0];
+            toCard ??= parts[1];
+        }
+        if (!string.IsNullOrEmpty(fromCard)) rel.FromCardinality = ParseCardinality(fromCard);
+        if (!string.IsNullOrEmpty(toCard)) rel.ToCardinality = ParseCardinality(toCard);
+
+        ApplyAnnotations(rel.Annotations, props["annotations"]);
     }
 
     private static void ApplyDelete(Database db, string? objType, string name, string? tableName)
@@ -580,13 +727,35 @@ static class ModelWriter
         }
     }
 
-    private static void ApplySetProperties(Database db, string? objType, string name, string? tableName, JsonObject? props, string? lineageTag)
+    private static void ApplySetProperties(Database db, string? objType, string name, string? tableName, JsonObject? props, string? lineageTag, List<(string Table, string Column, string? SortBy)> deferredSortBy)
     {
         if (props == null && string.IsNullOrEmpty(lineageTag)) return;
         var model = db.Model;
 
         switch (objType)
         {
+            case "model":
+                if (props != null)
+                {
+                    var cultureNode = FirstProp(props, "culture");
+                    if (cultureNode != null) model.Culture = cultureNode.GetValue<string>();
+                    var dsvNode = FirstProp(props, "default_power_bi_data_source_version", "defaultPowerBIDataSourceVersion");
+                    if (dsvNode != null) model.DefaultPowerBIDataSourceVersion = ParseDataSourceVersion(dsvNode.GetValue<string>());
+                    var sqcNode = FirstProp(props, "source_query_culture", "sourceQueryCulture");
+                    if (sqcNode != null) model.SourceQueryCulture = sqcNode.GetValue<string>();
+                    var daoNode = FirstProp(props, "data_access_options", "dataAccessOptions") as JsonObject;
+                    if (daoNode != null)
+                    {
+                        model.DataAccessOptions ??= new DataAccessOptions();
+                        var legacyNode = FirstProp(daoNode, "legacyRedirects", "legacy_redirects");
+                        if (legacyNode != null) model.DataAccessOptions.LegacyRedirects = legacyNode.GetValue<bool>();
+                        var errNullNode = FirstProp(daoNode, "returnErrorValuesAsNull", "return_error_values_as_null");
+                        if (errNullNode != null) model.DataAccessOptions.ReturnErrorValuesAsNull = errNullNode.GetValue<bool>();
+                    }
+                    ApplyAnnotations(model.Annotations, props["annotations"]);
+                }
+                break;
+
             case "table":
                 var t = model.Tables.Find(name);
                 if (t != null)
@@ -594,10 +763,21 @@ static class ModelWriter
                     if (props != null)
                     {
                         if (props["description"] != null) t.Description = props["description"]?.GetValue<string>();
-                        if (props["is_hidden"] != null || props["isHidden"] != null)
-                            t.IsHidden = (props["is_hidden"] ?? props["isHidden"])!.GetValue<bool>();
-                        if (props["data_category"] != null || props["dataCategory"] != null)
-                            t.DataCategory = (props["data_category"] ?? props["dataCategory"])?.GetValue<string>();
+                        var hiddenNode = FirstProp(props, "is_hidden", "hidden", "isHidden");
+                        if (hiddenNode != null) t.IsHidden = hiddenNode.GetValue<bool>();
+                        var catNode = FirstProp(props, "data_category", "dataCategory");
+                        if (catNode != null) t.DataCategory = catNode.GetValue<string>();
+                        var privNode = FirstProp(props, "is_private", "isPrivate");
+                        if (privNode != null) t.IsPrivate = privNode.GetValue<bool>();
+                        var varOnlyNode = FirstProp(props, "show_as_variations_only", "showAsVariationsOnly");
+                        if (varOnlyNode != null) t.ShowAsVariationsOnly = varOnlyNode.GetValue<bool>();
+                        if (props["expression"] != null)
+                        {
+                            var calcPart = t.Partitions.FirstOrDefault(p => p.Source is CalculatedPartitionSource);
+                            if (calcPart?.Source is CalculatedPartitionSource cps)
+                                cps.Expression = props["expression"]!.GetValue<string>();
+                        }
+                        ApplyAnnotations(t.Annotations, props["annotations"]);
                     }
                     if (!string.IsNullOrEmpty(lineageTag)) t.LineageTag = lineageTag;
                 }
@@ -610,28 +790,29 @@ static class ModelWriter
                 {
                     if (props != null)
                     {
-                        if (props["data_type"] != null || props["dataType"] != null)
-                            c.DataType = ParseDataType((props["data_type"] ?? props["dataType"])?.GetValue<string>());
-                        if (props["format_string"] != null || props["formatString"] != null)
-                            c.FormatString = (props["format_string"] ?? props["formatString"])?.GetValue<string>();
-                        if (props["is_hidden"] != null || props["isHidden"] != null)
-                            c.IsHidden = (props["is_hidden"] ?? props["isHidden"])!.GetValue<bool>();
-                        if (props["display_folder"] != null || props["displayFolder"] != null)
-                            c.DisplayFolder = (props["display_folder"] ?? props["displayFolder"])?.GetValue<string>();
-                        if (props["summarize_by"] != null || props["summarizeBy"] != null)
-                            c.SummarizeBy = ParseSummarizeBy((props["summarize_by"] ?? props["summarizeBy"])?.GetValue<string>());
+                        var dtNode = FirstProp(props, "data_type", "dataType");
+                        if (dtNode != null) c.DataType = ParseDataType(dtNode.GetValue<string>());
+                        var fmtNode = FirstProp(props, "format_string", "formatString");
+                        if (fmtNode != null) c.FormatString = fmtNode.GetValue<string>();
+                        var hiddenNode = FirstProp(props, "is_hidden", "hidden", "isHidden");
+                        if (hiddenNode != null) c.IsHidden = hiddenNode.GetValue<bool>();
+                        var dfNode = FirstProp(props, "display_folder", "displayFolder");
+                        if (dfNode != null) c.DisplayFolder = dfNode.GetValue<string>();
+                        var sumNode = FirstProp(props, "summarize_by", "summarizeBy");
+                        if (sumNode != null) c.SummarizeBy = ParseSummarizeBy(sumNode.GetValue<string>());
                         if (props["description"] != null) c.Description = props["description"]?.GetValue<string>();
-                        if (props["data_category"] != null || props["dataCategory"] != null)
-                            c.DataCategory = (props["data_category"] ?? props["dataCategory"])?.GetValue<string>();
-                        if (props["is_key"] != null || props["isKey"] != null)
-                            c.IsKey = (props["is_key"] ?? props["isKey"])!.GetValue<bool>();
+                        var catNode = FirstProp(props, "data_category", "dataCategory");
+                        if (catNode != null) c.DataCategory = catNode.GetValue<string>();
+                        var keyNode = FirstProp(props, "is_key", "key", "isKey");
+                        if (keyNode != null) c.IsKey = keyNode.GetValue<bool>();
                         if (props["expression"] != null && c is CalculatedColumn calc)
                             calc.Expression = props["expression"]!.GetValue<string>();
-                        if (props["sort_by_column"] != null)
+                        if (HasAnyProp(props, "sort_by_column") && !string.IsNullOrEmpty(tableName))
                         {
                             var sName = props["sort_by_column"]?.GetValue<string>();
-                            c.SortByColumn = !string.IsNullOrEmpty(sName) ? colTable?.Columns.Find(sName) : null;
+                            deferredSortBy.Add((tableName, name, sName));
                         }
+                        ApplyAnnotations(c.Annotations, props["annotations"]);
                     }
                     if (!string.IsNullOrEmpty(lineageTag)) c.LineageTag = lineageTag;
                 }
@@ -645,26 +826,84 @@ static class ModelWriter
                     if (props != null)
                     {
                         if (props["expression"] != null) m.Expression = props["expression"]!.GetValue<string>();
-                        if (props["format_string"] != null || props["formatString"] != null)
-                            m.FormatString = (props["format_string"] ?? props["formatString"])?.GetValue<string>();
+                        var fmtNode = FirstProp(props, "format_string", "formatString");
+                        if (fmtNode != null) m.FormatString = fmtNode.GetValue<string>();
+                        var fmtExprNode = FirstProp(props, "format_string_expression", "formatStringExpression");
+                        if (fmtExprNode != null)
+                        {
+                            var fmtExprStr = fmtExprNode.GetValue<string>();
+                            if (string.IsNullOrEmpty(fmtExprStr)) m.FormatStringDefinition = null;
+                            else
+                            {
+                                m.FormatStringDefinition ??= new FormatStringDefinition();
+                                m.FormatStringDefinition.Expression = fmtExprStr;
+                            }
+                        }
                         if (props["description"] != null) m.Description = props["description"]?.GetValue<string>();
-                        if (props["is_hidden"] != null || props["isHidden"] != null)
-                            m.IsHidden = (props["is_hidden"] ?? props["isHidden"])!.GetValue<bool>();
-                        if (props["display_folder"] != null || props["displayFolder"] != null)
-                            m.DisplayFolder = (props["display_folder"] ?? props["displayFolder"])?.GetValue<string>();
+                        var hiddenNode = FirstProp(props, "is_hidden", "hidden", "isHidden");
+                        if (hiddenNode != null) m.IsHidden = hiddenNode.GetValue<bool>();
+                        var dfNode = FirstProp(props, "display_folder", "displayFolder");
+                        if (dfNode != null) m.DisplayFolder = dfNode.GetValue<string>();
+                        var catNode = FirstProp(props, "data_category", "dataCategory");
+                        if (catNode != null) m.DataCategory = catNode.GetValue<string>();
+                        ApplyAnnotations(m.Annotations, props["annotations"]);
                     }
                     if (!string.IsNullOrEmpty(lineageTag)) m.LineageTag = lineageTag;
                 }
                 break;
 
             case "relationship":
-                var rel = model.Relationships.Find(name);
+                var rel = model.Relationships.Find(name) as SingleColumnRelationship;
                 if (rel != null && props != null)
                 {
-                    if (props["is_active"] != null || props["isActive"] != null)
-                        rel.IsActive = (props["is_active"] ?? props["isActive"])!.GetValue<bool>();
-                    if (props["cross_filtering_behavior"] != null || props["crossFilteringBehavior"] != null)
-                        rel.CrossFilteringBehavior = ParseCrossFilter((props["cross_filtering_behavior"] ?? props["crossFilteringBehavior"])?.GetValue<string>());
+                    ApplyRelationshipProperties(rel, props);
+                }
+                break;
+
+            case "hierarchy":
+                var hTable = model.Tables.Find(tableName);
+                var h = hTable?.Hierarchies.Find(name);
+                if (h != null)
+                {
+                    if (props != null)
+                    {
+                        if (props["description"] != null) h.Description = props["description"]?.GetValue<string>();
+                        var hiddenNode = FirstProp(props, "is_hidden", "hidden", "isHidden");
+                        if (hiddenNode != null) h.IsHidden = hiddenNode.GetValue<bool>();
+                        var dfNode = FirstProp(props, "display_folder", "displayFolder");
+                        if (dfNode != null) h.DisplayFolder = dfNode.GetValue<string>();
+                        if (props["levels"] is JsonArray levelsArr && hTable != null)
+                        {
+                            h.Levels.Clear();
+                            int ord = 0;
+                            foreach (var lvlNode in levelsArr)
+                            {
+                                var lvlName = lvlNode?.GetValue<string>() ?? "";
+                                var colObj = hTable.Columns.Find(lvlName);
+                                h.Levels.Add(new Level { Name = lvlName, Ordinal = ord++, Column = colObj });
+                            }
+                        }
+                        ApplyAnnotations(h.Annotations, props["annotations"]);
+                    }
+                    if (!string.IsNullOrEmpty(lineageTag)) h.LineageTag = lineageTag;
+                }
+                break;
+
+            case "partition":
+                var pTable = model.Tables.Find(tableName);
+                var part = pTable?.Partitions.Find(name);
+                if (part != null && props != null)
+                {
+                    if (props["mode"] != null) part.Mode = ParseModeType(props["mode"]?.GetValue<string>());
+                    var exprNode = FirstProp(props, "expression", "m_text", "partition_expression");
+                    if (exprNode != null)
+                    {
+                        var exprText = exprNode.GetValue<string>() ?? "";
+                        if (part.Source is MPartitionSource mp) mp.Expression = exprText;
+                        else if (part.Source is CalculatedPartitionSource cp) cp.Expression = exprText;
+                        else part.Source = new MPartitionSource { Expression = exprText };
+                    }
+                    ApplyAnnotations(part.Annotations, props["annotations"]);
                 }
                 break;
 
@@ -674,11 +913,13 @@ static class ModelWriter
                 if (ci != null && props != null)
                 {
                     if (props["expression"] != null) ci.Expression = props["expression"]!.GetValue<string>();
-                    if (props["ordinal"] != null) ci.Ordinal = props["ordinal"]!.GetValue<int>();
-                    if (props["format_string_expression"] != null)
+                    var ordNode = FirstProp(props, "ordinal", "order");
+                    if (ordNode != null) ci.Ordinal = ordNode.GetValue<int>();
+                    var fmtExprNode = FirstProp(props, "format_string_expression", "formatStringExpression");
+                    if (fmtExprNode != null)
                     {
                         if (ci.FormatStringDefinition == null) ci.FormatStringDefinition = new FormatStringDefinition();
-                        ci.FormatStringDefinition.Expression = props["format_string_expression"]?.GetValue<string>();
+                        ci.FormatStringDefinition.Expression = fmtExprNode.GetValue<string>();
                     }
                 }
                 break;
@@ -702,6 +943,7 @@ static class ModelWriter
                             }
                         }
                     }
+                    ApplyAnnotations(role.Annotations, props["annotations"]);
                 }
                 break;
 
@@ -709,8 +951,11 @@ static class ModelWriter
                 var expr = model.Expressions.Find(name);
                 if (expr != null)
                 {
-                    if (props?["expression"] != null) expr.Expression = props["expression"]!.GetValue<string>();
+                    var exprNode = FirstProp(props, "expression", "m_text");
+                    if (exprNode != null) expr.Expression = exprNode.GetValue<string>() ?? "";
+                    if (props?["description"] != null) expr.Description = props["description"]?.GetValue<string>();
                     if (!string.IsNullOrEmpty(lineageTag)) expr.LineageTag = lineageTag;
+                    ApplyAnnotations(expr.Annotations, props?["annotations"]);
                 }
                 break;
 
@@ -719,7 +964,11 @@ static class ModelWriter
                 if (func != null)
                 {
                     if (props?["expression"] != null) func.Expression = props["expression"]!.GetValue<string>();
+                    if (props?["description"] != null) func.Description = props["description"]?.GetValue<string>();
+                    var fHidden = FirstProp(props, "is_hidden", "hidden", "isHidden");
+                    if (fHidden != null) func.IsHidden = fHidden.GetValue<bool>();
                     if (!string.IsNullOrEmpty(lineageTag)) func.LineageTag = lineageTag;
+                    ApplyAnnotations(func.Annotations, props?["annotations"]);
                 }
                 break;
         }
@@ -835,6 +1084,30 @@ static class ModelWriter
     {
         if (string.IsNullOrWhiteSpace(val)) return CrossFilteringBehavior.OneDirection;
         return Enum.TryParse<CrossFilteringBehavior>(val, true, out var result) ? result : CrossFilteringBehavior.OneDirection;
+    }
+
+    private static SecurityFilteringBehavior ParseSecurityFilter(string? val)
+    {
+        if (string.IsNullOrWhiteSpace(val)) return SecurityFilteringBehavior.OneDirection;
+        return Enum.TryParse<SecurityFilteringBehavior>(val, true, out var result) ? result : SecurityFilteringBehavior.OneDirection;
+    }
+
+    private static RelationshipEndCardinality ParseCardinality(string? val)
+    {
+        if (string.IsNullOrWhiteSpace(val)) return RelationshipEndCardinality.None;
+        return Enum.TryParse<RelationshipEndCardinality>(val, true, out var result) ? result : RelationshipEndCardinality.None;
+    }
+
+    private static ModeType ParseModeType(string? val)
+    {
+        if (string.IsNullOrWhiteSpace(val) || val.Equals("default", StringComparison.OrdinalIgnoreCase)) return ModeType.Import;
+        return Enum.TryParse<ModeType>(val, true, out var result) ? result : ModeType.Import;
+    }
+
+    private static PowerBIDataSourceVersion ParseDataSourceVersion(string? val)
+    {
+        if (string.IsNullOrWhiteSpace(val)) return PowerBIDataSourceVersion.PowerBI_V3;
+        return Enum.TryParse<PowerBIDataSourceVersion>(val, true, out var result) ? result : PowerBIDataSourceVersion.PowerBI_V3;
     }
 
     private static ModelPermission ParseModelPermission(string? val)
