@@ -967,15 +967,15 @@ export default function CompareGrid({
       if (!row?.cells) return true;
       if (canonicalKind === "remove") {
         const targetCell = Array.isArray(row.cells)
-          ? row.cells.find((c) => c.role === "target")
-          : row.cells?.s0;
-        return Boolean(targetCell && targetCell.state !== "missing");
+          ? row.cells.find((c) => c.role === "target" || c.source_id === targetSource?.source_id)
+          : (row.cells?.[targetSource?.source_id] ?? row.cells?.s0);
+        return targetCell?.state !== "missing";
       }
       if (canonicalKind === "take" && choice.source_id) {
         const donorCell = Array.isArray(row.cells)
           ? row.cells.find((c) => c.source_id === choice.source_id)
           : row.cells?.[choice.source_id];
-        return Boolean(donorCell && donorCell.state !== "missing");
+        return donorCell?.state !== "missing";
       }
       return true;
     };

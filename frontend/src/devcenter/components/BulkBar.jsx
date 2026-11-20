@@ -73,12 +73,12 @@ export default function BulkBar({
         const targetCell = Array.isArray(row.cells)
           ? row.cells.find((c) => c.role === "target")
           : row.cells?.s0;
-        if (!targetCell || targetCell.state === "missing") skippedCount += 1;
+        if (targetCell?.state === "missing") skippedCount += 1;
       } else if (targetKind === "take") {
         const donorCell = Array.isArray(row.cells)
           ? row.cells.find((c) => c.source_id === choice.source_id)
           : row.cells?.[choice.source_id];
-        if (!donorCell || donorCell.state === "missing") skippedCount += 1;
+        if (donorCell?.state === "missing") skippedCount += 1;
       }
     }
     return { replaceCount, skippedCount };

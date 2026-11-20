@@ -361,9 +361,7 @@ export function failureReason(error) {
   const details = error?.details ?? {};
   const rawMessage = error?.message ? String(error.message).trim() : "";
   if (details.check && t(`details.check.${details.check}`) !== `details.check.${details.check}`) {
-    const base = t(`details.check.${details.check}`);
-    if (rawMessage && !base.includes(rawMessage)) return `${base} (${rawMessage})`;
-    return base;
+    return t(`details.check.${details.check}`);
   }
   const key = STEP_COPY[details.step] ?? details.step;
   if (key && t(`details.step.${key}`) !== `details.step.${key}`) {

@@ -47,7 +47,7 @@ test("fault, delay, and agent-proposal change the next reply", async ({ page, re
     const revision = async () => (await (await fetch("/api/devcenter/session")).json()).revision;
     const faulted = await api.alignment_override({ base_revision: await revision() });
     const started = performance.now();
-    const slow = await api.compare_mode_set({ base_revision: await revision(), mode: "names" });
+    const slow = await api.compare_mode_set({ base_revision: await revision(), compare_mode: "strict" });
     const elapsed = performance.now() - started;
     return { faulted, slow, elapsed };
   });
