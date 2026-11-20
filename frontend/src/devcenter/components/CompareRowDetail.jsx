@@ -603,7 +603,11 @@ export default function CompareRowDetail({
   };
 
   const hasMarks = (row.marks?.length ?? 0) > 0;
-  const markSourceName = activeDonorName;
+  const firstMarkSourceId = row.marks?.[0]?.source_id || null;
+  const markSourceObj = firstMarkSourceId
+    ? (session?.sources || []).find((s) => s.source_id === firstMarkSourceId)
+    : null;
+  const markSourceName = markSourceObj?.display_name || markSourceObj?.name || firstMarkSourceId || activeDonorName;
 
   // No hooks below the early returns above: plain values only.
   const rowBlocking = (planRes.data?.blocking || []).filter(

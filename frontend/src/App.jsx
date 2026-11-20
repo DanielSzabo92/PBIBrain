@@ -259,6 +259,7 @@ function AppInner({ transport = brainTransport }) {
 
   const resetProjectView = useCallback(() => {
     invalidateProjectRequests();
+    devCenterShared.store = null;
     setOverview({});
     setConfig(null);
     setConfigError("");
@@ -833,7 +834,7 @@ function AppInner({ transport = brainTransport }) {
               <div className="inspector-main page page-wide" data-ui-stack="">{selectedId ? <><Button variant="ghost" size="sm" className="inspector-back" onClick={() => { if (inspectorOrigin === "inspector") { setSelectedId(null); setInspectedObject(null); } else setView(inspectorOrigin); }}><ArrowLeft aria-hidden="true" />{inspectorOrigin === "search" ? "Back to search results" : inspectorOrigin === "inspector" ? "Inspect another object" : `Back to ${VIEWS.find(([key]) => key === inspectorOrigin)?.[1]?.toLowerCase() || "overview"}`}</Button><Inspector key={selectedId} transport={transport} scanning={scanning} colors={graphColors} node={selected} details={inspectedDetails} loading={Boolean(selectedId && !inspectedDetails && !inspectorError)} error={inspectorError} reviewRevision={reviewRevision} overview={overview} onSelect={selectNode} onRetry={() => selectNode(selectedId)} onReview={review} onGraph={() => setView("graph")} /></> : <InspectorEmpty overview={overview} colors={graphColors} recentObjects={recentObjects} onSelect={(id) => { setInspectorOrigin("inspector"); selectNode(id); }} onOpenSearch={() => { setView("search"); focusSearchField(); }} onOpenPalette={() => setPaletteOpen(true)} onOpenGraph={() => setView("graph")} />}</div>
             </div> : null}
             {view === "review" ? <div className="page page-wide" data-ui-stack=""><ReviewQueue colors={graphColors} scanning={scanning} session={reviewSession} onSession={setReviewSession} transport={transport} revision={reviewRevision} overview={overview} onSelect={selectNode} onReview={review} onBulkReview={bulkReview} auditTrail={auditTrail} onUndoReview={handleUndoReview} /></div> : null}
-            {view === "devcenter" ? <DevCenter onOpenProject={closeDesktopProject} transport={transport} /> : null}
+            {view === "devcenter" ? <DevCenter onOpenProject={closeDesktopProject} onProjectChanged={reloadBrain} transport={transport} /> : null}
             {view === "config" ? <div className="page page-narrow" data-ui-stack=""><PageHeading quiet title="Settings" />{configError && !config ? <Card className="panel"><EmptyState icon={<TriangleAlert />} tone="bad" title="Project settings unavailable" detail="Retry to load your saved sources and appearance." action={<Button variant="outline" onClick={load}>Retry settings</Button>} /></Card> : <Tabs value={settingsTab} onValueChange={setSettingsTab} className="settings-tabs">
               <TabsList aria-label="Settings sections"><TabsTrigger value="project">Project</TabsTrigger><TabsTrigger value="review">Review</TabsTrigger><TabsTrigger value="colors">Graph colors</TabsTrigger><TabsTrigger value="summary">Model summary / agent context</TabsTrigger><TabsTrigger value="documentation">Documentation export</TabsTrigger><TabsTrigger value="ai">AI provider</TabsTrigger><TabsTrigger value="keyboard">Keyboard</TabsTrigger></TabsList>
               <TabsContent value="ai"><Suspense fallback={<ViewLoading />}><AISettings transport={transport} /></Suspense></TabsContent>

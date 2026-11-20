@@ -68,7 +68,7 @@ export function DesktopOnboarding({ api, error, onOpen, recent = [] }) {
         <Button size="lg" className="onboarding-submit" disabled={working}>{working ? "Opening…" : "Open project"} <ArrowRight aria-hidden="true" /></Button>
       </form>
       <p className="brand-credit">by {MAKER_NAME}</p>
-      <p className="onboarding-note">Your Power BI files are only read, never changed.</p>
+      <p className="onboarding-note">Your Power BI files are read-only until you explicitly apply changes.</p>
     </Card>
   </main>;
 }

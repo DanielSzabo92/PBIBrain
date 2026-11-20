@@ -160,6 +160,7 @@ export default function CompareGrid({
   const setModeAction = useAction("compare_mode_set");
   const bulkSetAction = useAction("merge_choice_bulk_set");
   const singleChoiceAction = useAction("merge_choice_set");
+  const removalPolicyAction = useAction("removal_policy_set");
   const confirmAction = useAction("row_confirm");
   const [editOpen, setEditOpen] = useState(false);
 
@@ -255,6 +256,8 @@ export default function CompareGrid({
   activeRowKeyRef.current = activeRowKey;
   const pagesRef = useRef(pages);
   pagesRef.current = pages;
+  const generationRef = useRef(generation);
+  generationRef.current = generation;
 
   // Code Diff modal state.
   const [diffTarget, setDiffTarget] = useState(null); // { row, donor, triggerElement }
@@ -292,10 +295,10 @@ export default function CompareGrid({
     if (debouncedQ) p.q = debouncedQ;
     if (stateFilter === "notsame") p.state = "not_same";
     else if (stateFilter && stateFilter !== "all") p.state = stateFilter;
-    if (typeFilters.length > 0) p.type = typeFilters[0];
+    if (typeFilters.length > 0) p.type = typeFilters;
     if (tableFilter) p.table = tableFilter;
     if (folderFilter) p.folder = folderFilter;
-    if (sourceFilters.length > 0) p.source = sourceFilters[0];
+    if (sourceFilters.length > 0) p.source = sourceFilters;
     if (changedFilter) p.changed = "true";
     if (marksFilter) p.marks = "true";
     if (proposalFilter) p.proposal = "true";
@@ -317,6 +320,7 @@ export default function CompareGrid({
 
   // Reload currently loaded pages in place without unmounting the active row pane.
   const reloadLoadedPages = useCallback(async () => {
+    const reqGen = generationRef.current;
     const pageIndices = pagesRef.current.size > 0 ? [...pagesRef.current.keys()] : [0];
     await Promise.all(
       pageIndices.map(async (pageIndex) => {
@@ -326,6 +330,7 @@ export default function CompareGrid({
             offset: pageIndex * PAGE_SIZE,
             limit: PAGE_SIZE,
           });
+          if (reqGen !== generationRef.current) return;
           setPages((prev) => {
             const next = new Map(prev);
             next.set(pageIndex, reply.rows || []);
@@ -355,7 +360,8 @@ export default function CompareGrid({
 
   // Reset and reload on filter or sort change.
   useEffect(() => {
-    setGeneration((g) => g + 1);
+    generationRef.current += 1;
+    setGeneration(generationRef.current);
     setPages(new Map());
     setPendingPages(new Set());
     setTotal(null);
@@ -375,7 +381,8 @@ export default function CompareGrid({
 
   // Fetch page helper.
   const loadPage = useCallback(
-    (pageIndex) => {
+    (pageIndex, explicitGen) => {
+      const reqGen = explicitGen ?? generationRef.current;
       if (pendingPages.has(pageIndex)) return;
       setPendingPages((prev) => new Set(prev).add(pageIndex));
 
@@ -388,6 +395,7 @@ export default function CompareGrid({
       http
         .getCompareRows(params)
         .then((reply) => {
+          if (reqGen !== generationRef.current) return;
           setPendingPages((prev) => {
             const next = new Set(prev);
             next.delete(pageIndex);
@@ -407,6 +415,7 @@ export default function CompareGrid({
           setLoading(false);
         })
         .catch((err) => {
+          if (reqGen !== generationRef.current) return;
           setPendingPages((prev) => {
             const next = new Set(prev);
             next.delete(pageIndex);
@@ -711,6 +720,8 @@ export default function CompareGrid({
         reloadLoadedPages();
         store.load("session");
         store.load("plan");
+      } else {
+        toast.show({ tone: "err", text: "Could not undo merge choice" });
       }
     },
     [singleChoiceAction, reloadLoadedPages, store, toast, triggerRowFlash, undoHistory]
@@ -720,8 +731,9 @@ export default function CompareGrid({
     async (row, kind) => {
       if (!row || changeDisabled) return;
       const previousChoice = row.merge_choice ? { ...row.merge_choice } : null;
-      let choicePayload = { choice: kind };
-      if (kind === "take") {
+      const canonicalKind = kind === "take_from" ? "take" : kind;
+      let choicePayload = { kind: canonicalKind };
+      if (canonicalKind === "take") {
         const availableDonor =
           donors.find((d) => {
             const cell = Array.isArray(row.cells)
@@ -729,14 +741,12 @@ export default function CompareGrid({
               : row.cells?.[d.source_id];
             return cell && cell.state !== "missing";
           }) || donors[0];
-        if (availableDonor) {
-          choicePayload = { choice: "take", source: availableDonor.source_id };
+        if (!availableDonor) {
+          toast.show({ tone: "err", text: "No donor source is available for this row" });
+          return;
         }
+        choicePayload = { kind: "take", source_id: availableDonor.source_id };
       }
-
-      setUndoHistory((h) => [...h, { type: "single", rowKey: row.row_key, previousChoice }]);
-      setLastSavedRowKey(row.row_key);
-      triggerRowFlash(row.row_key);
 
       const reply = await singleChoiceAction.run({
         row_key: row.row_key,
@@ -744,9 +754,12 @@ export default function CompareGrid({
       });
 
       if (reply) {
+        setUndoHistory((h) => [...h, { type: "single", rowKey: row.row_key, previousChoice }]);
+        setLastSavedRowKey(row.row_key);
+        triggerRowFlash(row.row_key);
         toast.show({
           tone: "ok",
-          text: `Merge choice saved: ${kind}`,
+          text: `Merge choice saved: ${canonicalKind}`,
           action: {
             label: "Undo",
             onClick: () => handleUndoSingle(row.row_key, previousChoice),
@@ -755,6 +768,8 @@ export default function CompareGrid({
         reloadLoadedPages();
         store.load("session");
         store.load("plan");
+      } else {
+        toast.show({ tone: "err", text: "Could not save merge choice" });
       }
     },
     [changeDisabled, donors, singleChoiceAction, reloadLoadedPages, store, toast, triggerRowFlash, handleUndoSingle]
@@ -922,8 +937,9 @@ export default function CompareGrid({
   };
 
   // Bulk Apply Choice.
-  const handleApplyBulkChoice = async (choice, { skippedCount = 0 } = {}) => {
-    let keys = [];
+  const handleApplyBulkChoice = async (choice, { skippedCount: initialSkipped = 0 } = {}) => {
+    const canonicalKind = choice.kind === "take_from" ? "take" : choice.kind;
+    let candidateRows = [];
     if (allMatching) {
       const collected = [];
       let offset = 0;
@@ -934,65 +950,127 @@ export default function CompareGrid({
         try {
           const res = await http.getCompareRows({ ...queryParams, offset, limit });
           const rows = res.rows || [];
-          for (const row of rows) collected.push(row.row_key);
+          for (const row of rows) collected.push(row);
           offset += rows.length;
           hasMore = Boolean(res.has_more && rows.length > 0);
         } catch {
           break;
         }
       }
-      keys = collected;
+      candidateRows = collected;
     } else {
-      keys = Array.from(selectedKeys);
+      const loadedByKey = new Map(allLoadedRows.map((r) => [r.row_key, r]));
+      candidateRows = Array.from(selectedKeys).map((k) => loadedByKey.get(k) || { row_key: k });
+    }
+
+    const isEligible = (row) => {
+      if (!row?.cells) return true;
+      if (canonicalKind === "remove") {
+        const targetCell = Array.isArray(row.cells)
+          ? row.cells.find((c) => c.role === "target")
+          : row.cells?.s0;
+        return Boolean(targetCell && targetCell.state !== "missing");
+      }
+      if (canonicalKind === "take" && choice.source_id) {
+        const donorCell = Array.isArray(row.cells)
+          ? row.cells.find((c) => c.source_id === choice.source_id)
+          : row.cells?.[choice.source_id];
+        return Boolean(donorCell && donorCell.state !== "missing");
+      }
+      return true;
+    };
+
+    const eligibleRows = [];
+    let skippedCount = 0;
+    for (const row of candidateRows) {
+      if (isEligible(row)) eligibleRows.push(row);
+      else skippedCount += 1;
+    }
+    if (skippedCount === 0 && initialSkipped > 0 && !allMatching) {
+      skippedCount = initialSkipped;
+    }
+
+    const keys = eligibleRows.map((r) => r.row_key);
+    if (keys.length === 0) {
+      toast.show({ tone: "err", text: "No selected rows are eligible for this choice" });
+      return;
+    }
+
+    const capturedPrevious = new Map();
+    for (const row of eligibleRows) {
+      if (row.merge_choice !== undefined) {
+        capturedPrevious.set(row.row_key, row.merge_choice ? { ...row.merge_choice } : null);
+      }
+    }
+
+    const choicePayload = { kind: canonicalKind };
+    if (canonicalKind === "take" && choice.source_id) {
+      choicePayload.source_id = choice.source_id;
+    }
+
+    const reply = await bulkSetAction.run({ row_keys: keys, choice: choicePayload });
+    if (!reply) {
+      toast.show({ tone: "err", text: "Could not save bulk merge choices" });
+      return;
+    }
+
+    if (canonicalKind === "remove" && choice.policy) {
+      await Promise.all(
+        keys.map((row_key) =>
+          removalPolicyAction.run({ row_key, policy: choice.policy })
+        )
+      );
     }
 
     const previousMap = new Map();
+    const serverPrevious = reply.previous_choices && typeof reply.previous_choices === "object"
+      ? reply.previous_choices
+      : null;
     for (const key of keys) {
-      const r = allLoadedRows.find((row) => row.row_key === key);
-      previousMap.set(key, r?.merge_choice ? { ...r.merge_choice } : null);
+      if (serverPrevious && Object.prototype.hasOwnProperty.call(serverPrevious, key)) {
+        previousMap.set(key, serverPrevious[key] ? { ...serverPrevious[key] } : null);
+      } else if (capturedPrevious.has(key)) {
+        previousMap.set(key, capturedPrevious.get(key));
+      } else {
+        const r = allLoadedRows.find((row) => row.row_key === key);
+        previousMap.set(key, r?.merge_choice ? { ...r.merge_choice } : null);
+      }
     }
 
-    const choicePayload = { choice: choice.kind };
-    if (choice.kind === "take_from") choicePayload.source = choice.source_id;
-    if (choice.kind === "remove" && choice.policy) choicePayload.policy = choice.policy;
+    clearSelection();
+    const appliedCount = keys.length;
+    const isCapped = allMatching && total > 5000;
+    const capSuffix = isCapped ? " (cap: 5,000)" : "";
+    const toastText =
+      (skippedCount > 0
+        ? tn("compare.bulk.toast", appliedCount, { m: skippedCount })
+        : tn("compare.bulk.toast.clean", appliedCount)) + capSuffix;
 
-    const reply = await bulkSetAction.run({ row_keys: keys, choice: choicePayload });
-    if (reply) {
-      clearSelection();
-      const appliedCount = Math.max(0, keys.length - skippedCount);
-      const isCapped = allMatching && total > 5000;
-      const capSuffix = isCapped ? " (cap: 5,000)" : "";
-      const toastText =
-        (skippedCount > 0
-          ? tn("compare.bulk.toast", appliedCount, { m: skippedCount })
-          : tn("compare.bulk.toast.clean", appliedCount)) + capSuffix;
+    const undoBulk = async () => {
+      const items = Array.from(previousMap.entries()).map(([row_key, c]) => ({
+        row_key,
+        choice: c,
+      }));
+      const undoReply = await bulkSetAction.run({ items });
+      if (undoReply) {
+        toast.show({ tone: "ok", text: "Bulk choices undone" });
+        reloadLoadedPages();
+        store.load("session");
+        store.load("plan");
+      } else {
+        toast.show({ tone: "err", text: "Could not undo bulk merge choices" });
+      }
+    };
 
-      const undoBulk = async () => {
-        try {
-          const items = Array.from(previousMap.entries()).map(([row_key, c]) => ({
-            row_key,
-            choice: c,
-          }));
-          await bulkSetAction.run({ items });
-          toast.show({ tone: "ok", text: "Bulk choices undone" });
-          reloadLoadedPages();
-          store.load("session");
-          store.load("plan");
-        } catch {
-          // ignore
-        }
-      };
-
-      toast.show({
-        tone: "ok",
-        text: toastText,
-        action: { label: "Undo", onClick: undoBulk },
-      });
-      reloadLoadedPages();
-      store.load("compareRows", queryParams);
-      store.load("session");
-      store.load("plan");
-    }
+    toast.show({
+      tone: "ok",
+      text: toastText,
+      action: { label: "Undo", onClick: undoBulk },
+    });
+    reloadLoadedPages();
+    store.load("compareRows", queryParams);
+    store.load("session");
+    store.load("plan");
   };
 
   // Bulk Confirm Rows.

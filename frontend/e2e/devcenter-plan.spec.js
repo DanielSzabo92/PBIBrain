@@ -145,7 +145,7 @@ test.describe("Plan status strip, header sync, and empty state", () => {
 
   test("checking state shows Checking plan in strip and disables Apply plan", async ({ page, request }) => {
     await scenario(request, "default");
-    await setPlan(request, { plan_state: "checking" });
+    await setPlan(request, { plan_state: "computing" });
     await openDevCenter(page);
     await workReady(page);
 
@@ -332,8 +332,8 @@ test.describe("Summary, warnings, phases, filters, expand operations, Check plan
     await checkBtn.click();
     await expect(page.locator(".dc-plan-strip").getByRole("button", { name: "Checking plan" })).toBeVisible();
 
-    // After completion, full check time updates to 14:22.
-    await expect(page.locator(".dc-plan-strip-body")).toHaveText("3 plan steps · 5 operations, 1 warning. Full check 14:22.");
+    // After completion, full check time updates to current local HH:MM.
+    await expect(page.locator(".dc-plan-strip-body")).toHaveText(/^3 plan steps · 5 operations, 1 warning\. Full check \d{2}:\d{2}\.$/);
 
     // Clicking "Open Agent" on the proposals info line opens the Agent tab.
     await proposalsInfo.getByRole("button", { name: "Open Agent" }).click();

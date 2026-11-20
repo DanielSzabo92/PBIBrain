@@ -219,6 +219,7 @@ export const COPY = Object.freeze({
   "work.more.duplicate": "Duplicate session",
   "work.more.delete": "Delete session",
   "work.more.close": "Close session",
+  "work.change_target": "Change target",
   "work.rename.title": "Rename merge session",
   "work.rename.label": "Session name",
   "work.rename.save": "Save name",

@@ -18,7 +18,7 @@ function choiceDisplayName(choice, donors = []) {
   if (kind === "keep" || kind === "keep_target") return t("compare.bulk.keep");
   if (kind === "skip") return t("compare.bulk.skip");
   if (kind === "remove") return t("compare.bulk.remove");
-  if (kind === "take_from") {
+  if (kind === "take" || kind === "take_from") {
     const sourceId = choice.source_id || choice.source;
     const donor = donors.find((d) => d.source_id === sourceId);
     const sourceName = choice.source_name || donor?.display_name || donor?.name || sourceId;
@@ -53,23 +53,32 @@ export default function BulkBar({
 
   // Calculate replacement count and skipped count.
   const checkChoiceImpact = (choice) => {
-    const isRemove = choice.kind === "remove";
+    const targetKind = choice.kind === "take_from" ? "take" : choice.kind;
+    const isRemove = targetKind === "remove";
     let replaceCount = 0;
     let skippedCount = 0;
 
     for (const row of selectedRows) {
-      if (row.merge_choice && row.merge_choice.choice !== choice.kind) {
-        replaceCount += 1;
+      if (row.merge_choice) {
+        const rawExisting = row.merge_choice.kind || row.merge_choice.choice;
+        const existingKind = rawExisting === "take_from" ? "take" : rawExisting;
+        const existingSource = row.merge_choice.source_id || row.merge_choice.source || null;
+        const targetSource = choice.source_id || choice.source || null;
+        if (existingKind !== targetKind || (targetKind === "take" && existingSource !== targetSource)) {
+          replaceCount += 1;
+        }
       }
       if (isRemove) {
         // Skipped if target is missing
-        const targetCell = row.cells?.s0 || (Array.isArray(row.cells) ? row.cells.find((c) => c.role === "target") : null);
-        if (targetCell?.state === "missing") skippedCount += 1;
-      } else if (choice.kind === "take_from") {
+        const targetCell = Array.isArray(row.cells)
+          ? row.cells.find((c) => c.role === "target")
+          : row.cells?.s0;
+        if (!targetCell || targetCell.state === "missing") skippedCount += 1;
+      } else if (targetKind === "take") {
         const donorCell = Array.isArray(row.cells)
           ? row.cells.find((c) => c.source_id === choice.source_id)
           : row.cells?.[choice.source_id];
-        if (donorCell?.state === "missing") skippedCount += 1;
+        if (!donorCell || donorCell.state === "missing") skippedCount += 1;
       }
     }
     return { replaceCount, skippedCount };
@@ -82,7 +91,7 @@ export default function BulkBar({
       setPendingChoice({ ...choice, replaceCount, skippedCount });
       return;
     }
-    onApplyChoice(choice, { skippedCount: 0 });
+    onApplyChoice(choice, { skippedCount });
   };
 
   const confirmBulkChoice = () => {
@@ -112,7 +121,7 @@ export default function BulkBar({
               label: `${t("compare.bulk.take_group")} ${donor.display_name || donor.name}`,
               onSelect: () =>
                 handleSelectMenuChoice({
-                  kind: "take_from",
+                  kind: "take",
                   source_id: donor.source_id,
                   source_name: donor.display_name || donor.name,
                 }),

@@ -729,7 +729,7 @@
   border: 0;
   background: transparent;
   padding: 2px 4px;
-  color: var(--brand-text);
+  color: var(--brand);
   font: inherit;
   text-decoration: underline;
   text-underline-offset: 2px;

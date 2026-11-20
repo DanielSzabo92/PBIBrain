@@ -63,18 +63,26 @@ const BLOCK_KEY_MAP = {
 };
 
 export function formatCheckTime(value) {
-  if (!value) return "09:30";
+  if (!value) return "";
   if (typeof value === "string") {
-    if (/^\d{2}:\d{2}$/.test(value.trim())) return value.trim();
-    const match = value.match(/T(\d{2}:\d{2})/);
+    const trimmed = value.trim();
+    if (/^\d{2}:\d{2}$/.test(trimmed)) return trimmed;
+    const parsed = new Date(trimmed);
+    if (!Number.isNaN(parsed.getTime())) {
+      const hh = String(parsed.getHours()).padStart(2, "0");
+      const mm = String(parsed.getMinutes()).padStart(2, "0");
+      return `${hh}:${mm}`;
+    }
+    const match = trimmed.match(/T(\d{2}:\d{2})/);
     if (match) return match[1];
+    return "";
   }
   if (value instanceof Date && !Number.isNaN(value.getTime())) {
     const hh = String(value.getHours()).padStart(2, "0");
     const mm = String(value.getMinutes()).padStart(2, "0");
     return `${hh}:${mm}`;
   }
-  return "09:30";
+  return "";
 }
 
 export function planDeletesCount(plan) {
@@ -356,8 +364,9 @@ export function buildBlockList({ plan, session, applyPreview, targetModelName, i
   return blocks;
 }
 
-export function planStripState({ plan, blocks = [], checking = false, checkTime = "09:30", isStale = false, applied = null } = {}) {
+export function planStripState({ plan, blocks = [], checking = false, checkTime = "", isStale = false, applied = null } = {}) {
   const time = formatCheckTime(checkTime);
+  const checkSuffix = time ? ` Full check ${time}.` : "";
   const deletesCount = planDeletesCount(plan);
   const applyVariant = deletesCount > 0 ? "destructive" : "default";
 
@@ -378,7 +387,7 @@ export function planStripState({ plan, blocks = [], checking = false, checkTime 
       state: "stale",
       badgeTone: "warn",
       badgeLabel: t("plan.strip.stale"),
-      body: `The plan is out of date with recent changes. Full check ${time}.`,
+      body: `The plan is out of date with recent changes.${checkSuffix}`,
       reason: "Re-check the plan before you apply.",
       applyDisabled: true,
       applyVariant,
@@ -393,8 +402,8 @@ export function planStripState({ plan, blocks = [], checking = false, checkTime 
       badgeTone: "bad",
       badgeLabel: t("plan.strip.invalid", { n }),
       body: n === 1
-        ? `1 blocking item in the plan. Full check ${time}.`
-        : t("plan.strip.invalid.body", { n, time }),
+        ? `1 blocking item in the plan.${checkSuffix}`
+        : (time ? t("plan.strip.invalid.body", { n, time }) : `${n} blocking items in the plan.`),
       reason: n === 1
         ? "Fix 1 item before you apply."
         : t("plan.strip.invalid.fix", { n }),
@@ -405,13 +414,13 @@ export function planStripState({ plan, blocks = [], checking = false, checkTime 
 
   if (applied) {
     const appliedTime = formatCheckTime(typeof applied === "object" ? applied?.time || checkTime : checkTime);
-    const appliedLabel = t("apply.strip.applied", { time: appliedTime });
+    const appliedLabel = appliedTime ? t("apply.strip.applied", { time: appliedTime }) : "Applied";
     return {
       state: "applied",
       badgeTone: "ok",
       badgeLabel: appliedLabel,
-      body: t("apply.strip.applied.body", { time: appliedTime }),
-      reason: t("apply.strip.applied.reason", { time: appliedTime }),
+      body: appliedTime ? t("apply.strip.applied.body", { time: appliedTime }) : "The target already matches the plan.",
+      reason: appliedTime ? t("apply.strip.applied.reason", { time: appliedTime }) : "The plan has already been applied.",
       applyDisabled: true,
       applyVariant,
     };
@@ -423,7 +432,7 @@ export function planStripState({ plan, blocks = [], checking = false, checkTime 
       state: "empty",
       badgeTone: "ok",
       badgeLabel: t("plan.strip.valid"),
-      body: t("plan.strip.empty.body", { time }),
+      body: time ? t("plan.strip.empty.body", { time }) : "No changes in the plan.",
       reason: t("plan.strip.empty.note"),
       applyDisabled: true,
       applyVariant,
@@ -440,8 +449,8 @@ export function planStripState({ plan, blocks = [], checking = false, checkTime 
     const w = Math.max(warnCount, 1);
     const badgeLabel = w === 1 ? "Valid with 1 warning" : t("plan.strip.warnings", { n: w });
     const body = w === 1
-      ? `${countText}, 1 warning. Full check ${time}.`
-      : `${countText}, ${w} warnings. Full check ${time}.`;
+      ? `${countText}, 1 warning.${checkSuffix}`
+      : `${countText}, ${w} warnings.${checkSuffix}`;
     return {
       state: "valid_with_warnings",
       badgeTone: "warn",
@@ -453,7 +462,7 @@ export function planStripState({ plan, blocks = [], checking = false, checkTime 
     };
   }
 
-  const body = `${countText}. Full check ${time}.`;
+  const body = `${countText}.${checkSuffix}`;
   return {
     state: "valid",
     badgeTone: "ok",

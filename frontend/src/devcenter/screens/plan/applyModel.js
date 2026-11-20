@@ -359,14 +359,19 @@ function lowerFirst(text) {
 // The one sentence for a failure: details.check first (guard checks), else details.step.
 export function failureReason(error) {
   const details = error?.details ?? {};
+  const rawMessage = error?.message ? String(error.message).trim() : "";
   if (details.check && t(`details.check.${details.check}`) !== `details.check.${details.check}`) {
-    return t(`details.check.${details.check}`);
+    const base = t(`details.check.${details.check}`);
+    if (rawMessage && !base.includes(rawMessage)) return `${base} (${rawMessage})`;
+    return base;
   }
   const key = STEP_COPY[details.step] ?? details.step;
   if (key && t(`details.step.${key}`) !== `details.step.${key}`) {
-    return t(`details.step.${key}`, { check: details.check ?? "not known" });
+    const base = t(`details.step.${key}`, { check: details.check ?? "not known" });
+    if (rawMessage && !base.includes(rawMessage)) return `${base} (${rawMessage})`;
+    return base;
   }
-  return error?.message ? String(error.message) : t("shared.unknown.title");
+  return rawMessage || t("shared.unknown.title");
 }
 
 // The name of the failed step, for "Failed step: <step>."

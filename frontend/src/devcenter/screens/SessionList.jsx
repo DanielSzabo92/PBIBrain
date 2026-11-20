@@ -230,7 +230,7 @@ export default function SessionList({
                     <span className="dc-cell-line">{row.target_model_name ?? t("shared.empty_value")}</span>
                     {row.target_report_name ? <span className="dc-cell-sub">{row.target_report_name}</span> : null}
                   </td>
-                  <td className="dc-num">{row.source_count}</td>
+                  <td className="dc-num">{row.donor_count ?? (row.target_model_name && row.source_count > 0 ? row.source_count - 1 : row.source_count)}</td>
                   <td><StatusBadge tone={plan.tone} label={plan.label} /></td>
                   <td>{formatTime(row.updated_at)}</td>
                   <td><StatusBadge tone={state.tone} label={state.label} /></td>
