@@ -45,7 +45,7 @@ def alive(pid: int) -> bool:
 
 class BoundedProcessTests(unittest.TestCase):
     def test_input_goes_on_stdin_and_output_comes_back(self):
-        done = run_bounded([PY, "-c", "import sys; sys.stdout.write(sys.stdin.read().upper())"], cwd=None,
+        done = run_bounded([PY, "-c", "import sys; sys.stdout.buffer.write(sys.stdin.buffer.read().upper())"], cwd=None,
                            env=dict(os.environ), timeout=30, input=b"a\nmulti-line\nprompt")
         self.assertEqual(0, done.returncode)
         self.assertEqual(b"A\nMULTI-LINE\nPROMPT", done.stdout)

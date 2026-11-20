@@ -30,6 +30,7 @@ class AnswerCacheTests(unittest.TestCase):
         self.folder = tempfile.TemporaryDirectory()
         self.addCleanup(self.folder.cleanup)
         self.repository = GraphRepository(Path(self.folder.name) / "brain.sqlite")
+        self.addCleanup(self.repository.close)
         self.repository.upsert_node(Node(id="model:m", type="MODEL", name="Model"))
         self.repository.upsert_node(measure("measure:a"))
         self.app = create_app(self.repository, overrides_path=Path(self.folder.name) / "overrides.json")

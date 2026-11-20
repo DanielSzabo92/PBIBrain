@@ -37,7 +37,7 @@ class PublicationContractTests(unittest.TestCase):
 
     def test_readme_covers_the_publication_surface(self):
         required_sections = {
-            "start": ("## Start", "start.bat", "./start.sh", "Python 3.11+", "SQLite"),
+            "start": ("## Getting started", "start.bat", "./start.sh", "Python 3.11+", "SQLite"),
             "workbench": ("## Workbench", "Overview", "Inspector", "Review queue", "Merge models"),
             "MCP": ("## MCP server", "brain_search", "agent-setup", "agent-snapshot.json"),
             "project file": ("## Project file", '"database": "brain.sqlite"', '"identity_map"', "overrides.json"),
