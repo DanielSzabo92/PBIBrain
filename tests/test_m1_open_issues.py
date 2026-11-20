@@ -185,6 +185,46 @@ class Issue81Tests(unittest.TestCase):
             self.assertEqual(reloaded.get("sourceQueryCulture"), "en-US")
             self.assertTrue((reloaded.get("dataAccessOptions") or {}).get("legacyRedirects"))
 
+            # Rescan must treat model:Model SET_PROPERTIES as a match (object_index never includes model:Model)
+            after_index = {"table:Orders": "h1", "column:Orders/OrderId": "h2"}
+            self.assertEqual(rescan.differences(model_ops, {}, after_index), [])
+
+    def test_rescan_ignores_model_header_set_properties(self) -> None:
+        donor_table = extract.CompareObject(
+            kind="table", subtype="table", domain=extract.MODEL, source_key="table:Orders", name="Orders",
+            props={"description": None, "hidden": False, "data_category": None},
+        )
+        res = compare_rows.build_rows(
+            [
+                compare_rows.SessionSource("tgt", extract.SourceObjects([], [], model_header={})),
+                compare_rows.SessionSource("donor", extract.SourceObjects([donor_table], [], model_header={
+                    "culture": "en-US",
+                    "default_power_bi_data_source_version": "powerBI_V3",
+                })),
+            ],
+            target_model="tgt",
+            target_report=None,
+            merge_choices={"table:Orders": {"kind": "take", "source_id": "donor"}},
+        )
+        res.model_headers = {
+            "tgt": {},
+            "donor": {
+                "culture": "en-US",
+                "default_power_bi_data_source_version": "powerBI_V3",
+            },
+        }
+        plan = compile_plan(PlanInput(
+            session_id="s-81-rescan",
+            result=res,
+            target_model="tgt",
+            target_report=None,
+            sources={"tgt": "EmptyOut", "donor": "Donor"},
+            merge_choices={"table:Orders": {"kind": "take", "source_id": "donor"}},
+        ))
+        model_ops = [op for op in plan["operations"] if op["domain"] == "model"]
+        self.assertTrue(any(op["object_type"] == "model" and op["row_key"] == "model:Model" for op in model_ops))
+        self.assertEqual(rescan.differences(model_ops, {}, {"table:Orders": "h1"}), [])
+
 
 class Issue82And83And85ModelWriterTests(unittest.TestCase):
     @unittest.skipUnless(BRIDGE.is_file(), "Build the TOM bridge first")
@@ -410,6 +450,72 @@ class Issue84And85PlanTests(unittest.TestCase):
             self.assertEqual(len(copied_pages), 1)
             copied_visuals = {p.name for p in (copied_pages[0] / "visuals").iterdir() if p.is_dir()}
             self.assertEqual(copied_visuals, {"v2"})
+
+    def test_84_replace_page_with_explicit_child_visual_takes_avoids_redundant_ops_and_matches_rescan(self) -> None:
+        tgt_page = extract.CompareObject(
+            kind="page", subtype="page", domain=extract.REPORT, source_key="page:sales01", name="Sales",
+            props={"display_name": "Sales"}, extra={"page_id": "sales01"},
+        )
+        tgt_v1 = extract.CompareObject(
+            kind="visual", subtype="visual", domain=extract.REPORT, source_key="visual:sales01/v1", name="v1", table="sales01",
+            props={"visual_type": "card"}, extra={"visual_id": "v1"},
+        )
+        tgt_v2 = extract.CompareObject(
+            kind="visual", subtype="visual", domain=extract.REPORT, source_key="visual:sales01/v2", name="v2", table="sales01",
+            props={"visual_type": "tableEx"}, extra={"visual_id": "v2"},
+        )
+        donor_page = extract.CompareObject(
+            kind="page", subtype="page", domain=extract.REPORT, source_key="page:sales01", name="Sales",
+            props={"display_name": "Sales Updated"}, extra={"page_id": "sales01"},
+        )
+        donor_v1 = extract.CompareObject(
+            kind="visual", subtype="visual", domain=extract.REPORT, source_key="visual:sales01/v1", name="v1", table="sales01",
+            props={"visual_type": "kpi"}, extra={"visual_id": "v1"},
+        )
+        donor_v2 = extract.CompareObject(
+            kind="visual", subtype="visual", domain=extract.REPORT, source_key="visual:sales01/v2", name="v2", table="sales01",
+            props={"visual_type": "tableEx"}, extra={"visual_id": "v2"},
+        )
+        donor_v3 = extract.CompareObject(
+            kind="visual", subtype="visual", domain=extract.REPORT, source_key="visual:sales01/v3", name="v3", table="sales01",
+            props={"visual_type": "barChart"}, extra={"visual_id": "v3"},
+        )
+        choices = {
+            "page:sales01": {"kind": "take", "source_id": "donor_r"},
+            "visual:sales01/v1": {"kind": "take", "source_id": "donor_r"},
+            "visual:sales01/v2": {"kind": "skip"},
+            "visual:sales01/v3": {"kind": "take", "source_id": "donor_r"},
+        }
+        res = compare_rows.build_rows(
+            [
+                compare_rows.SessionSource("tgt", extract.SourceObjects([], [tgt_page, tgt_v1, tgt_v2])),
+                compare_rows.SessionSource("donor_r", extract.SourceObjects([], [donor_page, donor_v1, donor_v2, donor_v3])),
+            ],
+            target_model=None,
+            target_report="tgt",
+            merge_choices=choices,
+        )
+        plan = compile_plan(PlanInput(
+            session_id="s-84-replace",
+            result=res,
+            target_model=None,
+            target_report="tgt",
+            sources={"tgt": "Target", "donor_r": "Donor"},
+            merge_choices=choices,
+        ))
+        ops = plan["operations"]
+        copy_pages = [op for op in ops if op["op"] == "COPY_PAGE"]
+        delete_visuals = [op for op in ops if op["op"] == "DELETE_VISUAL"]
+        copy_visuals = [op for op in ops if op["op"] == "COPY_VISUAL"]
+        self.assertEqual(len(copy_pages), 1)
+        self.assertTrue(copy_pages[0].get("replace"))
+        self.assertEqual(copy_pages[0].get("exclude_visuals"), ["v2"])
+        self.assertEqual(delete_visuals, [])
+        self.assertEqual(copy_visuals, [])
+
+        before = {"page:sales01": "h0", "visual:sales01/v1": "h1", "visual:sales01/v2": "h2"}
+        after = {"page:sales01": "h0b", "visual:sales01/v1": "h1b", "visual:sales01/v3": "h3"}
+        self.assertEqual(rescan.differences(ops, before, after), [])
 
     def test_85_shared_expression_conflict_warning(self) -> None:
         expr_a = extract.CompareObject(

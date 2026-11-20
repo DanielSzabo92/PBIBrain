@@ -91,6 +91,8 @@ def differences(operations: Sequence[Mapping[str, Any]], before: Mapping[str, st
         object_type = str(operation.get("object_type") or "")
         key = _row_key(operation)
         table = operation.get("table")
+        if object_type == "model":
+            continue
         if op in _RENAMES and operation.get("old_name") and operation.get("new_name"):
             old_table = table
             new_table = tables.get(str(table), table) if table else None

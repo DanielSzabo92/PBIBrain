@@ -283,6 +283,7 @@ class _Compiler:
         self.subtype_of: dict[str, str] = {}
         self.domain_of: dict[str, str] = {}
         self.created: dict[str, tuple[str, CompareObject]] = {}  # identity to (source ID, donor object)
+        self.copied_pages: dict[str, str] = {}  # page identity to donor source ID when COPY_PAGE copies it
         self.deleted: set[str] = set()
         self.resourced: dict[str, set[str] | None] = {}  # row key to its re-sourced DAX properties (None: all)
         self.promoted: dict[str, str] = {}  # report measure row key to its model identity
@@ -738,6 +739,8 @@ class _Compiler:
             assert donor is not None
             self.own_name[key] = new_name or donor.name
             self.resourced[key] = None
+            if donor.kind == "page":
+                self.copied_pages[key] = source_id
             return
         if kind == TAKE_PROPERTIES:
             self.resourced[key] = set(choice.get("properties") or [])
@@ -748,6 +751,8 @@ class _Compiler:
             home = self.table_row(source_id, donor.table) if donor.kind in _CHILD_KINDS or donor.kind == "report_measure" else None
             self.register(identity, donor.kind, donor.subtype, row["domain"], new_name or donor.name, home)
             self.created[identity] = (source_id, donor)
+            if donor.kind == "page":
+                self.copied_pages[identity] = source_id
             if kind == TAKE and donor.kind == "table":
                 self.register_children(step, row, source_id, donor)
             return
@@ -925,8 +930,7 @@ class _Compiler:
                            needed={"object_type": "page", "table": None, "name": donor.table})
                 return
             # If the parent page is already being copied from the same donor, COPY_PAGE already includes this visual.
-            parent_created = self.created.get(page_identity)
-            if parent_created is not None and parent_created[0] == source_id:
+            if self.copied_pages.get(page_identity) == source_id:
                 self._rebind_copied_visual(step, row, source_id, donor)
                 return
             self.copy_visual(step, row, source_id, donor, page_identity=page_identity)
@@ -962,9 +966,14 @@ class _Compiler:
                     replace=True, **extra_kwargs)
             return
         if donor.kind == "visual":
+            donor_page_row = self.row_of.get((source_id, f"page:{donor.table}"))
+            donor_page_key = donor_page_row["row_key"] if donor_page_row else None
+            if donor_page_key is not None and self.copied_pages.get(donor_page_key) == source_id:
+                self._rebind_copied_visual(step, row, source_id, donor)
+                return
+            target_page_row = self.row_of.get((self.data.target_report, f"page:{target.table}"))
             self.op(step, "DELETE_VISUAL", key)
-            self.copy_visual(step, row, source_id, donor, page_identity=self.by_key[key]["row_key"] if False else
-                             (self.row_of.get((self.data.target_report, f"page:{target.table}")) or {}).get("row_key", key))
+            self.copy_visual(step, row, source_id, donor, page_identity=target_page_row["row_key"] if target_page_row else key)
             return
         self.rename_op(step, key, target)
         cell = self.cell(row, source_id) or {}
