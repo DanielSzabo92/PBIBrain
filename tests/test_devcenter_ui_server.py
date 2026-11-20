@@ -164,11 +164,11 @@ class JsApiTest(FakeServerCase):
 
     def test_a_good_call_changes_the_state_that_the_reads_show(self) -> None:
         current = self.revision()
-        reply = self.call("merge_choice_set", {"base_revision": current, "row_key": "row-net-sales", "choice": {"choice": "keep"}})
+        reply = self.call("merge_choice_set", {"base_revision": current, "row_key": "row-net-sales", "choice": {"kind": "keep"}})
         self.assertEqual(reply["revision"], current + 1)
         rows = self.get("/api/devcenter/compare-rows?q=net")
         self.assertEqual(rows["revision"], current + 1)
-        self.assertEqual(rows["rows"][0]["merge_choice"], {"choice": "keep"})
+        self.assertEqual(rows["rows"][0]["merge_choice"], {"kind": "keep"})
         self.assertEqual(self.get("/api/devcenter/log")["entries"][0]["action"], "merge_choice_set")
 
     def test_each_method_answers(self) -> None:
@@ -201,7 +201,7 @@ class TestControlTest(FakeServerCase):
     def test_a_fault_changes_only_the_next_reply_of_the_method(self) -> None:
         self.post("/__test__/fault", {"method": "sources_check", "code": "action_not_allowed", "message": "Injected.", "details": {"why": "test"}})
         current = self.revision()
-        other = self.call("compare_mode_set", {"base_revision": current, "mode": "names"})
+        other = self.call("compare_mode_set", {"base_revision": current, "compare_mode": "strict"})
         self.assertNotIn("error", other, "a fault is only for its method")
         failed = self.call("sources_check", {"base_revision": other["revision"]})
         self.assertEqual(failed, {"error": {"code": "action_not_allowed", "message": "Injected.", "details": {"why": "test"}}})
@@ -332,7 +332,7 @@ class ReadAndShimTest(FakeServerCase):
         section = design[design.index("### 14.2"):design.index("### 14.3")]
         listed = section.split("\n\n")[1]
         names = [part.strip().strip("`").split("`")[0] for part in listed.split(",")]
-        self.assertEqual(list(fake.JSAPI_METHODS), names + ["cloud_items_list", "target_edit_apply", "target_convert_tmdl", "merge_template_save", "merge_template_list", "merge_template_apply"])
+        self.assertEqual(list(fake.JSAPI_METHODS), names + ["cloud_items_list", "target_edit_apply", "target_convert_tmdl", "merge_template_save", "merge_template_list", "merge_template_apply", "session_rename", "session_delete", "session_duplicate"])
 
 
 if __name__ == "__main__":
